@@ -1,0 +1,37 @@
+version: '3.8'
+
+# Development overrides with hot reload
+# Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+  # Gateway with hot reload
+  gateway:
+    build:
+      context: ./gateway
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./gateway/src:/app/src:ro
+      - ./gateway/package.json:/app/package.json:ro
+    environment:
+      - NODE_ENV=development
+    command: npm run dev
+
+  # UI with hot reload (dev server instead of nginx)
+  ui:
+    build:
+      context: ./ui
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./ui/src:/app/src:ro
+      - ./ui/index.html:/app/index.html:ro
+      - ./ui/vite.config.ts:/app/vite.config.ts:ro
+    environment:
+      - NODE_ENV=development
+    command: npm run dev
+
+  # Drools - mount rules for hot reload
+  drools:
+    volumes:
+      - ./drools/src/main/resources/rules:/app/rules:ro

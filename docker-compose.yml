@@ -1,0 +1,206 @@
+version: '3.8'
+
+services:
+  # ============================================
+  # Infrastructure Services
+  # ============================================
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: reactive-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "2181"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - reactive-network
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: reactive-kafka
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    networks:
+      - reactive-network
+
+  kafka-init:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: reactive-kafka-init
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command: |
+      "
+      echo 'Creating Kafka topics...'
+      kafka-topics --create --if-not-exists --topic counter-events --bootstrap-server kafka:29092 --partitions 1 --replication-factor 1
+      kafka-topics --create --if-not-exists --topic counter-results --bootstrap-server kafka:29092 --partitions 1 --replication-factor 1
+      echo 'Kafka topics created successfully!'
+      "
+    networks:
+      - reactive-network
+
+  # ============================================
+  # Drools Service (Business Rules Engine)
+  # ============================================
+
+  drools:
+    build:
+      context: ./drools
+      dockerfile: Dockerfile
+    container_name: reactive-drools
+    ports:
+      - "8180:8080"
+    environment:
+      - JAVA_OPTS=-Xmx512m
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - reactive-network
+
+  # ============================================
+  # Flink Service (Stream Processing)
+  # ============================================
+
+  flink-jobmanager:
+    build:
+      context: ./flink
+      dockerfile: Dockerfile
+    container_name: reactive-flink-jobmanager
+    ports:
+      - "8081:8081"
+    command: jobmanager
+    environment:
+      - |
+        FLINK_PROPERTIES=
+        jobmanager.rpc.address: flink-jobmanager
+        parallelism.default: 1
+    depends_on:
+      kafka:
+        condition: service_healthy
+      drools:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/overview"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - reactive-network
+
+  flink-taskmanager:
+    build:
+      context: ./flink
+      dockerfile: Dockerfile
+    container_name: reactive-flink-taskmanager
+    depends_on:
+      - flink-jobmanager
+    command: taskmanager
+    environment:
+      - |
+        FLINK_PROPERTIES=
+        jobmanager.rpc.address: flink-jobmanager
+        taskmanager.numberOfTaskSlots: 2
+        parallelism.default: 1
+    networks:
+      - reactive-network
+
+  flink-job-submitter:
+    build:
+      context: ./flink
+      dockerfile: Dockerfile
+    container_name: reactive-flink-job-submitter
+    depends_on:
+      - flink-jobmanager
+      - flink-taskmanager
+    entrypoint: ["/bin/sh", "-c"]
+    command: |
+      "
+      echo 'Waiting for Flink cluster to be ready...'
+      sleep 30
+      echo 'Submitting Flink job...'
+      /opt/flink/bin/flink run -d /opt/flink/jobs/counter-job.jar
+      echo 'Flink job submitted!'
+      tail -f /dev/null
+      "
+    networks:
+      - reactive-network
+
+  # ============================================
+  # Gateway Service (WebSocket Bridge)
+  # ============================================
+
+  gateway:
+    build:
+      context: ./gateway
+      dockerfile: Dockerfile
+    container_name: reactive-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - NODE_ENV=production
+      - KAFKA_BROKERS=kafka:29092
+      - PORT=8080
+    depends_on:
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - reactive-network
+
+  # ============================================
+  # UI Service (React Frontend)
+  # ============================================
+
+  ui:
+    build:
+      context: ./ui
+      dockerfile: Dockerfile
+    container_name: reactive-ui
+    ports:
+      - "3000:80"
+    depends_on:
+      - gateway
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - reactive-network
+
+networks:
+  reactive-network:
+    driver: bridge
