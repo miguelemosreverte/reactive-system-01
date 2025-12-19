@@ -27,3 +27,9 @@ scrape_configs:
     static_configs:
       - targets: ['flink-taskmanager:9249']
     scrape_timeout: 10s
+
+  # Scrape cAdvisor for container metrics
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+    scrape_timeout: 10s

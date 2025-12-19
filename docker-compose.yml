@@ -466,6 +466,30 @@ services:
     networks:
       - reactive-network
 
+# ============================================
+  # cAdvisor (Container Metrics)
+  # ============================================
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.47.2
+    container_name: reactive-cadvisor
+    privileged: true
+    ports:
+      - "8085:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.25'
+    networks:
+      - reactive-network
+
 networks:
   reactive-network:
     driver: bridge

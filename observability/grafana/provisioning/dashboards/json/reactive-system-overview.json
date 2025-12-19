@@ -442,10 +442,10 @@
       "id": 605,
       "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
       "targets": [
-        { "expr": "flink_taskmanager_job_task_Shuffle_Netty_Input_estimatedTimeToConsumeBuffersMs{job=\"flink\"}", "legendFormat": "Time to Consume Buffers (ms)", "refId": "A" },
-        { "expr": "flink_taskmanager_job_task_Shuffle_Netty_Input_debloatedBufferSize{job=\"flink\"}", "legendFormat": "Adaptive Buffer Size (bytes)", "refId": "B" }
+        { "expr": "flink_taskmanager_job_task_buffers_inPoolUsage{job=\"flink\"}", "legendFormat": "Input Buffer Pool Usage - {{task_name}}", "refId": "A" },
+        { "expr": "flink_taskmanager_job_task_buffers_outPoolUsage{job=\"flink\"}", "legendFormat": "Output Buffer Pool Usage - {{task_name}}", "refId": "B" }
       ],
-      "title": "Adaptive Buffer Debloating",
+      "title": "Flink Buffer Pool Usage",
       "type": "timeseries"
     },
     {
@@ -464,10 +464,11 @@
       "id": 606,
       "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
       "targets": [
-        { "expr": "flink_taskmanager_job_task_Shuffle_Netty_Input_inputQueueLength{job=\"flink\"}", "legendFormat": "Input Queue Length", "refId": "A" },
-        { "expr": "flink_taskmanager_job_task_Shuffle_Netty_Output_outputQueueLength{job=\"flink\"}", "legendFormat": "Output Queue Length", "refId": "B" }
+        { "expr": "flink_taskmanager_job_task_Shuffle_Netty_Output_Buffers_outputQueueSize{job=\"flink\"}", "legendFormat": "Output Queue - {{task_name}}", "refId": "A" },
+        { "expr": "flink_taskmanager_job_task_numBuffersInLocal{job=\"flink\"}", "legendFormat": "Buffers In Local - {{task_name}}", "refId": "B" },
+        { "expr": "flink_taskmanager_job_task_numBuffersOut{job=\"flink\"}", "legendFormat": "Buffers Out - {{task_name}}", "refId": "C" }
       ],
-      "title": "Network Buffer Queues",
+      "title": "Network Buffer Activity",
       "type": "timeseries"
     },
     {
@@ -696,7 +697,49 @@
       "type": "timeseries"
     },
     {
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 100 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Container memory usage from cAdvisor - shows actual memory per container",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "drawStyle": "line", "fillOpacity": 30, "gradientMode": "opacity", "hideFrom": { "legend": false, "tooltip": false, "viz": false }, "insertNulls": false, "lineInterpolation": "smooth", "lineWidth": 2, "pointSize": 5, "scaleDistribution": { "type": "linear" }, "showPoints": "never", "spanNulls": false, "stacking": { "group": "A", "mode": "none" }, "thresholdsStyle": { "mode": "off" } },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "unit": "bytes"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 100 },
+      "id": 909,
+      "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        { "expr": "container_memory_usage_bytes{name=~\"reactive-.*\"}", "legendFormat": "{{name}}", "refId": "A" }
+      ],
+      "title": "Container Memory Usage",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Container CPU usage from cAdvisor",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "drawStyle": "line", "fillOpacity": 30, "gradientMode": "opacity", "hideFrom": { "legend": false, "tooltip": false, "viz": false }, "insertNulls": false, "lineInterpolation": "smooth", "lineWidth": 2, "pointSize": 5, "scaleDistribution": { "type": "linear" }, "showPoints": "never", "spanNulls": false, "stacking": { "group": "A", "mode": "none" }, "thresholdsStyle": { "mode": "off" } },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "unit": "percentunit"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 100 },
+      "id": 910,
+      "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        { "expr": "rate(container_cpu_usage_seconds_total{name=~\"reactive-.*\"}[1m])", "legendFormat": "{{name}}", "refId": "A" }
+      ],
+      "title": "Container CPU Usage",
+      "type": "timeseries"
+    },
+    {
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 108 },
       "id": 800,
       "title": "Logs (Loki)",
       "type": "row"
