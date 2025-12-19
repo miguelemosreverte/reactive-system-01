@@ -1,26 +1,42 @@
 interface ConnectionStatusProps {
   isConnected: boolean
   sessionId: string | null
+  isReconnecting?: boolean
+  reconnectAttempt?: number
 }
 
-function ConnectionStatus({ isConnected, sessionId }: ConnectionStatusProps) {
+function ConnectionStatus({ isConnected, sessionId, isReconnecting, reconnectAttempt }: ConnectionStatusProps) {
+  const getStatusText = () => {
+    if (isConnected) return 'Connected'
+    if (isReconnecting) return `Reconnecting${reconnectAttempt ? ` (${reconnectAttempt})` : ''}...`
+    return 'Disconnected'
+  }
+
+  const getIndicatorColor = () => {
+    if (isConnected) return '#10b981'
+    if (isReconnecting) return '#f59e0b'
+    return '#ef4444'
+  }
+
   return (
     <div style={styles.container}>
       <div style={styles.statusRow}>
         <span
           style={{
             ...styles.indicator,
-            backgroundColor: isConnected ? '#10b981' : '#ef4444'
+            backgroundColor: getIndicatorColor(),
+            animation: isReconnecting ? 'pulse 1s infinite' : 'pulse 2s infinite'
           }}
         />
         <span style={styles.statusText}>
-          {isConnected ? 'Connected' : 'Disconnected'}
+          {getStatusText()}
         </span>
       </div>
       {sessionId && (
-        <span style={styles.sessionId}>
-          Session: {sessionId.substring(0, 8)}...
-        </span>
+        <div style={styles.sessionContainer}>
+          <span style={styles.sessionLabel}>Session:</span>
+          <code style={styles.sessionId}>{sessionId}</code>
+        </div>
       )}
     </div>
   )
@@ -50,10 +66,29 @@ const styles: { [key: string]: React.CSSProperties } = {
     textTransform: 'uppercase',
     letterSpacing: '0.05em'
   },
-  sessionId: {
-    fontSize: '0.7rem',
+  sessionContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '0.15rem',
+    maxWidth: '100%',
+  },
+  sessionLabel: {
+    fontSize: '0.6rem',
     color: '#64748b',
-    fontFamily: 'monospace'
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+  },
+  sessionId: {
+    fontSize: '0.6rem',
+    color: '#94a3b8',
+    fontFamily: 'monospace',
+    background: 'rgba(0, 0, 0, 0.3)',
+    padding: '0.2rem 0.4rem',
+    borderRadius: '0.25rem',
+    wordBreak: 'break-all',
+    textAlign: 'center',
+    maxWidth: '200px',
   }
 }
 

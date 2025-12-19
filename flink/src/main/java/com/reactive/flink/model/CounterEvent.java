@@ -9,6 +9,9 @@ public class CounterEvent implements Serializable {
     private String action;  // "increment", "decrement", "set"
     private int value;
     private long timestamp;
+    private String traceId;
+    private String spanId;
+    private long deserializedAt;
 
     public CounterEvent() {
     }
@@ -52,8 +55,32 @@ public class CounterEvent implements Serializable {
         this.timestamp = timestamp;
     }
 
+    public String getTraceId() {
+        return traceId;
+    }
+
+    public void setTraceId(String traceId) {
+        this.traceId = traceId;
+    }
+
+    public String getSpanId() {
+        return spanId;
+    }
+
+    public void setSpanId(String spanId) {
+        this.spanId = spanId;
+    }
+
+    public long getDeserializedAt() {
+        return deserializedAt;
+    }
+
+    public void setDeserializedAt(long deserializedAt) {
+        this.deserializedAt = deserializedAt;
+    }
+
     @Override
     public String toString() {
-        return "CounterEvent{sessionId='" + sessionId + "', action='" + action + "', value=" + value + "}";
+        return "CounterEvent{sessionId='" + sessionId + "', action='" + action + "', value=" + value + ", traceId='" + traceId + "'}";
     }
 }

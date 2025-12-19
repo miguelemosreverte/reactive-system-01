@@ -3,6 +3,9 @@ package com.reactive.drools.service;
 import com.reactive.drools.model.Counter;
 import com.reactive.drools.model.EvaluationRequest;
 import com.reactive.drools.model.EvaluationResponse;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.instrumentation.annotations.SpanAttribute;
+import io.opentelemetry.instrumentation.annotations.WithSpan;
 import org.kie.api.runtime.KieContainer;
 import org.kie.api.runtime.KieSession;
 import org.springframework.stereotype.Service;
@@ -16,13 +19,19 @@ public class RuleService {
         this.kieContainer = kieContainer;
     }
 
-    public EvaluationResponse evaluate(EvaluationRequest request) {
+    @WithSpan("drools.evaluate")
+    public EvaluationResponse evaluate(@SpanAttribute("counter.input_value") EvaluationRequest request) {
         Counter counter = new Counter(request.getValue());
+
+        // Add custom span attributes
+        Span currentSpan = Span.current();
+        currentSpan.setAttribute("drools.input_value", request.getValue());
 
         KieSession kieSession = kieContainer.newKieSession();
         try {
             kieSession.insert(counter);
-            kieSession.fireAllRules();
+            int rulesFired = kieSession.fireAllRules();
+            currentSpan.setAttribute("drools.rules_fired", rulesFired);
         } finally {
             kieSession.dispose();
         }
@@ -31,6 +40,10 @@ public class RuleService {
         response.setValue(counter.getValue());
         response.setAlert(counter.getAlert() != null ? counter.getAlert() : "NONE");
         response.setMessage(generateMessage(counter));
+
+        // Add result attributes
+        currentSpan.setAttribute("drools.result_value", response.getValue());
+        currentSpan.setAttribute("drools.alert_level", response.getAlert());
 
         return response;
     }

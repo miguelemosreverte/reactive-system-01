@@ -1,6 +1,124 @@
-version: '3.8'
+# Version: 1.0.0
+# Build args are injected at build time, env vars at runtime
+x-version: &version "1.0.0"
 
 services:
+  # ============================================
+  # Observability Infrastructure
+  # ============================================
+
+  otel-collector:
+    build:
+      context: ./observability/otel-collector
+      dockerfile: Dockerfile
+    container_name: reactive-otel-collector
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./observability/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+    ports:
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+      - "8889:8889"   # Prometheus metrics
+      - "13133:13133" # Health check
+    environment:
+      - OTEL_FEATURE_ENABLED=${OTEL_FEATURE_ENABLED:-true}
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:13133/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - reactive-network
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.53
+    container_name: reactive-jaeger
+    ports:
+      - "16686:16686" # Jaeger UI
+      - "14250:14250" # gRPC
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:16686"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - reactive-network
+
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: reactive-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-lifecycle'
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.25'
+    depends_on:
+      otel-collector:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9090/-/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - reactive-network
+
+  grafana:
+    image: grafana/grafana:10.2.3
+    container_name: reactive-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+      # Set the default home dashboard
+      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/etc/grafana/provisioning/dashboards/json/reactive-system-overview.json
+      # Disable login page for anonymous users
+      - GF_AUTH_DISABLE_LOGIN_FORM=false
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.25'
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+      - jaeger
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - reactive-network
+
   # ============================================
   # Infrastructure Services
   # ============================================
@@ -71,11 +189,30 @@ services:
     build:
       context: ./drools
       dockerfile: Dockerfile
+      args:
+        SERVICE_VERSION: *version
     container_name: reactive-drools
     ports:
       - "8180:8080"
     environment:
       - JAVA_OPTS=-Xmx512m
+      - SERVICE_VERSION=1.0.0
+      # OpenTelemetry Configuration
+      - OTEL_ENABLED=${OTEL_FEATURE_ENABLED:-true}
+      - OTEL_SERVICE_NAME=drools
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      - OTEL_TRACES_SAMPLER=parentbased_traceidratio
+      - OTEL_TRACES_SAMPLER_ARG=${OTEL_SAMPLING_RATE:-1.0}
+      - OTEL_METRICS_EXPORTER=otlp
+      - OTEL_LOGS_EXPORTER=otlp
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+          cpus: '0.5'
+    depends_on:
+      otel-collector:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 10s
@@ -102,10 +239,18 @@ services:
         FLINK_PROPERTIES=
         jobmanager.rpc.address: flink-jobmanager
         parallelism.default: 1
+      # OpenTelemetry Configuration
+      - OTEL_ENABLED=${OTEL_FEATURE_ENABLED:-true}
+      - OTEL_SERVICE_NAME=flink-jobmanager
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      - OTEL_TRACES_SAMPLER=parentbased_traceidratio
+      - OTEL_TRACES_SAMPLER_ARG=${OTEL_SAMPLING_RATE:-1.0}
     depends_on:
       kafka:
         condition: service_healthy
       drools:
+        condition: service_healthy
+      otel-collector:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8081/overview"]
@@ -124,12 +269,20 @@ services:
     depends_on:
       - flink-jobmanager
     command: taskmanager
+    ports:
+      - "9249:9249"  # Prometheus metrics
     environment:
       - |
         FLINK_PROPERTIES=
         jobmanager.rpc.address: flink-jobmanager
         taskmanager.numberOfTaskSlots: 2
         parallelism.default: 1
+        metrics.reporter.prom.factory.class: org.apache.flink.metrics.prometheus.PrometheusReporterFactory
+        metrics.reporter.prom.port: 9249
+      # OpenTelemetry Configuration
+      - OTEL_ENABLED=${OTEL_FEATURE_ENABLED:-true}
+      - OTEL_SERVICE_NAME=flink-taskmanager
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
     networks:
       - reactive-network
 
@@ -139,16 +292,45 @@ services:
       dockerfile: Dockerfile
     container_name: reactive-flink-job-submitter
     depends_on:
-      - flink-jobmanager
-      - flink-taskmanager
+      flink-jobmanager:
+        condition: service_healthy
+      flink-taskmanager:
+        condition: service_started
     entrypoint: ["/bin/sh", "-c"]
     command: |
       "
-      echo 'Waiting for Flink cluster to be ready...'
-      sleep 30
+      echo 'Waiting for Flink cluster to be fully ready...'
+
+      # Wait for JobManager REST API to be available
+      max_attempts=30
+      attempt=0
+      until curl -sf http://flink-jobmanager:8081/overview > /dev/null 2>&1; do
+        attempt=$$((attempt + 1))
+        if [ $$attempt -ge $$max_attempts ]; then
+          echo 'ERROR: Flink JobManager not ready after max attempts'
+          exit 1
+        fi
+        echo \"Waiting for Flink JobManager... (attempt $$attempt/$$max_attempts)\"
+        sleep 2
+      done
+
+      # Wait for at least one TaskManager to register
+      until curl -sf http://flink-jobmanager:8081/taskmanagers | grep -q 'taskmanagers'; do
+        echo 'Waiting for TaskManager to register...'
+        sleep 2
+      done
+
+      echo 'Flink cluster is ready!'
       echo 'Submitting Flink job...'
-      /opt/flink/bin/flink run -d /opt/flink/jobs/counter-job.jar
-      echo 'Flink job submitted!'
+      /opt/flink/bin/flink run -m flink-jobmanager:8081 -d /opt/flink/jobs/counter-job.jar
+
+      if [ $$? -eq 0 ]; then
+        echo 'Flink job submitted successfully!'
+      else
+        echo 'ERROR: Failed to submit Flink job'
+        exit 1
+      fi
+
       tail -f /dev/null
       "
     networks:
@@ -162,6 +344,9 @@ services:
     build:
       context: ./gateway
       dockerfile: Dockerfile
+      args:
+        SERVICE_VERSION: *version
+        BUILD_TIME: ${BUILD_TIME:-}
     container_name: reactive-gateway
     ports:
       - "8080:8080"
@@ -169,8 +354,28 @@ services:
       - NODE_ENV=production
       - KAFKA_BROKERS=kafka:29092
       - PORT=8080
+      - SERVICE_VERSION=1.0.0
+      # OpenTelemetry Configuration
+      - OTEL_ENABLED=${OTEL_FEATURE_ENABLED:-true}
+      - OTEL_SERVICE_NAME=gateway
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+      - OTEL_TRACES_SAMPLER=parentbased_traceidratio
+      - OTEL_TRACES_SAMPLER_ARG=${OTEL_SAMPLING_RATE:-1.0}
+      # Jaeger Query URL for trace lookup
+      - JAEGER_QUERY_URL=http://jaeger:16686
+      # Admin Authentication
+      - ADMIN_API_KEY=${ADMIN_API_KEY:-reactive-admin-key}
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
     depends_on:
       kafka:
+        condition: service_healthy
+      otel-collector:
+        condition: service_healthy
+      jaeger:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
@@ -193,6 +398,17 @@ services:
       - "3000:80"
     depends_on:
       - gateway
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.25'
+    volumes:
+      - ./DOCUMENTATION.md:/usr/share/nginx/docs/DOCUMENTATION.md:ro
+      - ./ui/DOCUMENTATION.md:/usr/share/nginx/docs/ui/DOCUMENTATION.md:ro
+      - ./gateway/DOCUMENTATION.md:/usr/share/nginx/docs/gateway/DOCUMENTATION.md:ro
+      - ./flink/DOCUMENTATION.md:/usr/share/nginx/docs/flink/DOCUMENTATION.md:ro
+      - ./drools/DOCUMENTATION.md:/usr/share/nginx/docs/drools/DOCUMENTATION.md:ro
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:80"]
       interval: 10s
@@ -204,3 +420,7 @@ services:
 networks:
   reactive-network:
     driver: bridge
+
+volumes:
+  grafana-data:
+  prometheus-data:

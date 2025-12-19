@@ -1,7 +1,10 @@
-# Gateway Service Dockerfile
-# Multi-stage build with layer optimization
+# syntax=docker/dockerfile:1.4
+# Gateway Service Dockerfile - Optimized with BuildKit caching
 
-# Stage 1: Dependencies (cached layer)
+ARG SERVICE_VERSION=1.0.0
+ARG BUILD_TIME
+
+# Stage 1: Dependencies (heavily cached)
 FROM node:20-alpine AS deps
 
 WORKDIR /app
@@ -9,19 +12,20 @@ WORKDIR /app
 # Copy package files for dependency caching
 COPY package.json package-lock.json* ./
 
-# Install dependencies (use npm install for flexibility, npm ci if lock exists)
-RUN if [ -f package-lock.json ]; then npm ci --only=production; else npm install --only=production; fi
+# Use BuildKit cache mount for npm cache
+RUN --mount=type=cache,target=/root/.npm \
+    if [ -f package-lock.json ]; then npm ci --only=production; else npm install --only=production; fi
 
-# Stage 2: Build
+# Stage 2: Build (source changes only)
 FROM node:20-alpine AS build
 
 WORKDIR /app
 
-# Copy package files
 COPY package.json package-lock.json* ./
 
-# Install all dependencies (including dev)
-RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
+# Use BuildKit cache mount for npm cache
+RUN --mount=type=cache,target=/root/.npm \
+    if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
 # Copy source code
 COPY tsconfig.json ./
@@ -30,13 +34,20 @@ COPY src ./src
 # Build TypeScript
 RUN npm run build
 
-# Stage 3: Runtime
+# Stage 3: Runtime (minimal)
 FROM node:20-alpine AS runtime
+
+ARG SERVICE_VERSION
+ARG BUILD_TIME
 
 WORKDIR /app
 
 # Install curl for health checks
 RUN apk add --no-cache curl
+
+# Set version info
+ENV SERVICE_VERSION=${SERVICE_VERSION}
+ENV BUILD_TIME=${BUILD_TIME}
 
 # Copy production dependencies from deps stage
 COPY --from=deps /app/node_modules ./node_modules

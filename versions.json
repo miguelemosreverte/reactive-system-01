@@ -1,0 +1,40 @@
+{
+  "system": {
+    "name": "reactive-system",
+    "version": "1.0.0",
+    "description": "Reactive Counter System with Kafka, Flink, and Drools"
+  },
+  "services": {
+    "ui": {
+      "version": "1.0.0",
+      "port": 3000,
+      "healthPath": "/"
+    },
+    "gateway": {
+      "version": "1.0.0",
+      "port": 8080,
+      "healthPath": "/health"
+    },
+    "drools": {
+      "version": "1.0.0",
+      "port": 8180,
+      "healthPath": "/health"
+    },
+    "flink": {
+      "version": "1.0.0",
+      "port": 8081,
+      "healthPath": "/overview"
+    }
+  },
+  "infrastructure": {
+    "kafka": "7.5.0",
+    "zookeeper": "7.5.0",
+    "flink-runtime": "1.18.0",
+    "drools-engine": "8.44.0"
+  },
+  "observability": {
+    "otel-collector": "0.91.0",
+    "jaeger": "1.53",
+    "grafana": "10.2.3"
+  }
+}

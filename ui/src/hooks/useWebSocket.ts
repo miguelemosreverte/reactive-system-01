@@ -14,8 +14,22 @@ interface UseWebSocketOptions {
 export function useWebSocket(options: UseWebSocketOptions = {}) {
   const [isConnected, setIsConnected] = useState(false)
   const [sessionId, setSessionId] = useState<string | null>(null)
+  const [isReconnecting, setIsReconnecting] = useState(false)
+  const [reconnectAttempt, setReconnectAttempt] = useState(0)
   const wsRef = useRef<WebSocket | null>(null)
   const reconnectTimeoutRef = useRef<number | null>(null)
+
+  // Store callbacks in refs to avoid recreating the connect function
+  const onMessageRef = useRef(options.onMessage)
+  const onConnectRef = useRef(options.onConnect)
+  const onDisconnectRef = useRef(options.onDisconnect)
+
+  // Update refs when options change
+  useEffect(() => {
+    onMessageRef.current = options.onMessage
+    onConnectRef.current = options.onConnect
+    onDisconnectRef.current = options.onDisconnect
+  }, [options.onMessage, options.onConnect, options.onDisconnect])
 
   const connect = useCallback(() => {
     // Determine WebSocket URL based on environment
@@ -30,7 +44,9 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
     ws.onopen = () => {
       console.log('WebSocket connected')
       setIsConnected(true)
-      options.onConnect?.()
+      setIsReconnecting(false)
+      setReconnectAttempt(0)
+      onConnectRef.current?.()
     }
 
     ws.onmessage = (event) => {
@@ -42,7 +58,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
           setSessionId(message.sessionId)
         }
 
-        options.onMessage?.(message)
+        onMessageRef.current?.(message)
       } catch (error) {
         console.error('Failed to parse WebSocket message:', error)
       }
@@ -51,10 +67,12 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
     ws.onclose = () => {
       console.log('WebSocket disconnected')
       setIsConnected(false)
-      options.onDisconnect?.()
+      setIsReconnecting(true)
+      onDisconnectRef.current?.()
 
       // Attempt to reconnect after 3 seconds
       reconnectTimeoutRef.current = window.setTimeout(() => {
+        setReconnectAttempt(prev => prev + 1)
         console.log('Attempting to reconnect...')
         connect()
       }, 3000)
@@ -65,7 +83,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
     }
 
     wsRef.current = ws
-  }, [options])
+  }, [])
 
   useEffect(() => {
     connect()
@@ -91,6 +109,8 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
   return {
     isConnected,
     sessionId,
-    sendMessage
+    sendMessage,
+    isReconnecting,
+    reconnectAttempt
   }
 }

@@ -10,6 +10,7 @@ public class CounterResult implements Serializable {
     private String alert;
     private String message;
     private long timestamp;
+    private String traceId;
 
     public CounterResult() {
     }
@@ -20,6 +21,11 @@ public class CounterResult implements Serializable {
         this.alert = alert;
         this.message = message;
         this.timestamp = System.currentTimeMillis();
+    }
+
+    public CounterResult(String sessionId, int currentValue, String alert, String message, String traceId) {
+        this(sessionId, currentValue, alert, message);
+        this.traceId = traceId;
     }
 
     public String getSessionId() {
@@ -62,8 +68,16 @@ public class CounterResult implements Serializable {
         this.timestamp = timestamp;
     }
 
+    public String getTraceId() {
+        return traceId;
+    }
+
+    public void setTraceId(String traceId) {
+        this.traceId = traceId;
+    }
+
     @Override
     public String toString() {
-        return "CounterResult{sessionId='" + sessionId + "', value=" + currentValue + ", alert='" + alert + "'}";
+        return "CounterResult{sessionId='" + sessionId + "', value=" + currentValue + ", alert='" + alert + "', traceId='" + traceId + "'}";
     }
 }
