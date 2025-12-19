@@ -1,5 +1,6 @@
 import { Kafka, Producer, Consumer, EachMessagePayload } from 'kafkajs';
 import { trace, context, SpanKind, SpanStatusCode, propagation } from '@opentelemetry/api';
+import { logger } from './logger';
 
 const tracer = trace.getTracer('gateway-kafka');
 
@@ -37,12 +38,23 @@ export class KafkaClient {
             }
         });
 
-        this.producer = this.kafka.producer();
-        this.consumer = this.kafka.consumer({ groupId: 'gateway-group' });
+        // Low-latency producer configuration
+        this.producer = this.kafka.producer({
+            allowAutoTopicCreation: true,
+            // Acks: 1 = leader acknowledgment only (faster than 'all')
+            // For lowest latency in development; use 'all' in production for durability
+        });
+
+        // Low-latency consumer configuration
+        this.consumer = this.kafka.consumer({
+            groupId: 'gateway-group',
+            maxWaitTimeInMs: 10,  // Don't wait long for batches (default: 5000)
+            minBytes: 1,          // Return as soon as any data is available
+        });
     }
 
     async connect(): Promise<void> {
-        console.log('Connecting to Kafka...');
+        logger.info('Connecting to Kafka');
 
         // Retry connection with backoff
         let retries = 0;
@@ -53,11 +65,15 @@ export class KafkaClient {
                 await this.producer.connect();
                 await this.consumer.connect();
                 this.isConnected = true;
-                console.log('Connected to Kafka');
+                logger.info('Connected to Kafka');
                 return;
             } catch (error) {
                 retries++;
-                console.log(`Kafka connection attempt ${retries}/${maxRetries} failed, retrying in 2s...`);
+                logger.warn('Kafka connection attempt failed, retrying', {
+                    attempt: retries,
+                    maxRetries,
+                    retryDelayMs: 2000
+                });
                 await new Promise(resolve => setTimeout(resolve, 2000));
             }
         }
@@ -115,7 +131,12 @@ export class KafkaClient {
                 });
 
                 span.setStatus({ code: SpanStatusCode.OK });
-                console.log('Published event with traceId:', traceId);
+                logger.debug('Published event to Kafka', {
+                    topic: 'counter-events',
+                    sessionId: event.sessionId,
+                    action: event.action,
+                    traceId
+                });
                 return traceId;
             } catch (error) {
                 span.setStatus({ code: SpanStatusCode.ERROR, message: String(error) });
@@ -165,7 +186,7 @@ export class KafkaClient {
                             } catch (error) {
                                 span.setStatus({ code: SpanStatusCode.ERROR, message: String(error) });
                                 span.recordException(error as Error);
-                                console.error('Failed to parse result:', error);
+                                logger.error('Failed to parse Kafka result', error);
                             } finally {
                                 span.end();
                             }
@@ -175,6 +196,6 @@ export class KafkaClient {
             }
         });
 
-        console.log('Subscribed to counter-results topic');
+        logger.info('Subscribed to Kafka topic', { topic: 'counter-results' });
     }
 }

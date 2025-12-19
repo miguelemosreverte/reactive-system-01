@@ -427,7 +427,51 @@
       "type": "timeseries"
     },
     {
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 63 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Buffer Debloating adapts buffer sizes based on throughput. Low throughput = smaller buffers = lower latency. High throughput = larger buffers = better efficiency. The 'Time to Consume' metric shows estimated latency added by buffering.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "drawStyle": "line", "fillOpacity": 20, "gradientMode": "opacity", "hideFrom": { "legend": false, "tooltip": false, "viz": false }, "insertNulls": false, "lineInterpolation": "smooth", "lineWidth": 2, "pointSize": 5, "scaleDistribution": { "type": "linear" }, "showPoints": "never", "spanNulls": false, "stacking": { "group": "A", "mode": "none" }, "thresholdsStyle": { "mode": "line+area" } },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 50 }, { "color": "red", "value": 100 }] },
+          "unit": "ms"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 63 },
+      "id": 605,
+      "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        { "expr": "flink_taskmanager_job_task_Shuffle_Netty_Input_estimatedTimeToConsumeBuffersMs{job=\"flink\"}", "legendFormat": "Time to Consume Buffers (ms)", "refId": "A" },
+        { "expr": "flink_taskmanager_job_task_Shuffle_Netty_Input_debloatedBufferSize{job=\"flink\"}", "legendFormat": "Adaptive Buffer Size (bytes)", "refId": "B" }
+      ],
+      "title": "Adaptive Buffer Debloating",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Input/Output buffer queue lengths - shows how much data is waiting in network buffers",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "drawStyle": "line", "fillOpacity": 20, "gradientMode": "opacity", "hideFrom": { "legend": false, "tooltip": false, "viz": false }, "insertNulls": false, "lineInterpolation": "smooth", "lineWidth": 2, "pointSize": 5, "scaleDistribution": { "type": "linear" }, "showPoints": "never", "spanNulls": false, "stacking": { "group": "A", "mode": "none" }, "thresholdsStyle": { "mode": "off" } },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 63 },
+      "id": 606,
+      "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        { "expr": "flink_taskmanager_job_task_Shuffle_Netty_Input_inputQueueLength{job=\"flink\"}", "legendFormat": "Input Queue Length", "refId": "A" },
+        { "expr": "flink_taskmanager_job_task_Shuffle_Netty_Output_outputQueueLength{job=\"flink\"}", "legendFormat": "Output Queue Length", "refId": "B" }
+      ],
+      "title": "Network Buffer Queues",
+      "type": "timeseries"
+    },
+    {
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 71 },
       "id": 700,
       "title": "Drools Rule Engine",
       "type": "row"
@@ -444,7 +488,7 @@
           "unit": "ms"
         }
       },
-      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 64 },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 72 },
       "id": 701,
       "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
       "targets": [{ "expr": "sum by (span_name) (rate(reactive_system_traces_duration_milliseconds_sum{service_name=\"drools\", span_name=~\"drools.*|POST.*|RuleController.*\"}[1m])) / sum by (span_name) (rate(reactive_system_traces_duration_milliseconds_count{service_name=\"drools\", span_name=~\"drools.*|POST.*|RuleController.*\"}[1m]))", "legendFormat": "{{span_name}}", "refId": "A" }],
@@ -463,11 +507,263 @@
           "unit": "bytes"
         }
       },
-      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 64 },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 72 },
       "id": 702,
       "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
       "targets": [{ "expr": "reactive_system_jvm_memory_used_bytes{area=\"heap\"}", "legendFormat": "{{id}}", "refId": "A" }],
       "title": "JVM Heap Memory",
+      "type": "timeseries"
+    },
+    {
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 79 },
+      "id": 900,
+      "title": "Memory Diagnostics",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "JVM Heap Memory breakdown for Drools - identifies memory pressure",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "drawStyle": "line", "fillOpacity": 30, "gradientMode": "opacity", "hideFrom": { "legend": false, "tooltip": false, "viz": false }, "insertNulls": false, "lineInterpolation": "smooth", "lineWidth": 2, "pointSize": 5, "scaleDistribution": { "type": "linear" }, "showPoints": "never", "spanNulls": false, "stacking": { "group": "A", "mode": "none" }, "thresholdsStyle": { "mode": "line" } },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 400000000 }, { "color": "red", "value": 500000000 }] },
+          "unit": "bytes"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 80 },
+      "id": 901,
+      "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        { "expr": "reactive_system_jvm_memory_used_bytes{area=\"heap\",exported_job=\"drools\"}", "legendFormat": "Heap Used - {{id}}", "refId": "A" },
+        { "expr": "reactive_system_jvm_memory_max_bytes{area=\"heap\",exported_job=\"drools\"}", "legendFormat": "Heap Max - {{id}}", "refId": "B" },
+        { "expr": "reactive_system_jvm_memory_committed_bytes{area=\"heap\",exported_job=\"drools\"}", "legendFormat": "Heap Committed - {{id}}", "refId": "C" }
+      ],
+      "title": "Drools JVM Heap Memory",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Flink TaskManager JVM memory usage - critical for understanding backpressure",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "drawStyle": "line", "fillOpacity": 30, "gradientMode": "opacity", "hideFrom": { "legend": false, "tooltip": false, "viz": false }, "insertNulls": false, "lineInterpolation": "smooth", "lineWidth": 2, "pointSize": 5, "scaleDistribution": { "type": "linear" }, "showPoints": "never", "spanNulls": false, "stacking": { "group": "A", "mode": "none" }, "thresholdsStyle": { "mode": "off" } },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "unit": "bytes"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 80 },
+      "id": 902,
+      "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        { "expr": "flink_taskmanager_Status_JVM_Memory_Heap_Used{job=\"flink\"}", "legendFormat": "Heap Used", "refId": "A" },
+        { "expr": "flink_taskmanager_Status_JVM_Memory_Heap_Max{job=\"flink\"}", "legendFormat": "Heap Max", "refId": "B" },
+        { "expr": "flink_taskmanager_Status_JVM_Memory_NonHeap_Used{job=\"flink\"}", "legendFormat": "Non-Heap Used", "refId": "C" },
+        { "expr": "flink_taskmanager_Status_JVM_Memory_Direct_Used{job=\"flink\"}", "legendFormat": "Direct Memory", "refId": "D" }
+      ],
+      "title": "Flink TaskManager JVM Memory",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "OTEL Collector Go runtime memory - watch for growth patterns",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "drawStyle": "line", "fillOpacity": 30, "gradientMode": "opacity", "hideFrom": { "legend": false, "tooltip": false, "viz": false }, "insertNulls": false, "lineInterpolation": "smooth", "lineWidth": 2, "pointSize": 5, "scaleDistribution": { "type": "linear" }, "showPoints": "never", "spanNulls": false, "stacking": { "group": "A", "mode": "none" }, "thresholdsStyle": { "mode": "line" } },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 300000000 }, { "color": "red", "value": 400000000 }] },
+          "unit": "bytes"
+        }
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 88 },
+      "id": 903,
+      "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        { "expr": "go_memstats_heap_alloc_bytes{job=\"otel-collector\"}", "legendFormat": "Heap Alloc", "refId": "A" },
+        { "expr": "go_memstats_heap_sys_bytes{job=\"otel-collector\"}", "legendFormat": "Heap Sys", "refId": "B" },
+        { "expr": "go_memstats_heap_inuse_bytes{job=\"otel-collector\"}", "legendFormat": "Heap In-Use", "refId": "C" }
+      ],
+      "title": "OTEL Collector Memory",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Garbage collection activity - frequent GC indicates memory pressure",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "drawStyle": "line", "fillOpacity": 20, "gradientMode": "opacity", "hideFrom": { "legend": false, "tooltip": false, "viz": false }, "insertNulls": false, "lineInterpolation": "smooth", "lineWidth": 2, "pointSize": 5, "scaleDistribution": { "type": "linear" }, "showPoints": "never", "spanNulls": false, "stacking": { "group": "A", "mode": "none" }, "thresholdsStyle": { "mode": "off" } },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "unit": "ops"
+        }
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 88 },
+      "id": 904,
+      "options": { "legend": { "calcs": ["mean", "sum"], "displayMode": "table", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        { "expr": "rate(reactive_system_jvm_gc_pause_seconds_count{exported_job=\"drools\"}[1m])", "legendFormat": "Drools GC/min - {{action}}", "refId": "A" },
+        { "expr": "rate(flink_taskmanager_Status_JVM_GarbageCollector_Count{job=\"flink\"}[1m])", "legendFormat": "Flink GC/min - {{name}}", "refId": "B" }
+      ],
+      "title": "Garbage Collection Rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "GC pause duration - long pauses affect latency",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "drawStyle": "line", "fillOpacity": 20, "gradientMode": "opacity", "hideFrom": { "legend": false, "tooltip": false, "viz": false }, "insertNulls": false, "lineInterpolation": "smooth", "lineWidth": 2, "pointSize": 5, "scaleDistribution": { "type": "linear" }, "showPoints": "never", "spanNulls": false, "stacking": { "group": "A", "mode": "none" }, "thresholdsStyle": { "mode": "line" } },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 0.1 }, { "color": "red", "value": 0.5 }] },
+          "unit": "s"
+        }
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 88 },
+      "id": 905,
+      "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        { "expr": "rate(reactive_system_jvm_gc_pause_seconds_sum{exported_job=\"drools\"}[1m]) / rate(reactive_system_jvm_gc_pause_seconds_count{exported_job=\"drools\"}[1m])", "legendFormat": "Drools Avg GC Pause - {{action}}", "refId": "A" },
+        { "expr": "rate(flink_taskmanager_Status_JVM_GarbageCollector_Time{job=\"flink\"}[1m]) / 1000 / rate(flink_taskmanager_Status_JVM_GarbageCollector_Count{job=\"flink\"}[1m])", "legendFormat": "Flink Avg GC Pause - {{name}}", "refId": "B" }
+      ],
+      "title": "GC Pause Duration",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Sampling rate across the system - adaptive sampling reduces trace volume under load",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [{ "options": { "1": { "color": "green", "index": 0, "text": "100%" }, "0.5": { "color": "yellow", "index": 1, "text": "50%" }, "0.1": { "color": "orange", "index": 2, "text": "10%" }, "0.01": { "color": "red", "index": 3, "text": "1%" } }, "type": "value" }],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "orange", "value": 0.05 }, { "color": "yellow", "value": 0.3 }, { "color": "green", "value": 0.8 }] },
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1
+        }
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 96 },
+      "id": 906,
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "horizontal", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "expr": "avg(reactive_system_traces_sampling_rate) or vector(1)", "legendFormat": "Sampling Rate", "refId": "A" }],
+      "title": "Current Sampling Rate",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Spans dropped by OTEL Collector due to memory pressure or sampling",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 100 }, { "color": "red", "value": 1000 }] },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 96 },
+      "id": 907,
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "horizontal", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "expr": "sum(otelcol_processor_dropped_spans) or vector(0)", "legendFormat": "Dropped Spans", "refId": "A" }],
+      "title": "Dropped Spans (OTEL)",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "JVM threads - high count may indicate thread leak",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "drawStyle": "line", "fillOpacity": 20, "gradientMode": "opacity", "hideFrom": { "legend": false, "tooltip": false, "viz": false }, "insertNulls": false, "lineInterpolation": "smooth", "lineWidth": 2, "pointSize": 5, "scaleDistribution": { "type": "linear" }, "showPoints": "never", "spanNulls": false, "stacking": { "group": "A", "mode": "none" }, "thresholdsStyle": { "mode": "off" } },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 4, "w": 12, "x": 12, "y": 96 },
+      "id": 908,
+      "options": { "legend": { "calcs": ["last"], "displayMode": "list", "placement": "right", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        { "expr": "reactive_system_jvm_threads_live{exported_job=\"drools\"}", "legendFormat": "Drools Threads", "refId": "A" },
+        { "expr": "flink_taskmanager_Status_JVM_Threads_Count{job=\"flink\"}", "legendFormat": "Flink Threads", "refId": "B" },
+        { "expr": "go_goroutines{job=\"otel-collector\"}", "legendFormat": "OTEL Goroutines", "refId": "C" }
+      ],
+      "title": "Thread/Goroutine Count",
+      "type": "timeseries"
+    },
+    {
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 100 },
+      "id": 800,
+      "title": "Logs (Loki)",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "loki", "uid": "loki" },
+      "description": "Live logs from all services. Filter by service using the query.",
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 80 },
+      "id": 801,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": true,
+        "showCommonLabels": false,
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        { "datasource": { "type": "loki", "uid": "loki" }, "expr": "{compose_service=~\".+\"} |= ``", "legendFormat": "", "refId": "A" }
+      ],
+      "title": "All Services Logs",
+      "type": "logs"
+    },
+    {
+      "datasource": { "type": "loki", "uid": "loki" },
+      "description": "Error logs only - filtered by level",
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 90 },
+      "id": 802,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": true,
+        "showCommonLabels": false,
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        { "datasource": { "type": "loki", "uid": "loki" }, "expr": "{compose_service=~\".+\"} |~ `(?i)(error|exception|fail)`", "legendFormat": "", "refId": "A" }
+      ],
+      "title": "Error Logs",
+      "type": "logs"
+    },
+    {
+      "datasource": { "type": "loki", "uid": "loki" },
+      "description": "Log volume by service over time",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "drawStyle": "bars", "fillOpacity": 50, "gradientMode": "none", "hideFrom": { "legend": false, "tooltip": false, "viz": false }, "insertNulls": false, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5, "scaleDistribution": { "type": "linear" }, "showPoints": "never", "spanNulls": false, "stacking": { "group": "A", "mode": "normal" }, "thresholdsStyle": { "mode": "off" } },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 90 },
+      "id": 803,
+      "options": { "legend": { "calcs": ["sum"], "displayMode": "table", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        { "datasource": { "type": "loki", "uid": "loki" }, "expr": "sum by (compose_service) (count_over_time({compose_service=~\".+\"}[1m]))", "legendFormat": "{{compose_service}}", "refId": "A" }
+      ],
+      "title": "Log Volume by Service",
       "type": "timeseries"
     }
   ],

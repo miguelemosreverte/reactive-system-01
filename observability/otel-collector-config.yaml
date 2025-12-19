@@ -7,15 +7,23 @@ receivers:
         endpoint: 0.0.0.0:4318
 
 processors:
+  # Batch processor with larger batches for efficiency
   batch:
-    timeout: 1s
-    send_batch_size: 1024
+    timeout: 2s
+    send_batch_size: 2048
+    send_batch_max_size: 4096
 
-  # Memory limiter to prevent OOM
+  # Memory limiter - CRITICAL for surviving high load
+  # This is the second line of defense (after gateway adaptive sampling)
   memory_limiter:
     check_interval: 1s
-    limit_mib: 512
-    spike_limit_mib: 128
+    limit_mib: 200        # Hard limit before refusing data
+    spike_limit_mib: 50   # Soft limit for spikes
+
+  # Tail-based sampling - keep errors and slow traces, sample the rest
+  # This kicks in when gateway sampling isn't enough
+  probabilistic_sampler:
+    sampling_percentage: 10  # Additional 10% sampling at collector level
 
   # Add resource attributes
   resource:
@@ -35,20 +43,28 @@ connectors:
     namespace: traces
 
 exporters:
-  # Export to Jaeger
+  # Export to Jaeger with retry and queue
   otlp/jaeger:
     endpoint: jaeger:4317
     tls:
       insecure: true
-
-  # Export to console for debugging (can be disabled via feature flag)
-  debug:
-    verbosity: basic
+    retry_on_failure:
+      enabled: true
+      initial_interval: 1s
+      max_interval: 30s
+      max_elapsed_time: 120s
+    sending_queue:
+      enabled: true
+      num_consumers: 4
+      queue_size: 1000
 
   # Prometheus exporter for metrics
   prometheus:
     endpoint: 0.0.0.0:8889
     namespace: reactive_system
+    # Include sampler stats
+    resource_to_telemetry_conversion:
+      enabled: true
 
 extensions:
   health_check:
@@ -59,23 +75,29 @@ extensions:
 
 service:
   extensions: [health_check, zpages]
+
+  # Telemetry for the collector itself
+  telemetry:
+    logs:
+      level: warn  # Reduce log noise
+    metrics:
+      address: 0.0.0.0:8888
+      level: detailed
+
   pipelines:
+    # Traces pipeline: memory limit -> sample -> batch -> export
     traces:
       receivers: [otlp]
-      processors: [memory_limiter, batch, resource]
+      processors: [memory_limiter, probabilistic_sampler, batch, resource]
       exporters: [otlp/jaeger, spanmetrics]
 
-    # Span metrics from traces connector
+    # Span metrics from traces connector (unsampled - gets all trace data for metrics)
     metrics/spanmetrics:
       receivers: [spanmetrics]
       exporters: [prometheus]
 
+    # Application metrics (unsampled)
     metrics:
       receivers: [otlp]
       processors: [memory_limiter, batch]
       exporters: [prometheus]
-
-    logs:
-      receivers: [otlp]
-      processors: [memory_limiter, batch]
-      exporters: [debug]

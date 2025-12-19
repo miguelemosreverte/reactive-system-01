@@ -116,6 +116,8 @@ show_help() {
     echo "  traces [id]         Show trace timeline (or inspect specific trace)"
     echo "  e2e                 Run end-to-end test"
     echo "  compile drools      Recompile Drools rules"
+    echo "  memory [cmd]        Memory diagnostics (overview/jvm/watch/heap/jfr)"
+    echo "  benchmark [cmd]     Run/control benchmark (start/stop/status)"
     echo ""
     echo "Lifecycle:"
     echo "  up                  Alias for 'start'"
@@ -615,6 +617,65 @@ cmd_watch() {
     print_info "For now, use: ./cli.sh logs $service"
 }
 
+# Memory diagnostics
+cmd_memory() {
+    local subcmd="${1:-overview}"
+    shift 2>/dev/null || true
+    source "$SCRIPT_DIR/scripts/memory-diagnostics.sh" "$subcmd" "$@"
+}
+
+# Benchmark control
+cmd_benchmark() {
+    local subcmd="${1:-status}"
+    local api_key="${ADMIN_API_KEY:-reactive-admin-key}"
+
+    case "$subcmd" in
+        start)
+            print_header "Starting Benchmark"
+            local response
+            response=$(curl -sf -X POST "http://localhost:8080/api/admin/benchmark/start" \
+                -H "x-api-key: $api_key" \
+                -H "Content-Type: application/json" \
+                -d '{}' 2>/dev/null)
+
+            if [[ $? -eq 0 ]]; then
+                print_success "Benchmark started"
+                echo "$response" | jq . 2>/dev/null || echo "$response"
+                echo ""
+                print_info "Monitor with: ./cli.sh memory watch"
+                print_info "Stop with: ./cli.sh benchmark stop"
+            else
+                print_error "Failed to start benchmark"
+                print_info "Make sure gateway is running and healthy"
+            fi
+            ;;
+        stop)
+            print_header "Stopping Benchmark"
+            curl -sf -X POST "http://localhost:8080/api/admin/benchmark/stop" \
+                -H "x-api-key: $api_key" 2>/dev/null && print_success "Benchmark stopped" || print_error "Failed to stop benchmark"
+            ;;
+        status)
+            print_header "Benchmark Status"
+            local response
+            response=$(curl -sf "http://localhost:8080/api/admin/benchmark/status" \
+                -H "x-api-key: $api_key" 2>/dev/null)
+
+            if [[ $? -eq 0 ]]; then
+                echo "$response" | jq . 2>/dev/null || echo "$response"
+            else
+                print_error "Cannot get benchmark status"
+                print_info "Make sure gateway is running"
+            fi
+            ;;
+        *)
+            echo "Benchmark commands:"
+            echo "  ./cli.sh benchmark start   # Start benchmark"
+            echo "  ./cli.sh benchmark stop    # Stop benchmark"
+            echo "  ./cli.sh benchmark status  # Show status and last results"
+            ;;
+    esac
+}
+
 # Main command router
 case "${1:-help}" in
     start|up)
@@ -670,6 +731,12 @@ case "${1:-help}" in
         ;;
     watch)
         cmd_watch "$2"
+        ;;
+    memory|mem)
+        cmd_memory "$2" "$3" "$4"
+        ;;
+    benchmark|bench)
+        cmd_benchmark "$2"
         ;;
     help|--help|-h)
         show_help

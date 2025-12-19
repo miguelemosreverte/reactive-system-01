@@ -22,11 +22,12 @@ services:
       - "13133:13133" # Health check
     environment:
       - OTEL_FEATURE_ENABLED=${OTEL_FEATURE_ENABLED:-true}
+      - GOMEMLIMIT=400MiB  # Go runtime memory limit
     deploy:
       resources:
         limits:
-          memory: 256M
-          cpus: '0.5'
+          memory: 512M
+          cpus: '1.0'
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:13133/"]
       interval: 10s
@@ -44,16 +45,59 @@ services:
       - "14250:14250" # gRPC
     environment:
       - COLLECTOR_OTLP_ENABLED=true
+      # Memory management for high load
+      - SPAN_STORAGE_TYPE=memory
+      - MEMORY_MAX_TRACES=50000  # Limit stored traces
     deploy:
       resources:
         limits:
-          memory: 512M
-          cpus: '0.5'
+          memory: 1G
+          cpus: '1.0'
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:16686"]
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - reactive-network
+
+  loki:
+    image: grafana/loki:2.9.3
+    container_name: reactive-loki
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./observability/loki/loki-config.yaml:/etc/loki/loki-config.yaml:ro
+      - loki-data:/loki
+    command: -config.file=/etc/loki/loki-config.yaml
+    deploy:
+      resources:
+        limits:
+          memory: 512M  # Increased for high-load benchmarks
+          cpus: '0.5'
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3100/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - reactive-network
+
+  promtail:
+    image: grafana/promtail:2.9.3
+    container_name: reactive-promtail
+    volumes:
+      - ./observability/promtail/promtail-config.yaml:/etc/promtail/config.yaml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command: -config.file=/etc/promtail/config.yaml
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.25'
+    depends_on:
+      loki:
+        condition: service_healthy
     networks:
       - reactive-network
 
@@ -111,6 +155,7 @@ services:
     depends_on:
       - prometheus
       - jaeger
+      - loki
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/health"]
       interval: 10s
@@ -279,6 +324,10 @@ services:
         parallelism.default: 1
         metrics.reporter.prom.factory.class: org.apache.flink.metrics.prometheus.PrometheusReporterFactory
         metrics.reporter.prom.port: 9249
+        taskmanager.network.memory.buffer-debloat.enabled: true
+        taskmanager.network.memory.buffer-debloat.target: 100ms
+        taskmanager.network.memory.buffer-debloat.period: 50ms
+        execution.buffer-timeout: 1ms
       # OpenTelemetry Configuration
       - OTEL_ENABLED=${OTEL_FEATURE_ENABLED:-true}
       - OTEL_SERVICE_NAME=flink-taskmanager
@@ -351,7 +400,7 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=${NODE_ENV:-production}
       - KAFKA_BROKERS=kafka:29092
       - PORT=8080
       - SERVICE_VERSION=1.0.0
@@ -424,3 +473,4 @@ networks:
 volumes:
   grafana-data:
   prometheus-data:
+  loki-data:

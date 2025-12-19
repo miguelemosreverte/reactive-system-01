@@ -3,10 +3,16 @@ global:
   evaluation_interval: 15s
 
 scrape_configs:
-  # Scrape OTEL Collector metrics (includes metrics from gateway, flink)
+  # Scrape OTEL Collector spanmetrics (trace-derived metrics)
   - job_name: 'otel-collector'
     static_configs:
       - targets: ['otel-collector:8889']
+    scrape_timeout: 10s
+
+  # Scrape OTEL Collector internal metrics (Go runtime, collector health)
+  - job_name: 'otel-collector-internal'
+    static_configs:
+      - targets: ['otel-collector:8888']
     scrape_timeout: 10s
 
   # Scrape Drools metrics (Spring Boot Actuator with Prometheus endpoint)

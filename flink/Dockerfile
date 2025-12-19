@@ -33,6 +33,9 @@ ARG OTEL_AGENT_VERSION
 RUN mkdir -p /opt/flink/jobs
 COPY --from=build /app/target/flink-counter-job-1.0.0.jar /opt/flink/jobs/counter-job.jar
 
+# Copy structured logging configuration for Flink runtime
+COPY --from=build /app/src/main/resources/log4j2.properties /opt/flink/conf/log4j-console.properties
+
 # Install curl for health checks
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 

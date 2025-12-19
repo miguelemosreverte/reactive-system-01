@@ -1,0 +1,72 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  # Scrape Docker container logs via Docker socket
+  - job_name: docker
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+    relabel_configs:
+      # Only collect logs from containers with "reactive-" prefix
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/reactive-.*'
+        action: keep
+      # Extract service name from container name
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/reactive-(.*)'
+        target_label: 'service'
+      # Add container ID
+      - source_labels: ['__meta_docker_container_id']
+        target_label: 'container_id'
+      # Add container name
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/(.*)'
+        target_label: 'container'
+      # Tag with compose project
+      - source_labels: ['__meta_docker_container_label_com_docker_compose_project']
+        target_label: 'project'
+      # Tag with compose service
+      - source_labels: ['__meta_docker_container_label_com_docker_compose_service']
+        target_label: 'compose_service'
+    pipeline_stages:
+      # Try to parse JSON logs (common format)
+      - json:
+          expressions:
+            level: level
+            message: message
+            msg: msg
+            timestamp: timestamp
+            time: time
+            traceId: traceId
+            spanId: spanId
+            service: service
+      # Fallback: extract log level from common patterns
+      - regex:
+          expression: '(?P<level>DEBUG|INFO|WARN|ERROR|FATAL|TRACE)'
+      # Use extracted level or default to info
+      - labels:
+          level:
+      # Extract trace context if present
+      - labels:
+          traceId:
+          spanId:
+      # Add timestamp
+      - timestamp:
+          source: timestamp
+          format: RFC3339Nano
+          fallback_formats:
+            - RFC3339
+            - UnixMs
+            - '2006-01-02T15:04:05.000Z'
+            - '2006-01-02 15:04:05,000'
+      # Output message or original line
+      - output:
+          source: message

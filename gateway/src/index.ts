@@ -3,6 +3,8 @@ import express, { Request, Response, NextFunction } from 'express';
 import { createServer } from 'http';
 import { WebSocketServer } from './websocket';
 import { KafkaClient } from './kafka';
+import { logger } from './logger';
+import { AutoBenchmark, shouldRunBenchmark, getBenchmarkConfig } from './benchmark';
 import { trace, SpanKind, SpanStatusCode } from '@opentelemetry/api';
 
 const PORT = parseInt(process.env.PORT || '8080', 10);
@@ -32,9 +34,17 @@ const counterState: Map<string, { value: number; alert: string; message: string;
 const recentTraces: { traceId: string; sessionId: string; timestamp: number; action: string }[] = [];
 const MAX_TRACES = 1000;
 
+// Benchmark state
+let benchmark: AutoBenchmark | null = null;
+let benchmarkResult: any = null;
+const benchmarkResultCallbacks: ((traceId: string) => void)[] = [];
+
 async function main() {
     const app = express();
     app.use(express.json());
+
+    // Declare kafkaClient early so endpoint handlers can reference it
+    let kafkaClient: KafkaClient;
 
     // Health endpoint with version info
     app.get('/health', (req, res) => {
@@ -90,7 +100,7 @@ async function main() {
             const data = await response.json();
             res.json(data);
         } catch (error) {
-            console.error('Failed to query Jaeger:', error);
+            logger.error('Failed to query Jaeger', error);
             res.status(500).json({ error: 'Failed to query trace', details: String(error) });
         }
     });
@@ -112,7 +122,7 @@ async function main() {
             const data = await response.json();
             res.json(data);
         } catch (error) {
-            console.error('Failed to search Jaeger:', error);
+            logger.error('Failed to search Jaeger', error);
             res.status(500).json({ error: 'Failed to search traces', details: String(error) });
         }
     });
@@ -128,7 +138,7 @@ async function main() {
             const data = await response.json();
             res.json(data);
         } catch (error) {
-            console.error('Failed to get services from Jaeger:', error);
+            logger.error('Failed to get services from Jaeger', error);
             res.status(500).json({ error: 'Failed to get services', details: String(error) });
         }
     });
@@ -170,7 +180,7 @@ async function main() {
             } catch (error) {
                 span.setStatus({ code: SpanStatusCode.ERROR, message: String(error) });
                 span.recordException(error as Error);
-                console.error('Failed to publish event:', error);
+                logger.error('Failed to publish event', error, { sessionId, action });
                 res.status(500).json({ success: false, error: 'Failed to publish event' });
             } finally {
                 span.end();
@@ -185,11 +195,68 @@ async function main() {
         res.json(state);
     });
 
+    // Benchmark endpoints (admin only)
+    app.get('/api/admin/benchmark/status', adminAuth, (req, res) => {
+        res.json({
+            running: benchmark?.isRunning() || false,
+            lastResult: benchmarkResult,
+            autoStart: shouldRunBenchmark()
+        });
+    });
+
+    app.post('/api/admin/benchmark/start', adminAuth, async (req, res) => {
+        if (benchmark?.isRunning()) {
+            res.status(400).json({ error: 'Benchmark already running' });
+            return;
+        }
+
+        // kafkaClient is initialized later in main(), but will be available when this handler runs
+        if (!kafkaClient) {
+            res.status(503).json({ error: 'Service not ready' });
+            return;
+        }
+
+        // Initialize benchmark with current kafkaClient
+        benchmark = new AutoBenchmark(
+            async (action, value) => {
+                return kafkaClient.publishEvent({
+                    sessionId: 'benchmark',
+                    action,
+                    value,
+                    timestamp: Date.now()
+                });
+            },
+            (callback) => {
+                benchmarkResultCallbacks.push(callback);
+            },
+            { ...getBenchmarkConfig(), ...req.body }
+        );
+
+        // Start async
+        benchmark.start().then(result => {
+            benchmarkResult = result;
+            logger.info('Benchmark completed', { reason: result.reason });
+        }).catch(err => {
+            logger.error('Benchmark failed', err);
+        });
+
+        res.json({ message: 'Benchmark started', config: getBenchmarkConfig() });
+    });
+
+    app.post('/api/admin/benchmark/stop', adminAuth, (req, res) => {
+        if (benchmark?.isRunning()) {
+            benchmark.stop();
+            res.json({ message: 'Benchmark stopping' });
+        } else {
+            res.status(400).json({ error: 'No benchmark running' });
+        }
+    });
+
     // Create HTTP server
     const server = createServer(app);
 
     // Initialize Kafka client
-    const kafkaClient = new KafkaClient(KAFKA_BROKERS);
+    kafkaClient = new KafkaClient(KAFKA_BROKERS);
 
     // Initialize WebSocket server
     const wsServer = new WebSocketServer(server);
@@ -199,7 +266,12 @@ async function main() {
 
     // Subscribe to counter results
     await kafkaClient.subscribeToResults((result) => {
-        console.log('Received result:', result);
+        logger.info('Received counter result', {
+            sessionId: result.sessionId,
+            currentValue: result.currentValue,
+            alert: result.alert,
+            traceId: result.traceId
+        });
 
         // Update state with traceId
         counterState.set(result.sessionId, {
@@ -217,11 +289,16 @@ async function main() {
                 traceId: result.traceId
             }
         });
+
+        // Notify benchmark callbacks (for latency tracking)
+        if (result.traceId) {
+            benchmarkResultCallbacks.forEach(cb => cb(result.traceId!));
+        }
     });
 
     // Handle WebSocket messages
     wsServer.onMessage(async (sessionId, message) => {
-        console.log(`WebSocket message from ${sessionId}:`, message);
+        logger.debug('WebSocket message received', { sessionId, messageType: message.type });
 
         if (message.type === 'counter-action') {
             tracer.startActiveSpan('websocket.counter.action', { kind: SpanKind.SERVER }, async (span) => {
@@ -273,14 +350,48 @@ async function main() {
 
     // Start server
     server.listen(PORT, () => {
-        console.log(`Gateway server listening on port ${PORT}`);
-        console.log(`Health check: http://localhost:${PORT}/health`);
-        console.log(`WebSocket: ws://localhost:${PORT}/ws`);
+        logger.info('Gateway server started', {
+            port: PORT,
+            healthCheck: `http://localhost:${PORT}/health`,
+            websocket: `ws://localhost:${PORT}/ws`
+        });
+
+        // Auto-start benchmark in development mode
+        if (shouldRunBenchmark()) {
+            logger.info('Development mode: Auto-benchmark will start in 10 seconds');
+            setTimeout(() => {
+                benchmark = new AutoBenchmark(
+                    async (action, value) => {
+                        return kafkaClient.publishEvent({
+                            sessionId: 'benchmark',
+                            action,
+                            value,
+                            timestamp: Date.now()
+                        });
+                    },
+                    (callback) => {
+                        benchmarkResultCallbacks.push(callback);
+                    },
+                    getBenchmarkConfig()
+                );
+
+                benchmark.start().then(result => {
+                    benchmarkResult = result;
+                    logger.info('Auto-benchmark completed', {
+                        peakThroughput: result.peakThroughput + ' events/sec',
+                        latencyP95: result.latencyP95Ms + 'ms',
+                        reason: result.reason
+                    });
+                }).catch(err => {
+                    logger.error('Auto-benchmark failed', err);
+                });
+            }, 10000);
+        }
     });
 
     // Graceful shutdown
     process.on('SIGTERM', async () => {
-        console.log('Shutting down...');
+        logger.info('Shutting down gateway');
         await kafkaClient.disconnect();
         server.close();
         process.exit(0);
@@ -288,6 +399,6 @@ async function main() {
 }
 
 main().catch((error) => {
-    console.error('Failed to start gateway:', error);
+    logger.error('Failed to start gateway', error);
     process.exit(1);
 });
