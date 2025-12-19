@@ -4,6 +4,15 @@ import { logger } from './logger';
 
 const tracer = trace.getTracer('gateway-kafka');
 
+export interface EventTiming {
+    gatewayReceivedAt?: number;
+    gatewayPublishedAt?: number;
+    flinkReceivedAt?: number;
+    flinkProcessedAt?: number;
+    droolsStartAt?: number;
+    droolsEndAt?: number;
+}
+
 export interface CounterEvent {
     sessionId: string;
     action: string;
@@ -11,6 +20,8 @@ export interface CounterEvent {
     timestamp: number;
     traceId?: string;
     spanId?: string;
+    eventId?: string;
+    timing?: EventTiming;
 }
 
 export interface CounterResult {
@@ -20,6 +31,8 @@ export interface CounterResult {
     message: string;
     timestamp: number;
     traceId?: string;
+    eventId?: string;
+    timing?: EventTiming;
 }
 
 export class KafkaClient {
@@ -27,6 +40,10 @@ export class KafkaClient {
     private producer: Producer;
     private consumer: Consumer;
     private isConnected: boolean = false;
+
+    // Lag tracking for backpressure
+    private publishedCount: number = 0;
+    private consumedCount: number = 0;
 
     constructor(brokers: string[]) {
         this.kafka = new Kafka({
@@ -38,11 +55,14 @@ export class KafkaClient {
             }
         });
 
-        // Low-latency producer configuration
+        // Low-latency producer configuration for maximum throughput
         this.producer = this.kafka.producer({
             allowAutoTopicCreation: true,
             // Acks: 1 = leader acknowledgment only (faster than 'all')
             // For lowest latency in development; use 'all' in production for durability
+            idempotent: false, // Disable idempotence for speed (adds overhead)
+            maxInFlightRequests: 10, // Allow more in-flight requests
+            transactionTimeout: 30000,
         });
 
         // Low-latency consumer configuration
@@ -87,6 +107,25 @@ export class KafkaClient {
         this.isConnected = false;
     }
 
+    /**
+     * Get approximate consumer lag (published - consumed)
+     * Used for backpressure decisions
+     */
+    getConsumerLag(): number {
+        return Math.max(0, this.publishedCount - this.consumedCount);
+    }
+
+    /**
+     * Get lag statistics
+     */
+    getLagStats(): { published: number; consumed: number; lag: number } {
+        return {
+            published: this.publishedCount,
+            consumed: this.consumedCount,
+            lag: this.getConsumerLag()
+        };
+    }
+
     async publishEvent(event: CounterEvent): Promise<string> {
         if (!this.isConnected) {
             throw new Error('Kafka client not connected');
@@ -99,10 +138,17 @@ export class KafkaClient {
                 const traceId = activeSpan?.spanContext().traceId || span.spanContext().traceId;
                 const spanId = span.spanContext().spanId;
 
+                // Add publish timestamp to timing
+                const timing: EventTiming = {
+                    ...event.timing,
+                    gatewayPublishedAt: Date.now()
+                };
+
                 const eventWithTrace: CounterEvent = {
                     ...event,
                     traceId,
-                    spanId
+                    spanId,
+                    timing
                 };
 
                 // Inject trace context into Kafka headers
@@ -116,7 +162,8 @@ export class KafkaClient {
                     'session.id': event.sessionId,
                     'counter.action': event.action,
                     'counter.value': event.value,
-                    'trace.id': traceId
+                    'trace.id': traceId,
+                    'event.id': event.eventId || 'none'
                 });
 
                 await this.producer.send({
@@ -130,12 +177,14 @@ export class KafkaClient {
                     ]
                 });
 
+                this.publishedCount++;
                 span.setStatus({ code: SpanStatusCode.OK });
                 logger.debug('Published event to Kafka', {
                     topic: 'counter-events',
                     sessionId: event.sessionId,
                     action: event.action,
-                    traceId
+                    traceId,
+                    eventId: event.eventId
                 });
                 return traceId;
             } catch (error) {
@@ -158,19 +207,31 @@ export class KafkaClient {
         }
 
         const traceIds: string[] = [];
-        const messages = events.map(event => {
-            const traceId = `batch-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        const numPartitions = 8; // Match topic partition count
+        const publishedAt = Date.now();
+
+        const messages = events.map((event, index) => {
+            const traceId = event.traceId || `batch-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
             traceIds.push(traceId);
+
+            const timing: EventTiming = {
+                ...event.timing,
+                gatewayPublishedAt: publishedAt
+            };
 
             const eventWithTrace: CounterEvent = {
                 ...event,
                 traceId,
-                timestamp: event.timestamp || Date.now()
+                timestamp: event.timestamp || Date.now(),
+                timing
             };
 
             return {
                 key: event.sessionId,
-                value: JSON.stringify(eventWithTrace)
+                value: JSON.stringify(eventWithTrace),
+                // Explicit partition assignment for even distribution
+                // Round-robin across partitions for maximum parallelism
+                partition: index % numPartitions
             };
         });
 
@@ -184,6 +245,7 @@ export class KafkaClient {
             await sendPromise;
         }
 
+        this.publishedCount += events.length;
         return traceIds;
     }
 
@@ -196,11 +258,17 @@ export class KafkaClient {
             throw new Error('Kafka client not connected');
         }
 
-        const traceId = `fast-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        const traceId = event.traceId || `fast-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        const timing: EventTiming = {
+            ...event.timing,
+            gatewayPublishedAt: Date.now()
+        };
+
         const eventWithTrace: CounterEvent = {
             ...event,
             traceId,
-            timestamp: event.timestamp || Date.now()
+            timestamp: event.timestamp || Date.now(),
+            timing
         };
 
         // Fire and forget - don't await
@@ -215,14 +283,24 @@ export class KafkaClient {
             logger.error('Fire-and-forget publish failed', err);
         });
 
+        this.publishedCount++;
         return traceId;
     }
 
-    async subscribeToResults(callback: (result: CounterResult) => void): Promise<void> {
-        await this.consumer.subscribe({ topic: 'counter-results', fromBeginning: false });
+    /**
+     * Subscribe to both results and alerts topics (CQRS architecture)
+     * - counter-results: Immediate results with alert="PENDING"
+     * - counter-alerts: Actual alerts from Drools evaluation
+     */
+    async subscribeToResults(
+        callback: (result: CounterResult) => void,
+        alertCallback?: (result: CounterResult) => void
+    ): Promise<void> {
+        // Subscribe to both topics
+        await this.consumer.subscribe({ topics: ['counter-results', 'counter-alerts'], fromBeginning: false });
 
         await this.consumer.run({
-            eachMessage: async ({ message }: EachMessagePayload) => {
+            eachMessage: async ({ topic, message }: EachMessagePayload) => {
                 if (message.value) {
                     // Extract trace context from headers if available
                     const headers: Record<string, string> = {};
@@ -243,7 +321,7 @@ export class KafkaClient {
 
                                 span.setAttributes({
                                     'messaging.system': 'kafka',
-                                    'messaging.destination': 'counter-results',
+                                    'messaging.destination': topic,
                                     'messaging.operation': 'consume',
                                     'session.id': result.sessionId,
                                     'counter.value': result.currentValue,
@@ -251,7 +329,14 @@ export class KafkaClient {
                                     'trace.id': result.traceId || 'unknown'
                                 });
 
-                                callback(result);
+                                // Route to appropriate callback based on topic
+                                if (topic === 'counter-alerts' && alertCallback) {
+                                    alertCallback(result);
+                                } else {
+                                    callback(result);
+                                    // Track consumed count for backpressure (results = processed events)
+                                    this.consumedCount++;
+                                }
                                 span.setStatus({ code: SpanStatusCode.OK });
                             } catch (error) {
                                 span.setStatus({ code: SpanStatusCode.ERROR, message: String(error) });
@@ -266,6 +351,6 @@ export class KafkaClient {
             }
         });
 
-        logger.info('Subscribed to Kafka topic', { topic: 'counter-results' });
+        logger.info('Subscribed to Kafka topics', { topics: ['counter-results', 'counter-alerts'] });
     }
 }

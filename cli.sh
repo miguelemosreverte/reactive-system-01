@@ -117,7 +117,7 @@ show_help() {
     echo "  e2e                 Run end-to-end test"
     echo "  compile drools      Recompile Drools rules"
     echo "  memory [cmd]        Memory diagnostics (overview/jvm/watch/heap/jfr)"
-    echo "  benchmark [cmd]     Run/control benchmark (start/stop/status)"
+    echo "  benchmark [comp]    Component benchmarking (http/kafka/flink/drools/gateway/full/all)"
     echo ""
     echo "Lifecycle:"
     echo "  up                  Alias for 'start'"
@@ -624,35 +624,66 @@ cmd_memory() {
     source "$SCRIPT_DIR/scripts/memory-diagnostics.sh" "$subcmd" "$@"
 }
 
-# Benchmark control
+# Benchmark control - Component benchmarking system
 cmd_benchmark() {
-    local subcmd="${1:-status}"
+    local subcmd="${1:-help}"
+    shift 2>/dev/null || true
     local api_key="${ADMIN_API_KEY:-reactive-admin-key}"
 
-    case "$subcmd" in
-        start)
-            print_header "Starting Benchmark"
-            local response
-            response=$(curl -sf -X POST "http://localhost:8080/api/admin/benchmark/start" \
-                -H "x-api-key: $api_key" \
-                -H "Content-Type: application/json" \
-                -d '{}' 2>/dev/null)
+    # Parse common options
+    local duration=30
+    local events=0
+    local report=false
+    local output_dir="$SCRIPT_DIR/reports"
 
-            if [[ $? -eq 0 ]]; then
-                print_success "Benchmark started"
-                echo "$response" | jq . 2>/dev/null || echo "$response"
-                echo ""
-                print_info "Monitor with: ./cli.sh memory watch"
-                print_info "Stop with: ./cli.sh benchmark stop"
-            else
-                print_error "Failed to start benchmark"
-                print_info "Make sure gateway is running and healthy"
-            fi
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --duration)
+                duration="$2"
+                shift 2
+                ;;
+            --events)
+                events="$2"
+                shift 2
+                ;;
+            --report)
+                report=true
+                shift
+                ;;
+            --output)
+                output_dir="$2"
+                shift 2
+                ;;
+            *)
+                shift
+                ;;
+        esac
+    done
+
+    # Valid components
+    local valid_components="http kafka flink drools gateway full"
+
+    case "$subcmd" in
+        http|kafka|flink|drools|gateway|full)
+            # Component benchmark
+            run_component_benchmark "$subcmd" "$duration" "$events" "$report" "$output_dir"
+            ;;
+        all)
+            # Run all component benchmarks
+            run_all_benchmarks "$duration" "$report" "$output_dir"
+            ;;
+        report)
+            # Open report dashboard
+            open_benchmark_reports
             ;;
         stop)
             print_header "Stopping Benchmark"
-            curl -sf -X POST "http://localhost:8080/api/admin/benchmark/stop" \
-                -H "x-api-key: $api_key" 2>/dev/null && print_success "Benchmark stopped" || print_error "Failed to stop benchmark"
+            # Try to stop any running benchmark
+            for component in $valid_components; do
+                curl -sf -X POST "http://localhost:8080/api/admin/benchmark/${component}/stop" \
+                    -H "x-api-key: $api_key" 2>/dev/null
+            done
+            print_success "Benchmark stopped"
             ;;
         status)
             print_header "Benchmark Status"
@@ -667,13 +698,591 @@ cmd_benchmark() {
                 print_info "Make sure gateway is running"
             fi
             ;;
-        *)
-            echo "Benchmark commands:"
-            echo "  ./cli.sh benchmark start   # Start benchmark"
-            echo "  ./cli.sh benchmark stop    # Stop benchmark"
-            echo "  ./cli.sh benchmark status  # Show status and last results"
+        results)
+            print_header "All Benchmark Results"
+            local response
+            response=$(curl -sf "http://localhost:8080/api/admin/benchmark/results" \
+                -H "x-api-key: $api_key" 2>/dev/null)
+
+            if [[ $? -eq 0 ]]; then
+                echo "$response" | jq . 2>/dev/null || echo "$response"
+            else
+                print_error "Cannot get benchmark results"
+                print_info "Make sure gateway is running"
+            fi
+            ;;
+        help|*)
+            echo ""
+            print_header "Component Benchmarking System"
+            echo ""
+            echo "Benchmark each component independently:"
+            echo ""
+            echo "  Component benchmarks:"
+            echo "    ./cli.sh benchmark http       # HTTP endpoint latency"
+            echo "    ./cli.sh benchmark kafka      # Kafka round-trip"
+            echo "    ./cli.sh benchmark flink      # Kafka + Flink processing"
+            echo "    ./cli.sh benchmark drools     # Direct Drools API"
+            echo "    ./cli.sh benchmark gateway    # HTTP + Kafka publish"
+            echo "    ./cli.sh benchmark full       # Full end-to-end pipeline"
+            echo ""
+            echo "  Run all:"
+            echo "    ./cli.sh benchmark all        # Run all benchmarks in sequence"
+            echo ""
+            echo "Options:"
+            echo "  --duration <secs>   Run for N seconds (default: 30)"
+            echo "  --events <count>    Run until N events processed (0 = use duration)"
+            echo "  --report            Generate HTML report after completion"
+            echo "  --output <dir>      Report output directory (default: ./reports)"
+            echo ""
+            echo "Other commands:"
+            echo "  ./cli.sh benchmark report       Open report dashboard"
+            echo "  ./cli.sh benchmark status       Show current benchmark status"
+            echo "  ./cli.sh benchmark results      Show all benchmark results"
+            echo "  ./cli.sh benchmark stop         Stop running benchmark"
+            echo ""
+            echo "Examples:"
+            echo "  ./cli.sh benchmark http --duration 60"
+            echo "  ./cli.sh benchmark full --events 10000 --report"
+            echo "  ./cli.sh benchmark all --duration 30 --report"
+            echo ""
             ;;
     esac
+}
+
+# Run a layered benchmark
+run_layered_benchmark() {
+    local layer="$1"
+    local duration="$2"
+    local events="$3"
+    local report="$4"
+    local output_dir="$5"
+    local api_key="${ADMIN_API_KEY:-reactive-admin-key}"
+
+    start_timer
+
+    print_header "Layered Benchmark: $layer"
+    echo ""
+
+    # Determine if we need to restart services with SKIP_DROOLS
+    local needs_restart=false
+    local skip_drools=false
+
+    case "$layer" in
+        kafka)
+            print_info "Layer 1: Kafka produce/consume only"
+            print_info "  - Tests Kafka throughput in isolation"
+            print_info "  - Bypasses Flink processing"
+            skip_drools=true
+            ;;
+        kafka-flink)
+            print_info "Layer 2: Kafka + Flink processing"
+            print_info "  - Tests stream processing without Drools"
+            print_info "  - Isolates Flink performance"
+            skip_drools=true
+            needs_restart=true
+            ;;
+        kafka-flink-drools)
+            print_info "Layer 3: Kafka + Flink + Drools"
+            print_info "  - Full stream processing pipeline"
+            print_info "  - Tests rule evaluation performance"
+            skip_drools=false
+            needs_restart=true
+            ;;
+        full)
+            print_info "Layer 4: Full end-to-end (HTTP -> Kafka -> Flink -> Drools)"
+            print_info "  - Tests complete system including HTTP overhead"
+            print_info "  - Production-like load test"
+            skip_drools=false
+            ;;
+    esac
+    echo ""
+
+    # Restart Flink with appropriate SKIP_DROOLS setting if needed
+    if [[ "$needs_restart" == "true" ]]; then
+        print_info "Configuring Flink with SKIP_DROOLS=$skip_drools..."
+        export SKIP_DROOLS="$skip_drools"
+
+        # Restart Flink services
+        docker compose stop flink-taskmanager flink-job-submitter 2>/dev/null
+        docker compose up -d flink-taskmanager flink-job-submitter
+
+        # Wait for Flink to be ready
+        print_info "Waiting for Flink to be ready..."
+        sleep 10
+
+        # Check Flink health
+        local flink_ready=false
+        for i in {1..30}; do
+            if curl -sf http://localhost:8081/overview >/dev/null 2>&1; then
+                flink_ready=true
+                break
+            fi
+            sleep 1
+        done
+
+        if [[ "$flink_ready" != "true" ]]; then
+            print_error "Flink did not start in time"
+            end_timer "benchmark" "$layer" "error"
+            return 1
+        fi
+        print_success "Flink is ready"
+        echo ""
+    fi
+
+    # Prepare benchmark request body
+    local duration_ms=$((duration * 1000))
+    local body="{\"layer\": \"$layer\", \"durationMs\": $duration_ms, \"targetEventCount\": $events}"
+
+    print_info "Starting benchmark..."
+    print_info "  Duration: ${duration}s"
+    if [[ "$events" -gt 0 ]]; then
+        print_info "  Target events: $events"
+    fi
+    echo ""
+
+    # Start the benchmark via Gateway API
+    local response
+    response=$(curl -sf -X POST "http://localhost:8080/api/admin/benchmark/layered" \
+        -H "x-api-key: $api_key" \
+        -H "Content-Type: application/json" \
+        -d "$body" 2>/dev/null)
+
+    if [[ $? -ne 0 ]]; then
+        print_error "Failed to start benchmark"
+        print_info "Make sure gateway is running and healthy"
+        print_info "The layered benchmark API may not be implemented yet"
+        echo ""
+        print_info "Falling back to basic benchmark..."
+
+        # Fall back to basic benchmark
+        response=$(curl -sf -X POST "http://localhost:8080/api/admin/benchmark/start" \
+            -H "x-api-key: $api_key" \
+            -H "Content-Type: application/json" \
+            -d "{\"maxDurationMs\": $duration_ms}" 2>/dev/null)
+
+        if [[ $? -eq 0 ]]; then
+            print_success "Basic benchmark started"
+            echo "$response" | jq . 2>/dev/null || echo "$response"
+        else
+            print_error "Failed to start any benchmark"
+            end_timer "benchmark" "$layer" "error"
+            return 1
+        fi
+    else
+        print_success "Layered benchmark started"
+        echo "$response" | jq . 2>/dev/null || echo "$response"
+    fi
+
+    echo ""
+
+    # Monitor progress
+    print_info "Monitoring progress (Ctrl+C to stop early)..."
+    echo ""
+
+    local benchmark_running=true
+    local last_throughput=0
+
+    while [[ "$benchmark_running" == "true" ]]; do
+        sleep 2
+
+        local status
+        status=$(curl -sf "http://localhost:8080/api/admin/benchmark/status" \
+            -H "x-api-key: $api_key" 2>/dev/null)
+
+        if [[ $? -eq 0 ]]; then
+            local running
+            running=$(echo "$status" | jq -r '.running // false' 2>/dev/null)
+
+            if [[ "$running" == "false" ]]; then
+                benchmark_running=false
+            else
+                # Show live throughput
+                local throughput
+                throughput=$(echo "$status" | jq -r '.lastResult.peakThroughput // 0' 2>/dev/null)
+                if [[ "$throughput" != "0" ]] && [[ "$throughput" != "$last_throughput" ]]; then
+                    printf "\r  Current throughput: %s events/sec    " "$throughput"
+                    last_throughput="$throughput"
+                fi
+            fi
+        else
+            benchmark_running=false
+        fi
+    done
+
+    echo ""
+    echo ""
+
+    # Get final results
+    print_header "Benchmark Results"
+    local final_status
+    final_status=$(curl -sf "http://localhost:8080/api/admin/benchmark/status" \
+        -H "x-api-key: $api_key" 2>/dev/null)
+
+    if [[ $? -eq 0 ]]; then
+        echo "$final_status" | jq '.lastResult // .' 2>/dev/null || echo "$final_status"
+    fi
+
+    # Generate report if requested
+    if [[ "$report" == "true" ]]; then
+        echo ""
+        generate_benchmark_report "$layer" "$output_dir" "$final_status"
+    fi
+
+    # Restore normal operation if we modified SKIP_DROOLS
+    if [[ "$needs_restart" == "true" ]] && [[ "$skip_drools" == "true" ]]; then
+        echo ""
+        print_info "Restoring normal Flink operation (SKIP_DROOLS=false)..."
+        export SKIP_DROOLS="false"
+        docker compose stop flink-taskmanager flink-job-submitter 2>/dev/null
+        docker compose up -d flink-taskmanager flink-job-submitter
+    fi
+
+    end_timer "benchmark" "$layer" "success"
+}
+
+# Generate benchmark report
+generate_benchmark_report() {
+    local layer="$1"
+    local output_dir="$2"
+    local results="$3"
+
+    local timestamp=$(date +%Y%m%d_%H%M%S)
+    local commit=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+    local report_dir="$output_dir/benchmark_${layer}_${commit}_${timestamp}"
+
+    print_info "Generating benchmark report..."
+
+    # Create report directory
+    mkdir -p "$report_dir"
+
+    # Save raw results
+    echo "$results" > "$report_dir/results.json"
+
+    # Call the report generation script if it exists
+    if [[ -f "$SCRIPT_DIR/scripts/benchmark-report.sh" ]]; then
+        source "$SCRIPT_DIR/scripts/benchmark-report.sh"
+        generate_html_report "$layer" "$report_dir" "$results"
+    else
+        # Generate basic report
+        generate_basic_report "$layer" "$report_dir" "$results"
+    fi
+
+    print_success "Report saved to: $report_dir"
+
+    # Open report in browser if available
+    if [[ -f "$report_dir/index.html" ]]; then
+        if command -v open &>/dev/null; then
+            print_info "Opening report in browser..."
+            open "$report_dir/index.html"
+        elif command -v xdg-open &>/dev/null; then
+            xdg-open "$report_dir/index.html"
+        fi
+    fi
+}
+
+# Generate basic text report (fallback)
+generate_basic_report() {
+    local layer="$1"
+    local report_dir="$2"
+    local results="$3"
+
+    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    local commit=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+
+    cat > "$report_dir/summary.md" << EOF
+# Benchmark Report: $layer
+
+**Generated:** $timestamp
+**Commit:** $commit
+**Layer:** $layer
+
+## Results
+
+\`\`\`json
+$(echo "$results" | jq '.lastResult // .' 2>/dev/null || echo "$results")
+\`\`\`
+
+## Layer Description
+
+$(case "$layer" in
+    kafka) echo "Layer 1: Kafka produce/consume only - Tests Kafka throughput in isolation" ;;
+    kafka-flink) echo "Layer 2: Kafka + Flink processing - Tests stream processing without Drools" ;;
+    kafka-flink-drools) echo "Layer 3: Kafka + Flink + Drools - Full stream processing pipeline" ;;
+    full) echo "Layer 4: Full end-to-end - Tests complete system including HTTP overhead" ;;
+esac)
+
+---
+Generated by Reactive System CLI
+EOF
+
+    print_success "Basic report generated: $report_dir/summary.md"
+}
+
+# Run a component benchmark (new API)
+run_component_benchmark() {
+    local component="$1"
+    local duration="$2"
+    local events="$3"
+    local report="$4"
+    local output_dir="$5"
+    local api_key="${ADMIN_API_KEY:-reactive-admin-key}"
+
+    start_timer
+
+    # Component descriptions
+    local desc=""
+    case "$component" in
+        http) desc="HTTP endpoint latency" ;;
+        kafka) desc="Kafka produce/consume round-trip" ;;
+        flink) desc="Kafka + Flink processing" ;;
+        drools) desc="Direct Drools API evaluation" ;;
+        gateway) desc="HTTP + Kafka publish (no wait)" ;;
+        full) desc="Full end-to-end pipeline (HTTP → Kafka → Flink → Drools)" ;;
+    esac
+
+    print_header "Benchmark: $component"
+    echo ""
+    print_info "$desc"
+    print_info "Duration: ${duration}s"
+    if [[ "$events" -gt 0 ]]; then
+        print_info "Target events: $events"
+    fi
+    echo ""
+
+    # Prepare request body
+    local duration_ms=$((duration * 1000))
+    local body="{\"durationMs\": $duration_ms, \"targetEventCount\": $events, \"concurrency\": 8, \"batchSize\": 100}"
+
+    # Start the benchmark
+    print_info "Starting benchmark..."
+    local response
+    response=$(curl -sf -X POST "http://localhost:8080/api/admin/benchmark/${component}" \
+        -H "x-api-key: $api_key" \
+        -H "Content-Type: application/json" \
+        -d "$body" 2>/dev/null)
+
+    if [[ $? -ne 0 ]]; then
+        print_error "Failed to start benchmark"
+        print_info "Make sure gateway is running and healthy"
+        end_timer "benchmark" "$component" "error"
+        return 1
+    fi
+
+    print_success "Benchmark started"
+    echo "$response" | jq -r '.message // .' 2>/dev/null
+    echo ""
+
+    # Monitor progress
+    print_info "Monitoring progress (Ctrl+C to stop early)..."
+    echo ""
+
+    local benchmark_running=true
+    local last_throughput=0
+
+    while [[ "$benchmark_running" == "true" ]]; do
+        sleep 2
+
+        local result
+        result=$(curl -sf "http://localhost:8080/api/admin/benchmark/${component}/result" \
+            -H "x-api-key: $api_key" 2>/dev/null)
+
+        if [[ $? -eq 0 ]]; then
+            local status
+            status=$(echo "$result" | jq -r '.status // "unknown"' 2>/dev/null)
+
+            if [[ "$status" == "completed" ]] || [[ "$status" == "stopped" ]]; then
+                benchmark_running=false
+            else
+                # Show live throughput
+                local throughput
+                throughput=$(echo "$result" | jq -r '.peakThroughput // 0' 2>/dev/null)
+                if [[ "$throughput" != "0" ]] && [[ "$throughput" != "$last_throughput" ]]; then
+                    printf "\r  Current throughput: %s events/sec    " "$throughput"
+                    last_throughput="$throughput"
+                fi
+            fi
+        else
+            # Result not available yet - benchmark might still be running
+            printf "\r  Waiting for results...    "
+        fi
+    done
+
+    echo ""
+    echo ""
+
+    # Get final results
+    print_header "Benchmark Results"
+    local final_result
+    final_result=$(curl -sf "http://localhost:8080/api/admin/benchmark/${component}/result" \
+        -H "x-api-key: $api_key" 2>/dev/null)
+
+    if [[ $? -eq 0 ]]; then
+        # Show summary
+        local peak=$(echo "$final_result" | jq -r '.peakThroughput // 0' 2>/dev/null)
+        local avg=$(echo "$final_result" | jq -r '.avgThroughput // 0' 2>/dev/null)
+        local p50=$(echo "$final_result" | jq -r '.latency.p50 // 0' 2>/dev/null)
+        local p95=$(echo "$final_result" | jq -r '.latency.p95 // 0' 2>/dev/null)
+        local p99=$(echo "$final_result" | jq -r '.latency.p99 // 0' 2>/dev/null)
+        local success=$(echo "$final_result" | jq -r '.successfulOperations // 0' 2>/dev/null)
+        local failed=$(echo "$final_result" | jq -r '.failedOperations // 0' 2>/dev/null)
+
+        echo ""
+        echo "  Throughput:  ${peak} peak / ${avg} avg events/sec"
+        echo "  Latency:     P50=${p50}ms  P95=${p95}ms  P99=${p99}ms"
+        echo "  Operations:  ${success} successful / ${failed} failed"
+        echo ""
+
+        # Generate report if requested
+        if [[ "$report" == "true" ]]; then
+            generate_component_report "$component" "$output_dir" "$final_result"
+        fi
+    else
+        print_error "Could not get final results"
+    fi
+
+    end_timer "benchmark" "$component" "success"
+}
+
+# Run all benchmarks in sequence
+run_all_benchmarks() {
+    local duration="$1"
+    local report="$2"
+    local output_dir="$3"
+    local api_key="${ADMIN_API_KEY:-reactive-admin-key}"
+
+    start_timer
+
+    print_header "Running All Benchmarks"
+    echo ""
+    print_info "This will run all 6 component benchmarks in sequence."
+    print_info "Duration per benchmark: ${duration}s"
+    print_info "Total estimated time: $((duration * 6 + 30))s (including delays)"
+    echo ""
+
+    # Start all benchmarks via API
+    local duration_ms=$((duration * 1000))
+    local response
+    response=$(curl -sf -X POST "http://localhost:8080/api/admin/benchmark/all" \
+        -H "x-api-key: $api_key" \
+        -H "Content-Type: application/json" \
+        -d "{\"durationMs\": $duration_ms}" 2>/dev/null)
+
+    if [[ $? -ne 0 ]]; then
+        print_error "Failed to start benchmarks"
+        print_info "Make sure gateway is running"
+        return 1
+    fi
+
+    print_success "All benchmarks started"
+    echo ""
+
+    # Wait for completion
+    local components="http kafka flink drools gateway full"
+    for component in $components; do
+        print_info "Waiting for $component benchmark..."
+
+        local completed=false
+        local max_wait=$((duration + 60))
+        local waited=0
+
+        while [[ "$completed" != "true" ]] && [[ $waited -lt $max_wait ]]; do
+            sleep 5
+            waited=$((waited + 5))
+
+            local result
+            result=$(curl -sf "http://localhost:8080/api/admin/benchmark/${component}/result" \
+                -H "x-api-key: $api_key" 2>/dev/null)
+
+            if [[ $? -eq 0 ]]; then
+                local status
+                status=$(echo "$result" | jq -r '.status // ""' 2>/dev/null)
+                if [[ "$status" == "completed" ]]; then
+                    completed=true
+                    local peak
+                    peak=$(echo "$result" | jq -r '.peakThroughput // 0' 2>/dev/null)
+                    print_success "$component: ${peak} events/sec"
+                fi
+            fi
+        done
+
+        if [[ "$completed" != "true" ]]; then
+            print_warning "$component: Timeout or error"
+        fi
+    done
+
+    echo ""
+
+    # Generate reports if requested
+    if [[ "$report" == "true" ]]; then
+        print_info "Generating reports..."
+
+        for component in $components; do
+            local result
+            result=$(curl -sf "http://localhost:8080/api/admin/benchmark/${component}/result" \
+                -H "x-api-key: $api_key" 2>/dev/null)
+
+            if [[ $? -eq 0 ]]; then
+                generate_component_report "$component" "$output_dir" "$result"
+            fi
+        done
+
+        print_success "All reports generated in: $output_dir"
+
+        # Open report dashboard
+        open_benchmark_reports
+    fi
+
+    end_timer "benchmark" "all" "success"
+}
+
+# Generate component benchmark report
+generate_component_report() {
+    local component="$1"
+    local output_dir="$2"
+    local results="$3"
+
+    local timestamp=$(date +%Y%m%d_%H%M%S)
+    local report_dir="$output_dir/${component}"
+
+    # Create report directory
+    mkdir -p "$report_dir"
+
+    # Call the report generation script
+    if [[ -f "$SCRIPT_DIR/scripts/benchmark-report.sh" ]]; then
+        source "$SCRIPT_DIR/scripts/benchmark-report.sh"
+        generate_report "$component" "$report_dir" "$results"
+    fi
+
+    # Also save to timestamped directory for history
+    local history_dir="$output_dir/benchmark_${component}_${timestamp}"
+    mkdir -p "$history_dir"
+    cp -r "$report_dir"/* "$history_dir"/ 2>/dev/null
+
+    # Update "latest" symlink
+    local latest_dir="$output_dir/benchmark_${component}_latest"
+    rm -rf "$latest_dir" 2>/dev/null
+    cp -r "$report_dir" "$latest_dir"
+
+    print_success "Report saved: $component"
+}
+
+# Open benchmark reports dashboard
+open_benchmark_reports() {
+    local report_index="$SCRIPT_DIR/reports/index.html"
+
+    if [[ -f "$report_index" ]]; then
+        print_info "Opening benchmark dashboard..."
+        if command -v open &>/dev/null; then
+            open "$report_index"
+        elif command -v xdg-open &>/dev/null; then
+            xdg-open "$report_index"
+        else
+            print_info "Open in browser: file://$report_index"
+        fi
+    else
+        print_error "Report dashboard not found"
+        print_info "Run a benchmark with --report first"
+    fi
 }
 
 # Main command router
@@ -736,7 +1345,7 @@ case "${1:-help}" in
         cmd_memory "$2" "$3" "$4"
         ;;
     benchmark|bench)
-        cmd_benchmark "$2"
+        cmd_benchmark "$2" "${@:3}"
         ;;
     help|--help|-h)
         show_help

@@ -7,12 +7,14 @@ import java.io.Serializable;
  * Used to decouple counter state processing from async Drools call.
  */
 public class PreDroolsResult implements Serializable {
-    private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 2L;
 
     private String sessionId;
     private int counterValue;
     private String traceId;
     private String spanId;
+    private String eventId;
+    private EventTiming timing;
     private long arrivalTime;
 
     public PreDroolsResult() {}
@@ -23,6 +25,12 @@ public class PreDroolsResult implements Serializable {
         this.traceId = traceId;
         this.spanId = spanId;
         this.arrivalTime = arrivalTime;
+    }
+
+    public PreDroolsResult(String sessionId, int counterValue, String traceId, String spanId, long arrivalTime, String eventId, EventTiming timing) {
+        this(sessionId, counterValue, traceId, spanId, arrivalTime);
+        this.eventId = eventId;
+        this.timing = timing;
     }
 
     public String getSessionId() { return sessionId; }
@@ -36,6 +44,12 @@ public class PreDroolsResult implements Serializable {
 
     public String getSpanId() { return spanId; }
     public void setSpanId(String spanId) { this.spanId = spanId; }
+
+    public String getEventId() { return eventId; }
+    public void setEventId(String eventId) { this.eventId = eventId; }
+
+    public EventTiming getTiming() { return timing; }
+    public void setTiming(EventTiming timing) { this.timing = timing; }
 
     public long getArrivalTime() { return arrivalTime; }
     public void setArrivalTime(long arrivalTime) { this.arrivalTime = arrivalTime; }

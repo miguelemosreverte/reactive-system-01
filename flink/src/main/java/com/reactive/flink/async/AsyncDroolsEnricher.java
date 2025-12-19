@@ -3,6 +3,7 @@ package com.reactive.flink.async;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.reactive.flink.model.CounterResult;
+import com.reactive.flink.model.EventTiming;
 import com.reactive.flink.model.PreDroolsResult;
 import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.trace.Span;
@@ -81,6 +82,9 @@ public class AsyncDroolsEnricher extends RichAsyncFunction<PreDroolsResult, Coun
 
     @Override
     public void asyncInvoke(PreDroolsResult input, ResultFuture<CounterResult> resultFuture) {
+        // Track Drools start time
+        final long droolsStartAt = System.currentTimeMillis();
+
         // Create tracing span
         Span span = tracer.spanBuilder("async.drools.enrich")
                 .setSpanKind(SpanKind.CLIENT)
@@ -109,6 +113,7 @@ public class AsyncDroolsEnricher extends RichAsyncFunction<PreDroolsResult, Coun
 
             // Handle response asynchronously
             future.thenAccept(response -> {
+                long droolsEndAt = System.currentTimeMillis();
                 try {
                     String alert = "NONE";
                     String message = "No rules matched";
@@ -126,16 +131,24 @@ public class AsyncDroolsEnricher extends RichAsyncFunction<PreDroolsResult, Coun
                     }
 
                     // Record latency
-                    long latency = System.currentTimeMillis() - input.getArrivalTime();
+                    long latency = droolsEndAt - input.getArrivalTime();
                     span.setAttribute("total.latency_ms", latency);
+                    span.setAttribute("drools.latency_ms", droolsEndAt - droolsStartAt);
 
-                    // Emit result
+                    // Copy and update timing
+                    EventTiming timing = EventTiming.copyFrom(input.getTiming());
+                    timing.setDroolsStartAt(droolsStartAt);
+                    timing.setDroolsEndAt(droolsEndAt);
+
+                    // Emit result with timing
                     CounterResult result = new CounterResult(
                             input.getSessionId(),
                             input.getCounterValue(),
                             alert,
                             message,
-                            input.getTraceId()
+                            input.getTraceId(),
+                            input.getEventId(),
+                            timing
                     );
                     resultFuture.complete(Collections.singletonList(result));
 
@@ -144,23 +157,36 @@ public class AsyncDroolsEnricher extends RichAsyncFunction<PreDroolsResult, Coun
                     span.recordException(e);
                     span.setStatus(StatusCode.ERROR, e.getMessage());
 
+                    // Copy timing even on error
+                    EventTiming timing = EventTiming.copyFrom(input.getTiming());
+                    timing.setDroolsStartAt(droolsStartAt);
+                    timing.setDroolsEndAt(droolsEndAt);
+
                     // Return result with default alert on error
                     CounterResult result = new CounterResult(
                             input.getSessionId(),
                             input.getCounterValue(),
                             "ERROR",
                             "Drools call failed: " + e.getMessage(),
-                            input.getTraceId()
+                            input.getTraceId(),
+                            input.getEventId(),
+                            timing
                     );
                     resultFuture.complete(Collections.singletonList(result));
                 } finally {
                     span.end();
                 }
             }).exceptionally(throwable -> {
+                long droolsEndAt = System.currentTimeMillis();
                 LOG.error("Async Drools call failed", throwable);
                 span.recordException(throwable);
                 span.setStatus(StatusCode.ERROR, throwable.getMessage());
                 span.end();
+
+                // Copy timing even on error
+                EventTiming timing = EventTiming.copyFrom(input.getTiming());
+                timing.setDroolsStartAt(droolsStartAt);
+                timing.setDroolsEndAt(droolsEndAt);
 
                 // Return result with error alert
                 CounterResult result = new CounterResult(
@@ -168,17 +194,25 @@ public class AsyncDroolsEnricher extends RichAsyncFunction<PreDroolsResult, Coun
                         input.getCounterValue(),
                         "ERROR",
                         "Async Drools call failed: " + throwable.getMessage(),
-                        input.getTraceId()
+                        input.getTraceId(),
+                        input.getEventId(),
+                        timing
                 );
                 resultFuture.complete(Collections.singletonList(result));
                 return null;
             });
 
         } catch (Exception e) {
+            long droolsEndAt = System.currentTimeMillis();
             LOG.error("Error invoking async Drools", e);
             span.recordException(e);
             span.setStatus(StatusCode.ERROR, e.getMessage());
             span.end();
+
+            // Copy timing even on error
+            EventTiming timing = EventTiming.copyFrom(input.getTiming());
+            timing.setDroolsStartAt(droolsStartAt);
+            timing.setDroolsEndAt(droolsEndAt);
 
             // Return result with error
             CounterResult result = new CounterResult(
@@ -186,7 +220,9 @@ public class AsyncDroolsEnricher extends RichAsyncFunction<PreDroolsResult, Coun
                     input.getCounterValue(),
                     "ERROR",
                     "Failed to invoke Drools: " + e.getMessage(),
-                    input.getTraceId()
+                    input.getTraceId(),
+                    input.getEventId(),
+                    timing
             );
             resultFuture.complete(Collections.singletonList(result));
         }
@@ -196,13 +232,21 @@ public class AsyncDroolsEnricher extends RichAsyncFunction<PreDroolsResult, Coun
     public void timeout(PreDroolsResult input, ResultFuture<CounterResult> resultFuture) {
         LOG.warn("Async Drools call timed out for session {}", input.getSessionId());
 
+        // Copy timing with timeout indicator
+        long now = System.currentTimeMillis();
+        EventTiming timing = EventTiming.copyFrom(input.getTiming());
+        timing.setDroolsStartAt(input.getArrivalTime());
+        timing.setDroolsEndAt(now);
+
         // Return result with timeout alert
         CounterResult result = new CounterResult(
                 input.getSessionId(),
                 input.getCounterValue(),
                 "TIMEOUT",
                 "Drools evaluation timed out",
-                input.getTraceId()
+                input.getTraceId(),
+                input.getEventId(),
+                timing
         );
         resultFuture.complete(Collections.singletonList(result));
     }

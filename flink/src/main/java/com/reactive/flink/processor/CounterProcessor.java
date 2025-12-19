@@ -1,6 +1,8 @@
 package com.reactive.flink.processor;
 
 import com.reactive.flink.model.CounterEvent;
+import com.reactive.flink.model.CounterResult;
+import com.reactive.flink.model.EventTiming;
 import com.reactive.flink.model.PreDroolsResult;
 import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.trace.Span;
@@ -17,50 +19,92 @@ import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.KeyedProcessFunction;
 import org.apache.flink.util.Collector;
+import org.apache.flink.util.OutputTag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * High-throughput Counter Processor.
+ * CQRS-based Counter Processor with timer-based snapshot evaluation.
  *
- * This processor ONLY handles counter state management - no HTTP calls.
- * Drools enrichment is handled separately by AsyncDroolsEnricher using
- * Flink's AsyncDataStream for maximum parallelism.
+ * Architecture:
+ * - WRITE SIDE (immediate): Every event updates state and emits CounterResult
+ *   with alert="PENDING" immediately. This provides fast feedback to clients.
  *
- * Architecture for high throughput:
- * 1. CounterProcessor (this) - Fast state updates, no I/O
- * 2. AsyncDroolsEnricher - Non-blocking HTTP calls via AsyncDataStream
+ * - READ SIDE (bounded): Timer-based snapshot evaluation triggers Drools
+ *   calls at bounded intervals (MIN/MAX latency). This ensures Drools load
+ *   is bounded regardless of input throughput.
  *
- * This separation allows:
- * - Counter state updates to proceed at memory speed
- * - Thousands of concurrent Drools HTTP calls
- * - No blocking on I/O operations
+ * The separation allows:
+ * - Unlimited write throughput (memory-speed state updates)
+ * - Bounded read throughput (Drools calls capped by latency bounds)
+ * - Eventual consistency: Alerts arrive after state updates, within MAX_LATENCY
  */
-public class CounterProcessor extends KeyedProcessFunction<String, CounterEvent, PreDroolsResult> {
+public class CounterProcessor extends KeyedProcessFunction<String, CounterEvent, CounterResult> {
     private static final long serialVersionUID = 1L;
     private static final Logger LOG = LoggerFactory.getLogger(CounterProcessor.class);
 
-    private final String droolsUrl; // Kept for reference/config, actual calls done in AsyncDroolsEnricher
+    // Output tag for snapshot evaluation (side output)
+    public static final OutputTag<PreDroolsResult> SNAPSHOT_OUTPUT =
+            new OutputTag<PreDroolsResult>("snapshot-output") {};
+
+    // System-wide latency bounds
+    private final long minLatencyMs;
+    private final long maxLatencyMs;
+
+    // State
     private transient ValueState<Integer> counterState;
+    private transient ValueState<Long> lastEvaluationTime;
+    private transient ValueState<Long> pendingTimerTime;
+    private transient ValueState<String> lastTraceId;
+    private transient ValueState<String> lastEventId;
+    private transient ValueState<EventTiming> lastTiming;
     private transient Tracer tracer;
 
-    public CounterProcessor(String droolsUrl) {
-        this.droolsUrl = droolsUrl;
+    public CounterProcessor(long minLatencyMs, long maxLatencyMs) {
+        this.minLatencyMs = minLatencyMs;
+        this.maxLatencyMs = maxLatencyMs;
     }
 
     @Override
     public void open(Configuration parameters) {
-        ValueStateDescriptor<Integer> counterDescriptor = new ValueStateDescriptor<>(
-                "counterValue", Types.INT);
-        counterState = getRuntimeContext().getState(counterDescriptor);
+        // Counter value state
+        counterState = getRuntimeContext().getState(
+                new ValueStateDescriptor<>("counterValue", Types.INT));
+
+        // Last evaluation timestamp (for MIN latency enforcement)
+        lastEvaluationTime = getRuntimeContext().getState(
+                new ValueStateDescriptor<>("lastEvaluationTime", Types.LONG));
+
+        // Pending timer timestamp (to avoid duplicate timers)
+        pendingTimerTime = getRuntimeContext().getState(
+                new ValueStateDescriptor<>("pendingTimerTime", Types.LONG));
+
+        // Last trace ID for correlation
+        lastTraceId = getRuntimeContext().getState(
+                new ValueStateDescriptor<>("lastTraceId", Types.STRING));
+
+        // Last event ID for transaction tracking
+        lastEventId = getRuntimeContext().getState(
+                new ValueStateDescriptor<>("lastEventId", Types.STRING));
+
+        // Last timing for per-component latency tracking
+        lastTiming = getRuntimeContext().getState(
+                new ValueStateDescriptor<>("lastTiming", EventTiming.class));
+
         tracer = GlobalOpenTelemetry.getTracer("flink-counter-processor");
 
-        LOG.info("CounterProcessor initialized - high-throughput mode (async Drools enrichment)");
+        LOG.info("CounterProcessor initialized - CQRS mode (minLatency={}ms, maxLatency={}ms)",
+                minLatencyMs, maxLatencyMs);
     }
 
     @Override
-    public void processElement(CounterEvent event, Context ctx, Collector<PreDroolsResult> out) throws Exception {
+    public void processElement(CounterEvent event, Context ctx, Collector<CounterResult> out) throws Exception {
         long arrivalTime = System.currentTimeMillis();
+        String sessionId = event.getSessionId();
+
+        // Copy and update timing from event
+        EventTiming timing = EventTiming.copyFrom(event.getTiming());
+        timing.setFlinkReceivedAt(arrivalTime);
 
         // Reconstruct parent context for trace linking
         io.opentelemetry.context.Context parentContext = reconstructParentContext(event);
@@ -69,12 +113,14 @@ public class CounterProcessor extends KeyedProcessFunction<String, CounterEvent,
         Span span = tracer.spanBuilder("flink.process_counter")
                 .setParent(parentContext)
                 .setSpanKind(SpanKind.CONSUMER)
-                .setAttribute("session.id", event.getSessionId())
+                .setAttribute("session.id", sessionId)
                 .setAttribute("counter.action", event.getAction())
                 .startSpan();
 
         try (Scope scope = span.makeCurrent()) {
-            // Get current counter value
+            // ============================================
+            // WRITE SIDE: Immediate state update
+            // ============================================
             Integer currentValue = counterState.value();
             if (currentValue == null) {
                 currentValue = 0;
@@ -97,27 +143,116 @@ public class CounterProcessor extends KeyedProcessFunction<String, CounterEvent,
                     span.setStatus(StatusCode.ERROR, "Unknown action: " + event.getAction());
             }
 
+            // Mark processing complete time
+            long processedAt = System.currentTimeMillis();
+            timing.setFlinkProcessedAt(processedAt);
+
             // Update state
             counterState.update(currentValue);
+            lastTraceId.update(event.getTraceId());
+            lastEventId.update(event.getEventId());
+            lastTiming.update(timing);
             span.setAttribute("counter.new_value", currentValue);
 
-            // Emit intermediate result for async Drools enrichment
-            PreDroolsResult result = new PreDroolsResult(
-                    event.getSessionId(),
+            // Emit immediate result (without alert - alert will come later)
+            CounterResult result = new CounterResult(
+                    sessionId,
                     currentValue,
+                    "PENDING",  // Alert is pending (will be evaluated via timer)
+                    "Alert evaluation pending",
                     event.getTraceId(),
-                    event.getSpanId(),
-                    arrivalTime
+                    event.getEventId(),
+                    timing
             );
-
             out.collect(result);
 
+            // ============================================
+            // READ SIDE: Schedule snapshot evaluation
+            // ============================================
+            scheduleSnapshotEvaluation(ctx, arrivalTime);
+
             span.setStatus(StatusCode.OK);
-            span.setAttribute("processing.latency_ms", System.currentTimeMillis() - arrivalTime);
+            span.setAttribute("processing.latency_ms", processedAt - arrivalTime);
 
         } finally {
             span.end();
         }
+    }
+
+    /**
+     * Schedule a timer for snapshot evaluation based on latency bounds.
+     *
+     * Logic:
+     * - If no timer is pending, schedule one for MIN(now + maxLatency, lastEval + minLatency)
+     * - This ensures:
+     *   - We don't evaluate more frequently than minLatency (aggregate events)
+     *   - We always evaluate within maxLatency (guaranteed SLA)
+     */
+    private void scheduleSnapshotEvaluation(Context ctx, long now) throws Exception {
+        Long pendingTimer = pendingTimerTime.value();
+        Long lastEval = lastEvaluationTime.value();
+
+        // If timer already pending, no need to schedule another
+        if (pendingTimer != null && pendingTimer > now) {
+            return;
+        }
+
+        // Calculate next evaluation time
+        long nextEvalTime;
+        if (lastEval == null) {
+            // First event: evaluate after minLatency (or immediately if minLatency is 0)
+            nextEvalTime = now + minLatencyMs;
+        } else {
+            // Subsequent events: respect both min and max latency
+            long minAllowed = lastEval + minLatencyMs;
+            long maxAllowed = now + maxLatencyMs;
+            nextEvalTime = Math.max(minAllowed, now + 1); // At least 1ms from now
+            nextEvalTime = Math.min(nextEvalTime, maxAllowed); // But within max latency
+        }
+
+        // Register timer
+        ctx.timerService().registerProcessingTimeTimer(nextEvalTime);
+        pendingTimerTime.update(nextEvalTime);
+
+        LOG.debug("Scheduled snapshot evaluation for session {} at {}",
+                ctx.getCurrentKey(), nextEvalTime);
+    }
+
+    @Override
+    public void onTimer(long timestamp, OnTimerContext ctx, Collector<CounterResult> out) throws Exception {
+        String sessionId = (String) ctx.getCurrentKey();
+
+        // Get current state snapshot
+        Integer currentValue = counterState.value();
+        if (currentValue == null) {
+            // No state, nothing to evaluate
+            pendingTimerTime.clear();
+            return;
+        }
+
+        String traceId = lastTraceId.value();
+        String eventId = lastEventId.value();
+        EventTiming timing = lastTiming.value();
+
+        // Create snapshot for Drools evaluation (side output)
+        PreDroolsResult snapshot = new PreDroolsResult(
+                sessionId,
+                currentValue,
+                traceId,
+                null,  // No span ID for timer-based evaluation
+                System.currentTimeMillis(),
+                eventId,
+                timing
+        );
+
+        // Emit to side output for async Drools evaluation
+        ctx.output(SNAPSHOT_OUTPUT, snapshot);
+
+        // Update evaluation time and clear pending timer
+        lastEvaluationTime.update(timestamp);
+        pendingTimerTime.clear();
+
+        LOG.debug("Emitted snapshot for session {} with value {}", sessionId, currentValue);
     }
 
     private io.opentelemetry.context.Context reconstructParentContext(CounterEvent event) {

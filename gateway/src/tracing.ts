@@ -46,13 +46,20 @@ class AdaptiveSampler implements Sampler {
     attributes: Attributes,
     links: Link[]
   ): SamplingResult {
-    this.eventCount++;
-    this.maybeTune();
-
-    // Always sample health checks at low rate
-    if (spanName.includes('health') || spanName.includes('Health')) {
+    // FAST PATH: Skip common non-interesting spans immediately (no counting)
+    // This reduces overhead for high-throughput benchmark scenarios
+    if (spanName.includes('health') ||
+        spanName.includes('Health') ||
+        spanName.includes('benchmark') ||
+        spanName.includes('fetch') ||
+        spanName === 'tcp.connect' ||
+        spanName === 'dns.lookup' ||
+        spanName === 'tls.connect') {
       return { decision: SamplingDecision.NOT_RECORD };
     }
+
+    this.eventCount++;
+    this.maybeTune();
 
     // Use trace ID for deterministic sampling (same trace = same decision)
     const hash = this.hashTraceId(traceId);

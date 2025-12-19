@@ -3,7 +3,7 @@ package com.reactive.flink.model;
 import java.io.Serializable;
 
 public class CounterEvent implements Serializable {
-    private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 2L;
 
     private String sessionId;
     private String action;  // "increment", "decrement", "set"
@@ -11,6 +11,8 @@ public class CounterEvent implements Serializable {
     private long timestamp;
     private String traceId;
     private String spanId;
+    private String eventId;
+    private EventTiming timing;
     private long deserializedAt;
 
     public CounterEvent() {
@@ -71,6 +73,22 @@ public class CounterEvent implements Serializable {
         this.spanId = spanId;
     }
 
+    public String getEventId() {
+        return eventId;
+    }
+
+    public void setEventId(String eventId) {
+        this.eventId = eventId;
+    }
+
+    public EventTiming getTiming() {
+        return timing;
+    }
+
+    public void setTiming(EventTiming timing) {
+        this.timing = timing;
+    }
+
     public long getDeserializedAt() {
         return deserializedAt;
     }
@@ -81,6 +99,6 @@ public class CounterEvent implements Serializable {
 
     @Override
     public String toString() {
-        return "CounterEvent{sessionId='" + sessionId + "', action='" + action + "', value=" + value + ", traceId='" + traceId + "'}";
+        return "CounterEvent{sessionId='" + sessionId + "', action='" + action + "', value=" + value + ", traceId='" + traceId + "', eventId='" + eventId + "'}";
     }
 }

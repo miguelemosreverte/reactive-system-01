@@ -14,85 +14,133 @@ import org.apache.flink.connector.kafka.source.KafkaSource;
 import org.apache.flink.connector.kafka.source.enumerator.initializer.OffsetsInitializer;
 import org.apache.flink.streaming.api.datastream.AsyncDataStream;
 import org.apache.flink.streaming.api.datastream.DataStream;
+import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * CQRS-based Counter Processing Job.
+ *
+ * Architecture:
+ * - WRITE SIDE: Every event updates state immediately and emits CounterResult
+ *   to counter-results topic (fast feedback, alert="PENDING")
+ *
+ * - READ SIDE: Timer-based snapshot evaluation triggers Drools calls at
+ *   bounded intervals. Results go to counter-alerts topic.
+ *
+ * This separation allows:
+ * - Unlimited write throughput (just state updates)
+ * - Bounded read throughput (Drools calls capped by latency bounds)
+ * - Eventual consistency: Alerts arrive within MAX_LATENCY of state change
+ */
 public class CounterJob {
+    private static final Logger LOG = LoggerFactory.getLogger(CounterJob.class);
 
     private static final String KAFKA_BROKERS = System.getenv().getOrDefault("KAFKA_BROKERS", "kafka:29092");
     private static final String DROOLS_URL = System.getenv().getOrDefault("DROOLS_URL", "http://drools:8080");
     private static final String INPUT_TOPIC = System.getenv().getOrDefault("INPUT_TOPIC", "counter-events");
     private static final String OUTPUT_TOPIC = System.getenv().getOrDefault("OUTPUT_TOPIC", "counter-results");
+    private static final String ALERTS_TOPIC = System.getenv().getOrDefault("ALERTS_TOPIC", "counter-alerts");
+
+    // System-wide latency bounds (CQRS)
+    // MIN: Don't evaluate snapshots more frequently than this (aggregate events)
+    // MAX: Always evaluate within this bound (guaranteed SLA)
+    private static final long LATENCY_MIN_MS = Long.parseLong(
+            System.getenv().getOrDefault("LATENCY_MIN_MS", "1"));
+    private static final long LATENCY_MAX_MS = Long.parseLong(
+            System.getenv().getOrDefault("LATENCY_MAX_MS", "100"));
 
     // Buffer timeout: How long to wait before flushing incomplete buffers
-    // Works with Flink's Buffer Debloating feature for adaptive behavior:
-    // - Low throughput (single clicks): Buffer debloating reduces buffer size,
-    //   and this timeout ensures quick flush → minimal latency
-    // - High throughput (benchmarks): Buffer debloating increases buffer size
-    //   for efficiency, batching naturally fills buffers → optimal throughput
-    // The SLA bound is controlled by taskmanager.network.memory.buffer-debloat.target
     private static final long BUFFER_TIMEOUT_MS = Long.parseLong(
             System.getenv().getOrDefault("FLINK_BUFFER_TIMEOUT_MS", "1"));
 
     // Kafka fetch wait: how long consumer waits for data before returning
-    // Lower = faster for single events, higher = more efficient batching
     private static final String KAFKA_FETCH_MAX_WAIT_MS =
             System.getenv().getOrDefault("KAFKA_FETCH_MAX_WAIT_MS", "10");
 
-    // Parallelism configuration for high throughput
+    // Parallelism configuration
     private static final int PARALLELISM = Integer.parseInt(
             System.getenv().getOrDefault("FLINK_PARALLELISM", "8"));
 
-    // Async I/O configuration for concurrent Drools calls
-    // This is the KEY to high throughput - allows many concurrent HTTP calls
-    // Reduced from 10000 to avoid overwhelming resources in Docker environment
+    // Async I/O configuration for Drools calls
+    // With CQRS, this capacity can be lower since snapshot frequency is bounded
     private static final int ASYNC_CAPACITY = Integer.parseInt(
-            System.getenv().getOrDefault("ASYNC_CAPACITY", "1000"));
+            System.getenv().getOrDefault("ASYNC_CAPACITY", "500"));
 
     // Timeout for async Drools calls (ms)
     private static final long ASYNC_TIMEOUT_MS = Long.parseLong(
             System.getenv().getOrDefault("ASYNC_TIMEOUT_MS", "5000"));
 
+    // Skip Drools processing (for Layer 2 benchmarks: Kafka + Flink only)
+    private static final boolean SKIP_DROOLS = Boolean.parseBoolean(
+            System.getenv().getOrDefault("SKIP_DROOLS", "false"));
+
     public static void main(String[] args) throws Exception {
+        LOG.info("Starting Counter Processing Job (CQRS mode)");
+        LOG.info("Latency bounds: MIN={}ms, MAX={}ms", LATENCY_MIN_MS, LATENCY_MAX_MS);
+        LOG.info("Parallelism: {}, Async capacity: {}", PARALLELISM, ASYNC_CAPACITY);
+        LOG.info("Skip Drools: {} (Layer 2 benchmark mode)", SKIP_DROOLS);
+
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
-        // Set parallelism for high throughput (match Kafka partitions)
+        // Set parallelism
         env.setParallelism(PARALLELISM);
 
-        // Set buffer timeout - works with Buffer Debloating for adaptive behavior
-        // Buffer Debloating automatically adjusts buffer SIZES based on throughput
-        // This timeout controls how long to wait before flushing INCOMPLETE buffers
-        // Together: single events flush immediately, high throughput batches efficiently
+        // Set buffer timeout
         env.setBufferTimeout(BUFFER_TIMEOUT_MS);
 
-        // Kafka consumer properties for low-latency polling
-        Properties kafkaProps = new Properties();
-        kafkaProps.setProperty("fetch.max.wait.ms", KAFKA_FETCH_MAX_WAIT_MS);  // Don't wait long for batches
-        kafkaProps.setProperty("fetch.min.bytes", "1");  // Return as soon as any data is available
+        // Enable checkpointing for continuous consumption
+        // Without checkpointing, Kafka source may stop after initial batch
+        env.enableCheckpointing(5000); // Checkpoint every 5 seconds
+        LOG.info("Checkpointing enabled: 5000ms interval");
 
-        // Configure Kafka source with low-latency settings
+        // Kafka consumer properties for continuous consumption
+        Properties kafkaProps = new Properties();
+        kafkaProps.setProperty("fetch.max.wait.ms", KAFKA_FETCH_MAX_WAIT_MS);
+        kafkaProps.setProperty("fetch.min.bytes", "1");
+        // Ensure consumer polls continuously
+        kafkaProps.setProperty("max.poll.records", "500");
+        kafkaProps.setProperty("max.poll.interval.ms", "300000");
+        kafkaProps.setProperty("heartbeat.interval.ms", "3000");
+        kafkaProps.setProperty("session.timeout.ms", "30000");
+        // Auto commit is handled by Flink checkpoints
+        kafkaProps.setProperty("enable.auto.commit", "false");
+
+        // Configure Kafka source with unbounded streaming
         KafkaSource<CounterEvent> source = KafkaSource.<CounterEvent>builder()
                 .setBootstrapServers(KAFKA_BROKERS)
                 .setTopics(INPUT_TOPIC)
-                .setGroupId("flink-counter-group")
+                .setGroupId("flink-counter-group-v2")  // New group ID to start fresh
                 .setStartingOffsets(OffsetsInitializer.latest())
                 .setValueOnlyDeserializer(new CounterEventDeserializer())
                 .setProperties(kafkaProps)
                 .build();
 
-        // Kafka producer properties for low-latency delivery
+        // Kafka producer properties
         Properties producerProps = new Properties();
-        producerProps.setProperty("linger.ms", "0");  // Send immediately, don't wait for batching
-        producerProps.setProperty("acks", "1");  // Faster acks (leader only)
+        producerProps.setProperty("linger.ms", "0");
+        producerProps.setProperty("acks", "1");
 
-        // Configure Kafka sink with low-latency settings
-        KafkaSink<CounterResult> sink = KafkaSink.<CounterResult>builder()
+        // Sink for immediate results (counter-results topic)
+        KafkaSink<CounterResult> resultsSink = KafkaSink.<CounterResult>builder()
                 .setBootstrapServers(KAFKA_BROKERS)
                 .setKafkaProducerConfig(producerProps)
                 .setRecordSerializer(KafkaRecordSerializationSchema.builder()
                         .setTopic(OUTPUT_TOPIC)
+                        .setValueSerializationSchema(new CounterResultSerializer())
+                        .build())
+                .build();
+
+        // Sink for alerts (counter-alerts topic)
+        KafkaSink<CounterResult> alertsSink = KafkaSink.<CounterResult>builder()
+                .setBootstrapServers(KAFKA_BROKERS)
+                .setKafkaProducerConfig(producerProps)
+                .setRecordSerializer(KafkaRecordSerializationSchema.builder()
+                        .setTopic(ALERTS_TOPIC)
                         .setValueSerializationSchema(new CounterResultSerializer())
                         .build())
                 .build();
@@ -104,27 +152,54 @@ public class CounterJob {
                 "Kafka Counter Events"
         );
 
-        // Step 1: Process counter state updates (fast, no I/O)
-        DataStream<PreDroolsResult> preDroolsResults = events
+        // ============================================
+        // WRITE SIDE: Immediate state updates + results
+        // ============================================
+        // CounterProcessor outputs:
+        // - Main output: CounterResult with alert="PENDING" (immediate feedback)
+        // - Side output: PreDroolsResult for snapshot evaluation (bounded)
+        SingleOutputStreamOperator<CounterResult> immediateResults = events
                 .keyBy(CounterEvent::getSessionId)
-                .process(new CounterProcessor(DROOLS_URL));
+                .process(new CounterProcessor(LATENCY_MIN_MS, LATENCY_MAX_MS));
 
-        // Step 2: Async Drools enrichment with UNORDERED processing for maximum throughput
-        // UNORDERED allows results to be emitted as soon as they complete,
-        // without waiting for earlier requests - critical for high throughput
-        // Capacity = max concurrent async operations (pending HTTP calls)
-        DataStream<CounterResult> results = AsyncDataStream.unorderedWait(
-                preDroolsResults,
-                new AsyncDroolsEnricher(DROOLS_URL),
-                ASYNC_TIMEOUT_MS,
-                TimeUnit.MILLISECONDS,
-                ASYNC_CAPACITY
-        );
+        // Send immediate results to counter-results topic
+        immediateResults.sinkTo(resultsSink);
 
-        // Send results to Kafka
-        results.sinkTo(sink);
+        // ============================================
+        // READ SIDE: Bounded snapshot evaluation
+        // ============================================
+        // Get the side output (snapshots for Drools evaluation)
+        DataStream<PreDroolsResult> snapshots = immediateResults
+                .getSideOutput(CounterProcessor.SNAPSHOT_OUTPUT);
+
+        // Conditionally process through Drools or bypass (for Layer 2 benchmarks)
+        if (SKIP_DROOLS) {
+            LOG.info("Drools processing SKIPPED (Layer 2 benchmark mode)");
+            // In Layer 2 mode, convert PreDroolsResult directly to CounterResult
+            // without calling Drools - simulates processing without rule evaluation
+            DataStream<CounterResult> bypassedAlerts = snapshots
+                    .map(pre -> new CounterResult(
+                            pre.getSessionId(),
+                            pre.getCounterValue(),
+                            "BYPASS",
+                            "Drools bypassed (Layer 2 benchmark)",
+                            pre.getTraceId()
+                    ));
+            bypassedAlerts.sinkTo(alertsSink);
+        } else {
+            // Async Drools enrichment on bounded snapshot stream
+            DataStream<CounterResult> alerts = AsyncDataStream.unorderedWait(
+                    snapshots,
+                    new AsyncDroolsEnricher(DROOLS_URL),
+                    ASYNC_TIMEOUT_MS,
+                    TimeUnit.MILLISECONDS,
+                    ASYNC_CAPACITY
+            );
+            // Send alerts to counter-alerts topic
+            alerts.sinkTo(alertsSink);
+        }
 
         // Execute the job
-        env.execute("Counter Processing Job (Async Drools)");
+        env.execute("Counter Processing Job (CQRS with Bounded Snapshot Evaluation)");
     }
 }

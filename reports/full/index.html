@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Benchmark: Full End-to-End - 1606 events/sec</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #0f172a; color: #e2e8f0; padding: 2rem; max-width: 1400px; margin: 0 auto; line-height: 1.5; }
+        h1 { font-size: 1rem; color: #64748b; font-weight: 400; margin-bottom: 0.5rem; }
+        h2 { font-size: 0.75rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.1em; margin: 2rem 0 1rem; border-bottom: 1px solid #334155; padding-bottom: 0.5rem; }
+        .hero { margin-bottom: 2rem; }
+        .hero .value { font-size: 4rem; font-weight: 700; line-height: 1; }
+        .hero .unit { font-size: 1.25rem; color: #64748b; }
+        .hero .subtitle { color: #94a3b8; font-size: 0.875rem; margin-top: 0.5rem; }
+        .meta { color: #64748b; font-size: 0.75rem; margin-bottom: 2rem; }
+        .meta strong { color: #94a3b8; }
+        .card { background: #1e293b; border-radius: 8px; padding: 1.25rem; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem; }
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+        .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+        .stat-label { font-size: 0.7rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; }
+        .stat-value { font-size: 1.5rem; font-weight: 700; color: #f1f5f9; }
+        .stat-value.green { color: #22c55e; }
+        .stat-value.yellow { color: #eab308; }
+        .stat-value.red { color: #ef4444; }
+        .stat-unit { font-size: 0.7rem; color: #64748b; }
+        .chart-container { background: #1e293b; border-radius: 8px; padding: 1.25rem; margin-bottom: 1.5rem; }
+        .chart-wrapper { height: 180px; }
+        .chart-title { font-size: 0.75rem; color: #94a3b8; margin-bottom: 0.75rem; }
+        .info-box { background: #1e3a5f; border-left: 3px solid #3b82f6; padding: 1rem; border-radius: 0 8px 8px 0; margin-bottom: 1.5rem; font-size: 0.875rem; }
+        .info-box strong { color: #60a5fa; }
+        .component-bar { display: flex; height: 32px; border-radius: 6px; overflow: hidden; margin: 1rem 0; }
+        .component-bar > div { display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 600; color: white; min-width: 40px; }
+        .legend { display: flex; gap: 1rem; flex-wrap: wrap; font-size: 0.75rem; }
+        .legend-item { display: flex; align-items: center; gap: 0.375rem; }
+        .legend-dot { width: 10px; height: 10px; border-radius: 2px; }
+
+        /* Sample Events Table */
+        .events-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; margin-top: 1rem; }
+        .events-table th { background: #0f172a; color: #64748b; font-weight: 500; text-align: left; padding: 0.75rem 0.5rem; border-bottom: 1px solid #334155; }
+        .events-table td { padding: 0.75rem 0.5rem; border-bottom: 1px solid #1e293b; vertical-align: middle; }
+        .events-table tr:hover { background: #1e3a5f; }
+        .events-table .id { font-family: monospace; color: #60a5fa; font-size: 0.7rem; }
+        .events-table .trace-id { font-family: monospace; color: #94a3b8; font-size: 0.65rem; max-width: 80px; overflow: hidden; text-overflow: ellipsis; }
+        .events-table .timing { color: #22c55e; font-family: monospace; }
+        .events-table .status-success { color: #22c55e; }
+        .events-table .status-error { color: #ef4444; }
+        .events-table .btn { background: #334155; border: none; color: #e2e8f0; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer; font-size: 0.7rem; margin-right: 0.25rem; }
+        .events-table .btn:hover { background: #475569; }
+        .events-table .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* Modal */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; }
+        .modal.active { display: flex; align-items: center; justify-content: center; }
+        .modal-content { background: #1e293b; border-radius: 8px; width: 90%; max-width: 900px; max-height: 80vh; overflow: hidden; display: flex; flex-direction: column; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 1rem; border-bottom: 1px solid #334155; }
+        .modal-header h3 { font-size: 1rem; color: #f1f5f9; }
+        .modal-close { background: none; border: none; color: #64748b; font-size: 1.5rem; cursor: pointer; }
+        .modal-close:hover { color: #f1f5f9; }
+        .modal-body { overflow-y: auto; padding: 1rem; flex: 1; }
+
+        /* Trace Viewer */
+        .trace-timeline { font-family: monospace; font-size: 0.75rem; }
+        .trace-span { display: flex; align-items: center; margin-bottom: 0.5rem; }
+        .trace-span-bar { height: 20px; border-radius: 3px; display: flex; align-items: center; padding: 0 0.5rem; color: white; font-size: 0.65rem; white-space: nowrap; }
+        .trace-span-label { min-width: 150px; color: #94a3b8; }
+        .trace-span-duration { min-width: 80px; color: #64748b; text-align: right; margin-left: 0.5rem; }
+
+        /* Log Viewer */
+        .log-entry { font-family: monospace; font-size: 0.7rem; padding: 0.5rem; border-bottom: 1px solid #334155; }
+        .log-entry:hover { background: #0f172a; }
+        .log-timestamp { color: #64748b; margin-right: 1rem; }
+        .log-level-info { color: #3b82f6; }
+        .log-level-warn { color: #eab308; }
+        .log-level-error { color: #ef4444; }
+        .log-message { color: #e2e8f0; }
+
+        .footer { margin-top: 2rem; color: #475569; font-size: 0.7rem; text-align: center; }
+        @media (max-width: 768px) { .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; } .hero .value { font-size: 3rem; } }
+    </style>
+</head>
+<body>
+    <div class="hero">
+        <h1>HTTP → Kafka → Flink → Drools</h1>
+        <div><span class="value" style="color: #22c55e;">1606</span> <span class="unit">events/sec</span></div>
+        <div class="subtitle">Peak throughput for Full End-to-End benchmark</div>
+    </div>
+
+    <div class="meta">
+        <strong>20100</strong> operations |
+        <strong>20100</strong> successful |
+        <strong>0</strong> failed |
+        <strong>100%</strong> success rate |
+        <strong>17s</strong> duration |
+        Commit: <strong>354d89d</strong> |
+        2025-12-19 19:09:04
+    </div>
+    <h2>Throughput</h2>
+
+    <div class="chart-container">
+        <div class="chart-title">Throughput Over Time (events/sec)</div>
+        <div class="chart-wrapper">
+            <canvas id="throughputChart"></canvas>
+        </div>
+    </div>
+
+    <div class="grid-2">
+        <div class="card">
+            <div class="stat-label">Peak Throughput</div>
+            <div class="stat-value green">1606</div>
+            <div class="stat-unit">events/sec</div>
+        </div>
+        <div class="card">
+            <div class="stat-label">Average Throughput</div>
+            <div class="stat-value">1275</div>
+            <div class="stat-unit">events/sec</div>
+        </div>
+    </div>
+
+    <h2>Latency Distribution</h2>
+
+    <div class="grid-4">
+        <div class="card">
+            <div class="stat-label">P50 (Median)</div>
+            <div class="stat-value">90</div>
+            <div class="stat-unit">ms</div>
+        </div>
+        <div class="card">
+            <div class="stat-label">P95</div>
+            <div class="stat-value">211</div>
+            <div class="stat-unit">ms</div>
+        </div>
+        <div class="card">
+            <div class="stat-label">P99</div>
+            <div class="stat-value">242</div>
+            <div class="stat-unit">ms</div>
+        </div>
+        <div class="card">
+            <div class="stat-label">Max</div>
+            <div class="stat-value">296</div>
+            <div class="stat-unit">ms</div>
+        </div>
+    </div>
+    <h2>Component Timing Breakdown</h2>
+
+    <div class="card">
+        <div class="component-bar">
+            <div style="width: 0%; background: #3b82f6;">0ms</div>
+            <div style="width: 100%; background: #8b5cf6;">2ms</div>
+            <div style="width: 0%; background: #06b6d4;">0ms</div>
+            <div style="width: 0%; background: #10b981;">0ms</div>
+        </div>
+        <div class="legend">
+            <div class="legend-item"><span class="legend-dot" style="background:#3b82f6;"></span> Gateway 0ms</div>
+            <div class="legend-item"><span class="legend-dot" style="background:#8b5cf6;"></span> Kafka 2ms</div>
+            <div class="legend-item"><span class="legend-dot" style="background:#06b6d4;"></span> Flink 0ms</div>
+            <div class="legend-item"><span class="legend-dot" style="background:#10b981;"></span> Drools 0ms</div>
+        </div>
+    </div>
+    <h2>Resource Usage</h2>
+
+    <div class="grid-2">
+        <div class="chart-container">
+            <div class="chart-title">CPU Usage (%)</div>
+            <div class="chart-wrapper">
+                <canvas id="cpuChart"></canvas>
+            </div>
+        </div>
+        <div class="chart-container">
+            <div class="chart-title">Memory Usage (%)</div>
+            <div class="chart-wrapper">
+                <canvas id="memoryChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid-2">
+        <div class="card">
+            <div class="stat-label">Peak CPU</div>
+            <div class="stat-value">16%</div>
+        </div>
+        <div class="card">
+            <div class="stat-label">Peak Memory</div>
+            <div class="stat-value">91%</div>
+        </div>
+    </div>
+    <h2>Sample Events</h2>
+
+    <div class="info-box">
+        <strong>Event Samples:</strong> Up to 2 successful events and up to 10 error/timeout events are captured for analysis.
+        Click "Trace" to view the distributed trace timeline, or "Logs" to see correlated log entries.
+    </div>
+
+    <div class="card">
+        <table class="events-table">
+            <thead>
+                <tr>
+                    <th>Status</th>
+                    <th>Event ID</th>
+                    <th>Trace ID</th>
+                    <th>Latency</th>
+                    <th>Gateway</th><th>Kafka</th><th>Flink</th><th>Drools</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><span class="status-success">✓ Success</span></td>
+                    <td class="id">evt_1766182067351_fullbench0_r2fn</td>
+                    <td class="trace-id" title="fast-1766182067351-qpm8pwbax">fast-17661820673...</td>
+                    <td class="timing">37ms</td>
+                    <td class="timing">0ms</td><td class="timing">1ms</td><td class="timing">0ms</td><td class="timing">0ms</td>
+                    <td>
+                        <button class="btn" onclick="showTrace('fast-1766182067351-qpm8pwbax')" disabled>Trace</button>
+                        <button class="btn" onclick="showLogs('fast-1766182067351-qpm8pwbax')" disabled>Logs</button>
+                    </td>
+                </tr>
+                <tr>
+                    <td><span class="status-success">✓ Success</span></td>
+                    <td class="id">evt_1766182067352_fullbench1_5izj</td>
+                    <td class="trace-id" title="fast-1766182067352-8tosn6xcw">fast-17661820673...</td>
+                    <td class="timing">39ms</td>
+                    <td class="timing">0ms</td><td class="timing">1ms</td><td class="timing">0ms</td><td class="timing">0ms</td>
+                    <td>
+                        <button class="btn" onclick="showTrace('fast-1766182067352-8tosn6xcw')" disabled>Trace</button>
+                        <button class="btn" onclick="showLogs('fast-1766182067352-8tosn6xcw')" disabled>Logs</button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <!-- Trace Viewer Modal -->
+    <div id="traceModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Trace Timeline</h3>
+                <button class="modal-close" onclick="closeModal('traceModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="traceViewer" class="trace-timeline"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Logs Viewer Modal -->
+    <div id="logsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Correlated Logs</h3>
+                <button class="modal-close" onclick="closeModal('logsModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="logsViewer"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        Generated 2025-12-19 19:09:04 | Full End-to-End Benchmark | Reactive System
+    </div>
+
+    <!-- Embedded Data -->
+    <script id="trace-data" type="application/json">{}</script>
+    <script id="logs-data" type="application/json">{}</script>
+
+    <script>
+        Chart.defaults.animation = false;
+        Chart.defaults.responsive = true;
+        Chart.defaults.maintainAspectRatio = false;
+
+        // Chart data
+        const throughputTimeline = [100,1295,1606,1403,1397,1203,1447,1419,1366,1313,1324,1431];
+        const cpuTimeline = [15.718814819114016,15.71884949379073,15.718917818101238,15.718960950121355,15.718992735740505,15.719034413345549,15.719078232455391,15.71910968212965,15.719168053694354,15.719260009281784,15.719315845918238,15.719375828969943,15.719434547343239,15.719504764973486,15.71955666844757,15.71963602155482,15.719771062117399,15.719805744877343,15.719843296546546,15.719883709850619,15.71992718505529,15.719958967976863,15.720001562053909,15.720053463796829,15.72008636582232,15.72011761269198,15.720157480471322,15.72019394350091,15.720223403175284,15.72030946164366,15.720358349476005,15.720390680318733,15.720424280462506,15.720464671453158,15.72049848384288,15.72055292149993,15.720601455468133,15.720645273781598,15.720675994803504,15.720719296413508,15.720762587715065,15.720792963654903,15.72083249504484,15.720901856373926,15.72094031535545,15.720975512204696,15.72103389170282,15.721065687337695,15.721095133666838,15.721127998469415,15.721251744866754,15.721306526501689,15.721366495014577,15.72139827742229,15.721439948524013,15.721486119648933,15.72153694868295,15.721589089306976,15.721637756813772,15.721689120060326,15.721735805985587,15.721781604083374,15.721821657893587,15.72190470585057,15.721939376546445,15.721986980606935,15.722034403195536,15.72207821909549,15.722124749079235,15.722165694119008,15.72224921762746,15.722285541536621,15.722319666688724,15.722355064030399,15.722400144278344,15.722434257648477,15.722490470600459,15.722543488678403,15.722579066767967,15.722613727677587,15.722648396147932,15.72269708111946,15.722729397120816,15.722800760620007,15.722842232594946,15.72288409444324,15.722923424570231,15.7229638249545,15.723003888624293,15.723057230778679,15.723102541482238,15.72313953518739,15.723174729897238,15.723210661185295,15.723252322008632,15.723283227517246,15.723354152782996,15.723405205550279,15.72344238724238,15.723474712879248,15.723526800867171,15.72357008823995,15.723604219986711,15.72366730803752,15.723701967604942,15.723736277752506,15.723773289473245,15.72381029073791,15.723857908969055,15.723910886422585,15.724043032278976,15.724100859069297,15.724144127479978,15.724180584596075,15.724216324551787,15.724251898347935,15.724307925315086,15.724350377215673,15.724392225557112,15.724428679681946,15.724476098859247,15.724525304570456,15.724572523233238,15.724632537472843,15.724688809256989,15.724731021862603,15.724782380429081,15.724827463865163,15.724873073608919,15.724904313833077,15.724952801380812,15.725008859760573,15.72504210107866,15.725077293425052,15.72510801094413,15.725141258506659,15.72518113737598,15.725238244922018,15.725284096873379,15.725332431877847,15.725364207718439,15.725408020978634,15.72544807024718,15.725476976647052,15.72553460059025,15.725589062965788,15.725611348415876,15.725655149766338,15.725688745212056,15.725725379393172,15.72575663083447,15.725798834503873,15.725872843627506,15.72590681956854,15.725939331649519,15.72598026111362,15.726017974488482,15.726056569894586,15.726118859725313];
+        const memoryTimeline = [89.89376544981073,89.88765208234113,89.78776754610416,89.7877182447536,89.78623920423676,89.76632145861004,89.78052024757166,89.77805518004361,89.93404465321923,90.16388754953553,90.23093738629876,90.27170960321287,90.32165187133137,90.34881691549059,90.3821939298205,90.49686887122586,90.78528177200886,90.81185519996134,90.81905319714329,90.84020347653403,90.84390107782613,90.84523221429129,90.83867513466663,89.93241770865072,89.93512928293158,89.93182609244398,89.94464444358988,89.94222867741239,89.9413412531023,90.01366633437556,90.0503465391931,90.04822658111897,90.04186670689657,90.05118466215264,90.04709265005606,90.13928617560549,90.14796321330427,90.16576100085686,90.16388754953553,90.17364921694664,90.21900645946295,90.21639348788321,90.24114276586492,90.18651686944312,90.27249842482185,90.27555510855665,90.3451193141985,90.271808205914,90.26756828976573,90.27614672476338,90.3799260676947,90.41709928601784,90.49080480510683,90.49041039430234,90.48705790246419,90.41690208061559,90.44766612336579,90.45935054344879,90.38677895542271,90.5325137476816,90.53714807463436,90.55129756224542,90.54449397586798,90.56776421333285,90.59305580617075,90.59014702648764,90.58723824680453,90.58630152114388,90.57920212666306,90.58950610893035,90.59157676565391,90.59354881967636,90.59142886160222,90.58827357516633,90.58738615085622,90.54543070152864,90.54464187991967,90.56756700793062,90.51792054791548,90.42173361297058,90.41586675225382,90.4428345910108,90.4413062491434,90.4640341717521,90.47123216893404,90.47798645396092,90.48848764163046,90.4838533146777,90.45885752994317,90.48538165654509,90.48321239712041,90.47862737151821,90.48242357551143,90.50224271843703,90.52289998432217,90.52482273699405,90.41724719006953,90.45274416247359,90.45422320299042,90.45821661238588,90.82777953619261,90.82467355110725,90.82472285245782,90.83581565633409,90.83369569825996,90.81363004858154,90.78385203284259,90.78173207476846,90.83611146443745,90.84858470612944,90.77118158574837,90.75456703060924,90.66025354698567,90.50505289541901,90.49262895507759,90.48932576459,90.4895722713428,90.48789602542372,90.48336030117208,90.47981060393168,90.51397643987059,90.50786307240101,90.50446127921228,90.49203733887086,90.4354393884266,90.3748480285869,90.37849632852843,90.42996693851431,90.42735396693456,90.42735396693456,90.43179108848508,90.40960548073254,90.42059968190769,90.42059968190769,90.41862762788524,90.45525853135221,90.45313857327808,90.46408347310266,90.46053377586225,90.46087888531619,90.45471621649604,90.45195534086461,90.38495480545194,90.38465899734858,90.42074758595938,90.41788810762682,90.41478212254145,90.36942488002516,90.36548077198027,90.35330333839165,90.36222688284323,90.37065741378919,90.36459334767017,90.41640906710998,90.34788018982992,90.3476336830771,90.36972068812852,90.41813461437962,90.58955541028091];
+
+        // Throughput Chart
+        if (throughputTimeline && throughputTimeline.length > 0) {
+            new Chart(document.getElementById('throughputChart'), {
+                type: 'line',
+                data: {
+                    labels: throughputTimeline.map((_, i) => i + 's'),
+                    datasets: [{
+                        label: 'Throughput',
+                        data: throughputTimeline,
+                        borderColor: '#22c55e',
+                        backgroundColor: '#22c55e22',
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 0,
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: '#334155' }, ticks: { color: '#64748b' } },
+                        x: { grid: { display: false }, ticks: { color: '#64748b', maxTicksLimit: 10 } }
+                    }
+                }
+            });
+        } else {
+            document.getElementById('throughputChart').parentElement.innerHTML = '<div style="color:#64748b;text-align:center;padding:2rem;">No timeline data available</div>';
+        }
+
+        // CPU Chart
+        if (cpuTimeline && cpuTimeline.length > 0) {
+            new Chart(document.getElementById('cpuChart'), {
+                type: 'line',
+                data: {
+                    labels: cpuTimeline.map((_, i) => i + 's'),
+                    datasets: [{
+                        label: 'CPU %',
+                        data: cpuTimeline,
+                        borderColor: '#f59e0b',
+                        backgroundColor: '#f59e0b22',
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 0,
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, max: 100, grid: { color: '#334155' }, ticks: { color: '#64748b' } },
+                        x: { grid: { display: false }, ticks: { color: '#64748b', maxTicksLimit: 10 } }
+                    }
+                }
+            });
+        } else {
+            document.getElementById('cpuChart').parentElement.innerHTML = '<div style="color:#64748b;text-align:center;padding:2rem;">No CPU data available</div>';
+        }
+
+        // Memory Chart
+        if (memoryTimeline && memoryTimeline.length > 0) {
+            new Chart(document.getElementById('memoryChart'), {
+                type: 'line',
+                data: {
+                    labels: memoryTimeline.map((_, i) => i + 's'),
+                    datasets: [{
+                        label: 'Memory %',
+                        data: memoryTimeline,
+                        borderColor: '#8b5cf6',
+                        backgroundColor: '#8b5cf622',
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 0,
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, max: 100, grid: { color: '#334155' }, ticks: { color: '#64748b' } },
+                        x: { grid: { display: false }, ticks: { color: '#64748b', maxTicksLimit: 10 } }
+                    }
+                }
+            });
+        } else {
+            document.getElementById('memoryChart').parentElement.innerHTML = '<div style="color:#64748b;text-align:center;padding:2rem;">No memory data available</div>';
+        }
+
+        // Trace and Log Viewer Functions
+        const traceData = JSON.parse(document.getElementById('trace-data').textContent || '{}');
+        const logsData = JSON.parse(document.getElementById('logs-data').textContent || '{}');
+
+        function showTrace(traceId) {
+            const data = traceData[traceId];
+            if (!data || !data.trace) {
+                alert('No trace data available for this event');
+                return;
+            }
+
+            const trace = data.trace;
+            const spans = trace.spans.sort((a, b) => a.startTime - b.startTime);
+            const baseTime = spans[0]?.startTime || 0;
+            const maxDuration = Math.max(...spans.map(s => (s.startTime - baseTime) + s.duration));
+
+            const colors = {
+                'gateway-service': '#3b82f6',
+                'flink-processor': '#06b6d4',
+                'drools-service': '#10b981',
+                'kafka': '#8b5cf6'
+            };
+
+            const html = spans.map(span => {
+                const offset = ((span.startTime - baseTime) / maxDuration) * 80;
+                const width = Math.max((span.duration / maxDuration) * 80, 2);
+                const serviceName = trace.processes[span.processID]?.serviceName || 'unknown';
+                const color = colors[serviceName] || '#64748b';
+                const durationMs = (span.duration / 1000).toFixed(2);
+
+                return `
+                    <div class="trace-span">
+                        <span class="trace-span-label">${serviceName}</span>
+                        <div style="flex:1;position:relative;height:20px;">
+                            <div class="trace-span-bar" style="position:absolute;left:${offset}%;width:${width}%;background:${color};">
+                                ${span.operationName}
+                            </div>
+                        </div>
+                        <span class="trace-span-duration">${durationMs}ms</span>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('traceViewer').innerHTML = html || '<div style="color:#64748b;">No spans found</div>';
+            document.getElementById('traceModal').classList.add('active');
+        }
+
+        function showLogs(traceId) {
+            const data = logsData[traceId];
+            if (!data || !data.logs || data.logs.length === 0) {
+                alert('No logs available for this event');
+                return;
+            }
+
+            const html = data.logs.map(log => {
+                const ts = new Date(parseInt(log.timestamp) / 1000000).toISOString().substr(11, 12);
+                let level = 'info';
+                let message = log.line;
+
+                if (log.fields) {
+                    level = log.fields.level || 'info';
+                    message = log.fields.msg || log.fields.message || log.line;
+                }
+
+                const levelClass = level === 'error' ? 'log-level-error' : level === 'warn' ? 'log-level-warn' : 'log-level-info';
+
+                return `
+                    <div class="log-entry">
+                        <span class="log-timestamp">${ts}</span>
+                        <span class="${levelClass}">[${level.toUpperCase()}]</span>
+                        <span class="log-message">${message}</span>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('logsViewer').innerHTML = html;
+            document.getElementById('logsModal').classList.add('active');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('active');
+        }
+
+        // Close modal on escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                document.querySelectorAll('.modal.active').forEach(m => m.classList.remove('active'));
+            }
+        });
+
+        // Close modal on background click
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) modal.classList.remove('active');
+            });
+        });
+    </script>
+</body>
+</html>
