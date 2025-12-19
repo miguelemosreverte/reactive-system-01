@@ -148,6 +148,76 @@ export class KafkaClient {
         });
     }
 
+    /**
+     * High-throughput batch publishing - sends multiple events in a single Kafka request
+     * Used for benchmarks and bulk operations. Minimal tracing for maximum performance.
+     */
+    async publishEventBatch(events: CounterEvent[], fireAndForget = false): Promise<string[]> {
+        if (!this.isConnected) {
+            throw new Error('Kafka client not connected');
+        }
+
+        const traceIds: string[] = [];
+        const messages = events.map(event => {
+            const traceId = `batch-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            traceIds.push(traceId);
+
+            const eventWithTrace: CounterEvent = {
+                ...event,
+                traceId,
+                timestamp: event.timestamp || Date.now()
+            };
+
+            return {
+                key: event.sessionId,
+                value: JSON.stringify(eventWithTrace)
+            };
+        });
+
+        const sendPromise = this.producer.send({
+            topic: 'counter-events',
+            messages,
+            acks: fireAndForget ? 0 : 1  // acks=0 for fire-and-forget (fastest)
+        });
+
+        if (!fireAndForget) {
+            await sendPromise;
+        }
+
+        return traceIds;
+    }
+
+    /**
+     * Fire-and-forget single event publishing for maximum throughput
+     * Does not wait for Kafka acknowledgment
+     */
+    publishEventFireAndForget(event: CounterEvent): string {
+        if (!this.isConnected) {
+            throw new Error('Kafka client not connected');
+        }
+
+        const traceId = `fast-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        const eventWithTrace: CounterEvent = {
+            ...event,
+            traceId,
+            timestamp: event.timestamp || Date.now()
+        };
+
+        // Fire and forget - don't await
+        this.producer.send({
+            topic: 'counter-events',
+            messages: [{
+                key: event.sessionId,
+                value: JSON.stringify(eventWithTrace)
+            }],
+            acks: 0  // No acknowledgment for maximum speed
+        }).catch(err => {
+            logger.error('Fire-and-forget publish failed', err);
+        });
+
+        return traceId;
+    }
+
     async subscribeToResults(callback: (result: CounterResult) => void): Promise<void> {
         await this.consumer.subscribe({ topic: 'counter-results', fromBeginning: false });
 

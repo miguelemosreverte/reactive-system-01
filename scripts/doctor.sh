@@ -145,6 +145,68 @@ check_trace_timeline() {
     fi
 }
 
+# Check Grafana dashboard panels have data
+check_grafana_panels() {
+    local prometheus_url="http://localhost:9090"
+    local loki_url="http://localhost:3100"
+    local passed=0
+    local failed=0
+    local total=0
+
+    # Key metrics that must have data
+    local -a metrics=(
+        "application_ready_time_seconds|Drools Startup"
+        "sum(flink_taskmanager_job_task_operator_numRecordsIn)|Events Processed"
+        "flink_taskmanager_job_task_operator_numRecordsInPerSecond|Flink Throughput"
+        "jvm_memory_used_bytes|JVM Memory"
+        "flink_taskmanager_Status_JVM_Memory_Heap_Used|Flink Heap"
+        "go_memstats_heap_alloc_bytes|OTEL Memory"
+        "container_memory_usage_bytes|Container Memory"
+    )
+
+    for metric_pair in "${metrics[@]}"; do
+        local query="${metric_pair%%|*}"
+        local name="${metric_pair##*|}"
+        ((total++))
+
+        local encoded_query=$(python3 -c "import urllib.parse; print(urllib.parse.quote('$query'))" 2>/dev/null || echo "$query")
+        local result=$(curl -sf "${prometheus_url}/api/v1/query?query=${encoded_query}" 2>/dev/null)
+        local count=$(echo "$result" | grep -o '"result":\[' | wc -l)
+        local has_data=$(echo "$result" | grep -o '"value"' | wc -l)
+
+        if [[ "$has_data" -gt 0 ]]; then
+            ((passed++))
+        else
+            ((failed++))
+            print_warning "Grafana Panel '$name': No data"
+        fi
+    done
+
+    # Check Loki
+    ((total++))
+    if curl -sf "${loki_url}/ready" > /dev/null 2>&1; then
+        local loki_result=$(curl -sf "${loki_url}/loki/api/v1/labels" 2>/dev/null)
+        if echo "$loki_result" | grep -q "compose_service"; then
+            ((passed++))
+        else
+            ((failed++))
+            print_warning "Grafana Panel 'Logs': No log labels in Loki"
+        fi
+    else
+        ((failed++))
+        print_warning "Grafana Panel 'Logs': Loki not reachable"
+    fi
+
+    if [[ "$failed" -eq 0 ]]; then
+        print_success "Grafana Panels: All $passed/$total panels have data"
+        return 0
+    else
+        print_warning "Grafana Panels: $passed/$total panels have data ($failed missing)"
+        echo "         Run './scripts/grafana-diagnostics.sh' for detailed report"
+        return 1
+    fi
+}
+
 # E2E test - full round-trip through the system
 check_e2e_flow() {
     local session_id="e2e-test-$(date +%s)"
@@ -319,6 +381,14 @@ run_doctor() {
 
     # Trace Timeline Coverage
     if ! check_trace_timeline; then
+        all_healthy=false
+    fi
+
+    echo ""
+    echo -e "${CYAN}── Grafana Dashboard ──${NC}"
+
+    # Check Grafana panels have data
+    if ! check_grafana_panels; then
         all_healthy=false
     fi
 

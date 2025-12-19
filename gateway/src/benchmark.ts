@@ -56,14 +56,20 @@ export class AutoBenchmark {
     private currentRate = 0;
     private intervalHandle?: NodeJS.Timeout;
     private sendEvent: (action: string, value: number) => Promise<string>;
+    private sendEventBatch?: (events: { action: string; value: number }[]) => Promise<string[]>;
+    private sendEventFireAndForget?: (action: string, value: number) => string;
     private onResult: (callback: (traceId: string) => void) => void;
 
     constructor(
         sendEvent: (action: string, value: number) => Promise<string>,
         onResult: (callback: (traceId: string) => void) => void,
-        config?: Partial<BenchmarkConfig>
+        config?: Partial<BenchmarkConfig>,
+        sendEventBatch?: (events: { action: string; value: number }[]) => Promise<string[]>,
+        sendEventFireAndForget?: (action: string, value: number) => string
     ) {
         this.sendEvent = sendEvent;
+        this.sendEventBatch = sendEventBatch;
+        this.sendEventFireAndForget = sendEventFireAndForget;
         this.onResult = onResult;
         this.config = {
             maxDurationMs: 5 * 60 * 1000,  // 5 minutes
@@ -191,22 +197,48 @@ export class AutoBenchmark {
                     lastRateCheck = now;
                 }
 
-                // Send events at current rate
-                const eventsToSend = Math.ceil(this.currentRate / 100); // Send in batches
-                for (let i = 0; i < eventsToSend && this.running; i++) {
-                    try {
-                        const traceId = await this.sendEvent('increment', 1);
-                        this.eventTimings.set(traceId, { sentAt: Date.now() });
-                        this.result.totalEventsSent = (this.result.totalEventsSent || 0) + 1;
-                        eventsSinceLastCheck++;
-                    } catch (error) {
-                        logger.error('Failed to send benchmark event', error);
+                // Send events at current rate using batches for high throughput
+                const eventsToSend = Math.ceil(this.currentRate / 10); // Larger batches
+                const batchSize = Math.min(eventsToSend, 1000); // Cap batch size
+
+                try {
+                    // Use batch sending for high throughput
+                    if (this.sendEventBatch && batchSize > 10) {
+                        // Create batch of events
+                        const events = Array.from({ length: batchSize }, () => ({
+                            action: 'increment' as const,
+                            value: 1
+                        }));
+
+                        const traceIds = await this.sendEventBatch(events);
+                        const sentAt = Date.now();
+                        traceIds.forEach(traceId => {
+                            this.eventTimings.set(traceId, { sentAt });
+                        });
+                        this.result.totalEventsSent = (this.result.totalEventsSent || 0) + batchSize;
+                        eventsSinceLastCheck += batchSize;
+                    } else {
+                        // Fall back to fire-and-forget individual sends (still fast)
+                        for (let i = 0; i < batchSize && this.running; i++) {
+                            try {
+                                const traceId = this.sendEventFireAndForget
+                                    ? this.sendEventFireAndForget('increment', 1)
+                                    : await this.sendEvent('increment', 1);
+                                this.eventTimings.set(traceId, { sentAt: Date.now() });
+                                this.result.totalEventsSent = (this.result.totalEventsSent || 0) + 1;
+                                eventsSinceLastCheck++;
+                            } catch (error) {
+                                // Ignore individual failures in fire-and-forget mode
+                            }
+                        }
                     }
+                } catch (error) {
+                    logger.error('Failed to send benchmark batch', error);
                 }
 
-                // Pace the loop based on target rate
-                const targetDelay = Math.max(1, 1000 / this.currentRate * eventsToSend);
-                await this.sleep(Math.min(targetDelay, 100));
+                // Pace the loop based on target rate (faster pacing)
+                const targetDelay = Math.max(1, 1000 / this.currentRate * batchSize);
+                await this.sleep(Math.min(targetDelay, 50)); // Shorter max delay
             }
         } catch (error) {
             logger.error('Benchmark error', error);

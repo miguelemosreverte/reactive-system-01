@@ -195,6 +195,38 @@ async function main() {
         res.json(state);
     });
 
+    // Bulk API endpoint for high-throughput load testing
+    // POST /api/counter/bulk - sends multiple events in a single batch
+    app.post('/api/counter/bulk', async (req, res) => {
+        const { count = 100, sessionId = 'bulk', fireAndForget = true } = req.body;
+        const batchSize = Math.min(Math.max(1, count), 10000); // Cap at 10K per request
+
+        try {
+            const events = Array.from({ length: batchSize }, () => ({
+                sessionId,
+                action: 'increment',
+                value: 1,
+                timestamp: Date.now()
+            }));
+
+            const startTime = Date.now();
+            const traceIds = await kafkaClient.publishEventBatch(events, fireAndForget);
+            const duration = Date.now() - startTime;
+
+            res.json({
+                success: true,
+                count: batchSize,
+                durationMs: duration,
+                throughput: Math.round(batchSize / (duration / 1000)),
+                fireAndForget,
+                firstTraceId: traceIds[0]
+            });
+        } catch (error) {
+            logger.error('Bulk publish failed', error);
+            res.status(500).json({ success: false, error: 'Bulk publish failed' });
+        }
+    });
+
     // Benchmark endpoints (admin only)
     app.get('/api/admin/benchmark/status', adminAuth, (req, res) => {
         res.json({
@@ -216,7 +248,7 @@ async function main() {
             return;
         }
 
-        // Initialize benchmark with current kafkaClient
+        // Initialize benchmark with current kafkaClient (with batch methods for high throughput)
         benchmark = new AutoBenchmark(
             async (action, value) => {
                 return kafkaClient.publishEvent({
@@ -229,7 +261,28 @@ async function main() {
             (callback) => {
                 benchmarkResultCallbacks.push(callback);
             },
-            { ...getBenchmarkConfig(), ...req.body }
+            { ...getBenchmarkConfig(), ...req.body },
+            // Batch publishing for high throughput
+            async (events) => {
+                return kafkaClient.publishEventBatch(
+                    events.map(e => ({
+                        sessionId: 'benchmark',
+                        action: e.action,
+                        value: e.value,
+                        timestamp: Date.now()
+                    })),
+                    true // fire-and-forget for max speed
+                );
+            },
+            // Fire-and-forget individual publishing
+            (action, value) => {
+                return kafkaClient.publishEventFireAndForget({
+                    sessionId: 'benchmark',
+                    action,
+                    value,
+                    timestamp: Date.now()
+                });
+            }
         );
 
         // Start async
@@ -372,7 +425,28 @@ async function main() {
                     (callback) => {
                         benchmarkResultCallbacks.push(callback);
                     },
-                    getBenchmarkConfig()
+                    getBenchmarkConfig(),
+                    // Batch publishing for high throughput
+                    async (events) => {
+                        return kafkaClient.publishEventBatch(
+                            events.map(e => ({
+                                sessionId: 'benchmark',
+                                action: e.action,
+                                value: e.value,
+                                timestamp: Date.now()
+                            })),
+                            true // fire-and-forget for max speed
+                        );
+                    },
+                    // Fire-and-forget individual publishing
+                    (action, value) => {
+                        return kafkaClient.publishEventFireAndForget({
+                            sessionId: 'benchmark',
+                            action,
+                            value,
+                            timestamp: Date.now()
+                        });
+                    }
                 );
 
                 benchmark.start().then(result => {

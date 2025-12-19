@@ -283,7 +283,7 @@ services:
       - |
         FLINK_PROPERTIES=
         jobmanager.rpc.address: flink-jobmanager
-        parallelism.default: 1
+        parallelism.default: 8
       # OpenTelemetry Configuration
       - OTEL_ENABLED=${OTEL_FEATURE_ENABLED:-true}
       - OTEL_SERVICE_NAME=flink-jobmanager
@@ -320,14 +320,15 @@ services:
       - |
         FLINK_PROPERTIES=
         jobmanager.rpc.address: flink-jobmanager
-        taskmanager.numberOfTaskSlots: 2
-        parallelism.default: 1
+        taskmanager.numberOfTaskSlots: 8
+        parallelism.default: 8
         metrics.reporter.prom.factory.class: org.apache.flink.metrics.prometheus.PrometheusReporterFactory
         metrics.reporter.prom.port: 9249
         taskmanager.network.memory.buffer-debloat.enabled: true
-        taskmanager.network.memory.buffer-debloat.target: 100ms
-        taskmanager.network.memory.buffer-debloat.period: 50ms
+        taskmanager.network.memory.buffer-debloat.target: 50ms
+        taskmanager.network.memory.buffer-debloat.period: 25ms
         execution.buffer-timeout: 1ms
+        taskmanager.memory.process.size: 2g
       # OpenTelemetry Configuration
       - OTEL_ENABLED=${OTEL_FEATURE_ENABLED:-true}
       - OTEL_SERVICE_NAME=flink-taskmanager
@@ -417,8 +418,8 @@ services:
     deploy:
       resources:
         limits:
-          memory: 256M
-          cpus: '0.5'
+          memory: 512M
+          cpus: '1.0'
     depends_on:
       kafka:
         condition: service_healthy

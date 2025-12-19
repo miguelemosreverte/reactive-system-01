@@ -17,8 +17,8 @@ processors:
   # This is the second line of defense (after gateway adaptive sampling)
   memory_limiter:
     check_interval: 1s
-    limit_mib: 200        # Hard limit before refusing data
-    spike_limit_mib: 50   # Soft limit for spikes
+    limit_mib: 450        # Hard limit before refusing data (match GOMEMLIMIT)
+    spike_limit_mib: 100  # Soft limit for spikes
 
   # Tail-based sampling - keep errors and slow traces, sample the rest
   # This kicks in when gateway sampling isn't enough
