@@ -54,10 +54,8 @@ scrape_configs:
       # Use extracted level or default to info
       - labels:
           level:
-      # Extract trace context if present
-      - labels:
-          traceId:
-          spanId:
+      # Note: traceId/spanId are NOT used as labels to avoid high cardinality
+      # They remain in the log content and can be searched with |= "traceId"
       # Add timestamp
       - timestamp:
           source: timestamp

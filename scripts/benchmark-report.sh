@@ -298,9 +298,9 @@ serialize_html_report() {
     local successful_count=$(echo "$successful_samples" | jq 'length' 2>/dev/null || echo "0")
     local error_count=$(echo "$error_samples" | jq 'length' 2>/dev/null || echo "0")
 
-    # Extract embedded trace data for trace viewer
-    local trace_data=$(echo "$REPORT_SAMPLE_EVENTS" | jq -c '[.[] | select(.jaegerTrace != null) | {traceId: .traceId, trace: .jaegerTrace}] | INDEX(.traceId)' 2>/dev/null || echo "{}")
-    local logs_data=$(echo "$REPORT_SAMPLE_EVENTS" | jq -c '[.[] | select(.lokiLogs != null and (.lokiLogs | length) > 0) | {traceId: .traceId, logs: .lokiLogs}] | INDEX(.traceId)' 2>/dev/null || echo "{}")
+    # Extract embedded trace data for trace viewer (check both old and new field paths)
+    local trace_data=$(echo "$REPORT_SAMPLE_EVENTS" | jq -c '[.[] | select(.traceData.trace != null or .jaegerTrace != null) | {traceId: .traceId, trace: (.traceData.trace // .jaegerTrace)}] | INDEX(.traceId)' 2>/dev/null || echo "{}")
+    local logs_data=$(echo "$REPORT_SAMPLE_EVENTS" | jq -c '[.[] | select((.traceData.logs != null and (.traceData.logs | length) > 0) or (.lokiLogs != null and (.lokiLogs | length) > 0)) | {traceId: .traceId, logs: (.traceData.logs // .lokiLogs)}] | INDEX(.traceId)' 2>/dev/null || echo "{}")
 
     # Generate HTML
     cat > "$report_dir/index.html" << 'HTMLEOF'
@@ -555,9 +555,6 @@ HTMLEOF
         local kf=$(echo "$event" | jq -r '.componentTiming.kafkaMs // "-"')
         local fl=$(echo "$event" | jq -r '.componentTiming.flinkMs // "-"')
         local dr=$(echo "$event" | jq -r '.componentTiming.droolsMs // "-"')
-        local has_trace=$(echo "$event" | jq -r 'if .jaegerTrace != null then "true" else "false" end')
-        local has_logs=$(echo "$event" | jq -r 'if .lokiLogs != null and (.lokiLogs | length) > 0 then "true" else "false" end')
-
         cat >> "$report_dir/index.html" << ROWEOF
                 <tr>
                     <td><span class="status-success">✓ Success</span></td>
@@ -570,15 +567,11 @@ ROWEOF
             echo "                    <td class=\"timing\">${gw}ms</td><td class=\"timing\">${kf}ms</td><td class=\"timing\">${fl}ms</td><td class=\"timing\">${dr}ms</td>" >> "$report_dir/index.html"
         fi
 
-        local trace_btn_disabled=""
-        local logs_btn_disabled=""
-        [[ "$has_trace" == "false" ]] && trace_btn_disabled="disabled"
-        [[ "$has_logs" == "false" ]] && logs_btn_disabled="disabled"
-
+        # Buttons always enabled - they fallback to external Jaeger/Loki URLs
         cat >> "$report_dir/index.html" << ROWEOF
                     <td>
-                        <button class="btn" onclick="showTrace('${trace_id}')" ${trace_btn_disabled}>Trace</button>
-                        <button class="btn" onclick="showLogs('${trace_id}')" ${logs_btn_disabled}>Logs</button>
+                        <button class="btn" onclick="showTrace('${trace_id}')">Trace</button>
+                        <button class="btn" onclick="showLogs('${trace_id}')">Logs</button>
                     </td>
                 </tr>
 ROWEOF
@@ -591,8 +584,6 @@ ROWEOF
         local latency_ms=$(echo "$event" | jq -r '.latencyMs // 0')
         local error=$(echo "$event" | jq -r '.error // "Unknown error"')
         local event_status=$(echo "$event" | jq -r '.status // "error"')
-        local has_trace=$(echo "$event" | jq -r 'if .jaegerTrace != null then "true" else "false" end')
-        local has_logs=$(echo "$event" | jq -r 'if .lokiLogs != null and (.lokiLogs | length) > 0 then "true" else "false" end')
 
         cat >> "$report_dir/index.html" << ROWEOF
                 <tr>
@@ -606,15 +597,11 @@ ROWEOF
             echo "                    <td colspan=\"4\" style=\"color:#ef4444;font-size:0.7rem;\">${error:0:50}</td>" >> "$report_dir/index.html"
         fi
 
-        local trace_btn_disabled=""
-        local logs_btn_disabled=""
-        [[ "$has_trace" == "false" ]] && trace_btn_disabled="disabled"
-        [[ "$has_logs" == "false" ]] && logs_btn_disabled="disabled"
-
+        # Buttons always enabled - they fallback to external Jaeger/Loki URLs
         cat >> "$report_dir/index.html" << ROWEOF
                     <td>
-                        <button class="btn" onclick="showTrace('${trace_id}')" ${trace_btn_disabled}>Trace</button>
-                        <button class="btn" onclick="showLogs('${trace_id}')" ${logs_btn_disabled}>Logs</button>
+                        <button class="btn" onclick="showTrace('${trace_id}')">Trace</button>
+                        <button class="btn" onclick="showLogs('${trace_id}')">Logs</button>
                     </td>
                 </tr>
 ROWEOF
@@ -763,9 +750,18 @@ HTMLEOF
         const traceData = JSON.parse(document.getElementById('trace-data').textContent || '{}');
         const logsData = JSON.parse(document.getElementById('logs-data').textContent || '{}');
 
+        // External URLs for Jaeger and Loki (update these to match your environment)
+        const JAEGER_URL = 'http://localhost:16686';
+        const GRAFANA_URL = 'http://localhost:3001';
+
         function showTrace(traceId) {
             const data = traceData[traceId];
             if (!data || !data.trace) {
+                // Fallback: open Jaeger in new tab
+                if (traceId) {
+                    window.open(\`\${JAEGER_URL}/trace/\${traceId}\`, '_blank');
+                    return;
+                }
                 alert('No trace data available for this event');
                 return;
             }
@@ -809,6 +805,12 @@ HTMLEOF
         function showLogs(traceId) {
             const data = logsData[traceId];
             if (!data || !data.logs || data.logs.length === 0) {
+                // Fallback: open Grafana/Loki with trace ID query in new tab
+                if (traceId) {
+                    const lokiQuery = encodeURIComponent(\`{service=~".+"} |= "\${traceId}"\`);
+                    window.open(\`\${GRAFANA_URL}/explore?orgId=1&left=%7B%22datasource%22:%22loki%22,%22queries%22:%5B%7B%22expr%22:%22\${lokiQuery}%22%7D%5D%7D\`, '_blank');
+                    return;
+                }
                 alert('No logs available for this event');
                 return;
             }

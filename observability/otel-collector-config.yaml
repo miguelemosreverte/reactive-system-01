@@ -23,7 +23,7 @@ processors:
   # Tail-based sampling - keep errors and slow traces, sample the rest
   # This kicks in when gateway sampling isn't enough
   probabilistic_sampler:
-    sampling_percentage: 10  # Additional 10% sampling at collector level
+    sampling_percentage: 100  # 100% sampling for testing (set to 10% for production)
 
   # Add resource attributes
   resource:

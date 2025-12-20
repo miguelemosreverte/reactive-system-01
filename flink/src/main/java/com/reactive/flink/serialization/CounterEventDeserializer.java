@@ -1,5 +1,6 @@
 package com.reactive.flink.serialization;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.reactive.flink.model.CounterEvent;
 import io.opentelemetry.api.GlobalOpenTelemetry;
@@ -28,6 +29,7 @@ public class CounterEventDeserializer implements DeserializationSchema<CounterEv
     @Override
     public void open(InitializationContext context) {
         objectMapper = new ObjectMapper();
+        objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         tracer = GlobalOpenTelemetry.getTracer("flink-deserializer");
     }
 
@@ -35,6 +37,7 @@ public class CounterEventDeserializer implements DeserializationSchema<CounterEv
     public CounterEvent deserialize(byte[] message) throws IOException {
         if (objectMapper == null) {
             objectMapper = new ObjectMapper();
+            objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         }
         if (tracer == null) {
             tracer = GlobalOpenTelemetry.getTracer("flink-deserializer");

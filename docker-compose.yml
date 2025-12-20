@@ -413,56 +413,76 @@ services:
       - reactive-network
 
   # ============================================
-  # Gateway Service (WebSocket Bridge)
+  # Gateway Service (Java/Spring Boot WebFlux)
   # ============================================
 
   gateway:
     build:
-      context: ./gateway
+      context: ./gateway-java
       dockerfile: Dockerfile
-      args:
-        SERVICE_VERSION: *version
-        BUILD_TIME: ${BUILD_TIME:-}
     container_name: reactive-gateway
     ports:
-      - "8080:8080"
+      - "8080:3000"
     environment:
-      - NODE_ENV=${NODE_ENV:-production}
-      - NODE_OPTIONS=--max-old-space-size=512  # Limit Node.js heap to 512MB
-      - KAFKA_BROKERS=kafka:29092
-      - PORT=8080
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
       - SERVICE_VERSION=1.0.0
       # OpenTelemetry Configuration
       - OTEL_ENABLED=${OTEL_FEATURE_ENABLED:-true}
-      - OTEL_SERVICE_NAME=gateway
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+      - OTEL_SERVICE_NAME=gateway-java
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
       - OTEL_TRACES_SAMPLER=parentbased_traceidratio
       - OTEL_TRACES_SAMPLER_ARG=${OTEL_SAMPLING_RATE:-1.0}
-      # Jaeger Query URL for trace lookup
-      - JAEGER_QUERY_URL=http://jaeger:16686
-      # Admin Authentication
-      - ADMIN_API_KEY=${ADMIN_API_KEY:-reactive-admin-key}
-      # Benchmark configuration
-      - BENCHMARK_MODE=${BENCHMARK_MODE:-none}
-      - BENCHMARK_DURATION_MS=${BENCHMARK_DURATION_MS:-30000}
-      - BENCHMARK_EVENT_COUNT=${BENCHMARK_EVENT_COUNT:-0}
-      - BENCHMARK_REPORT_DIR=/reports
-    volumes:
-      - ./reports:/reports
+      # JVM tuning - increased heap for higher throughput
+      - JAVA_OPTS=-XX:+UseG1GC -XX:MaxGCPauseMillis=10 -Xms512m -Xmx1024m
     deploy:
       resources:
         limits:
-          memory: 768M  # Increased from 512M - Gateway was OOM crashing
-          cpus: '1.0'
+          memory: 1280M
+          cpus: '2.0'
     depends_on:
       kafka:
         condition: service_healthy
       otel-collector:
         condition: service_healthy
-      jaeger:
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - reactive-network
+
+  # ============================================
+  # Benchmark Service (Go - CI-ready benchmark runner)
+  # ============================================
+
+  benchmark:
+    build:
+      context: ./benchmark
+      dockerfile: Dockerfile
+    container_name: reactive-benchmark
+    ports:
+      - "8090:8090"
+    environment:
+      - PORT=8090
+      - REPORT_DIR=/reports
+      - API_KEY=${ADMIN_API_KEY:-reactive-admin-key}
+    volumes:
+      - ./reports:/reports
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+    depends_on:
+      kafka:
+        condition: service_healthy
+      gateway:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8090/health"]
       interval: 10s
       timeout: 5s
       retries: 5
