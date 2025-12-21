@@ -132,6 +132,23 @@
                     </excludes>
                 </configuration>
             </plugin>
+
+            <!-- PMD: Dead code detection -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-pmd-plugin</artifactId>
+                <version>3.21.2</version>
+                <configuration>
+                    <rulesets>
+                        <ruleset>/category/java/bestpractices.xml/UnusedPrivateField</ruleset>
+                        <ruleset>/category/java/bestpractices.xml/UnusedLocalVariable</ruleset>
+                        <ruleset>/category/java/bestpractices.xml/UnusedPrivateMethod</ruleset>
+                        <ruleset>/category/java/bestpractices.xml/UnusedFormalParameter</ruleset>
+                        <ruleset>/category/java/codestyle.xml/UnnecessaryImport</ruleset>
+                    </rulesets>
+                    <printFailingErrors>true</printFailingErrors>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 

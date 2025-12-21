@@ -1,7 +1,5 @@
 package com.reactive.counter.domain;
 
-import java.util.function.BiFunction;
-
 /**
  * Pure Counter Finite State Machine.
  *
@@ -65,7 +63,7 @@ public final class CounterFSM {
     /**
      * Generate message for action.
      */
-    public static String actionToMessage(Action action, int oldValue, int newValue) {
+    private static String actionToMessage(Action action, int oldValue, int newValue) {
         return switch (action) {
             case Action.Increment inc ->
                     String.format("Incremented by %d: %d -> %d", inc.value(), oldValue, newValue);
@@ -76,33 +74,5 @@ public final class CounterFSM {
             case Action.Reset ignored ->
                     String.format("Reset to 0 (was %d)", oldValue);
         };
-    }
-
-    /**
-     * Suggest alert level based on value.
-     * This is the pure rule - actual evaluation happens in Drools.
-     */
-    public static CounterState.AlertLevel suggestAlert(int value) {
-        if (value >= 100) return CounterState.AlertLevel.CRITICAL;
-        if (value >= 75) return CounterState.AlertLevel.HIGH_RISK;
-        if (value >= 50) return CounterState.AlertLevel.MEDIUM_RISK;
-        if (value >= 25) return CounterState.AlertLevel.LOW_RISK;
-        if (value > 0) return CounterState.AlertLevel.NORMAL;
-        return CounterState.AlertLevel.NONE;
-    }
-
-    /**
-     * Apply alert to state.
-     */
-    public static CounterState applyAlert(CounterState state, CounterState.AlertLevel alert, String message) {
-        return new CounterState(state.value(), alert, message);
-    }
-
-    /**
-     * Create a stateful processor (for use in Flink).
-     * Returns a function that maintains state across invocations.
-     */
-    public static BiFunction<CounterState, Action, CounterState> processor() {
-        return CounterFSM::transition;
     }
 }

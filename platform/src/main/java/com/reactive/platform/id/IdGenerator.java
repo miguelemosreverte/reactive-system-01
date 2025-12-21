@@ -59,14 +59,6 @@ public final class IdGenerator {
     }
 
     /**
-     * @deprecated Use {@link #generateRequestId()} instead.
-     */
-    @Deprecated
-    public String generateTraceId() {
-        return generateRequestId();
-    }
-
-    /**
      * Generate a unique event ID (shorter format for internal use).
      */
     public String generateEventId() {
@@ -75,13 +67,6 @@ public final class IdGenerator {
 
         // Use lower 48 bits of timestamp + 16 bits of sequence
         return String.format("%012x%04x", timestamp & 0xFFFFFFFFFFFFL, seq & 0xFFFF);
-    }
-
-    /**
-     * Get the node ID for this instance.
-     */
-    public int getNodeId() {
-        return nodeId;
     }
 
     private long getNextSequence(long currentTimestamp) {
