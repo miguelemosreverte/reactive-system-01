@@ -104,51 +104,44 @@ public class CounterController {
 
     private Mono<ResponseEntity<ActionResponse>> processAction(ActionRequest request, String customerId) {
         return Mono.fromCallable(() -> tracing.span("counter.submit", span -> {
-            String sessionId = request.sessionId() != null ? request.sessionId() : "default";
-
-            // Generate our own business IDs
+            String sessionId = request.sessionIdOrDefault();
             String requestId = idGenerator.generateRequestId();
             String eventId = idGenerator.generateEventId();
-            long now = System.currentTimeMillis();
-
-            // Capture OTel trace ID for observability correlation
             String otelTraceId = span.getSpanContext().getTraceId();
 
-            // Set business IDs as span attributes for Jaeger visibility
-            span.setAttribute("requestId", requestId);
-            span.setAttribute("customerId", customerId != null ? customerId : "");
-            span.setAttribute("eventId", eventId);
-            span.setAttribute("session.id", sessionId);
-            span.setAttribute("counter.action", request.action());
-            span.setAttribute("counter.value", request.value());
+            setSpanAttributes(span, requestId, customerId, eventId, sessionId, request);
 
-            // Add to MDC for structured logging
-            MDC.put("requestId", requestId);
-            if (customerId != null) {
-                MDC.put("customerId", customerId);
+            try {
+                MDC.put("requestId", requestId);
+                if (customerId != null) MDC.put("customerId", customerId);
+
+                CounterEvent event = CounterEvent.create(
+                        requestId, customerId, eventId, sessionId, request.action(), request.value()
+                );
+                publisher.publishFireAndForget(event);
+
+                log.info("Event published: action={}, value={}, session={}",
+                        request.action(), request.value(), sessionId);
+
+                return ResponseEntity.ok(new ActionResponse(
+                        true, requestId, customerId != null ? customerId : "",
+                        eventId, otelTraceId, "accepted"
+                ));
+            } finally {
+                MDC.remove("requestId");
+                MDC.remove("customerId");
             }
-
-            CounterEvent event = CounterEvent.create(
-                    requestId, customerId, eventId, sessionId, request.action(), request.value()
-            );
-
-            publisher.publishFireAndForget(event);
-
-            log.info("Counter event published: action={}, value={}, sessionId={}, customerId={}",
-                    request.action(), request.value(), sessionId, customerId);
-
-            MDC.remove("requestId");
-            MDC.remove("customerId");
-
-            return ResponseEntity.ok(new ActionResponse(
-                    true,
-                    requestId,
-                    customerId != null ? customerId : "",
-                    eventId,
-                    otelTraceId,
-                    "accepted"
-            ));
         }));
+    }
+
+    private void setSpanAttributes(Span span, String requestId, String customerId,
+                                   String eventId, String sessionId, ActionRequest request) {
+        span.setAttribute("requestId", requestId);
+        span.setAttribute("customerId", customerId != null ? customerId : "");
+        span.setAttribute("eventId", eventId);
+        span.setAttribute("session.id", sessionId);
+        span.setAttribute("counter.action", request.action());
+        span.setAttribute("counter.value", request.value());
     }
 
     /**
@@ -172,40 +165,36 @@ public class CounterController {
     }
 
     private ResponseEntity<ActionResponse> processActionFast(ActionRequest request, String customerId) {
-        String sessionId = request.sessionId() != null ? request.sessionId() : "default";
-
-        // Generate our own business IDs
+        String sessionId = request.sessionIdOrDefault();
         String requestId = idGenerator.generateRequestId();
         String eventId = idGenerator.generateEventId();
-        long now = System.currentTimeMillis();
-
-        // Capture OTel trace ID for observability correlation
         String otelTraceId = Span.current().getSpanContext().getTraceId();
 
-        // Set business IDs as span attributes for Jaeger visibility
-        Span.current().setAttribute("requestId", requestId);
-        Span.current().setAttribute("customerId", customerId != null ? customerId : "");
-        Span.current().setAttribute("eventId", eventId);
+        Span span = Span.current();
+        span.setAttribute("requestId", requestId);
+        span.setAttribute("customerId", customerId != null ? customerId : "");
+        span.setAttribute("eventId", eventId);
 
-        // Add to MDC for structured logging
-        MDC.put("requestId", requestId);
-        if (customerId != null) {
-            MDC.put("customerId", customerId);
+        try {
+            MDC.put("requestId", requestId);
+            if (customerId != null) MDC.put("customerId", customerId);
+
+            CounterEvent event = CounterEvent.create(
+                    requestId, customerId, eventId, sessionId, request.action(), request.value()
+            );
+            publisher.publishFireAndForget(event);
+
+            log.info("Event published (fast): action={}, value={}, session={}",
+                    request.action(), request.value(), sessionId);
+
+            return ResponseEntity.ok(new ActionResponse(
+                    true, requestId, customerId != null ? customerId : "",
+                    eventId, otelTraceId, "accepted"
+            ));
+        } finally {
+            MDC.remove("requestId");
+            MDC.remove("customerId");
         }
-
-        CounterEvent event = CounterEvent.create(
-                requestId, customerId, eventId, sessionId, request.action(), request.value()
-        );
-
-        publisher.publishFireAndForget(event);
-
-        log.info("Counter event published (fast): action={}, value={}, sessionId={}, customerId={}",
-                request.action(), request.value(), sessionId, customerId);
-
-        MDC.remove("requestId");
-        MDC.remove("customerId");
-
-        return ResponseEntity.ok(new ActionResponse(true, requestId, customerId != null ? customerId : "", eventId, otelTraceId, "accepted"));
     }
 
     /**
@@ -239,12 +228,6 @@ public class CounterController {
     // ========================================================================
     // DTOs
     // ========================================================================
-
-    public record ActionRequest(
-            String sessionId,
-            String action,
-            int value
-    ) {}
 
     public record ActionResponse(
             boolean success,

@@ -1,5 +1,6 @@
 package com.reactive.counter.bff;
 
+import com.reactive.counter.api.ActionRequest;
 import com.reactive.counter.domain.CounterEvent;
 import com.reactive.platform.id.IdGenerator;
 import com.reactive.platform.kafka.KafkaPublisher;
@@ -10,7 +11,6 @@ import com.reactive.platform.serialization.Codec;
 import com.reactive.platform.serialization.JsonCodec;
 import com.reactive.platform.serialization.Result;
 import com.reactive.platform.tracing.Tracing;
-import io.opentelemetry.api.trace.Span;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
@@ -138,52 +138,36 @@ public class BffController {
             long debugWaitMs
     ) {
         return Mono.fromCallable(() -> tracing.span("bff.submit", span -> {
-            String sessionId = request.sessionId() != null ? request.sessionId() : "default";
-
-            // Generate business IDs
+            String sessionId = request.sessionIdOrDefault();
             String requestId = idGenerator.generateRequestId();
             String eventId = idGenerator.generateEventId();
-            long now = System.currentTimeMillis();
-
-            // Capture OTel trace ID for later fetching
             String otelTraceId = span.getSpanContext().getTraceId();
 
-            // Set span attributes
             span.setAttribute("requestId", requestId);
             span.setAttribute("customerId", customerId != null ? customerId : "");
             span.setAttribute("eventId", eventId);
             span.setAttribute("session.id", sessionId);
             span.setAttribute("debug.mode", debugMode);
 
-            // MDC for logging
-            MDC.put("requestId", requestId);
-            if (customerId != null) {
-                MDC.put("customerId", customerId);
+            try {
+                MDC.put("requestId", requestId);
+                if (customerId != null) MDC.put("customerId", customerId);
+
+                log.info("BFF: action={}, value={}, debug={}", request.action(), request.value(), debugMode);
+
+                CounterEvent event = CounterEvent.create(
+                        requestId, customerId, eventId, sessionId, request.action(), request.value()
+                );
+                publisher.publishFireAndForget(event);
+
+                return new ActionDebugResponse(
+                        true, requestId, customerId != null ? customerId : "",
+                        eventId, otelTraceId, "accepted", null, null
+                );
+            } finally {
+                MDC.remove("requestId");
+                MDC.remove("customerId");
             }
-
-            log.info("BFF processing: action={}, value={}, debugMode={}",
-                    request.action(), request.value(), debugMode);
-
-            // Create and publish event
-            CounterEvent event = CounterEvent.create(
-                    requestId, customerId, eventId, sessionId, request.action(), request.value()
-            );
-
-            publisher.publishFireAndForget(event);
-
-            MDC.remove("requestId");
-            MDC.remove("customerId");
-
-            // Build base response
-            ActionDebugResponse.Builder responseBuilder = ActionDebugResponse.builder()
-                    .success(true)
-                    .requestId(requestId)
-                    .customerId(customerId != null ? customerId : "")
-                    .eventId(eventId)
-                    .otelTraceId(otelTraceId)
-                    .status("accepted");
-
-            return responseBuilder.build();
         }))
         .flatMap(baseResponse -> {
             if (!debugMode) {
@@ -197,40 +181,31 @@ public class BffController {
         });
     }
 
-    private Mono<ActionDebugResponse> fetchDebugData(ActionDebugResponse baseResponse) {
+    private Mono<ActionDebugResponse> fetchDebugData(ActionDebugResponse base) {
         return Mono.fromFuture(() -> {
             CompletableFuture<Result<TraceData>> traceFuture =
-                    observability.fetchTrace(baseResponse.otelTraceId());
+                    observability.fetchTrace(base.otelTraceId());
 
             Instant now = Instant.now();
-            Instant start = now.minusSeconds(60);
             CompletableFuture<Result<List<LogEntry>>> logsFuture =
-                    observability.fetchLogs(baseResponse.requestId(), start, now);
+                    observability.fetchLogs(base.requestId(), now.minusSeconds(60), now);
 
             return traceFuture.thenCombine(logsFuture, (traceResult, logsResult) -> {
-                ActionDebugResponse.Builder builder = ActionDebugResponse.builder()
-                        .success(baseResponse.success())
-                        .requestId(baseResponse.requestId())
-                        .customerId(baseResponse.customerId())
-                        .eventId(baseResponse.eventId())
-                        .otelTraceId(baseResponse.otelTraceId())
-                        .status(baseResponse.status());
+                TraceInfo trace = traceResult.isSuccess()
+                        ? TraceInfo.from(traceResult.getOrThrow())
+                        : null;
 
-                // Add trace data if available
-                if (traceResult.isSuccess()) {
-                    TraceData trace = traceResult.getOrThrow();
-                    builder.trace(TraceInfo.from(trace));
-                }
-
-                // Add logs if available
-                if (logsResult.isSuccess()) {
-                    List<LogEntry> logs = logsResult.getOrThrow();
-                    builder.logs(logs.stream()
+                List<LogInfo> logs = logsResult.isSuccess()
+                        ? logsResult.getOrThrow().stream()
                             .map(l -> new LogInfo(l.timestamp(), l.service(), l.message()))
-                            .toList());
-                }
+                            .toList()
+                        : null;
 
-                return builder.build();
+                return new ActionDebugResponse(
+                        base.success(), base.requestId(), base.customerId(),
+                        base.eventId(), base.otelTraceId(), base.status(),
+                        trace, logs
+                );
             });
         });
     }
@@ -323,12 +298,6 @@ public class BffController {
     // DTOs
     // ========================================================================
 
-    public record ActionRequest(
-            String sessionId,
-            String action,
-            int value
-    ) {}
-
     public record ActionDebugResponse(
             boolean success,
             String requestId,
@@ -338,36 +307,7 @@ public class BffController {
             String status,
             TraceInfo trace,
             List<LogInfo> logs
-    ) {
-        public static Builder builder() {
-            return new Builder();
-        }
-
-        public static class Builder {
-            private boolean success;
-            private String requestId;
-            private String customerId;
-            private String eventId;
-            private String otelTraceId;
-            private String status;
-            private TraceInfo trace;
-            private List<LogInfo> logs;
-
-            public Builder success(boolean success) { this.success = success; return this; }
-            public Builder requestId(String requestId) { this.requestId = requestId; return this; }
-            public Builder customerId(String customerId) { this.customerId = customerId; return this; }
-            public Builder eventId(String eventId) { this.eventId = eventId; return this; }
-            public Builder otelTraceId(String otelTraceId) { this.otelTraceId = otelTraceId; return this; }
-            public Builder status(String status) { this.status = status; return this; }
-            public Builder trace(TraceInfo trace) { this.trace = trace; return this; }
-            public Builder logs(List<LogInfo> logs) { this.logs = logs; return this; }
-
-            public ActionDebugResponse build() {
-                return new ActionDebugResponse(success, requestId, customerId, eventId,
-                        otelTraceId, status, trace, logs);
-            }
-        }
-    }
+    ) {}
 
     public record TraceInfo(
             String traceId,
