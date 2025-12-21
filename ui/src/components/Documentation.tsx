@@ -1,9 +1,14 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react';
+import { Card, Menu, Typography, Spin, Alert, Divider, theme } from 'antd';
+import { FileTextOutlined } from '@ant-design/icons';
+import type { MenuProps } from 'antd';
+
+const { Title, Text, Paragraph } = Typography;
 
 interface DocSection {
-  id: string
-  title: string
-  file: string
+  id: string;
+  title: string;
+  file: string;
 }
 
 const DOC_SECTIONS: DocSection[] = [
@@ -12,72 +17,92 @@ const DOC_SECTIONS: DocSection[] = [
   { id: 'gateway', title: 'Gateway', file: 'gateway/DOCUMENTATION.md' },
   { id: 'flink', title: 'Flink', file: 'flink/DOCUMENTATION.md' },
   { id: 'drools', title: 'Drools', file: 'drools/DOCUMENTATION.md' },
-]
+];
 
 function Documentation() {
-  const [activeSection, setActiveSection] = useState('overview')
-  const [content, setContent] = useState<string>('')
-  const [loading, setLoading] = useState(false)
+  const { token } = theme.useToken();
+  const [activeSection, setActiveSection] = useState('overview');
+  const [content, setContent] = useState<string>('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    loadDocumentation(activeSection)
-  }, [activeSection])
+    loadDocumentation(activeSection);
+  }, [activeSection]);
 
   const loadDocumentation = async (sectionId: string) => {
-    setLoading(true)
-    const section = DOC_SECTIONS.find(s => s.id === sectionId)
-    if (!section) return
+    setLoading(true);
+    setError(null);
+    const section = DOC_SECTIONS.find((s) => s.id === sectionId);
+    if (!section) return;
 
     try {
-      const response = await fetch(`/docs/${section.file}`)
+      const response = await fetch(`/docs/${section.file}`);
       if (response.ok) {
-        const text = await response.text()
-        setContent(text)
+        const text = await response.text();
+        setContent(text);
       } else {
-        setContent(`# Documentation Not Found\n\nCould not load ${section.file}`)
+        setError(`Could not load ${section.file}`);
       }
-    } catch (error) {
-      setContent(`# Error Loading Documentation\n\nFailed to fetch ${section.file}`)
+    } catch (err) {
+      setError(`Failed to fetch ${section.file}`);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
-  // Simple markdown renderer
   const renderMarkdown = (md: string) => {
-    const lines = md.split('\n')
-    const elements: JSX.Element[] = []
-    let inCodeBlock = false
-    let codeContent = ''
-    let inTable = false
-    let tableRows: string[][] = []
-    let listItems: string[] = []
-    let listType: 'ul' | 'ol' | null = null
+    const lines = md.split('\n');
+    const elements: JSX.Element[] = [];
+    let inCodeBlock = false;
+    let codeContent = '';
+    let codeLanguage = '';
+    let inTable = false;
+    let tableRows: string[][] = [];
+    let listItems: string[] = [];
+    let listType: 'ul' | 'ol' | null = null;
 
     const flushList = () => {
       if (listItems.length > 0) {
-        const ListTag = listType === 'ol' ? 'ol' : 'ul'
         elements.push(
-          <ListTag key={elements.length} style={styles.list}>
+          <ul key={elements.length} style={{ marginBottom: 16, paddingLeft: 24 }}>
             {listItems.map((item, i) => (
-              <li key={i} style={styles.listItem}>{item}</li>
+              <li key={i} style={{ marginBottom: 4 }}>
+                <Text>{item}</Text>
+              </li>
             ))}
-          </ListTag>
-        )
-        listItems = []
-        listType = null
+          </ul>
+        );
+        listItems = [];
+        listType = null;
       }
-    }
+    };
 
     const flushTable = () => {
       if (tableRows.length > 0) {
         elements.push(
-          <div key={elements.length} style={styles.tableWrapper}>
-            <table style={styles.table}>
+          <div key={elements.length} style={{ overflow: 'auto', marginBottom: 16 }}>
+            <table
+              style={{
+                width: '100%',
+                borderCollapse: 'collapse',
+                fontSize: 14,
+              }}
+            >
               <thead>
                 <tr>
                   {tableRows[0]?.map((cell, i) => (
-                    <th key={i} style={styles.th}>{cell}</th>
+                    <th
+                      key={i}
+                      style={{
+                        padding: 8,
+                        textAlign: 'left',
+                        borderBottom: `2px solid ${token.colorBorderSecondary}`,
+                        fontWeight: 600,
+                      }}
+                    >
+                      {cell}
+                    </th>
                   ))}
                 </tr>
               </thead>
@@ -85,286 +110,193 @@ function Documentation() {
                 {tableRows.slice(2).map((row, i) => (
                   <tr key={i}>
                     {row.map((cell, j) => (
-                      <td key={j} style={styles.td}>{cell}</td>
+                      <td
+                        key={j}
+                        style={{
+                          padding: 8,
+                          borderBottom: `1px solid ${token.colorBorderSecondary}`,
+                        }}
+                      >
+                        {cell}
+                      </td>
                     ))}
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        )
-        tableRows = []
-        inTable = false
+        );
+        tableRows = [];
+        inTable = false;
       }
-    }
+    };
 
     for (let i = 0; i < lines.length; i++) {
-      const line = lines[i]
+      const line = lines[i];
 
-      // Code blocks
       if (line.startsWith('```')) {
         if (inCodeBlock) {
           elements.push(
-            <pre key={elements.length} style={styles.codeBlock}>
+            <pre
+              key={elements.length}
+              style={{
+                background: token.colorBgLayout,
+                padding: 16,
+                borderRadius: token.borderRadius,
+                overflow: 'auto',
+                fontSize: 13,
+                marginBottom: 16,
+              }}
+            >
               <code>{codeContent}</code>
             </pre>
-          )
-          codeContent = ''
-          inCodeBlock = false
+          );
+          codeContent = '';
+          codeLanguage = '';
+          inCodeBlock = false;
         } else {
-          flushList()
-          flushTable()
-          inCodeBlock = true
+          flushList();
+          flushTable();
+          codeLanguage = line.slice(3);
+          inCodeBlock = true;
         }
-        continue
+        continue;
       }
 
       if (inCodeBlock) {
-        codeContent += line + '\n'
-        continue
+        codeContent += line + '\n';
+        continue;
       }
 
-      // Tables
       if (line.includes('|') && line.trim().startsWith('|')) {
-        flushList()
-        const cells = line.split('|').filter(c => c.trim()).map(c => c.trim())
+        flushList();
+        const cells = line
+          .split('|')
+          .filter((c) => c.trim())
+          .map((c) => c.trim());
         if (cells.length > 0) {
-          inTable = true
-          tableRows.push(cells)
+          inTable = true;
+          tableRows.push(cells);
         }
-        continue
+        continue;
       } else if (inTable) {
-        flushTable()
+        flushTable();
       }
 
-      // Empty lines
       if (line.trim() === '') {
-        flushList()
-        continue
+        flushList();
+        continue;
       }
 
-      // Headers
       if (line.startsWith('# ')) {
-        flushList()
-        elements.push(<h1 key={elements.length} style={styles.h1}>{line.slice(2)}</h1>)
-        continue
+        flushList();
+        elements.push(
+          <Title key={elements.length} level={2} style={{ marginTop: 0 }}>
+            {line.slice(2)}
+          </Title>
+        );
+        continue;
       }
       if (line.startsWith('## ')) {
-        flushList()
-        elements.push(<h2 key={elements.length} style={styles.h2}>{line.slice(3)}</h2>)
-        continue
+        flushList();
+        elements.push(
+          <Title key={elements.length} level={3} style={{ marginTop: 24 }}>
+            {line.slice(3)}
+          </Title>
+        );
+        continue;
       }
       if (line.startsWith('### ')) {
-        flushList()
-        elements.push(<h3 key={elements.length} style={styles.h3}>{line.slice(4)}</h3>)
-        continue
+        flushList();
+        elements.push(
+          <Title key={elements.length} level={4} style={{ marginTop: 16 }}>
+            {line.slice(4)}
+          </Title>
+        );
+        continue;
       }
       if (line.startsWith('#### ')) {
-        flushList()
-        elements.push(<h4 key={elements.length} style={styles.h4}>{line.slice(5)}</h4>)
-        continue
+        flushList();
+        elements.push(
+          <Title key={elements.length} level={5} style={{ marginTop: 12 }}>
+            {line.slice(5)}
+          </Title>
+        );
+        continue;
       }
 
-      // Lists
       if (line.match(/^[-*] /)) {
         if (listType !== 'ul') {
-          flushList()
-          listType = 'ul'
+          flushList();
+          listType = 'ul';
         }
-        listItems.push(line.slice(2))
-        continue
+        listItems.push(line.slice(2));
+        continue;
       }
       if (line.match(/^\d+\. /)) {
         if (listType !== 'ol') {
-          flushList()
-          listType = 'ol'
+          flushList();
+          listType = 'ol';
         }
-        listItems.push(line.replace(/^\d+\. /, ''))
-        continue
+        listItems.push(line.replace(/^\d+\. /, ''));
+        continue;
       }
 
-      // Inline code and bold
-      flushList()
-      let formatted = line
-        .replace(/`([^`]+)`/g, '<code>$1</code>')
-        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+      flushList();
+      const formatted = line
+        .replace(/`([^`]+)`/g, '<code style="background: ' + token.colorBgLayout + '; padding: 2px 6px; border-radius: 4px; font-size: 13px;">$1</code>')
+        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
 
       elements.push(
-        <p
-          key={elements.length}
-          style={styles.paragraph}
-          dangerouslySetInnerHTML={{ __html: formatted }}
-        />
-      )
+        <Paragraph key={elements.length} style={{ marginBottom: 12 }}>
+          <span dangerouslySetInnerHTML={{ __html: formatted }} />
+        </Paragraph>
+      );
     }
 
-    flushList()
-    flushTable()
+    flushList();
+    flushTable();
 
-    return elements
-  }
+    return elements;
+  };
+
+  const menuItems: MenuProps['items'] = DOC_SECTIONS.map((section) => ({
+    key: section.id,
+    icon: <FileTextOutlined />,
+    label: section.title,
+  }));
 
   return (
-    <div style={styles.container}>
-      <div style={styles.sidebar}>
-        <h3 style={styles.sidebarTitle}>Documentation</h3>
-        {DOC_SECTIONS.map(section => (
-          <button
-            key={section.id}
-            onClick={() => setActiveSection(section.id)}
-            style={{
-              ...styles.navButton,
-              ...(activeSection === section.id ? styles.navButtonActive : {})
-            }}
-          >
-            {section.title}
-          </button>
-        ))}
-      </div>
+    <div style={{ display: 'flex', gap: 24, minHeight: 600 }}>
+      <Card size="small" style={{ width: 200, flexShrink: 0 }}>
+        <Title level={5} style={{ marginTop: 0, marginBottom: 16 }}>
+          Documentation
+        </Title>
+        <Menu
+          mode="inline"
+          selectedKeys={[activeSection]}
+          onClick={(e) => setActiveSection(e.key)}
+          items={menuItems}
+          style={{ border: 'none' }}
+        />
+      </Card>
 
-      <div style={styles.content}>
+      <Card style={{ flex: 1 }}>
         {loading ? (
-          <div style={styles.loading}>Loading...</div>
-        ) : (
-          <div style={styles.markdown}>
-            {renderMarkdown(content)}
+          <div style={{ textAlign: 'center', padding: 48 }}>
+            <Spin size="large" />
+            <Text type="secondary" style={{ display: 'block', marginTop: 16 }}>
+              Loading documentation...
+            </Text>
           </div>
+        ) : error ? (
+          <Alert message="Error" description={error} type="error" showIcon />
+        ) : (
+          <div>{renderMarkdown(content)}</div>
         )}
-      </div>
+      </Card>
     </div>
-  )
+  );
 }
 
-const styles: { [key: string]: React.CSSProperties } = {
-  container: {
-    display: 'flex',
-    gap: '1.5rem',
-    height: '600px',
-    background: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: '1rem',
-    padding: '1.5rem',
-    backdropFilter: 'blur(10px)',
-    border: '1px solid rgba(255, 255, 255, 0.1)',
-  },
-  sidebar: {
-    width: '180px',
-    flexShrink: 0,
-    borderRight: '1px solid rgba(255, 255, 255, 0.1)',
-    paddingRight: '1rem',
-  },
-  sidebarTitle: {
-    margin: '0 0 1rem 0',
-    fontSize: '0.8rem',
-    fontWeight: 600,
-    color: '#94a3b8',
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em',
-  },
-  navButton: {
-    display: 'block',
-    width: '100%',
-    padding: '0.5rem 0.75rem',
-    marginBottom: '0.25rem',
-    border: 'none',
-    borderRadius: '0.5rem',
-    background: 'transparent',
-    color: '#94a3b8',
-    fontSize: '0.85rem',
-    textAlign: 'left',
-    cursor: 'pointer',
-    transition: 'all 0.2s ease',
-  },
-  navButtonActive: {
-    background: 'rgba(79, 70, 229, 0.2)',
-    color: '#a5b4fc',
-  },
-  content: {
-    flex: 1,
-    overflow: 'auto',
-  },
-  loading: {
-    color: '#64748b',
-    textAlign: 'center',
-    padding: '2rem',
-  },
-  markdown: {
-    color: '#e2e8f0',
-    lineHeight: 1.6,
-  },
-  h1: {
-    fontSize: '1.5rem',
-    fontWeight: 700,
-    color: '#fff',
-    marginBottom: '1rem',
-    paddingBottom: '0.5rem',
-    borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-  },
-  h2: {
-    fontSize: '1.25rem',
-    fontWeight: 600,
-    color: '#fff',
-    marginTop: '1.5rem',
-    marginBottom: '0.75rem',
-  },
-  h3: {
-    fontSize: '1rem',
-    fontWeight: 600,
-    color: '#e2e8f0',
-    marginTop: '1.25rem',
-    marginBottom: '0.5rem',
-  },
-  h4: {
-    fontSize: '0.9rem',
-    fontWeight: 600,
-    color: '#cbd5e1',
-    marginTop: '1rem',
-    marginBottom: '0.5rem',
-  },
-  paragraph: {
-    marginBottom: '0.75rem',
-    fontSize: '0.9rem',
-    color: '#cbd5e1',
-  },
-  codeBlock: {
-    background: 'rgba(0, 0, 0, 0.4)',
-    padding: '1rem',
-    borderRadius: '0.5rem',
-    overflow: 'auto',
-    fontSize: '0.8rem',
-    fontFamily: 'monospace',
-    color: '#a5b4fc',
-    marginBottom: '1rem',
-  },
-  list: {
-    margin: '0 0 1rem 1.5rem',
-    padding: 0,
-    fontSize: '0.9rem',
-  },
-  listItem: {
-    marginBottom: '0.35rem',
-    color: '#cbd5e1',
-  },
-  tableWrapper: {
-    overflow: 'auto',
-    marginBottom: '1rem',
-  },
-  table: {
-    width: '100%',
-    borderCollapse: 'collapse',
-    fontSize: '0.85rem',
-  },
-  th: {
-    padding: '0.5rem',
-    textAlign: 'left',
-    borderBottom: '1px solid rgba(255, 255, 255, 0.2)',
-    color: '#fff',
-    fontWeight: 600,
-  },
-  td: {
-    padding: '0.5rem',
-    borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-    color: '#cbd5e1',
-  },
-}
-
-export default Documentation
+export default Documentation;

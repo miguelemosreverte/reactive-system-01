@@ -3,461 +3,481 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Benchmark: Full End-to-End - 1606 events/sec</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <title>Full End-to-End Benchmark Report</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #0f172a; color: #e2e8f0; padding: 2rem; max-width: 1400px; margin: 0 auto; line-height: 1.5; }
-        h1 { font-size: 1rem; color: #64748b; font-weight: 400; margin-bottom: 0.5rem; }
-        h2 { font-size: 0.75rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.1em; margin: 2rem 0 1rem; border-bottom: 1px solid #334155; padding-bottom: 0.5rem; }
-        .hero { margin-bottom: 2rem; }
-        .hero .value { font-size: 4rem; font-weight: 700; line-height: 1; }
-        .hero .unit { font-size: 1.25rem; color: #64748b; }
-        .hero .subtitle { color: #94a3b8; font-size: 0.875rem; margin-top: 0.5rem; }
-        .meta { color: #64748b; font-size: 0.75rem; margin-bottom: 2rem; }
-        .meta strong { color: #94a3b8; }
-        .card { background: #1e293b; border-radius: 8px; padding: 1.25rem; }
-        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem; }
-        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
-        .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
-        .stat-label { font-size: 0.7rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; }
-        .stat-value { font-size: 1.5rem; font-weight: 700; color: #f1f5f9; }
-        .stat-value.green { color: #22c55e; }
-        .stat-value.yellow { color: #eab308; }
-        .stat-value.red { color: #ef4444; }
-        .stat-unit { font-size: 0.7rem; color: #64748b; }
-        .chart-container { background: #1e293b; border-radius: 8px; padding: 1.25rem; margin-bottom: 1.5rem; }
-        .chart-wrapper { height: 180px; }
-        .chart-title { font-size: 0.75rem; color: #94a3b8; margin-bottom: 0.75rem; }
-        .info-box { background: #1e3a5f; border-left: 3px solid #3b82f6; padding: 1rem; border-radius: 0 8px 8px 0; margin-bottom: 1.5rem; font-size: 0.875rem; }
-        .info-box strong { color: #60a5fa; }
-        .component-bar { display: flex; height: 32px; border-radius: 6px; overflow: hidden; margin: 1rem 0; }
-        .component-bar > div { display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 600; color: white; min-width: 40px; }
-        .legend { display: flex; gap: 1rem; flex-wrap: wrap; font-size: 0.75rem; }
-        .legend-item { display: flex; align-items: center; gap: 0.375rem; }
-        .legend-dot { width: 10px; height: 10px; border-radius: 2px; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1a1a2e; color: #eee; padding: 20px; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        h1 { color: #00d4ff; margin-bottom: 10px; }
+        .description { color: #888; margin-bottom: 30px; font-size: 14px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .card { background: #16213e; border-radius: 12px; padding: 20px; }
+        .card h3 { color: #00d4ff; margin-bottom: 15px; font-size: 14px; text-transform: uppercase; }
+        .metric { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #2a2a4a; }
+        .metric:last-child { border-bottom: none; }
+        .metric-label { color: #888; }
+        .metric-value { font-weight: bold; color: #00d4ff; }
+        .metric-value.success { color: #4ade80; }
+        .metric-value.error { color: #f87171; }
+        .chart-container { height: 250px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #2a2a4a; }
+        th { color: #00d4ff; font-size: 12px; text-transform: uppercase; }
+        .status-success { color: #4ade80; }
+        .status-error { color: #f87171; }
+        .footer { margin-top: 30px; text-align: center; color: #666; font-size: 12px; }
+        code { background: #2a2a4a; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
 
-        /* Sample Events Table */
-        .events-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; margin-top: 1rem; }
-        .events-table th { background: #0f172a; color: #64748b; font-weight: 500; text-align: left; padding: 0.75rem 0.5rem; border-bottom: 1px solid #334155; }
-        .events-table td { padding: 0.75rem 0.5rem; border-bottom: 1px solid #1e293b; vertical-align: middle; }
-        .events-table tr:hover { background: #1e3a5f; }
-        .events-table .id { font-family: monospace; color: #60a5fa; font-size: 0.7rem; }
-        .events-table .trace-id { font-family: monospace; color: #94a3b8; font-size: 0.65rem; max-width: 80px; overflow: hidden; text-overflow: ellipsis; }
-        .events-table .timing { color: #22c55e; font-family: monospace; }
-        .events-table .status-success { color: #22c55e; }
-        .events-table .status-error { color: #ef4444; }
-        .events-table .btn { background: #334155; border: none; color: #e2e8f0; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer; font-size: 0.7rem; margin-right: 0.25rem; }
-        .events-table .btn:hover { background: #475569; }
-        .events-table .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+         
+        .btn { padding: 4px 10px; border-radius: 4px; border: none; cursor: pointer; font-size: 11px; margin-right: 4px; }
+        .btn-trace { background: #8b5cf6; color: white; }
+        .btn-logs { background: #f59e0b; color: #1a1a2e; }
+        .btn:hover { opacity: 0.8; }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-        /* Modal */
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; }
-        .modal.active { display: flex; align-items: center; justify-content: center; }
-        .modal-content { background: #1e293b; border-radius: 8px; width: 90%; max-width: 900px; max-height: 80vh; overflow: hidden; display: flex; flex-direction: column; }
-        .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 1rem; border-bottom: 1px solid #334155; }
-        .modal-header h3 { font-size: 1rem; color: #f1f5f9; }
-        .modal-close { background: none; border: none; color: #64748b; font-size: 1.5rem; cursor: pointer; }
-        .modal-close:hover { color: #f1f5f9; }
-        .modal-body { overflow-y: auto; padding: 1rem; flex: 1; }
+         
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; overflow-y: auto; }
+        .modal.active { display: flex; justify-content: center; align-items: flex-start; padding: 40px 20px; }
+        .modal-content { background: #16213e; border-radius: 12px; max-width: 1000px; width: 100%; max-height: 90vh; overflow-y: auto; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; border-bottom: 1px solid #2a2a4a; position: sticky; top: 0; background: #16213e; z-index: 10; }
+        .modal-header h3 { color: #00d4ff; font-size: 14px; }
+        .modal-close { background: none; border: none; color: #888; font-size: 24px; cursor: pointer; }
+        .modal-close:hover { color: #fff; }
+        .modal-body { padding: 20px; }
 
-        /* Trace Viewer */
-        .trace-timeline { font-family: monospace; font-size: 0.75rem; }
-        .trace-span { display: flex; align-items: center; margin-bottom: 0.5rem; }
-        .trace-span-bar { height: 20px; border-radius: 3px; display: flex; align-items: center; padding: 0 0.5rem; color: white; font-size: 0.65rem; white-space: nowrap; }
-        .trace-span-label { min-width: 150px; color: #94a3b8; }
-        .trace-span-duration { min-width: 80px; color: #64748b; text-align: right; margin-left: 0.5rem; }
+         
+        .trace-viewer { font-family: monospace; font-size: 12px; }
+        .span-row { display: flex; align-items: center; padding: 8px 0; border-bottom: 1px solid #2a2a4a; }
+        .span-service { width: 120px; padding: 4px 8px; border-radius: 4px; text-align: center; font-size: 11px; font-weight: 500; flex-shrink: 0; }
+        .span-service.gateway { background: #4ade80; color: #1a1a2e; }
+        .span-service.kafka { background: #f59e0b; color: #1a1a2e; }
+        .span-service.flink { background: #8b5cf6; color: white; }
+        .span-service.drools { background: #f87171; color: #1a1a2e; }
+        .span-service.unknown { background: #666; color: white; }
+        .span-info { flex: 1; margin-left: 15px; }
+        .span-operation { color: #eee; }
+        .span-duration { color: #00d4ff; margin-left: 10px; }
+        .span-bar-container { flex: 1; margin-left: 20px; height: 20px; background: #2a2a4a; border-radius: 4px; position: relative; min-width: 200px; }
+        .span-bar { position: absolute; height: 100%; border-radius: 4px; min-width: 2px; }
+        .span-bar.gateway { background: #4ade80; }
+        .span-bar.kafka { background: #f59e0b; }
+        .span-bar.flink { background: #8b5cf6; }
+        .span-bar.drools { background: #f87171; }
+        .span-bar.unknown { background: #666; }
 
-        /* Log Viewer */
-        .log-entry { font-family: monospace; font-size: 0.7rem; padding: 0.5rem; border-bottom: 1px solid #334155; }
-        .log-entry:hover { background: #0f172a; }
-        .log-timestamp { color: #64748b; margin-right: 1rem; }
-        .log-level-info { color: #3b82f6; }
-        .log-level-warn { color: #eab308; }
-        .log-level-error { color: #ef4444; }
-        .log-message { color: #e2e8f0; }
+         
+        .log-viewer { font-family: monospace; font-size: 11px; }
+        .log-entry { padding: 8px 12px; border-bottom: 1px solid #2a2a4a; display: flex; gap: 10px; align-items: flex-start; }
+        .log-entry:hover { background: #1a1a2e; }
+        .log-time { color: #666; white-space: nowrap; flex-shrink: 0; font-size: 10px; }
+        .log-level { padding: 2px 6px; border-radius: 3px; font-size: 9px; font-weight: bold; flex-shrink: 0; min-width: 45px; text-align: center; }
+        .log-level.error { background: #f87171; color: #1a1a2e; }
+        .log-level.warn { background: #f59e0b; color: #1a1a2e; }
+        .log-level.info { background: #3b82f6; color: white; }
+        .log-level.debug { background: #6b7280; color: white; }
+        .log-service { padding: 2px 8px; border-radius: 4px; font-size: 10px; flex-shrink: 0; }
+        .log-service.gateway { background: #4ade80; color: #1a1a2e; }
+        .log-service.kafka { background: #f59e0b; color: #1a1a2e; }
+        .log-service.flink { background: #8b5cf6; color: white; }
+        .log-service.drools { background: #f87171; color: #1a1a2e; }
+        .log-logger { color: #666; font-size: 10px; flex-shrink: 0; }
+        .log-message { color: #eee; flex: 1; word-break: break-word; }
 
-        .footer { margin-top: 2rem; color: #475569; font-size: 0.7rem; text-align: center; }
-        @media (max-width: 768px) { .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; } .hero .value { font-size: 3rem; } }
+        .no-data { color: #666; text-align: center; padding: 40px; }
     </style>
 </head>
 <body>
-    <div class="hero">
-        <h1>HTTP → Kafka → Flink → Drools</h1>
-        <div><span class="value" style="color: #22c55e;">1606</span> <span class="unit">events/sec</span></div>
-        <div class="subtitle">Peak throughput for Full End-to-End benchmark</div>
-    </div>
+    <div class="container">
+        <h1>Full End-to-End Benchmark</h1>
+        <p class="description">Complete pipeline: HTTP → Kafka → Flink → Drools</p>
 
-    <div class="meta">
-        <strong>20100</strong> operations |
-        <strong>20100</strong> successful |
-        <strong>0</strong> failed |
-        <strong>100%</strong> success rate |
-        <strong>17s</strong> duration |
-        Commit: <strong>354d89d</strong> |
-        2025-12-19 19:09:04
-    </div>
-    <h2>Throughput</h2>
+        <div class="grid">
+            <div class="card">
+                <h3>Throughput</h3>
+                <div class="metric">
+                    <span class="metric-label">Peak</span>
+                    <span class="metric-value">3620 ops/sec</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Average</span>
+                    <span class="metric-value">1799 ops/sec</span>
+                </div>
+            </div>
 
-    <div class="chart-container">
-        <div class="chart-title">Throughput Over Time (events/sec)</div>
-        <div class="chart-wrapper">
-            <canvas id="throughputChart"></canvas>
-        </div>
-    </div>
+            <div class="card">
+                <h3>Operations</h3>
+                <div class="metric">
+                    <span class="metric-label">Total</span>
+                    <span class="metric-value">55199</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Successful</span>
+                    <span class="metric-value success">55199</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Failed</span>
+                    <span class="metric-value error">0</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Success Rate</span>
+                    <span class="metric-value">100.0%</span>
+                </div>
+            </div>
 
-    <div class="grid-2">
-        <div class="card">
-            <div class="stat-label">Peak Throughput</div>
-            <div class="stat-value green">1606</div>
-            <div class="stat-unit">events/sec</div>
-        </div>
-        <div class="card">
-            <div class="stat-label">Average Throughput</div>
-            <div class="stat-value">1275</div>
-            <div class="stat-unit">events/sec</div>
-        </div>
-    </div>
+            <div class="card">
+                <h3>Latency (ms)</h3>
+                <div class="metric">
+                    <span class="metric-label">P50</span>
+                    <span class="metric-value">3</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">P95</span>
+                    <span class="metric-value">16</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">P99</span>
+                    <span class="metric-value">32</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Max</span>
+                    <span class="metric-value">282</span>
+                </div>
+            </div>
 
-    <h2>Latency Distribution</h2>
-
-    <div class="grid-4">
-        <div class="card">
-            <div class="stat-label">P50 (Median)</div>
-            <div class="stat-value">90</div>
-            <div class="stat-unit">ms</div>
-        </div>
-        <div class="card">
-            <div class="stat-label">P95</div>
-            <div class="stat-value">211</div>
-            <div class="stat-unit">ms</div>
-        </div>
-        <div class="card">
-            <div class="stat-label">P99</div>
-            <div class="stat-value">242</div>
-            <div class="stat-unit">ms</div>
-        </div>
-        <div class="card">
-            <div class="stat-label">Max</div>
-            <div class="stat-value">296</div>
-            <div class="stat-unit">ms</div>
-        </div>
-    </div>
-    <h2>Component Timing Breakdown</h2>
-
-    <div class="card">
-        <div class="component-bar">
-            <div style="width: 0%; background: #3b82f6;">0ms</div>
-            <div style="width: 100%; background: #8b5cf6;">2ms</div>
-            <div style="width: 0%; background: #06b6d4;">0ms</div>
-            <div style="width: 0%; background: #10b981;">0ms</div>
-        </div>
-        <div class="legend">
-            <div class="legend-item"><span class="legend-dot" style="background:#3b82f6;"></span> Gateway 0ms</div>
-            <div class="legend-item"><span class="legend-dot" style="background:#8b5cf6;"></span> Kafka 2ms</div>
-            <div class="legend-item"><span class="legend-dot" style="background:#06b6d4;"></span> Flink 0ms</div>
-            <div class="legend-item"><span class="legend-dot" style="background:#10b981;"></span> Drools 0ms</div>
-        </div>
-    </div>
-    <h2>Resource Usage</h2>
-
-    <div class="grid-2">
-        <div class="chart-container">
-            <div class="chart-title">CPU Usage (%)</div>
-            <div class="chart-wrapper">
-                <canvas id="cpuChart"></canvas>
+            <div class="card">
+                <h3>Resources</h3>
+                <div class="metric">
+                    <span class="metric-label">Peak CPU</span>
+                    <span class="metric-value">100.0%</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Peak Memory</span>
+                    <span class="metric-value">85.6%</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Duration</span>
+                    <span class="metric-value">30s</span>
+                </div>
             </div>
         </div>
-        <div class="chart-container">
-            <div class="chart-title">Memory Usage (%)</div>
-            <div class="chart-wrapper">
-                <canvas id="memoryChart"></canvas>
+
+        <div class="grid">
+            <div class="card">
+                <h3>Throughput Over Time</h3>
+                <div class="chart-container">
+                    <canvas id="throughputChart"></canvas>
+                </div>
+            </div>
+            <div class="card">
+                <h3>Resource Usage</h3>
+                <div class="chart-container">
+                    <canvas id="resourceChart"></canvas>
+                </div>
             </div>
         </div>
-    </div>
 
-    <div class="grid-2">
+        
         <div class="card">
-            <div class="stat-label">Peak CPU</div>
-            <div class="stat-value">16%</div>
+            <h3>Sample Events</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Trace ID</th>
+                        <th>Latency</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="sample-events-table">
+                </tbody>
+            </table>
         </div>
-        <div class="card">
-            <div class="stat-label">Peak Memory</div>
-            <div class="stat-value">91%</div>
+        
+
+        <div class="footer">
+            Generated: 2025-12-21 00:46:21 | Commit: unknown | Go Benchmark Tool
         </div>
     </div>
-    <h2>Sample Events</h2>
 
-    <div class="info-box">
-        <strong>Event Samples:</strong> Up to 2 successful events and up to 10 error/timeout events are captured for analysis.
-        Click "Trace" to view the distributed trace timeline, or "Logs" to see correlated log entries.
-    </div>
-
-    <div class="card">
-        <table class="events-table">
-            <thead>
-                <tr>
-                    <th>Status</th>
-                    <th>Event ID</th>
-                    <th>Trace ID</th>
-                    <th>Latency</th>
-                    <th>Gateway</th><th>Kafka</th><th>Flink</th><th>Drools</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td><span class="status-success">✓ Success</span></td>
-                    <td class="id">evt_1766182067351_fullbench0_r2fn</td>
-                    <td class="trace-id" title="fast-1766182067351-qpm8pwbax">fast-17661820673...</td>
-                    <td class="timing">37ms</td>
-                    <td class="timing">0ms</td><td class="timing">1ms</td><td class="timing">0ms</td><td class="timing">0ms</td>
-                    <td>
-                        <button class="btn" onclick="showTrace('fast-1766182067351-qpm8pwbax')" disabled>Trace</button>
-                        <button class="btn" onclick="showLogs('fast-1766182067351-qpm8pwbax')" disabled>Logs</button>
-                    </td>
-                </tr>
-                <tr>
-                    <td><span class="status-success">✓ Success</span></td>
-                    <td class="id">evt_1766182067352_fullbench1_5izj</td>
-                    <td class="trace-id" title="fast-1766182067352-8tosn6xcw">fast-17661820673...</td>
-                    <td class="timing">39ms</td>
-                    <td class="timing">0ms</td><td class="timing">1ms</td><td class="timing">0ms</td><td class="timing">0ms</td>
-                    <td>
-                        <button class="btn" onclick="showTrace('fast-1766182067352-8tosn6xcw')" disabled>Trace</button>
-                        <button class="btn" onclick="showLogs('fast-1766182067352-8tosn6xcw')" disabled>Logs</button>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-    <!-- Trace Viewer Modal -->
-    <div id="traceModal" class="modal">
+    
+    <div id="trace-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>Trace Timeline</h3>
-                <button class="modal-close" onclick="closeModal('traceModal')">&times;</button>
+                <h3>Trace Viewer - <span id="trace-modal-id"></span></h3>
+                <button class="modal-close" onclick="closeModal('trace-modal')">&times;</button>
             </div>
             <div class="modal-body">
-                <div id="traceViewer" class="trace-timeline"></div>
+                <div id="trace-viewer" class="trace-viewer"></div>
             </div>
         </div>
     </div>
 
-    <!-- Logs Viewer Modal -->
-    <div id="logsModal" class="modal">
+    
+    <div id="logs-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>Correlated Logs</h3>
-                <button class="modal-close" onclick="closeModal('logsModal')">&times;</button>
+                <h3>Logs - <span id="logs-modal-id"></span></h3>
+                <button class="modal-close" onclick="closeModal('logs-modal')">&times;</button>
             </div>
             <div class="modal-body">
-                <div id="logsViewer"></div>
+                <div id="logs-viewer" class="log-viewer"></div>
             </div>
         </div>
     </div>
-
-    <div class="footer">
-        Generated 2025-12-19 19:09:04 | Full End-to-End Benchmark | Reactive System
-    </div>
-
-    <!-- Embedded Data -->
-    <script id="trace-data" type="application/json">{}</script>
-    <script id="logs-data" type="application/json">{}</script>
 
     <script>
-        Chart.defaults.animation = false;
-        Chart.defaults.responsive = true;
-        Chart.defaults.maintainAspectRatio = false;
+        const labels = ["1s","2s","3s","4s","5s","6s","7s","8s","9s","10s","11s","12s","13s","14s","15s","16s","17s","18s","19s","20s","21s","22s","23s","24s","25s","26s","27s","28s","29s"];
+        const throughputData = [0,410,605,689,1255,1438,1693,1316,1756,2561,1634,1801,1243,1886,2130,1713,243,776,1349,1682,2083,3036,2159,2283,2979,3593,3620,3267,2976];
+        const cpuData = [10.807313795735972,98.75311720727575,98.23232323218218,99.7493734348015,97.49373433503156,96.96202531653778,97.98994974832482,98.49246231160923,97.99498746971736,97.22921914244303,98.48484848493757,98.24561403495974,98.47328244278201,98.49624060155861,97.73299748191342,100,99.71264367788216,99.74937343335726,99.00000000052387,98.74371859325144,97.7386934666826,98.24120603001847,98.48866498745356,98.75000000029104,98.99749373482943,98.9974937334291,97.23618090486067,96.97732997490711,97.98994974838361];
+        const memoryData = [78.73637680430618,79.69864056455962,80.88561988067102,81.14790306565658,81.3844509456492,82.95834726096487,83.92593556707892,84.78979383161223,84.22973048923701,84.31650086622473,85.0120443199421,84.38867804344632,82.97249674857594,82.72658161197668,82.94109178826845,84.38069122465541,84.33567909159304,85.23680917715059,84.56478246765093,84.62532452614006,84.93049988611388,85.42760540382244,85.60380843072815,84.92808411993639,84.64405903935332,84.95480545194056,84.85891432509902,84.95870025863489,85.05592252194157];
+        const sampleEvents = [{"id":"full_2_1766277884764469465","traceId":"000e7c0bb76251d80000000000000000","otelTraceId":"84aca23b3f9734cbae2445f7b1b9abc1","timestamp":1766277884764,"latencyMs":7,"status":"success","componentTiming":{"gatewayMs":7,"kafkaMs":0,"flinkMs":0,"droolsMs":0},"traceData":{"logs":[{"timestamp":"1766277884770734762","line":"{\"timestamp\":\"2025-12-21T00:44:44.770734762Z\",\"@version\":\"1\",\"message\":\"Counter event published: action=INCREMENT, value=1, sessionId=full-bench-2, customerId=null\",\"logger\":\"com.reactive.counter.api.CounterController\",\"thread\":\"reactor-http-nio-2\",\"level\":\"INFO\",\"level_value\":20000,\"serviceVersion\":\"1.0.0\",\"serviceName\":\"counter-application\",\"traceId\":\"84aca23b3f9734cbae2445f7b1b9abc1\",\"spanId\":\"18d7b76e459fbc25\",\"requestId\":\"000e7c0bb76251d80000000000000000\",\"service\":\"counter-application\",\"version\":\"1.0.0\"}","labels":{"compose_service":"gateway","container":"reactive-application","container_id":"2142fb0267b7b9f292b624728326eaa0952e995ee4d09c7238a3490ddc41a447","level":"INFO","project":"reactive-system-01","service":"application"},"fields":{"@version":"1","level":"INFO","level_value":20000,"logger":"com.reactive.counter.api.CounterController","message":"Counter event published: action=INCREMENT, value=1, sessionId=full-bench-2, customerId=null","requestId":"000e7c0bb76251d80000000000000000","service":"counter-application","serviceName":"counter-application","serviceVersion":"1.0.0","spanId":"18d7b76e459fbc25","thread":"reactor-http-nio-2","timestamp":"2025-12-21T00:44:44.770734762Z","traceId":"84aca23b3f9734cbae2445f7b1b9abc1","version":"1.0.0"}},{"timestamp":"1766277884781791832","line":"{\"timestamp\":\"2025-12-21T00:44:44,781\",\"level\":\"INFO \",\"service\":\"flink\",\"logger\":\"com.reactive.flink.processor.CounterProcessor\",\"thread\":\"KeyedProcess -\u003e (Sink: Writer -\u003e Sink: Committer, async wait operator -\u003e Sink: Writer -\u003e Sink: Committer) (1/4)#0\",\"traceId\":\"979d6f21fd4dc397c8024a10087d5f7b\",\"spanId\":\"4a147e4d02a8f344\",\"message\":\"Flink processed event: sessionId=full-bench-2, action=INCREMENT, newValue=0, requestId=000e7c0bb76251d80000000000000000, customerId=null\"}","labels":{"compose_service":"flink-taskmanager","container":"reactive-flink-taskmanager","container_id":"3ddf14786feb59fbd56a00ca2b017aa683d486e1ff56493e9d93c37ccc637587","level":"INFO","project":"reactive-system-01","service":"flink-taskmanager"},"fields":{"level":"INFO ","logger":"com.reactive.flink.processor.CounterProcessor","message":"Flink processed event: sessionId=full-bench-2, action=INCREMENT, newValue=0, requestId=000e7c0bb76251d80000000000000000, customerId=null","service":"flink","spanId":"4a147e4d02a8f344","thread":"KeyedProcess -\u003e (Sink: Writer -\u003e Sink: Committer, async wait operator -\u003e Sink: Writer -\u003e Sink: Committer) (1/4)#0","timestamp":"2025-12-21T00:44:44,781","traceId":"979d6f21fd4dc397c8024a10087d5f7b"}}]}},{"id":"full_5_1766277884764550673","traceId":"000e7c0bb76351d80000000000000002","otelTraceId":"4c917728833d515d31c58a95615f8bae","timestamp":1766277884764,"latencyMs":7,"status":"success","componentTiming":{"gatewayMs":7,"kafkaMs":0,"flinkMs":0,"droolsMs":0},"traceData":{"logs":[{"timestamp":"1766277884771395795","line":"{\"timestamp\":\"2025-12-21T00:44:44.771395795Z\",\"@version\":\"1\",\"message\":\"Counter event published: action=INCREMENT, value=1, sessionId=full-bench-5, customerId=null\",\"logger\":\"com.reactive.counter.api.CounterController\",\"thread\":\"reactor-http-nio-2\",\"level\":\"INFO\",\"level_value\":20000,\"serviceVersion\":\"1.0.0\",\"serviceName\":\"counter-application\",\"traceId\":\"4c917728833d515d31c58a95615f8bae\",\"spanId\":\"9e72962c94f70bdd\",\"requestId\":\"000e7c0bb76351d80000000000000002\",\"service\":\"counter-application\",\"version\":\"1.0.0\"}","labels":{"compose_service":"gateway","container":"reactive-application","container_id":"2142fb0267b7b9f292b624728326eaa0952e995ee4d09c7238a3490ddc41a447","level":"INFO","project":"reactive-system-01","service":"application"},"fields":{"@version":"1","level":"INFO","level_value":20000,"logger":"com.reactive.counter.api.CounterController","message":"Counter event published: action=INCREMENT, value=1, sessionId=full-bench-5, customerId=null","requestId":"000e7c0bb76351d80000000000000002","service":"counter-application","serviceName":"counter-application","serviceVersion":"1.0.0","spanId":"9e72962c94f70bdd","thread":"reactor-http-nio-2","timestamp":"2025-12-21T00:44:44.771395795Z","traceId":"4c917728833d515d31c58a95615f8bae","version":"1.0.0"}},{"timestamp":"1766277884781812415","line":"{\"timestamp\":\"2025-12-21T00:44:44,781\",\"level\":\"INFO \",\"service\":\"flink\",\"logger\":\"com.reactive.flink.processor.CounterProcessor\",\"thread\":\"KeyedProcess -\u003e (Sink: Writer -\u003e Sink: Committer, async wait operator -\u003e Sink: Writer -\u003e Sink: Committer) (4/4)#0\",\"traceId\":\"0e251f6a922b6f8d70e9dd0a5afad5a0\",\"spanId\":\"ae600c31e773d535\",\"message\":\"Flink processed event: sessionId=full-bench-5, action=INCREMENT, newValue=0, requestId=000e7c0bb76351d80000000000000002, customerId=null\"}","labels":{"compose_service":"flink-taskmanager","container":"reactive-flink-taskmanager","container_id":"3ddf14786feb59fbd56a00ca2b017aa683d486e1ff56493e9d93c37ccc637587","level":"INFO","project":"reactive-system-01","service":"flink-taskmanager"},"fields":{"level":"INFO ","logger":"com.reactive.flink.processor.CounterProcessor","message":"Flink processed event: sessionId=full-bench-5, action=INCREMENT, newValue=0, requestId=000e7c0bb76351d80000000000000002, customerId=null","service":"flink","spanId":"ae600c31e773d535","thread":"KeyedProcess -\u003e (Sink: Writer -\u003e Sink: Committer, async wait operator -\u003e Sink: Writer -\u003e Sink: Committer) (4/4)#0","timestamp":"2025-12-21T00:44:44,781","traceId":"0e251f6a922b6f8d70e9dd0a5afad5a0"}}]}}];
 
-        // Chart data
-        const throughputTimeline = [100,1295,1606,1403,1397,1203,1447,1419,1366,1313,1324,1431];
-        const cpuTimeline = [15.718814819114016,15.71884949379073,15.718917818101238,15.718960950121355,15.718992735740505,15.719034413345549,15.719078232455391,15.71910968212965,15.719168053694354,15.719260009281784,15.719315845918238,15.719375828969943,15.719434547343239,15.719504764973486,15.71955666844757,15.71963602155482,15.719771062117399,15.719805744877343,15.719843296546546,15.719883709850619,15.71992718505529,15.719958967976863,15.720001562053909,15.720053463796829,15.72008636582232,15.72011761269198,15.720157480471322,15.72019394350091,15.720223403175284,15.72030946164366,15.720358349476005,15.720390680318733,15.720424280462506,15.720464671453158,15.72049848384288,15.72055292149993,15.720601455468133,15.720645273781598,15.720675994803504,15.720719296413508,15.720762587715065,15.720792963654903,15.72083249504484,15.720901856373926,15.72094031535545,15.720975512204696,15.72103389170282,15.721065687337695,15.721095133666838,15.721127998469415,15.721251744866754,15.721306526501689,15.721366495014577,15.72139827742229,15.721439948524013,15.721486119648933,15.72153694868295,15.721589089306976,15.721637756813772,15.721689120060326,15.721735805985587,15.721781604083374,15.721821657893587,15.72190470585057,15.721939376546445,15.721986980606935,15.722034403195536,15.72207821909549,15.722124749079235,15.722165694119008,15.72224921762746,15.722285541536621,15.722319666688724,15.722355064030399,15.722400144278344,15.722434257648477,15.722490470600459,15.722543488678403,15.722579066767967,15.722613727677587,15.722648396147932,15.72269708111946,15.722729397120816,15.722800760620007,15.722842232594946,15.72288409444324,15.722923424570231,15.7229638249545,15.723003888624293,15.723057230778679,15.723102541482238,15.72313953518739,15.723174729897238,15.723210661185295,15.723252322008632,15.723283227517246,15.723354152782996,15.723405205550279,15.72344238724238,15.723474712879248,15.723526800867171,15.72357008823995,15.723604219986711,15.72366730803752,15.723701967604942,15.723736277752506,15.723773289473245,15.72381029073791,15.723857908969055,15.723910886422585,15.724043032278976,15.724100859069297,15.724144127479978,15.724180584596075,15.724216324551787,15.724251898347935,15.724307925315086,15.724350377215673,15.724392225557112,15.724428679681946,15.724476098859247,15.724525304570456,15.724572523233238,15.724632537472843,15.724688809256989,15.724731021862603,15.724782380429081,15.724827463865163,15.724873073608919,15.724904313833077,15.724952801380812,15.725008859760573,15.72504210107866,15.725077293425052,15.72510801094413,15.725141258506659,15.72518113737598,15.725238244922018,15.725284096873379,15.725332431877847,15.725364207718439,15.725408020978634,15.72544807024718,15.725476976647052,15.72553460059025,15.725589062965788,15.725611348415876,15.725655149766338,15.725688745212056,15.725725379393172,15.72575663083447,15.725798834503873,15.725872843627506,15.72590681956854,15.725939331649519,15.72598026111362,15.726017974488482,15.726056569894586,15.726118859725313];
-        const memoryTimeline = [89.89376544981073,89.88765208234113,89.78776754610416,89.7877182447536,89.78623920423676,89.76632145861004,89.78052024757166,89.77805518004361,89.93404465321923,90.16388754953553,90.23093738629876,90.27170960321287,90.32165187133137,90.34881691549059,90.3821939298205,90.49686887122586,90.78528177200886,90.81185519996134,90.81905319714329,90.84020347653403,90.84390107782613,90.84523221429129,90.83867513466663,89.93241770865072,89.93512928293158,89.93182609244398,89.94464444358988,89.94222867741239,89.9413412531023,90.01366633437556,90.0503465391931,90.04822658111897,90.04186670689657,90.05118466215264,90.04709265005606,90.13928617560549,90.14796321330427,90.16576100085686,90.16388754953553,90.17364921694664,90.21900645946295,90.21639348788321,90.24114276586492,90.18651686944312,90.27249842482185,90.27555510855665,90.3451193141985,90.271808205914,90.26756828976573,90.27614672476338,90.3799260676947,90.41709928601784,90.49080480510683,90.49041039430234,90.48705790246419,90.41690208061559,90.44766612336579,90.45935054344879,90.38677895542271,90.5325137476816,90.53714807463436,90.55129756224542,90.54449397586798,90.56776421333285,90.59305580617075,90.59014702648764,90.58723824680453,90.58630152114388,90.57920212666306,90.58950610893035,90.59157676565391,90.59354881967636,90.59142886160222,90.58827357516633,90.58738615085622,90.54543070152864,90.54464187991967,90.56756700793062,90.51792054791548,90.42173361297058,90.41586675225382,90.4428345910108,90.4413062491434,90.4640341717521,90.47123216893404,90.47798645396092,90.48848764163046,90.4838533146777,90.45885752994317,90.48538165654509,90.48321239712041,90.47862737151821,90.48242357551143,90.50224271843703,90.52289998432217,90.52482273699405,90.41724719006953,90.45274416247359,90.45422320299042,90.45821661238588,90.82777953619261,90.82467355110725,90.82472285245782,90.83581565633409,90.83369569825996,90.81363004858154,90.78385203284259,90.78173207476846,90.83611146443745,90.84858470612944,90.77118158574837,90.75456703060924,90.66025354698567,90.50505289541901,90.49262895507759,90.48932576459,90.4895722713428,90.48789602542372,90.48336030117208,90.47981060393168,90.51397643987059,90.50786307240101,90.50446127921228,90.49203733887086,90.4354393884266,90.3748480285869,90.37849632852843,90.42996693851431,90.42735396693456,90.42735396693456,90.43179108848508,90.40960548073254,90.42059968190769,90.42059968190769,90.41862762788524,90.45525853135221,90.45313857327808,90.46408347310266,90.46053377586225,90.46087888531619,90.45471621649604,90.45195534086461,90.38495480545194,90.38465899734858,90.42074758595938,90.41788810762682,90.41478212254145,90.36942488002516,90.36548077198027,90.35330333839165,90.36222688284323,90.37065741378919,90.36459334767017,90.41640906710998,90.34788018982992,90.3476336830771,90.36972068812852,90.41813461437962,90.58955541028091];
-
-        // Throughput Chart
-        if (throughputTimeline && throughputTimeline.length > 0) {
-            new Chart(document.getElementById('throughputChart'), {
-                type: 'line',
-                data: {
-                    labels: throughputTimeline.map((_, i) => i + 's'),
-                    datasets: [{
-                        label: 'Throughput',
-                        data: throughputTimeline,
-                        borderColor: '#22c55e',
-                        backgroundColor: '#22c55e22',
-                        fill: true,
-                        tension: 0.3,
-                        pointRadius: 0,
-                        borderWidth: 2
-                    }]
-                },
-                options: {
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        y: { beginAtZero: true, grid: { color: '#334155' }, ticks: { color: '#64748b' } },
-                        x: { grid: { display: false }, ticks: { color: '#64748b', maxTicksLimit: 10 } }
-                    }
+        
+        new Chart(document.getElementById('throughputChart'), {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Throughput (ops/sec)',
+                    data: throughputData,
+                    borderColor: '#00d4ff',
+                    backgroundColor: 'rgba(0, 212, 255, 0.1)',
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, grid: { color: '#2a2a4a' }, ticks: { color: '#888' } },
+                    x: { grid: { color: '#2a2a4a' }, ticks: { color: '#888' } }
                 }
-            });
-        } else {
-            document.getElementById('throughputChart').parentElement.innerHTML = '<div style="color:#64748b;text-align:center;padding:2rem;">No timeline data available</div>';
-        }
+            }
+        });
 
-        // CPU Chart
-        if (cpuTimeline && cpuTimeline.length > 0) {
-            new Chart(document.getElementById('cpuChart'), {
-                type: 'line',
-                data: {
-                    labels: cpuTimeline.map((_, i) => i + 's'),
-                    datasets: [{
+        new Chart(document.getElementById('resourceChart'), {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
                         label: 'CPU %',
-                        data: cpuTimeline,
+                        data: cpuData,
                         borderColor: '#f59e0b',
-                        backgroundColor: '#f59e0b22',
-                        fill: true,
-                        tension: 0.3,
-                        pointRadius: 0,
-                        borderWidth: 2
-                    }]
-                },
-                options: {
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        y: { beginAtZero: true, max: 100, grid: { color: '#334155' }, ticks: { color: '#64748b' } },
-                        x: { grid: { display: false }, ticks: { color: '#64748b', maxTicksLimit: 10 } }
-                    }
-                }
-            });
-        } else {
-            document.getElementById('cpuChart').parentElement.innerHTML = '<div style="color:#64748b;text-align:center;padding:2rem;">No CPU data available</div>';
-        }
-
-        // Memory Chart
-        if (memoryTimeline && memoryTimeline.length > 0) {
-            new Chart(document.getElementById('memoryChart'), {
-                type: 'line',
-                data: {
-                    labels: memoryTimeline.map((_, i) => i + 's'),
-                    datasets: [{
+                        tension: 0.3
+                    },
+                    {
                         label: 'Memory %',
-                        data: memoryTimeline,
+                        data: memoryData,
                         borderColor: '#8b5cf6',
-                        backgroundColor: '#8b5cf622',
-                        fill: true,
-                        tension: 0.3,
-                        pointRadius: 0,
-                        borderWidth: 2
-                    }]
-                },
-                options: {
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        y: { beginAtZero: true, max: 100, grid: { color: '#334155' }, ticks: { color: '#64748b' } },
-                        x: { grid: { display: false }, ticks: { color: '#64748b', maxTicksLimit: 10 } }
+                        tension: 0.3
                     }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { labels: { color: '#888' } } },
+                scales: {
+                    y: { beginAtZero: true, max: 100, grid: { color: '#2a2a4a' }, ticks: { color: '#888' } },
+                    x: { grid: { color: '#2a2a4a' }, ticks: { color: '#888' } }
                 }
-            });
-        } else {
-            document.getElementById('memoryChart').parentElement.innerHTML = '<div style="color:#64748b;text-align:center;padding:2rem;">No memory data available</div>';
+            }
+        });
+
+        
+        function renderSampleEventsTable() {
+            const tbody = document.getElementById('sample-events-table');
+            if (!tbody || !sampleEvents) return;
+
+            tbody.innerHTML = sampleEvents.map((event, idx) => {
+                const hasTrace = event.traceData && event.traceData.trace;
+                const hasLogs = event.traceData && event.traceData.logs && event.traceData.logs.length > 0;
+                return `
+                    <tr>
+                        <td><code>${event.id || '-'}</code></td>
+                        <td><code>${event.traceId || '-'}</code></td>
+                        <td>${event.latencyMs}ms</td>
+                        <td class="status-${event.status}">${event.status}</td>
+                        <td>
+                            <button class="btn btn-trace" onclick="showTrace(${idx})" ${hasTrace ? '' : 'disabled'}>
+                                Trace ${hasTrace ? '(' + event.traceData.trace.spans.length + ')' : ''}
+                            </button>
+                            <button class="btn btn-logs" onclick="showLogs(${idx})" ${hasLogs ? '' : 'disabled'}>
+                                Logs ${hasLogs ? '(' + event.traceData.logs.length + ')' : ''}
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
         }
 
-        // Trace and Log Viewer Functions
-        const traceData = JSON.parse(document.getElementById('trace-data').textContent || '{}');
-        const logsData = JSON.parse(document.getElementById('logs-data').textContent || '{}');
+        
+        function getServiceClass(serviceName) {
+            const name = (serviceName || '').toLowerCase();
+            if (name.includes('gateway')) return 'gateway';
+            if (name.includes('kafka')) return 'kafka';
+            if (name.includes('flink')) return 'flink';
+            if (name.includes('drools')) return 'drools';
+            return 'unknown';
+        }
 
-        function showTrace(traceId) {
-            const data = traceData[traceId];
-            if (!data || !data.trace) {
-                alert('No trace data available for this event');
+        
+        function showTrace(idx) {
+            const event = sampleEvents[idx];
+            if (!event || !event.traceData || !event.traceData.trace) return;
+
+            const trace = event.traceData.trace;
+            const viewer = document.getElementById('trace-viewer');
+            document.getElementById('trace-modal-id').textContent = event.traceId;
+
+            
+            const spans = [...trace.spans].sort((a, b) => a.startTime - b.startTime);
+            if (spans.length === 0) {
+                viewer.innerHTML = '<div class="no-data">No spans found</div>';
+                openModal('trace-modal');
                 return;
             }
 
-            const trace = data.trace;
-            const spans = trace.spans.sort((a, b) => a.startTime - b.startTime);
-            const baseTime = spans[0]?.startTime || 0;
-            const maxDuration = Math.max(...spans.map(s => (s.startTime - baseTime) + s.duration));
+            
+            const minTime = spans[0].startTime;
+            const maxTime = Math.max(...spans.map(s => s.startTime + s.duration));
+            const totalDuration = maxTime - minTime;
 
-            const colors = {
-                'gateway-service': '#3b82f6',
-                'flink-processor': '#06b6d4',
-                'drools-service': '#10b981',
-                'kafka': '#8b5cf6'
-            };
-
-            const html = spans.map(span => {
-                const offset = ((span.startTime - baseTime) / maxDuration) * 80;
-                const width = Math.max((span.duration / maxDuration) * 80, 2);
+            viewer.innerHTML = spans.map(span => {
                 const serviceName = trace.processes[span.processID]?.serviceName || 'unknown';
-                const color = colors[serviceName] || '#64748b';
+                const serviceClass = getServiceClass(serviceName);
                 const durationMs = (span.duration / 1000).toFixed(2);
+                const offsetPct = ((span.startTime - minTime) / totalDuration * 100).toFixed(2);
+                const widthPct = Math.max((span.duration / totalDuration * 100), 0.5).toFixed(2);
 
                 return `
-                    <div class="trace-span">
-                        <span class="trace-span-label">${serviceName}</span>
-                        <div style="flex:1;position:relative;height:20px;">
-                            <div class="trace-span-bar" style="position:absolute;left:${offset}%;width:${width}%;background:${color};">
-                                ${span.operationName}
-                            </div>
+                    <div class="span-row">
+                        <div class="span-service ${serviceClass}">${serviceName}</div>
+                        <div class="span-info">
+                            <span class="span-operation">${span.operationName}</span>
+                            <span class="span-duration">${durationMs}ms</span>
                         </div>
-                        <span class="trace-span-duration">${durationMs}ms</span>
+                        <div class="span-bar-container">
+                            <div class="span-bar ${serviceClass}" style="left: ${offsetPct}%; width: ${widthPct}%"></div>
+                        </div>
                     </div>
                 `;
             }).join('');
 
-            document.getElementById('traceViewer').innerHTML = html || '<div style="color:#64748b;">No spans found</div>';
-            document.getElementById('traceModal').classList.add('active');
+            openModal('trace-modal');
         }
 
-        function showLogs(traceId) {
-            const data = logsData[traceId];
-            if (!data || !data.logs || data.logs.length === 0) {
-                alert('No logs available for this event');
+        
+        function showLogs(idx) {
+            const event = sampleEvents[idx];
+            if (!event || !event.traceData || !event.traceData.logs) return;
+
+            const logs = event.traceData.logs;
+            const viewer = document.getElementById('logs-viewer');
+            document.getElementById('logs-modal-id').textContent = event.traceId;
+
+            if (logs.length === 0) {
+                viewer.innerHTML = '<div class="no-data">No logs found</div>';
+                openModal('logs-modal');
                 return;
             }
 
-            const html = data.logs.map(log => {
-                const ts = new Date(parseInt(log.timestamp) / 1000000).toISOString().substr(11, 12);
-                let level = 'info';
-                let message = log.line;
+            viewer.innerHTML = logs.map(log => {
+                const service = log.labels?.service || log.labels?.container || 'unknown';
+                const serviceClass = getServiceClass(service);
 
-                if (log.fields) {
-                    level = log.fields.level || 'info';
-                    message = log.fields.msg || log.fields.message || log.line;
+                
+                let parsed = null;
+                try {
+                    parsed = JSON.parse(log.line);
+                } catch (e) {}
+
+                
+                let time = '-';
+                let level = 'INFO';
+                let message = log.line;
+                let logger = '';
+
+                if (parsed) {
+                    
+                    if (parsed.timestamp) {
+                        time = parsed.timestamp.split('T')[1] || parsed.timestamp;
+                    }
+                    
+                    level = (parsed.level || 'INFO').trim().toUpperCase();
+                    
+                    message = parsed.message || parsed.msg || log.line;
+                    
+                    if (parsed.logger) {
+                        const parts = parsed.logger.split('.');
+                        logger = parts[parts.length - 1];
+                    }
+                } else if (log.timestamp) {
+                    try {
+                        const ts = parseInt(log.timestamp) / 1000000;
+                        time = new Date(ts).toISOString().split('T')[1].replace('Z', '');
+                    } catch (e) {}
                 }
 
-                const levelClass = level === 'error' ? 'log-level-error' : level === 'warn' ? 'log-level-warn' : 'log-level-info';
+                
+                const levelClass = level === 'ERROR' ? 'error' : level === 'WARN' ? 'warn' : level === 'DEBUG' ? 'debug' : 'info';
 
                 return `
                     <div class="log-entry">
-                        <span class="log-timestamp">${ts}</span>
-                        <span class="${levelClass}">[${level.toUpperCase()}]</span>
-                        <span class="log-message">${message}</span>
+                        <span class="log-time">${time}</span>
+                        <span class="log-level ${levelClass}">${level}</span>
+                        <span class="log-service ${serviceClass}">${service}</span>
+                        ${logger ? `<span class="log-logger">${logger}</span>` : ''}
+                        <span class="log-message">${escapeHtml(message)}</span>
                     </div>
                 `;
             }).join('');
 
-            document.getElementById('logsViewer').innerHTML = html;
-            document.getElementById('logsModal').classList.add('active');
+            openModal('logs-modal');
+        }
+
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        
+        function openModal(id) {
+            document.getElementById(id).classList.add('active');
+            document.body.style.overflow = 'hidden';
         }
 
         function closeModal(id) {
             document.getElementById(id).classList.remove('active');
+            document.body.style.overflow = '';
         }
 
-        // Close modal on escape key
+        
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 document.querySelectorAll('.modal.active').forEach(m => m.classList.remove('active'));
+                document.body.style.overflow = '';
             }
         });
 
-        // Close modal on background click
         document.querySelectorAll('.modal').forEach(modal => {
             modal.addEventListener('click', (e) => {
-                if (e.target === modal) modal.classList.remove('active');
+                if (e.target === modal) {
+                    modal.classList.remove('active');
+                    document.body.style.overflow = '';
+                }
             });
         });
+
+        
+        renderSampleEventsTable();
     </script>
 </body>
 </html>

@@ -1,18 +1,24 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react';
+import { Card, Button, Badge, Typography, Space, Row, Col, Alert, theme } from 'antd';
+import { ReloadOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
+
+const { Text, Title } = Typography;
 
 interface ServiceHealth {
-  name: string
-  status: 'healthy' | 'unhealthy' | 'checking'
-  detail: string
-  port: number
-  category: 'infrastructure' | 'observability' | 'service' | 'application'
+  name: string;
+  status: 'healthy' | 'unhealthy' | 'checking';
+  detail: string;
+  port: number;
+  category: 'infrastructure' | 'observability' | 'service' | 'application';
 }
 
 interface SystemStatusProps {
-  isConnected: boolean
+  isConnected: boolean;
 }
 
 function SystemStatus({ isConnected }: SystemStatusProps) {
+  const { token } = theme.useToken();
+
   const [services, setServices] = useState<ServiceHealth[]>([
     { name: 'Zookeeper', status: 'checking', detail: 'TCP 2181', port: 2181, category: 'infrastructure' },
     { name: 'Kafka', status: 'checking', detail: 'TCP 9092', port: 9092, category: 'infrastructure' },
@@ -25,277 +31,221 @@ function SystemStatus({ isConnected }: SystemStatusProps) {
     { name: 'UI', status: 'checking', detail: 'React Frontend', port: 3000, category: 'service' },
     { name: 'Flink Job', status: 'checking', detail: 'Counter Processing', port: 8081, category: 'application' },
     { name: 'WebSocket', status: isConnected ? 'healthy' : 'unhealthy', detail: isConnected ? 'Connected' : 'Disconnected', port: 0, category: 'application' },
-  ])
+  ]);
 
-  const [lastCheck, setLastCheck] = useState<Date | null>(null)
+  const [lastCheck, setLastCheck] = useState<Date | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const checkHealth = useCallback(async () => {
-    const newServices = [...services]
+    setLoading(true);
+    const newServices = [...services];
 
-    // Service indices:
-    // 0: Zookeeper, 1: Kafka, 2: OTEL Collector, 3: Jaeger, 4: Grafana
-    // 5: Drools, 6: Flink, 7: Gateway, 8: UI
-    // 9: Flink Job, 10: WebSocket
-
-    // Check Gateway health (which confirms Kafka connectivity)
     try {
-      const gatewayRes = await fetch('/api/health', { method: 'GET' })
-      newServices[7].status = gatewayRes.ok ? 'healthy' : 'unhealthy'
-      newServices[7].detail = gatewayRes.ok ? 'WebSocket Bridge' : 'Unreachable'
+      const gatewayRes = await fetch('/api/health', { method: 'GET' });
+      newServices[7].status = gatewayRes.ok ? 'healthy' : 'unhealthy';
+      newServices[7].detail = gatewayRes.ok ? 'WebSocket Bridge' : 'Unreachable';
 
-      // If gateway is healthy, assume Zookeeper and Kafka are too
       if (gatewayRes.ok) {
-        newServices[0].status = 'healthy'
-        newServices[0].detail = 'TCP 2181'
-        newServices[1].status = 'healthy'
-        newServices[1].detail = 'TCP 9092'
+        newServices[0].status = 'healthy';
+        newServices[0].detail = 'TCP 2181';
+        newServices[1].status = 'healthy';
+        newServices[1].detail = 'TCP 9092';
       }
     } catch {
-      newServices[7].status = 'unhealthy'
-      newServices[7].detail = 'Unreachable'
+      newServices[7].status = 'unhealthy';
+      newServices[7].detail = 'Unreachable';
     }
 
-    // Check OTEL Collector
     try {
-      const otelRes = await fetch('/api/otel-health', { method: 'GET' })
-      newServices[2].status = otelRes.ok ? 'healthy' : 'unhealthy'
-      newServices[2].detail = otelRes.ok ? 'Traces & Metrics' : 'Unreachable'
+      const otelRes = await fetch('/api/otel-health', { method: 'GET' });
+      newServices[2].status = otelRes.ok ? 'healthy' : 'unhealthy';
+      newServices[2].detail = otelRes.ok ? 'Traces & Metrics' : 'Unreachable';
     } catch {
-      newServices[2].status = 'unhealthy'
-      newServices[2].detail = 'Unreachable'
+      newServices[2].status = 'unhealthy';
+      newServices[2].detail = 'Unreachable';
     }
 
-    // Check Jaeger
     try {
-      const jaegerRes = await fetch('/api/jaeger-health', { method: 'GET' })
-      newServices[3].status = jaegerRes.ok ? 'healthy' : 'unhealthy'
-      newServices[3].detail = jaegerRes.ok ? 'Trace Storage' : 'Unreachable'
+      const jaegerRes = await fetch('/api/jaeger-health', { method: 'GET' });
+      newServices[3].status = jaegerRes.ok ? 'healthy' : 'unhealthy';
+      newServices[3].detail = jaegerRes.ok ? 'Trace Storage' : 'Unreachable';
     } catch {
-      newServices[3].status = 'unhealthy'
-      newServices[3].detail = 'Unreachable'
+      newServices[3].status = 'unhealthy';
+      newServices[3].detail = 'Unreachable';
     }
 
-    // Check Grafana
     try {
-      const grafanaRes = await fetch('/api/grafana-health', { method: 'GET' })
-      newServices[4].status = grafanaRes.ok ? 'healthy' : 'unhealthy'
-      newServices[4].detail = grafanaRes.ok ? 'Dashboards' : 'Unreachable'
+      const grafanaRes = await fetch('/api/grafana-health', { method: 'GET' });
+      newServices[4].status = grafanaRes.ok ? 'healthy' : 'unhealthy';
+      newServices[4].detail = grafanaRes.ok ? 'Dashboards' : 'Unreachable';
     } catch {
-      newServices[4].status = 'unhealthy'
-      newServices[4].detail = 'Unreachable'
+      newServices[4].status = 'unhealthy';
+      newServices[4].detail = 'Unreachable';
     }
 
-    // Check Drools
     try {
-      const droolsRes = await fetch('/api/drools-health', { method: 'GET' })
-      newServices[5].status = droolsRes.ok ? 'healthy' : 'unhealthy'
-      newServices[5].detail = droolsRes.ok ? 'Rules Engine' : 'Unreachable'
+      const droolsRes = await fetch('/api/drools-health', { method: 'GET' });
+      newServices[5].status = droolsRes.ok ? 'healthy' : 'unhealthy';
+      newServices[5].detail = droolsRes.ok ? 'Rules Engine' : 'Unreachable';
     } catch {
-      newServices[5].status = 'unhealthy'
-      newServices[5].detail = 'Unreachable'
+      newServices[5].status = 'unhealthy';
+      newServices[5].detail = 'Unreachable';
     }
 
-    // Check Flink and Job
     try {
-      const flinkRes = await fetch('/api/flink-health', { method: 'GET' })
+      const flinkRes = await fetch('/api/flink-health', { method: 'GET' });
       if (flinkRes.ok) {
-        newServices[6].status = 'healthy'
-        newServices[6].detail = 'Stream Processor'
+        newServices[6].status = 'healthy';
+        newServices[6].detail = 'Stream Processor';
 
-        // Check for running jobs
-        const jobsRes = await fetch('/api/flink-jobs', { method: 'GET' })
+        const jobsRes = await fetch('/api/flink-jobs', { method: 'GET' });
         if (jobsRes.ok) {
-          const jobsData = await jobsRes.json()
-          const runningJobs = jobsData.jobs?.filter((j: { state: string }) => j.state === 'RUNNING').length || 0
-          newServices[9].status = runningJobs > 0 ? 'healthy' : 'unhealthy'
-          newServices[9].detail = runningJobs > 0 ? `${runningJobs} job(s) running` : 'No jobs running'
+          const jobsData = await jobsRes.json();
+          const runningJobs = jobsData.jobs?.filter((j: { state: string }) => j.state === 'RUNNING').length || 0;
+          newServices[9].status = runningJobs > 0 ? 'healthy' : 'unhealthy';
+          newServices[9].detail = runningJobs > 0 ? `${runningJobs} job(s) running` : 'No jobs running';
         }
       } else {
-        newServices[6].status = 'unhealthy'
-        newServices[6].detail = 'Unreachable'
-        newServices[9].status = 'unhealthy'
-        newServices[9].detail = 'Cannot check'
+        newServices[6].status = 'unhealthy';
+        newServices[6].detail = 'Unreachable';
+        newServices[9].status = 'unhealthy';
+        newServices[9].detail = 'Cannot check';
       }
     } catch {
-      newServices[6].status = 'unhealthy'
-      newServices[6].detail = 'Unreachable'
-      newServices[9].status = 'unhealthy'
-      newServices[9].detail = 'Cannot check'
+      newServices[6].status = 'unhealthy';
+      newServices[6].detail = 'Unreachable';
+      newServices[9].status = 'unhealthy';
+      newServices[9].detail = 'Cannot check';
     }
 
-    // UI is always healthy if we're rendering this
-    newServices[8].status = 'healthy'
-    newServices[8].detail = 'React Frontend'
+    newServices[8].status = 'healthy';
+    newServices[8].detail = 'React Frontend';
 
-    // WebSocket status from props
-    newServices[10].status = isConnected ? 'healthy' : 'unhealthy'
-    newServices[10].detail = isConnected ? 'Connected' : 'Disconnected'
+    newServices[10].status = isConnected ? 'healthy' : 'unhealthy';
+    newServices[10].detail = isConnected ? 'Connected' : 'Disconnected';
 
-    setServices(newServices)
-    setLastCheck(new Date())
-  }, [isConnected])
+    setServices(newServices);
+    setLastCheck(new Date());
+    setLoading(false);
+  }, [isConnected, services]);
 
   useEffect(() => {
-    checkHealth()
-    const interval = setInterval(checkHealth, 10000) // Check every 10s
-    return () => clearInterval(interval)
-  }, [checkHealth])
+    checkHealth();
+    const interval = setInterval(checkHealth, 10000);
+    return () => clearInterval(interval);
+  }, []);
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'healthy':
-        return '✓'
-      case 'unhealthy':
-        return '✗'
-      default:
-        return '○'
-    }
-  }
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'healthy':
-        return '#22c55e'
-      case 'unhealthy':
-        return '#ef4444'
-      default:
-        return '#94a3b8'
-    }
-  }
+  useEffect(() => {
+    setServices(prev => {
+      const newServices = [...prev];
+      newServices[10].status = isConnected ? 'healthy' : 'unhealthy';
+      newServices[10].detail = isConnected ? 'Connected' : 'Disconnected';
+      return newServices;
+    });
+  }, [isConnected]);
 
   const categories = [
     { key: 'infrastructure', label: 'Infrastructure' },
     { key: 'observability', label: 'Observability' },
     { key: 'service', label: 'Services' },
     { key: 'application', label: 'Application' },
-  ]
+  ];
 
-  const allHealthy = services.every(s => s.status === 'healthy')
+  const allHealthy = services.every(s => s.status === 'healthy');
+  const healthyCount = services.filter(s => s.status === 'healthy').length;
 
   return (
-    <div style={styles.container}>
-      <div style={styles.header}>
-        <h3 style={styles.title}>System Health</h3>
-        <button onClick={checkHealth} style={styles.refreshButton}>
+    <Card
+      title={
+        <Space>
+          <Title level={5} style={{ margin: 0 }}>System Health</Title>
+          <Badge
+            count={`${healthyCount}/${services.length}`}
+            style={{ backgroundColor: allHealthy ? token.colorSuccess : token.colorWarning }}
+          />
+        </Space>
+      }
+      extra={
+        <Button
+          icon={<ReloadOutlined spin={loading} />}
+          onClick={checkHealth}
+          loading={loading}
+        >
           Refresh
-        </button>
-      </div>
+        </Button>
+      }
+    >
+      <Space direction="vertical" style={{ width: '100%' }} size="middle">
+        {allHealthy ? (
+          <Alert
+            message="All services healthy"
+            type="success"
+            showIcon
+            icon={<CheckCircleOutlined />}
+          />
+        ) : (
+          <Alert
+            message="Some services are unhealthy"
+            type="warning"
+            showIcon
+            icon={<CloseCircleOutlined />}
+          />
+        )}
 
-      {categories.map(cat => (
-        <div key={cat.key} style={styles.category}>
-          <h4 style={styles.categoryTitle}>{cat.label}</h4>
-          {services
-            .filter(s => s.category === cat.key)
-            .map(service => (
-              <div key={service.name} style={styles.serviceRow}>
-                <span style={{ ...styles.statusIcon, color: getStatusColor(service.status) }}>
-                  {getStatusIcon(service.status)}
-                </span>
-                <span style={styles.serviceName}>{service.name}</span>
-                <span style={styles.serviceDetail}>{service.detail}</span>
-                {service.port > 0 && (
-                  <span style={styles.servicePort}>:{service.port}</span>
-                )}
-              </div>
-            ))}
-        </div>
-      ))}
+        <Row gutter={[16, 16]}>
+          {categories.map(cat => (
+            <Col xs={24} sm={12} key={cat.key}>
+              <Card size="small" title={cat.label} type="inner">
+                <Space direction="vertical" style={{ width: '100%' }} size="small">
+                  {services
+                    .filter(s => s.category === cat.key)
+                    .map(service => (
+                      <div
+                        key={service.name}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                        }}
+                      >
+                        <Space>
+                          <Badge
+                            status={
+                              service.status === 'healthy'
+                                ? 'success'
+                                : service.status === 'unhealthy'
+                                ? 'error'
+                                : 'processing'
+                            }
+                          />
+                          <Text strong style={{ minWidth: 100 }}>{service.name}</Text>
+                        </Space>
+                        <Space>
+                          <Text type="secondary" style={{ fontSize: 12 }}>
+                            {service.detail}
+                          </Text>
+                          {service.port > 0 && (
+                            <Text type="secondary" code style={{ fontSize: 11 }}>
+                              :{service.port}
+                            </Text>
+                          )}
+                        </Space>
+                      </div>
+                    ))}
+                </Space>
+              </Card>
+            </Col>
+          ))}
+        </Row>
 
-      <div style={{ ...styles.summary, backgroundColor: allHealthy ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)' }}>
-        <span style={{ color: allHealthy ? '#22c55e' : '#ef4444' }}>
-          {allHealthy ? '✓ All services healthy' : '! Some services unhealthy'}
-        </span>
-      </div>
-
-      {lastCheck && (
-        <p style={styles.lastCheck}>
-          Last checked: {lastCheck.toLocaleTimeString()}
-        </p>
-      )}
-    </div>
-  )
+        {lastCheck && (
+          <Text type="secondary" style={{ display: 'block', textAlign: 'center', fontSize: 12 }}>
+            Last checked: {lastCheck.toLocaleTimeString()}
+          </Text>
+        )}
+      </Space>
+    </Card>
+  );
 }
 
-const styles: { [key: string]: React.CSSProperties } = {
-  container: {
-    background: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: '1rem',
-    padding: '1.5rem',
-    backdropFilter: 'blur(10px)',
-    border: '1px solid rgba(255, 255, 255, 0.1)',
-  },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '1rem',
-  },
-  title: {
-    margin: 0,
-    fontSize: '1rem',
-    fontWeight: 600,
-    color: '#fff',
-  },
-  refreshButton: {
-    padding: '0.25rem 0.75rem',
-    borderRadius: '0.5rem',
-    border: '1px solid rgba(255, 255, 255, 0.2)',
-    background: 'transparent',
-    color: '#94a3b8',
-    fontSize: '0.75rem',
-    cursor: 'pointer',
-  },
-  category: {
-    marginBottom: '1rem',
-  },
-  categoryTitle: {
-    margin: '0 0 0.5rem 0',
-    fontSize: '0.7rem',
-    fontWeight: 500,
-    color: '#64748b',
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em',
-  },
-  serviceRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-    padding: '0.35rem 0',
-    fontSize: '0.85rem',
-  },
-  statusIcon: {
-    fontWeight: 'bold',
-    width: '1rem',
-  },
-  serviceName: {
-    color: '#fff',
-    fontWeight: 500,
-    minWidth: '80px',
-  },
-  serviceDetail: {
-    color: '#64748b',
-    fontSize: '0.75rem',
-    flex: 1,
-  },
-  servicePort: {
-    color: '#475569',
-    fontSize: '0.7rem',
-    fontFamily: 'monospace',
-  },
-  summary: {
-    padding: '0.75rem',
-    borderRadius: '0.5rem',
-    textAlign: 'center',
-    fontSize: '0.85rem',
-    fontWeight: 500,
-    marginTop: '0.5rem',
-  },
-  lastCheck: {
-    margin: '0.75rem 0 0 0',
-    fontSize: '0.7rem',
-    color: '#475569',
-    textAlign: 'center',
-  },
-}
-
-export default SystemStatus
+export default SystemStatus;

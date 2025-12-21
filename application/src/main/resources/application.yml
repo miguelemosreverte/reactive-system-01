@@ -1,0 +1,41 @@
+server:
+  port: 3000
+
+spring:
+  application:
+    name: counter-application
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka:29092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.ByteArraySerializer
+      acks: 1
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.ByteArrayDeserializer
+      group-id: counter-app
+      auto-offset-reset: latest
+
+app:
+  kafka:
+    topics:
+      events: counter-events
+      results: counter-results
+      alerts: counter-alerts
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    com.reactive: DEBUG
+    org.apache.kafka: WARN
+  pattern:
+    console: "%d{ISO8601} %5p [%X{trace_id}/%X{span_id}] [%t] %c: %m%n"

@@ -10,12 +10,14 @@ import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.api.trace.Tracer;
+import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.async.ResultFuture;
 import org.apache.flink.streaming.api.functions.async.RichAsyncFunction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -33,15 +35,20 @@ import java.util.concurrent.Executors;
  *
  * This allows Flink to process thousands of concurrent Drools calls
  * without blocking, maximizing throughput.
+ *
+ * Business IDs:
+ * - requestId: Correlation ID for request tracking
+ * - customerId: Customer/tenant ID for multi-tenancy
+ *
+ * Note: OpenTelemetry trace propagation is handled automatically.
  */
 public class AsyncDroolsEnricher extends RichAsyncFunction<PreDroolsResult, CounterResult> {
-    private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 2L;
     private static final Logger LOG = LoggerFactory.getLogger(AsyncDroolsEnricher.class);
 
     private final String droolsUrl;
 
-    // Connection pool size - reasonable for Docker environment
-    // Each Flink task has its own instance, so actual concurrency = MAX_CONNECTIONS * parallelism
+    // Connection pool size
     private static final int MAX_CONNECTIONS = 100;
     private static final Duration CONNECT_TIMEOUT = Duration.ofMillis(1000);
     private static final Duration REQUEST_TIMEOUT = Duration.ofMillis(5000);
@@ -85,23 +92,52 @@ public class AsyncDroolsEnricher extends RichAsyncFunction<PreDroolsResult, Coun
         // Track Drools start time
         final long droolsStartAt = System.currentTimeMillis();
 
-        // Create tracing span
+        // Create tracing span (OTel agent provides parent context automatically)
         Span span = tracer.spanBuilder("async.drools.enrich")
                 .setSpanKind(SpanKind.CLIENT)
                 .setAttribute("http.method", "POST")
                 .setAttribute("http.url", droolsUrl + "/api/evaluate")
                 .setAttribute("peer.service", "drools")
                 .setAttribute("counter.value", input.getCounterValue())
+                .setAttribute("requestId", input.getRequestId() != null ? input.getRequestId() : "")
+                .setAttribute("customerId", input.getCustomerId() != null ? input.getCustomerId() : "")
+                .setAttribute("eventId", input.getEventId() != null ? input.getEventId() : "")
                 .startSpan();
 
         try (Scope scope = span.makeCurrent()) {
-            // Build async HTTP request
-            String requestBody = String.format("{\"value\":%d}", input.getCounterValue());
+            // Set MDC for log correlation with business IDs
+            if (input.getRequestId() != null) {
+                MDC.put("requestId", input.getRequestId());
+            }
+            if (input.getCustomerId() != null) {
+                MDC.put("customerId", input.getCustomerId());
+            }
 
-            HttpRequest request = HttpRequest.newBuilder()
+            LOG.info("Calling Drools for evaluation: sessionId={}, value={}, customerId={}",
+                    input.getSessionId(), input.getCounterValue(), input.getCustomerId());
+
+            // Build request body with business IDs
+            String requestId = input.getRequestId() != null ? input.getRequestId() : "";
+            String customerId = input.getCustomerId() != null ? input.getCustomerId() : "";
+            String eventId = input.getEventId() != null ? input.getEventId() : "";
+            String requestBody = String.format(
+                    "{\"value\":%d,\"requestId\":\"%s\",\"customerId\":\"%s\",\"eventId\":\"%s\",\"sessionId\":\"%s\"}",
+                    input.getCounterValue(), requestId, customerId, eventId, input.getSessionId());
+
+            // Build request with W3C trace context headers (injected by OTel)
+            HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
                     .uri(URI.create(droolsUrl + "/api/evaluate"))
                     .header("Content-Type", "application/json")
-                    .timeout(REQUEST_TIMEOUT)
+                    .timeout(REQUEST_TIMEOUT);
+
+            // Inject trace context headers
+            GlobalOpenTelemetry.getPropagators().getTextMapPropagator().inject(
+                    Context.current(),
+                    requestBuilder,
+                    (carrier, key, value) -> carrier.header(key, value)
+            );
+
+            HttpRequest request = requestBuilder
                     .POST(HttpRequest.BodyPublishers.ofString(requestBody))
                     .build();
 
@@ -146,7 +182,8 @@ public class AsyncDroolsEnricher extends RichAsyncFunction<PreDroolsResult, Coun
                             input.getCounterValue(),
                             alert,
                             message,
-                            input.getTraceId(),
+                            input.getRequestId(),
+                            input.getCustomerId(),
                             input.getEventId(),
                             timing
                     );
@@ -168,7 +205,8 @@ public class AsyncDroolsEnricher extends RichAsyncFunction<PreDroolsResult, Coun
                             input.getCounterValue(),
                             "ERROR",
                             "Drools call failed: " + e.getMessage(),
-                            input.getTraceId(),
+                            input.getRequestId(),
+                            input.getCustomerId(),
                             input.getEventId(),
                             timing
                     );
@@ -194,7 +232,8 @@ public class AsyncDroolsEnricher extends RichAsyncFunction<PreDroolsResult, Coun
                         input.getCounterValue(),
                         "ERROR",
                         "Async Drools call failed: " + throwable.getMessage(),
-                        input.getTraceId(),
+                        input.getRequestId(),
+                        input.getCustomerId(),
                         input.getEventId(),
                         timing
                 );
@@ -220,7 +259,8 @@ public class AsyncDroolsEnricher extends RichAsyncFunction<PreDroolsResult, Coun
                     input.getCounterValue(),
                     "ERROR",
                     "Failed to invoke Drools: " + e.getMessage(),
-                    input.getTraceId(),
+                    input.getRequestId(),
+                    input.getCustomerId(),
                     input.getEventId(),
                     timing
             );
@@ -244,7 +284,8 @@ public class AsyncDroolsEnricher extends RichAsyncFunction<PreDroolsResult, Coun
                 input.getCounterValue(),
                 "TIMEOUT",
                 "Drools evaluation timed out",
-                input.getTraceId(),
+                input.getRequestId(),
+                input.getCustomerId(),
                 input.getEventId(),
                 timing
         );

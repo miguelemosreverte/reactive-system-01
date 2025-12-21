@@ -85,26 +85,51 @@ func (b *BaseRunner) AddSampleEvent(event types.SampleEvent) {
 	b.sampleEventsMu.Lock()
 	defer b.sampleEventsMu.Unlock()
 
+	// Keep only the LAST N samples (most recent) so traces are still in Jaeger when we fetch
 	if event.Status == "success" {
-		successCount := 0
+		// Collect all success samples
+		var successSamples []types.SampleEvent
+		var otherSamples []types.SampleEvent
 		for _, e := range b.sampleEvents {
 			if e.Status == "success" {
-				successCount++
+				successSamples = append(successSamples, e)
+			} else {
+				otherSamples = append(otherSamples, e)
 			}
 		}
-		if successCount < 2 {
-			b.sampleEvents = append(b.sampleEvents, event)
+
+		// Add new success sample
+		successSamples = append(successSamples, event)
+
+		// Keep only the last 2 success samples (most recent)
+		if len(successSamples) > 2 {
+			successSamples = successSamples[len(successSamples)-2:]
 		}
+
+		// Rebuild sample events
+		b.sampleEvents = append(otherSamples, successSamples...)
 	} else {
-		errorCount := 0
+		// Collect all error samples
+		var errorSamples []types.SampleEvent
+		var otherSamples []types.SampleEvent
 		for _, e := range b.sampleEvents {
 			if e.Status != "success" {
-				errorCount++
+				errorSamples = append(errorSamples, e)
+			} else {
+				otherSamples = append(otherSamples, e)
 			}
 		}
-		if errorCount < 10 {
-			b.sampleEvents = append(b.sampleEvents, event)
+
+		// Add new error sample
+		errorSamples = append(errorSamples, event)
+
+		// Keep only the last 10 error samples (most recent)
+		if len(errorSamples) > 10 {
+			errorSamples = errorSamples[len(errorSamples)-10:]
 		}
+
+		// Rebuild sample events
+		b.sampleEvents = append(otherSamples, errorSamples...)
 	}
 }
 

@@ -13,17 +13,17 @@ processors:
     send_batch_size: 2048
     send_batch_max_size: 4096
 
-  # Memory limiter - CRITICAL for surviving high load
-  # This is the second line of defense (after gateway adaptive sampling)
+  # Memory limiter - generous for development benchmarks
+  # Production should use tighter limits with tail-based sampling
   memory_limiter:
     check_interval: 1s
-    limit_mib: 450        # Hard limit before refusing data (match GOMEMLIMIT)
-    spike_limit_mib: 100  # Soft limit for spikes
+    limit_mib: 1700       # Hard limit (must be < GOMEMLIMIT 1800MiB)
+    spike_limit_mib: 300  # Soft limit for spikes
 
   # Tail-based sampling - keep errors and slow traces, sample the rest
-  # This kicks in when gateway sampling isn't enough
+  # 100% for testing - sample events need full traces
   probabilistic_sampler:
-    sampling_percentage: 100  # 100% sampling for testing (set to 10% for production)
+    sampling_percentage: 100  # Full sampling for development
 
   # Add resource attributes
   resource:
@@ -55,8 +55,8 @@ exporters:
       max_elapsed_time: 120s
     sending_queue:
       enabled: true
-      num_consumers: 4
-      queue_size: 1000
+      num_consumers: 8       # More consumers for benchmark load
+      queue_size: 5000       # Larger queue for burst handling
 
   # Prometheus exporter for metrics
   prometheus:

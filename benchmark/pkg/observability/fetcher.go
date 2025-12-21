@@ -36,41 +36,130 @@ func NewFetcher() *Fetcher {
 		jaegerURL: jaegerURL,
 		lokiURL:   lokiURL,
 		client: &http.Client{
-			Timeout: 10 * time.Second,
+			Timeout: 30 * time.Second, // Increased timeout for post-benchmark fetching
 		},
 	}
 }
 
-// FetchTrace fetches a single trace from Jaeger
+// FetchTraceByOtelID fetches a trace from Jaeger by OpenTelemetry trace ID (direct lookup).
+func (f *Fetcher) FetchTraceByOtelID(otelTraceID string) (*types.JaegerTrace, error) {
+	if otelTraceID == "" {
+		return nil, nil
+	}
+
+	// Direct fetch by Jaeger trace ID
+	fetchURL := fmt.Sprintf("%s/api/traces/%s", f.jaegerURL, otelTraceID)
+
+	// Retry up to 5 times with exponential backoff
+	var lastErr error
+	for attempt := 0; attempt < 5; attempt++ {
+		if attempt > 0 {
+			waitTime := time.Duration(1<<uint(attempt-1)) * time.Second
+			time.Sleep(waitTime)
+		}
+
+		resp, err := f.client.Get(fetchURL)
+		if err != nil {
+			lastErr = err
+			log.Printf("Attempt %d: Failed to fetch trace %s: %v", attempt+1, otelTraceID, err)
+			continue
+		}
+
+		if resp.StatusCode != 200 {
+			resp.Body.Close()
+			if attempt < 4 {
+				log.Printf("Attempt %d: Trace %s not found (status %d), retrying...", attempt+1, otelTraceID, resp.StatusCode)
+				continue
+			}
+			return nil, nil
+		}
+
+		var result struct {
+			Data []types.JaegerTrace `json:"data"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+			resp.Body.Close()
+			lastErr = err
+			continue
+		}
+		resp.Body.Close()
+
+		if len(result.Data) == 0 {
+			if attempt < 4 {
+				log.Printf("Attempt %d: Trace %s has no data, retrying...", attempt+1, otelTraceID)
+				continue
+			}
+			return nil, nil
+		}
+
+		log.Printf("Found trace by otelTraceId=%s with %d spans", otelTraceID, len(result.Data[0].Spans))
+		return &result.Data[0], nil
+	}
+
+	return nil, lastErr
+}
+
+// FetchTrace fetches a trace from Jaeger by searching for our app.traceId tag (fallback).
 func (f *Fetcher) FetchTrace(traceID string) (*types.JaegerTrace, error) {
 	if traceID == "" {
 		return nil, nil
 	}
 
-	url := fmt.Sprintf("%s/api/traces/%s", f.jaegerURL, traceID)
-	resp, err := f.client.Get(url)
-	if err != nil {
-		log.Printf("Failed to fetch trace %s: %v", traceID, err)
-		return nil, err
-	}
-	defer resp.Body.Close()
+	// Search for traces by the app.traceId tag
+	u, _ := url.Parse(f.jaegerURL + "/api/traces")
+	q := u.Query()
+	q.Set("service", "counter-application")
+	q.Set("tags", fmt.Sprintf(`{"app.traceId":"%s"}`, traceID))
+	q.Set("limit", "1")
+	q.Set("lookback", "1h")
+	u.RawQuery = q.Encode()
 
-	if resp.StatusCode != 200 {
-		return nil, nil
+	var lastErr error
+	for attempt := 0; attempt < 5; attempt++ {
+		if attempt > 0 {
+			waitTime := time.Duration(1<<uint(attempt-1)) * time.Second
+			time.Sleep(waitTime)
+		}
+
+		resp, err := f.client.Get(u.String())
+		if err != nil {
+			lastErr = err
+			log.Printf("Attempt %d: Failed to search trace %s: %v", attempt+1, traceID, err)
+			continue
+		}
+
+		if resp.StatusCode != 200 {
+			resp.Body.Close()
+			if attempt < 4 {
+				log.Printf("Attempt %d: Trace search for %s failed (status %d), retrying...", attempt+1, traceID, resp.StatusCode)
+				continue
+			}
+			return nil, nil
+		}
+
+		var result struct {
+			Data []types.JaegerTrace `json:"data"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+			resp.Body.Close()
+			lastErr = err
+			continue
+		}
+		resp.Body.Close()
+
+		if len(result.Data) == 0 {
+			if attempt < 4 {
+				log.Printf("Attempt %d: Trace %s has no data, retrying...", attempt+1, traceID)
+				continue
+			}
+			return nil, nil
+		}
+
+		log.Printf("Found trace for app.traceId=%s (Jaeger traceId=%s)", traceID, result.Data[0].TraceID)
+		return &result.Data[0], nil
 	}
 
-	var result struct {
-		Data []types.JaegerTrace `json:"data"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, err
-	}
-
-	if len(result.Data) == 0 {
-		return nil, nil
-	}
-
-	return &result.Data[0], nil
+	return nil, lastErr
 }
 
 // FetchTraces fetches multiple traces by their IDs
@@ -86,30 +175,75 @@ func (f *Fetcher) FetchTraces(traceIDs []string) map[string]*types.JaegerTrace {
 	return traces
 }
 
-// FetchLogs fetches logs from Loki for a trace ID
-func (f *Fetcher) FetchLogs(traceID string, start, end time.Time) ([]types.LokiLogEntry, error) {
-	if traceID == "" {
+// FetchLogs fetches logs from Loki for a requestId
+// Searches across all application services (application, flink-taskmanager, drools)
+func (f *Fetcher) FetchLogs(requestID string, start, end time.Time) ([]types.LokiLogEntry, error) {
+	if requestID == "" {
 		return nil, nil
 	}
 
-	// Convert to nanoseconds for Loki
-	startNs := start.UnixNano()
-	endNs := end.UnixNano()
+	// Extend time range slightly to catch logs that might be slightly out of sync
+	startNs := start.Add(-30 * time.Second).UnixNano()
+	endNs := end.Add(30 * time.Second).UnixNano()
 
-	// Try label filter first
-	query := fmt.Sprintf(`{traceId="%s"}`, traceID)
+	// Query logs from application services
+	// Loki uses service label from promtail config
+	query := fmt.Sprintf(`{service=~"application|flink-taskmanager|drools"} |= "%s"`, requestID)
 	logs, err := f.queryLoki(query, startNs, endNs)
-	if err != nil {
-		return nil, err
-	}
-
-	// Fallback to line filter if no results
-	if len(logs) == 0 {
-		query = fmt.Sprintf(`{service=~".+"} |= "traceId" |= "%s"`, traceID)
-		logs, err = f.queryLoki(query, startNs, endNs)
+	if err == nil && len(logs) > 0 {
+		log.Printf("Found %d logs for requestId %s", len(logs), requestID)
 	}
 
 	return logs, err
+}
+
+// FetchLogsMulti fetches logs from Loki for multiple IDs
+// Uses requestId for log correlation (present in all services)
+func (f *Fetcher) FetchLogsMulti(otelTraceID, requestID string, start, end time.Time) ([]types.LokiLogEntry, error) {
+	startNs := start.Add(-30 * time.Second).UnixNano()
+	endNs := end.Add(30 * time.Second).UnixNano()
+
+	var allLogs []types.LokiLogEntry
+	seenLines := make(map[string]bool)
+
+	// Search by requestId (present in all service logs)
+	if requestID != "" {
+		query := fmt.Sprintf(`{service=~"application|flink-taskmanager|drools"} |= "%s"`, requestID)
+		logs, err := f.queryLoki(query, startNs, endNs)
+		if err == nil {
+			for _, l := range logs {
+				if !seenLines[l.Line] {
+					seenLines[l.Line] = true
+					allLogs = append(allLogs, l)
+				}
+			}
+		}
+	}
+
+	// Fallback: search by otelTraceId if no logs found with requestId
+	if len(allLogs) == 0 && otelTraceID != "" {
+		query := fmt.Sprintf(`{service=~"application|flink-taskmanager|drools"} |= "%s"`, otelTraceID)
+		logs, err := f.queryLoki(query, startNs, endNs)
+		if err == nil {
+			for _, l := range logs {
+				if !seenLines[l.Line] {
+					seenLines[l.Line] = true
+					allLogs = append(allLogs, l)
+				}
+			}
+		}
+	}
+
+	if len(allLogs) > 0 {
+		log.Printf("Found %d total logs (requestId=%s, otelTraceId=%s)", len(allLogs), requestID, otelTraceID)
+	}
+
+	// Sort by timestamp
+	sort.Slice(allLogs, func(i, j int) bool {
+		return allLogs[i].Timestamp < allLogs[j].Timestamp
+	})
+
+	return allLogs, nil
 }
 
 func (f *Fetcher) queryLoki(query string, startNs, endNs int64) ([]types.LokiLogEntry, error) {
@@ -178,21 +312,31 @@ func (f *Fetcher) queryLoki(query string, startNs, endNs int64) ([]types.LokiLog
 	return entries, nil
 }
 
-// FetchTraceData fetches both trace and logs for a trace ID
-func (f *Fetcher) FetchTraceData(traceID string, start, end time.Time) *types.TraceData {
-	if traceID == "" {
+// FetchTraceData fetches both trace and logs for a trace
+// otelTraceID is used for direct Jaeger lookup, traceID for logs
+func (f *Fetcher) FetchTraceData(otelTraceID, traceID string, start, end time.Time) *types.TraceData {
+	if otelTraceID == "" && traceID == "" {
 		return nil
 	}
 
 	data := &types.TraceData{}
 
-	// Fetch trace
-	if trace, err := f.FetchTrace(traceID); err == nil {
-		data.Trace = trace
+	// Fetch trace using OTel trace ID (direct lookup - includes all services)
+	if otelTraceID != "" {
+		if trace, err := f.FetchTraceByOtelID(otelTraceID); err == nil && trace != nil {
+			data.Trace = trace
+		}
 	}
 
-	// Fetch logs
-	if logs, err := f.FetchLogs(traceID, start, end); err == nil {
+	// Fallback: search by app.traceId tag if direct lookup failed
+	if data.Trace == nil && traceID != "" {
+		if trace, err := f.FetchTrace(traceID); err == nil && trace != nil {
+			data.Trace = trace
+		}
+	}
+
+	// Fetch logs using both otelTraceId (flink) and app.traceId (gateway/drools)
+	if logs, err := f.FetchLogsMulti(otelTraceID, traceID, start, end); err == nil {
 		data.Logs = logs
 	}
 
@@ -206,8 +350,9 @@ func (f *Fetcher) FetchTraceData(traceID string, start, end time.Time) *types.Tr
 // EnrichSampleEvents fetches trace and log data for each sample event
 func (f *Fetcher) EnrichSampleEvents(events []types.SampleEvent, start, end time.Time) {
 	for i := range events {
-		if events[i].TraceID != "" {
-			events[i].TraceData = f.FetchTraceData(events[i].TraceID, start, end)
+		// Use OtelTraceID for direct Jaeger lookup, TraceID for log correlation
+		if events[i].OtelTraceID != "" || events[i].TraceID != "" {
+			events[i].TraceData = f.FetchTraceData(events[i].OtelTraceID, events[i].TraceID, start, end)
 		}
 	}
 }

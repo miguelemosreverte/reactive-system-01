@@ -1,73 +1,40 @@
-# syntax=docker/dockerfile:1.4
-# Gateway Service Dockerfile - Optimized with BuildKit caching
-
-ARG SERVICE_VERSION=1.0.0
-ARG BUILD_TIME
-
-# Stage 1: Dependencies (heavily cached)
-FROM node:20-alpine AS deps
-
+FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /app
 
-# Copy package files for dependency caching
-COPY package.json package-lock.json* ./
+# Copy pom.xml first for dependency caching
+COPY pom.xml .
+RUN mvn dependency:go-offline -B
 
-# Use BuildKit cache mount for npm cache
-RUN --mount=type=cache,target=/root/.npm \
-    if [ -f package-lock.json ]; then npm ci --only=production; else npm install --only=production; fi
-
-# Stage 2: Build (source changes only)
-FROM node:20-alpine AS build
-
-WORKDIR /app
-
-COPY package.json package-lock.json* ./
-
-# Use BuildKit cache mount for npm cache
-RUN --mount=type=cache,target=/root/.npm \
-    if [ -f package-lock.json ]; then npm ci; else npm install; fi
-
-# Copy source code
-COPY tsconfig.json ./
+# Copy source and build
 COPY src ./src
+RUN mvn package -DskipTests -B
 
-# Build TypeScript
-RUN npm run build
-
-# Stage 3: Runtime (minimal)
-FROM node:20-alpine AS runtime
-
-ARG SERVICE_VERSION
-ARG BUILD_TIME
-
+# Runtime stage
+FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
 # Install curl for health checks
 RUN apk add --no-cache curl
 
-# Set version info
-ENV SERVICE_VERSION=${SERVICE_VERSION}
-ENV BUILD_TIME=${BUILD_TIME}
+# Download OpenTelemetry Java Agent
+ARG OTEL_AGENT_VERSION=1.32.0
+RUN curl -L -o /app/opentelemetry-javaagent.jar \
+    https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v${OTEL_AGENT_VERSION}/opentelemetry-javaagent.jar
 
-# Copy production dependencies from deps stage
-COPY --from=deps /app/node_modules ./node_modules
+# Copy the built jar
+COPY --from=build /app/target/*.jar app.jar
 
-# Copy built files from build stage
-COPY --from=build /app/dist ./dist
-COPY --from=build /app/package.json ./
+# JVM tuning for low latency
+ENV JAVA_OPTS="-XX:+UseG1GC -XX:MaxGCPauseMillis=10 -XX:+UseStringDeduplication -Xms256m -Xmx512m"
 
-# Create non-root user
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001
+# OpenTelemetry configuration
+ENV OTEL_SERVICE_NAME=gateway
+ENV OTEL_TRACES_EXPORTER=otlp
+ENV OTEL_METRICS_EXPORTER=otlp
+ENV OTEL_LOGS_EXPORTER=none
+ENV OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
 
-USER nodejs
+EXPOSE 3000
 
-# Expose port
-EXPOSE 8080
-
-# Health check
-HEALTHCHECK --interval=10s --timeout=5s --start-period=10s --retries=3 \
-    CMD curl -f http://localhost:8080/health || exit 1
-
-# Start the server
-CMD ["node", "dist/index.js"]
+# Start with OpenTelemetry Java Agent
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -javaagent:/app/opentelemetry-javaagent.jar -jar app.jar"]

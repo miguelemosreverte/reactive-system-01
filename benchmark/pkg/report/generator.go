@@ -37,7 +37,11 @@ func (g *Generator) Generate(result *types.Result) error {
 	}
 
 	// Enrich sample events with trace and log data from Jaeger/Loki
+	// Wait for traces to propagate through the full pipeline (Gateway -> Kafka -> Flink -> Drools)
+	// and for OpenTelemetry batch exporter to flush (default 5s interval)
 	if len(result.SampleEvents) > 0 {
+		log.Printf("Waiting 30s for traces to propagate through full pipeline...")
+		time.Sleep(30 * time.Second)
 		log.Printf("Fetching trace/log data for %d sample events...", len(result.SampleEvents))
 		g.fetcher.EnrichSampleEvents(result.SampleEvents, result.StartTime, result.EndTime)
 	}
@@ -355,18 +359,21 @@ const htmlTemplate = `<!DOCTYPE html>
 
         /* Log Viewer */
         .log-viewer { font-family: monospace; font-size: 11px; }
-        .log-entry { padding: 8px 12px; border-bottom: 1px solid #2a2a4a; display: flex; gap: 15px; }
+        .log-entry { padding: 8px 12px; border-bottom: 1px solid #2a2a4a; display: flex; gap: 10px; align-items: flex-start; }
         .log-entry:hover { background: #1a1a2e; }
-        .log-time { color: #888; white-space: nowrap; flex-shrink: 0; }
+        .log-time { color: #666; white-space: nowrap; flex-shrink: 0; font-size: 10px; }
+        .log-level { padding: 2px 6px; border-radius: 3px; font-size: 9px; font-weight: bold; flex-shrink: 0; min-width: 45px; text-align: center; }
+        .log-level.error { background: #f87171; color: #1a1a2e; }
+        .log-level.warn { background: #f59e0b; color: #1a1a2e; }
+        .log-level.info { background: #3b82f6; color: white; }
+        .log-level.debug { background: #6b7280; color: white; }
         .log-service { padding: 2px 8px; border-radius: 4px; font-size: 10px; flex-shrink: 0; }
         .log-service.gateway { background: #4ade80; color: #1a1a2e; }
         .log-service.kafka { background: #f59e0b; color: #1a1a2e; }
         .log-service.flink { background: #8b5cf6; color: white; }
         .log-service.drools { background: #f87171; color: #1a1a2e; }
-        .log-message { color: #eee; word-break: break-all; }
-        .log-message .key { color: #00d4ff; }
-        .log-message .string { color: #4ade80; }
-        .log-message .number { color: #f59e0b; }
+        .log-logger { color: #666; font-size: 10px; flex-shrink: 0; }
+        .log-message { color: #eee; flex: 1; word-break: break-word; }
 
         .no-data { color: #666; text-align: center; padding: 40px; }
     </style>
@@ -675,28 +682,49 @@ const htmlTemplate = `<!DOCTYPE html>
                 const service = log.labels?.service || log.labels?.container || 'unknown';
                 const serviceClass = getServiceClass(service);
 
-                // Format timestamp
+                // Try to parse JSON log line
+                let parsed = null;
+                try {
+                    parsed = JSON.parse(log.line);
+                } catch (e) {}
+
+                // Extract fields from parsed JSON or use raw line
                 let time = '-';
-                if (log.timestamp) {
-                    try {
-                        const ts = parseInt(log.timestamp) / 1000000; // ns to ms
-                        time = new Date(ts).toISOString().split('T')[1].replace('Z', '');
-                    } catch (e) {
-                        time = log.timestamp;
+                let level = 'INFO';
+                let message = log.line;
+                let logger = '';
+
+                if (parsed) {
+                    // Get timestamp from JSON
+                    if (parsed.timestamp) {
+                        time = parsed.timestamp.split('T')[1] || parsed.timestamp;
                     }
+                    // Get level
+                    level = (parsed.level || 'INFO').trim().toUpperCase();
+                    // Get message
+                    message = parsed.message || parsed.msg || log.line;
+                    // Get logger (short form)
+                    if (parsed.logger) {
+                        const parts = parsed.logger.split('.');
+                        logger = parts[parts.length - 1];
+                    }
+                } else if (log.timestamp) {
+                    try {
+                        const ts = parseInt(log.timestamp) / 1000000;
+                        time = new Date(ts).toISOString().split('T')[1].replace('Z', '');
+                    } catch (e) {}
                 }
 
-                // Format log line - try to pretty print JSON
-                let message = log.line;
-                if (log.fields) {
-                    message = formatJSON(log.fields);
-                }
+                // Level color class
+                const levelClass = level === 'ERROR' ? 'error' : level === 'WARN' ? 'warn' : level === 'DEBUG' ? 'debug' : 'info';
 
                 return ` + "`" + `
                     <div class="log-entry">
                         <span class="log-time">${time}</span>
+                        <span class="log-level ${levelClass}">${level}</span>
                         <span class="log-service ${serviceClass}">${service}</span>
-                        <span class="log-message">${message}</span>
+                        ${logger ? ` + "`" + `<span class="log-logger">${logger}</span>` + "`" + ` : ''}
+                        <span class="log-message">${escapeHtml(message)}</span>
                     </div>
                 ` + "`" + `;
             }).join('');
@@ -704,13 +732,11 @@ const htmlTemplate = `<!DOCTYPE html>
             openModal('logs-modal');
         }
 
-        // Format JSON with syntax highlighting
-        function formatJSON(obj) {
-            const str = JSON.stringify(obj, null, 2);
-            return str
-                .replace(/"([^"]+)":/g, '<span class="key">"$1"</span>:')
-                .replace(/: "([^"]+)"/g, ': <span class="string">"$1"</span>')
-                .replace(/: (\d+)/g, ': <span class="number">$1</span>');
+        // Escape HTML to prevent XSS
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
 
         // Modal functions

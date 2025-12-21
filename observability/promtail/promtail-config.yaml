@@ -37,26 +37,19 @@ scrape_configs:
       - source_labels: ['__meta_docker_container_label_com_docker_compose_service']
         target_label: 'compose_service'
     pipeline_stages:
-      # Try to parse JSON logs (common format)
+      # Try to parse JSON logs to extract level and timestamp
       - json:
           expressions:
             level: level
-            message: message
-            msg: msg
             timestamp: timestamp
             time: time
-            traceId: traceId
-            spanId: spanId
-            service: service
       # Fallback: extract log level from common patterns
       - regex:
           expression: '(?P<level>DEBUG|INFO|WARN|ERROR|FATAL|TRACE)'
-      # Use extracted level or default to info
+      # Use extracted level as label
       - labels:
           level:
-      # Note: traceId/spanId are NOT used as labels to avoid high cardinality
-      # They remain in the log content and can be searched with |= "traceId"
-      # Add timestamp
+      # Parse timestamp from log
       - timestamp:
           source: timestamp
           format: RFC3339Nano
@@ -65,6 +58,5 @@ scrape_configs:
             - UnixMs
             - '2006-01-02T15:04:05.000Z'
             - '2006-01-02 15:04:05,000'
-      # Output message or original line
-      - output:
-          source: message
+      # NOTE: We intentionally keep the full JSON log line (no output stage)
+      # This allows searching by traceId using line filters: |= "traceId" |= "abc123"

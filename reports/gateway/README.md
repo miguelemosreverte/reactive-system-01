@@ -1,42 +1,33 @@
-# Benchmark Report: Gateway
+# Benchmark Report: Gateway Benchmark
 
-**HTTP + Kafka publish (no wait)**
+**Gateway HTTP handling with delivery guarantees (waits for Kafka ack)**
 
 | Metric | Value |
 |--------|-------|
-| Peak Throughput | **1696 events/sec** |
-| Average Throughput | 1363 events/sec |
-| Total Operations | 21120 |
-| Successful | 21120 |
+| Peak Throughput | **5375 events/sec** |
+| Average Throughput | 4275 events/sec |
+| Total Operations | 47919 |
+| Successful | 47919 |
 | Failed | 0 |
 | Success Rate | 100% |
-| Duration | 17s |
+| Duration | 10s |
 
 ## Latency
 
 | Percentile | Value |
 |------------|-------|
-| Min | 2ms |
-| P50 (Median) | 4ms |
-| P95 | 9ms |
-| P99 | 42ms |
-| Max | 79ms |
-
-## Component Timing
-
-| Component | Time |
-|-----------|------|
-| Gateway | 0ms |
-| Kafka | 0ms |
-| Flink | 0ms |
-| Drools | 0ms |
+| Min | 0ms |
+| P50 (Median) | 1ms |
+| P95 | 5ms |
+| P99 | 9ms |
+| Max | 54ms |
 
 ## Resources
 
 | Metric | Value |
 |--------|-------|
-| Peak CPU | 16% |
-| Peak Memory | 91% |
+| Peak CPU | 99% |
+| Peak Memory | 94% |
 
 ---
-*Generated: 2025-12-19 19:09:03 | Commit: 354d89d*
+*Generated: 2025-12-21 00:47:51 | Go Benchmark Tool*

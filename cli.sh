@@ -93,53 +93,392 @@ APP_SERVICES="drools flink-jobmanager flink-taskmanager gateway ui"
 show_help() {
     print_header "Reactive System CLI v${SYSTEM_VERSION}"
     echo ""
-    echo "Usage: ./cli.sh <command> [service] [options]"
+    echo "Usage: ./cli.sh <namespace> <command> [options]"
+    echo "       ./cli.sh <command> [options]           # Lifecycle commands"
     echo ""
-    echo "Quick Commands:"
+    echo "═══════════════════════════════════════════════════════════════════"
+    echo "LIFECYCLE COMMANDS (no namespace)"
+    echo "═══════════════════════════════════════════════════════════════════"
+    echo ""
     echo "  start [service]     Start all services or a specific service"
     echo "  stop [service]      Stop all services or a specific service"
     echo "  restart [service]   Restart services (no rebuild)"
-    echo "  quick <service>     Quick restart without rebuild (fastest)"
-    echo "  rebuild <service>   Smart rebuild (cached deps, fast for code changes)"
-    echo "  full-rebuild <svc>  Full rebuild with no cache (for dep changes)"
+    echo "  rebuild <service>   Smart rebuild (cached deps, fast)"
+    echo "  status              Show running services"
+    echo "  logs <service>      View service logs"
+    echo "  down                Stop and remove all containers"
+    echo "  clean               Remove all containers and volumes"
     echo ""
-    echo "Development:"
+    echo "═══════════════════════════════════════════════════════════════════"
+    echo "PLATFORM COMMANDS (./cli.sh platform <cmd> or ./cli.sh p <cmd>)"
+    echo "═══════════════════════════════════════════════════════════════════"
+    echo ""
+    echo "  Observability:"
+    echo "    traces [id]       Show trace timeline or inspect specific trace"
+    echo "    logs <requestId>  Search logs by requestId"
+    echo "    jaeger            Open Jaeger UI"
+    echo "    grafana           Open Grafana dashboards"
+    echo "    loki <query>      Query Loki directly"
+    echo ""
+    echo "  Debugging:"
+    echo "    doctor            Health check all services"
+    echo "    memory [cmd]      Memory diagnostics (overview/jvm/watch)"
+    echo "    benchmark [type]  Run benchmarks (http/kafka/drools/full)"
+    echo ""
+    echo "  Infrastructure:"
+    echo "    kafka             Kafka cluster status and tools"
+    echo "    flink             Flink job manager status"
+    echo "    drools            Drools rule engine status"
+    echo ""
+    echo "═══════════════════════════════════════════════════════════════════"
+    echo "APPLICATION COMMANDS (./cli.sh app <cmd> or ./cli.sh a <cmd>)"
+    echo "═══════════════════════════════════════════════════════════════════"
+    echo ""
+    echo "  Counter Operations:"
+    echo "    send [opts]       Send counter event (--session, --action, --value)"
+    echo "    debug [opts]      Send with debug mode (returns trace + logs)"
+    echo "    status [session]  Get counter status"
+    echo ""
+    echo "  Testing:"
+    echo "    e2e               Run end-to-end test"
+    echo "    load [opts]       Run load test (--duration, --concurrency)"
+    echo ""
+    echo "  BFF Endpoints:"
+    echo "    bff-status        Check BFF API status"
+    echo ""
+    echo "═══════════════════════════════════════════════════════════════════"
+    echo "DEVELOPMENT COMMANDS"
+    echo "═══════════════════════════════════════════════════════════════════"
+    echo ""
     echo "  dev                 Start in dev mode (faster rebuilds)"
     echo "  watch <service>     Watch and auto-restart on changes"
-    echo ""
-    echo "Operations:"
-    echo "  build [service]     Build Docker images"
-    echo "  logs [service]      View logs (follows)"
-    echo "  status              Show running services"
     echo "  shell <service>     Enter container shell"
-    echo "  doctor              Health check all services"
-    echo "  traces [id]         Show trace timeline (or inspect specific trace)"
-    echo "  e2e                 Run end-to-end test"
     echo "  compile drools      Recompile Drools rules"
-    echo "  memory [cmd]        Memory diagnostics (overview/jvm/watch/heap/jfr)"
-    echo "  benchmark [comp]    Component benchmarking (http/kafka/flink/drools/gateway/full/all)"
     echo ""
-    echo "Lifecycle:"
-    echo "  up                  Alias for 'start'"
-    echo "  down                Stop and remove all containers"
-    echo "  clean               Remove all containers, images, and volumes"
-    echo "  help                Show this help message"
+    echo "═══════════════════════════════════════════════════════════════════"
+    echo "URLs"
+    echo "═══════════════════════════════════════════════════════════════════"
     echo ""
-    echo "Services: ui, gateway, flink, drools, kafka, zookeeper, jaeger, grafana, otel-collector"
-    echo ""
-    echo "URLs:"
     echo "  http://localhost:3000    UI Portal"
+    echo "  http://localhost:8080    Gateway API"
     echo "  http://localhost:16686   Jaeger (Traces)"
     echo "  http://localhost:3001    Grafana (Dashboards)"
     echo "  http://localhost:8081    Flink Dashboard"
     echo ""
-    echo "Examples:"
-    echo "  ./cli.sh start              # Start all services"
-    echo "  ./cli.sh quick gateway      # Quick restart gateway (no rebuild)"
-    echo "  ./cli.sh rebuild ui         # Rebuild and restart UI"
-    echo "  ./cli.sh logs gateway       # View gateway logs"
-    echo "  ./cli.sh doctor             # Check health of all services"
+    echo "═══════════════════════════════════════════════════════════════════"
+    echo "Examples"
+    echo "═══════════════════════════════════════════════════════════════════"
     echo ""
+    echo "  ./cli.sh start                          # Start all services"
+    echo "  ./cli.sh rebuild gateway                # Rebuild gateway"
+    echo "  ./cli.sh p traces                       # Show recent traces"
+    echo "  ./cli.sh p doctor                       # Health check all"
+    echo "  ./cli.sh a send --customer acme         # Send event for customer"
+    echo "  ./cli.sh a debug --customer acme        # Send with debug (trace+logs)"
+    echo "  ./cli.sh p benchmark full               # Run full E2E benchmark"
+    echo ""
+}
+
+# Platform namespace commands
+cmd_platform() {
+    local subcmd="${1:-help}"
+    shift 2>/dev/null || true
+
+    case "$subcmd" in
+        traces)
+            cmd_traces "$@"
+            ;;
+        logs)
+            cmd_search "$@"
+            ;;
+        jaeger)
+            open "http://localhost:16686" 2>/dev/null || echo "http://localhost:16686"
+            ;;
+        grafana)
+            open "http://localhost:3001" 2>/dev/null || echo "http://localhost:3001"
+            ;;
+        loki)
+            cmd_loki_query "$@"
+            ;;
+        doctor)
+            cmd_doctor
+            ;;
+        replay)
+            cmd_replay "$@"
+            ;;
+        memory|mem)
+            cmd_memory "$@"
+            ;;
+        benchmark|bench)
+            cmd_benchmark "$@"
+            ;;
+        kafka)
+            cmd_kafka_status
+            ;;
+        flink)
+            cmd_flink_status
+            ;;
+        drools)
+            cmd_drools_status
+            ;;
+        help|*)
+            echo ""
+            print_header "Platform Commands"
+            echo ""
+            echo "Observability:"
+            echo "  ./cli.sh p traces [id]      Show traces or inspect by ID"
+            echo "  ./cli.sh p logs <requestId> Search logs by requestId"
+            echo "  ./cli.sh p jaeger           Open Jaeger UI"
+            echo "  ./cli.sh p grafana          Open Grafana"
+            echo ""
+            echo "Debugging:"
+            echo "  ./cli.sh p doctor           Health check all services"
+            echo "  ./cli.sh p memory           Memory diagnostics"
+            echo "  ./cli.sh p benchmark [type] Run benchmarks"
+            echo "  ./cli.sh p replay <session> Replay events with tracing"
+            echo ""
+            echo "Infrastructure:"
+            echo "  ./cli.sh p kafka            Kafka status"
+            echo "  ./cli.sh p flink            Flink status"
+            echo "  ./cli.sh p drools           Drools status"
+            echo ""
+            ;;
+    esac
+}
+
+# Application namespace commands
+cmd_app() {
+    local subcmd="${1:-help}"
+    shift 2>/dev/null || true
+
+    case "$subcmd" in
+        send)
+            cmd_app_send "$@"
+            ;;
+        debug)
+            cmd_app_debug "$@"
+            ;;
+        status)
+            cmd_app_status "$@"
+            ;;
+        e2e)
+            cmd_e2e
+            ;;
+        load)
+            cmd_app_load "$@"
+            ;;
+        bff-status)
+            curl -s http://localhost:8080/api/bff/observability/status | jq . 2>/dev/null || \
+                curl -s http://localhost:8080/api/bff/observability/status
+            ;;
+        help|*)
+            echo ""
+            print_header "Application Commands"
+            echo ""
+            echo "Counter Operations:"
+            echo "  ./cli.sh a send [opts]      Send counter event"
+            echo "     --customer, -c <id>      Customer ID"
+            echo "     --session, -s <id>       Session ID (default: default)"
+            echo "     --action, -a <action>    Action: increment/decrement/set"
+            echo "     --value, -v <n>          Value (default: 1)"
+            echo ""
+            echo "  ./cli.sh a debug [opts]     Send with debug mode"
+            echo "     (same options as send, returns trace + logs)"
+            echo ""
+            echo "  ./cli.sh a status [session] Get counter status"
+            echo ""
+            echo "Testing:"
+            echo "  ./cli.sh a e2e              Run end-to-end test"
+            echo "  ./cli.sh a load [opts]      Run load test"
+            echo "     --duration, -d <sec>     Duration in seconds"
+            echo "     --concurrency, -c <n>    Concurrent requests"
+            echo ""
+            echo "BFF:"
+            echo "  ./cli.sh a bff-status       Check BFF API status"
+            echo ""
+            ;;
+    esac
+}
+
+# App send command
+cmd_app_send() {
+    local customer=""
+    local session="default"
+    local action="increment"
+    local value=1
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --customer|-c)
+                customer="$2"
+                shift 2
+                ;;
+            --session|-s)
+                session="$2"
+                shift 2
+                ;;
+            --action|-a)
+                action="$2"
+                shift 2
+                ;;
+            --value|-v)
+                value="$2"
+                shift 2
+                ;;
+            *)
+                shift
+                ;;
+        esac
+    done
+
+    local url="http://localhost:8080/api/counter"
+    if [[ -n "$customer" ]]; then
+        url="http://localhost:8080/api/customers/${customer}/counter"
+    fi
+
+    print_info "Sending: action=$action, value=$value, session=$session, customer=${customer:-<none>}"
+
+    curl -s -X POST "$url" \
+        -H "Content-Type: application/json" \
+        -d "{\"action\": \"$action\", \"value\": $value, \"sessionId\": \"$session\"}" | \
+        jq . 2>/dev/null || \
+        curl -s -X POST "$url" \
+            -H "Content-Type: application/json" \
+            -d "{\"action\": \"$action\", \"value\": $value, \"sessionId\": \"$session\"}"
+}
+
+# App debug command (with trace + logs)
+cmd_app_debug() {
+    local customer=""
+    local session="default"
+    local action="increment"
+    local value=1
+    local wait_ms=2000
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --customer|-c)
+                customer="$2"
+                shift 2
+                ;;
+            --session|-s)
+                session="$2"
+                shift 2
+                ;;
+            --action|-a)
+                action="$2"
+                shift 2
+                ;;
+            --value|-v)
+                value="$2"
+                shift 2
+                ;;
+            --wait|-w)
+                wait_ms="$2"
+                shift 2
+                ;;
+            *)
+                shift
+                ;;
+        esac
+    done
+
+    local url="http://localhost:8080/api/bff/counter"
+    if [[ -n "$customer" ]]; then
+        url="http://localhost:8080/api/bff/customers/${customer}/counter"
+    fi
+
+    print_info "Sending with debug mode: action=$action, value=$value"
+    print_info "Waiting ${wait_ms}ms for trace propagation..."
+
+    curl -s -X POST "$url" \
+        -H "Content-Type: application/json" \
+        -H "X-Debug: true" \
+        -H "X-Debug-Wait-Ms: $wait_ms" \
+        -d "{\"action\": \"$action\", \"value\": $value, \"sessionId\": \"$session\"}" | \
+        jq . 2>/dev/null || \
+        curl -s -X POST "$url" \
+            -H "Content-Type: application/json" \
+            -H "X-Debug: true" \
+            -H "X-Debug-Wait-Ms: $wait_ms" \
+            -d "{\"action\": \"$action\", \"value\": $value, \"sessionId\": \"$session\"}"
+}
+
+# App status command
+cmd_app_status() {
+    local session="${1:-default}"
+    curl -s "http://localhost:8080/api/counter/status?sessionId=$session" | \
+        jq . 2>/dev/null || \
+        curl -s "http://localhost:8080/api/counter/status?sessionId=$session"
+}
+
+# Loki query command
+cmd_loki_query() {
+    local query="$1"
+    if [[ -z "$query" ]]; then
+        print_error "Usage: ./cli.sh p loki '<LogQL query>'"
+        echo ""
+        echo "Examples:"
+        echo "  ./cli.sh p loki '{service=\"gateway\"}'"
+        echo "  ./cli.sh p loki '{service=~\".+\"} |= \"error\"'"
+        return 1
+    fi
+
+    local start=$(( $(date +%s) - 3600 ))000000000
+    local end=$(date +%s)000000000
+
+    curl -sG "http://localhost:3100/loki/api/v1/query_range" \
+        --data-urlencode "query=$query" \
+        --data-urlencode "start=$start" \
+        --data-urlencode "end=$end" \
+        --data-urlencode "limit=50" | \
+        jq '.data.result[] | .values[] | .[1]' 2>/dev/null | head -20
+}
+
+# Kafka status command
+cmd_kafka_status() {
+    print_header "Kafka Status"
+    echo ""
+
+    if docker compose ps kafka 2>/dev/null | grep -q "running"; then
+        print_success "Kafka is running"
+    else
+        print_error "Kafka is not running"
+        return 1
+    fi
+
+    echo ""
+    print_info "Topics:"
+    docker compose exec -T kafka kafka-topics.sh --list --bootstrap-server localhost:9092 2>/dev/null | head -10
+}
+
+# Flink status command
+cmd_flink_status() {
+    print_header "Flink Status"
+    echo ""
+
+    if curl -sf http://localhost:8081/overview >/dev/null 2>&1; then
+        print_success "Flink JobManager is running"
+        echo ""
+        print_info "Jobs:"
+        curl -s http://localhost:8081/jobs | jq '.jobs[] | {id: .id, status: .status}' 2>/dev/null
+    else
+        print_error "Flink is not responding"
+    fi
+}
+
+# Drools status command
+cmd_drools_status() {
+    print_header "Drools Status"
+    echo ""
+
+    local health=$(curl -s http://localhost:8180/health 2>/dev/null)
+    if echo "$health" | grep -q "UP"; then
+        print_success "Drools is healthy"
+        echo "$health" | jq . 2>/dev/null || echo "$health"
+    else
+        print_error "Drools is not responding"
+    fi
 }
 
 # Check if infra is running
@@ -428,7 +767,18 @@ cmd_traces() {
         echo ""
 
         local response
+
+        # First try direct lookup
         response=$(curl -sf "http://localhost:16686/api/traces/$trace_id" 2>/dev/null)
+
+        # If not found and looks like our app.traceId, search by tag
+        if [[ -z "$response" ]] || echo "$response" | grep -q '"data":\[\]'; then
+            if [[ "$trace_id" =~ ^000e ]]; then
+                print_info "Searching by app.traceId..."
+                local encoded_tags=$(python3 -c "import urllib.parse; print(urllib.parse.quote('{\"app.traceId\":\"$trace_id\"}'))")
+                response=$(curl -sf "http://localhost:16686/api/traces?service=counter-application&tags=$encoded_tags&limit=1" 2>/dev/null)
+            fi
+        fi
 
         if [[ $? -ne 0 ]] || [[ -z "$response" ]]; then
             print_error "Cannot fetch trace from Jaeger"
@@ -519,6 +869,182 @@ print('* = counter action trace (full pipeline)')
         echo ""
         print_info "Inspect a trace: ./cli.sh traces <traceId>"
         print_info "Open Jaeger UI: http://localhost:16686"
+    fi
+}
+
+# Send - send a test event through the pipeline
+cmd_send() {
+    local session="${1:-cli-test}"
+    local action="${2:-increment}"
+    local value="${3:-1}"
+
+    print_header "Sending Event"
+    echo ""
+    print_info "Session: $session | Action: $action | Value: $value"
+    echo ""
+
+    local response
+    response=$(curl -sf -X POST "http://localhost:8080/api/counter" \
+        -H "Content-Type: application/json" \
+        -d "{\"sessionId\":\"$session\",\"action\":\"$action\",\"value\":$value}" 2>/dev/null)
+
+    if [[ $? -ne 0 ]] || [[ -z "$response" ]]; then
+        print_error "Cannot connect to gateway"
+        print_info "Make sure the system is running: ./cli.sh start"
+        exit 1
+    fi
+
+    local event_id trace_id otel_trace_id
+    event_id=$(echo "$response" | python3 -c "import sys,json; print(json.load(sys.stdin).get('eventId',''))" 2>/dev/null)
+    trace_id=$(echo "$response" | python3 -c "import sys,json; print(json.load(sys.stdin).get('traceId',''))" 2>/dev/null)
+    otel_trace_id=$(echo "$response" | python3 -c "import sys,json; print(json.load(sys.stdin).get('otelTraceId',''))" 2>/dev/null)
+
+    print_success "Event sent!"
+    echo ""
+    echo "  Event ID:      $event_id"
+    echo "  App Trace ID:  $trace_id"
+    echo "  OTel Trace ID: $otel_trace_id"
+    echo ""
+    print_info "Inspect trace in Jaeger:"
+    echo "  ./cli.sh traces $otel_trace_id"
+    echo ""
+    print_info "Search logs by app.traceId:"
+    echo "  ./cli.sh search $trace_id"
+}
+
+# Search - find logs by traceId in Loki
+cmd_search() {
+    local trace_id="$1"
+    local service="${2:-all}"
+
+    if [[ -z "$trace_id" ]]; then
+        # Show recent logs
+        print_header "Recent Logs"
+        echo ""
+
+        local query='{compose_service=~"gateway|flink-taskmanager|drools|application"}'
+        local end_ns=$(($(date +%s) * 1000000000))
+        local start_ns=$(( ($(date +%s) - 300) * 1000000000 ))
+
+        local response
+        response=$(curl -sf -G "http://localhost:3100/loki/api/v1/query_range" \
+            --data-urlencode "query=$query" \
+            --data-urlencode "start=$start_ns" \
+            --data-urlencode "end=$end_ns" \
+            --data-urlencode "limit=20" 2>/dev/null)
+
+        if [[ $? -ne 0 ]] || [[ -z "$response" ]]; then
+            print_error "Cannot connect to Loki"
+            print_info "Make sure Loki is running: ./cli.sh start"
+            exit 1
+        fi
+
+        echo "$response" | python3 -c "
+import json, sys
+from datetime import datetime
+
+data = json.load(sys.stdin)
+if data.get('status') != 'success':
+    print('Error:', data)
+    sys.exit(1)
+
+entries = []
+for stream in data.get('data', {}).get('result', []):
+    svc = stream.get('stream', {}).get('compose_service', 'unknown')
+    for ts, line in stream.get('values', []):
+        entries.append((int(ts), svc, line))
+
+entries.sort()
+if not entries:
+    print('No recent logs found')
+    sys.exit(0)
+
+print(f'Found {len(entries)} log entries')
+print()
+print(f'{\"Time\":<12} {\"Service\":<20} Message')
+print('-' * 80)
+
+for ts, svc, line in entries[-20:]:
+    t = datetime.fromtimestamp(int(ts) / 1e9).strftime('%H:%M:%S.%f')[:12]
+    # Try to extract message from JSON
+    try:
+        log = json.loads(line)
+        msg = log.get('message', log.get('msg', line))[:60]
+        level = log.get('level', '')[:5]
+        if level:
+            msg = f'[{level.upper()}] {msg}'
+    except:
+        msg = line[:60]
+    print(f'{t:<12} {svc[:20]:<20} {msg}')
+"
+        echo ""
+        print_info "Search by traceId: ./cli.sh logs <traceId>"
+    else
+        # Search for specific traceId
+        print_header "Logs for Trace: $trace_id"
+        echo ""
+
+        local query="{compose_service=~\"gateway|flink-taskmanager|drools|application\"} |~ \"$trace_id\""
+        local end_ns=$(($(date +%s) * 1000000000))
+        local start_ns=$(( ($(date +%s) - 600) * 1000000000 ))
+
+        local response
+        response=$(curl -sf -G "http://localhost:3100/loki/api/v1/query_range" \
+            --data-urlencode "query=$query" \
+            --data-urlencode "start=$start_ns" \
+            --data-urlencode "end=$end_ns" \
+            --data-urlencode "limit=50" 2>/dev/null)
+
+        if [[ $? -ne 0 ]] || [[ -z "$response" ]]; then
+            print_error "Cannot connect to Loki"
+            exit 1
+        fi
+
+        echo "$response" | python3 -c "
+import json, sys
+from datetime import datetime
+
+data = json.load(sys.stdin)
+if data.get('status') != 'success':
+    print('Error querying Loki')
+    sys.exit(1)
+
+entries = []
+services = set()
+for stream in data.get('data', {}).get('result', []):
+    svc = stream.get('stream', {}).get('compose_service', 'unknown')
+    services.add(svc)
+    for ts, line in stream.get('values', []):
+        entries.append((int(ts), svc, line))
+
+entries.sort()
+if not entries:
+    print('No logs found for this traceId')
+    print()
+    print('Tips:')
+    print('  - Check if the trace is recent (within 10 minutes)')
+    print('  - Verify the traceId is correct')
+    sys.exit(0)
+
+svc_list = \", \".join(sorted(services))
+print(f'Found {len(entries)} logs from {len(services)} services: {svc_list}')
+print()
+print(f'{\"Time\":<12} {\"Service\":<20} Message')
+print('-' * 80)
+
+for ts, svc, line in entries:
+    t = datetime.fromtimestamp(int(ts) / 1e9).strftime('%H:%M:%S.%f')[:12]
+    try:
+        log = json.loads(line)
+        msg = log.get('message', log.get('msg', line))[:60]
+        level = log.get('level', '')[:5]
+        if level:
+            msg = f'[{level.upper()}] {msg}'
+    except:
+        msg = line[:60]
+    print(f'{t:<12} {svc[:20]:<20} {msg}')
+"
+        echo ""
     fi
 }
 
@@ -624,34 +1150,119 @@ cmd_memory() {
     source "$SCRIPT_DIR/scripts/memory-diagnostics.sh" "$subcmd" "$@"
 }
 
-# Benchmark control - Component benchmarking system
+# Replay - replay events with full tracing for debugging
+cmd_replay() {
+    local session_id="$1"
+    local up_to_event="$2"
+
+    if [[ -z "$session_id" ]]; then
+        echo ""
+        print_header "Event Replay"
+        echo ""
+        echo "Replay historical events through the FSM with full tracing."
+        echo "Creates a new trace in Jaeger showing every state transition."
+        echo ""
+        echo "Usage:"
+        echo "  ./cli.sh p replay <sessionId>              # Replay all events for session"
+        echo "  ./cli.sh p replay <sessionId> <eventId>    # Replay up to specific event"
+        echo ""
+        echo "Examples:"
+        echo "  ./cli.sh p replay default                  # Replay 'default' session"
+        echo "  ./cli.sh p replay session-123 req-456      # Replay up to event req-456"
+        echo ""
+        echo "Other commands:"
+        echo "  ./cli.sh p replay events <sessionId>       # List events without replaying"
+        echo "  ./cli.sh p replay history <sessionId>      # Show state history"
+        echo ""
+        return 0
+    fi
+
+    # Handle subcommands
+    if [[ "$session_id" == "events" ]]; then
+        local target_session="$up_to_event"
+        if [[ -z "$target_session" ]]; then
+            print_error "Usage: ./cli.sh p replay events <sessionId>"
+            return 1
+        fi
+        print_info "Fetching events for session: $target_session"
+        curl -s "http://localhost:8080/api/replay/session/$target_session/events" | jq . 2>/dev/null || \
+            curl -s "http://localhost:8080/api/replay/session/$target_session/events"
+        return 0
+    fi
+
+    if [[ "$session_id" == "history" ]]; then
+        local target_session="$up_to_event"
+        if [[ -z "$target_session" ]]; then
+            print_error "Usage: ./cli.sh p replay history <sessionId>"
+            return 1
+        fi
+        print_info "Fetching state history for session: $target_session"
+        curl -s "http://localhost:8080/api/replay/session/$target_session/history" | jq . 2>/dev/null || \
+            curl -s "http://localhost:8080/api/replay/session/$target_session/history"
+        return 0
+    fi
+
+    # Replay session
+    print_header "Replaying Session: $session_id"
+    echo ""
+
+    local url="http://localhost:8080/api/replay/session/$session_id"
+    if [[ -n "$up_to_event" ]]; then
+        url="$url?upToEvent=$up_to_event"
+        print_info "Replaying up to event: $up_to_event"
+    fi
+
+    local response
+    response=$(curl -s -X POST "$url")
+
+    if echo "$response" | grep -q '"success":true'; then
+        local trace_id=$(echo "$response" | python3 -c "import sys,json; print(json.load(sys.stdin).get('replayTraceId',''))" 2>/dev/null)
+        local events=$(echo "$response" | python3 -c "import sys,json; print(json.load(sys.stdin).get('eventsReplayed',0))" 2>/dev/null)
+        local duration=$(echo "$response" | python3 -c "import sys,json; print(json.load(sys.stdin).get('durationMs',0))" 2>/dev/null)
+
+        echo ""
+        print_success "Replay completed!"
+        echo ""
+        echo "  Events replayed: $events"
+        echo "  Duration: ${duration}ms"
+        echo "  Trace ID: $trace_id"
+        echo ""
+
+        # Show state summary
+        echo "Initial state:"
+        echo "$response" | python3 -c "import sys,json; d=json.load(sys.stdin); print(f\"  value={d.get('initialState',{}).get('value',0)}, alert={d.get('initialState',{}).get('alert','NONE')}\")" 2>/dev/null
+
+        echo "Final state:"
+        echo "$response" | python3 -c "import sys,json; d=json.load(sys.stdin); print(f\"  value={d.get('finalState',{}).get('value',0)}, alert={d.get('finalState',{}).get('alert','NONE')}\")" 2>/dev/null
+
+        echo ""
+        print_info "View trace in Jaeger:"
+        echo "  http://localhost:16686/trace/$trace_id"
+        echo ""
+        print_info "Or run: ./cli.sh p traces $trace_id"
+    else
+        print_error "Replay failed"
+        echo "$response" | jq . 2>/dev/null || echo "$response"
+    fi
+}
+
+# Benchmark control - Go benchmark service
 cmd_benchmark() {
     local subcmd="${1:-help}"
     shift 2>/dev/null || true
-    local api_key="${ADMIN_API_KEY:-reactive-admin-key}"
 
-    # Parse common options
+    # Parse options
     local duration=30
-    local events=0
-    local report=false
-    local output_dir="$SCRIPT_DIR/reports"
+    local concurrency=10
 
     while [[ $# -gt 0 ]]; do
         case "$1" in
-            --duration)
+            --duration|-d)
                 duration="$2"
                 shift 2
                 ;;
-            --events)
-                events="$2"
-                shift 2
-                ;;
-            --report)
-                report=true
-                shift
-                ;;
-            --output)
-                output_dir="$2"
+            --concurrency|-c)
+                concurrency="$2"
                 shift 2
                 ;;
             *)
@@ -660,633 +1271,474 @@ cmd_benchmark() {
         esac
     done
 
-    # Valid components
-    local valid_components="http kafka flink drools gateway full"
+    local API_KEY="${ADMIN_API_KEY:-reactive-admin-key}"
+    local BENCHMARK_URL="http://localhost:8090"
 
     case "$subcmd" in
-        http|kafka|flink|drools|gateway|full)
-            # Component benchmark
-            run_component_benchmark "$subcmd" "$duration" "$events" "$report" "$output_dir"
+        run)
+            # Run all benchmarks via Go service
+            run_go_benchmark "all" "$duration" "$concurrency" "$API_KEY" "$BENCHMARK_URL"
             ;;
-        all)
-            # Run all component benchmarks
-            run_all_benchmarks "$duration" "$report" "$output_dir"
-            ;;
-        report)
-            # Open report dashboard
-            open_benchmark_reports
-            ;;
-        stop)
-            print_header "Stopping Benchmark"
-            # Try to stop any running benchmark
-            for component in $valid_components; do
-                curl -sf -X POST "http://localhost:8080/api/admin/benchmark/${component}/stop" \
-                    -H "x-api-key: $api_key" 2>/dev/null
-            done
-            print_success "Benchmark stopped"
+        http|kafka|drools|gateway|full)
+            # Run specific component benchmark
+            run_go_benchmark "$subcmd" "$duration" "$concurrency" "$API_KEY" "$BENCHMARK_URL"
             ;;
         status)
-            print_header "Benchmark Status"
-            local response
-            response=$(curl -sf "http://localhost:8080/api/admin/benchmark/status" \
-                -H "x-api-key: $api_key" 2>/dev/null)
-
-            if [[ $? -eq 0 ]]; then
-                echo "$response" | jq . 2>/dev/null || echo "$response"
-            else
-                print_error "Cannot get benchmark status"
-                print_info "Make sure gateway is running"
-            fi
+            # Check benchmark status
+            print_info "Checking benchmark status..."
+            curl -s "$BENCHMARK_URL/api/benchmark/status" -H "X-API-Key: $API_KEY" | python3 -m json.tool 2>/dev/null || \
+                curl -s "$BENCHMARK_URL/api/benchmark/status" -H "X-API-Key: $API_KEY"
+            ;;
+        stop)
+            # Stop running benchmark
+            print_info "Stopping benchmarks..."
+            curl -s -X POST "$BENCHMARK_URL/api/benchmark/stop" -H "X-API-Key: $API_KEY"
+            print_success "Benchmarks stopped"
+            ;;
+        report)
+            # Generate and open reports
+            generate_and_open_reports "$API_KEY" "$BENCHMARK_URL"
             ;;
         results)
-            print_header "All Benchmark Results"
-            local response
-            response=$(curl -sf "http://localhost:8080/api/admin/benchmark/results" \
-                -H "x-api-key: $api_key" 2>/dev/null)
-
-            if [[ $? -eq 0 ]]; then
-                echo "$response" | jq . 2>/dev/null || echo "$response"
-            else
-                print_error "Cannot get benchmark results"
-                print_info "Make sure gateway is running"
-            fi
+            # Show results summary
+            show_benchmark_results "$API_KEY" "$BENCHMARK_URL"
+            ;;
+        doctor)
+            # Run benchmark observability diagnostics
+            "$SCRIPT_DIR/scripts/benchmark-doctor.sh"
             ;;
         help|*)
             echo ""
-            print_header "Component Benchmarking System"
+            print_header "Benchmark System"
             echo ""
-            echo "Benchmark each component independently:"
+            echo "Run benchmarks via Go benchmark service:"
             echo ""
             echo "  Component benchmarks:"
-            echo "    ./cli.sh benchmark http       # HTTP endpoint latency"
-            echo "    ./cli.sh benchmark kafka      # Kafka round-trip"
-            echo "    ./cli.sh benchmark flink      # Kafka + Flink processing"
-            echo "    ./cli.sh benchmark drools     # Direct Drools API"
-            echo "    ./cli.sh benchmark gateway    # HTTP + Kafka publish"
-            echo "    ./cli.sh benchmark full       # Full end-to-end pipeline"
+            echo "    ./cli.sh benchmark http      # HTTP endpoint latency"
+            echo "    ./cli.sh benchmark kafka     # Kafka round-trip"
+            echo "    ./cli.sh benchmark drools    # Drools rule evaluation"
+            echo "    ./cli.sh benchmark gateway   # Gateway + Kafka publish"
+            echo "    ./cli.sh benchmark full      # Full E2E pipeline"
             echo ""
             echo "  Run all:"
-            echo "    ./cli.sh benchmark all        # Run all benchmarks in sequence"
+            echo "    ./cli.sh benchmark run       # Run all component benchmarks"
+            echo ""
+            echo "  Reports:"
+            echo "    ./cli.sh benchmark report    # Generate & open HTML reports"
+            echo "    ./cli.sh benchmark results   # Show results summary"
+            echo ""
+            echo "  Diagnostics:"
+            echo "    ./cli.sh benchmark doctor    # Check observability health"
+            echo ""
+            echo "  Control:"
+            echo "    ./cli.sh benchmark status    # Check if benchmark is running"
+            echo "    ./cli.sh benchmark stop      # Stop running benchmark"
             echo ""
             echo "Options:"
-            echo "  --duration <secs>   Run for N seconds (default: 30)"
-            echo "  --events <count>    Run until N events processed (0 = use duration)"
-            echo "  --report            Generate HTML report after completion"
-            echo "  --output <dir>      Report output directory (default: ./reports)"
-            echo ""
-            echo "Other commands:"
-            echo "  ./cli.sh benchmark report       Open report dashboard"
-            echo "  ./cli.sh benchmark status       Show current benchmark status"
-            echo "  ./cli.sh benchmark results      Show all benchmark results"
-            echo "  ./cli.sh benchmark stop         Stop running benchmark"
+            echo "  --duration, -d <sec>    Benchmark duration (default: 30)"
+            echo "  --concurrency, -c <n>   Concurrent workers (default: 10)"
             echo ""
             echo "Examples:"
-            echo "  ./cli.sh benchmark http --duration 60"
-            echo "  ./cli.sh benchmark full --events 10000 --report"
-            echo "  ./cli.sh benchmark all --duration 30 --report"
+            echo "  ./cli.sh benchmark run                    # Run all benchmarks"
+            echo "  ./cli.sh benchmark full -d 60             # 60-second full E2E"
+            echo "  ./cli.sh benchmark doctor                 # Validate observability"
+            echo "  ./cli.sh benchmark report                 # View reports"
             echo ""
             ;;
     esac
 }
 
-# Run a layered benchmark
-run_layered_benchmark() {
-    local layer="$1"
-    local duration="$2"
-    local events="$3"
-    local report="$4"
-    local output_dir="$5"
-    local api_key="${ADMIN_API_KEY:-reactive-admin-key}"
-
-    start_timer
-
-    print_header "Layered Benchmark: $layer"
-    echo ""
-
-    # Determine if we need to restart services with SKIP_DROOLS
-    local needs_restart=false
-    local skip_drools=false
-
-    case "$layer" in
-        kafka)
-            print_info "Layer 1: Kafka produce/consume only"
-            print_info "  - Tests Kafka throughput in isolation"
-            print_info "  - Bypasses Flink processing"
-            skip_drools=true
-            ;;
-        kafka-flink)
-            print_info "Layer 2: Kafka + Flink processing"
-            print_info "  - Tests stream processing without Drools"
-            print_info "  - Isolates Flink performance"
-            skip_drools=true
-            needs_restart=true
-            ;;
-        kafka-flink-drools)
-            print_info "Layer 3: Kafka + Flink + Drools"
-            print_info "  - Full stream processing pipeline"
-            print_info "  - Tests rule evaluation performance"
-            skip_drools=false
-            needs_restart=true
-            ;;
-        full)
-            print_info "Layer 4: Full end-to-end (HTTP -> Kafka -> Flink -> Drools)"
-            print_info "  - Tests complete system including HTTP overhead"
-            print_info "  - Production-like load test"
-            skip_drools=false
-            ;;
-    esac
-    echo ""
-
-    # Restart Flink with appropriate SKIP_DROOLS setting if needed
-    if [[ "$needs_restart" == "true" ]]; then
-        print_info "Configuring Flink with SKIP_DROOLS=$skip_drools..."
-        export SKIP_DROOLS="$skip_drools"
-
-        # Restart Flink services
-        docker compose stop flink-taskmanager flink-job-submitter 2>/dev/null
-        docker compose up -d flink-taskmanager flink-job-submitter
-
-        # Wait for Flink to be ready
-        print_info "Waiting for Flink to be ready..."
-        sleep 10
-
-        # Check Flink health
-        local flink_ready=false
-        for i in {1..30}; do
-            if curl -sf http://localhost:8081/overview >/dev/null 2>&1; then
-                flink_ready=true
-                break
-            fi
-            sleep 1
-        done
-
-        if [[ "$flink_ready" != "true" ]]; then
-            print_error "Flink did not start in time"
-            end_timer "benchmark" "$layer" "error"
-            return 1
-        fi
-        print_success "Flink is ready"
-        echo ""
-    fi
-
-    # Prepare benchmark request body
-    local duration_ms=$((duration * 1000))
-    local body="{\"layer\": \"$layer\", \"durationMs\": $duration_ms, \"targetEventCount\": $events}"
-
-    print_info "Starting benchmark..."
-    print_info "  Duration: ${duration}s"
-    if [[ "$events" -gt 0 ]]; then
-        print_info "  Target events: $events"
-    fi
-    echo ""
-
-    # Start the benchmark via Gateway API
-    local response
-    response=$(curl -sf -X POST "http://localhost:8080/api/admin/benchmark/layered" \
-        -H "x-api-key: $api_key" \
-        -H "Content-Type: application/json" \
-        -d "$body" 2>/dev/null)
-
-    if [[ $? -ne 0 ]]; then
-        print_error "Failed to start benchmark"
-        print_info "Make sure gateway is running and healthy"
-        print_info "The layered benchmark API may not be implemented yet"
-        echo ""
-        print_info "Falling back to basic benchmark..."
-
-        # Fall back to basic benchmark
-        response=$(curl -sf -X POST "http://localhost:8080/api/admin/benchmark/start" \
-            -H "x-api-key: $api_key" \
-            -H "Content-Type: application/json" \
-            -d "{\"maxDurationMs\": $duration_ms}" 2>/dev/null)
-
-        if [[ $? -eq 0 ]]; then
-            print_success "Basic benchmark started"
-            echo "$response" | jq . 2>/dev/null || echo "$response"
-        else
-            print_error "Failed to start any benchmark"
-            end_timer "benchmark" "$layer" "error"
-            return 1
-        fi
-    else
-        print_success "Layered benchmark started"
-        echo "$response" | jq . 2>/dev/null || echo "$response"
-    fi
-
-    echo ""
-
-    # Monitor progress
-    print_info "Monitoring progress (Ctrl+C to stop early)..."
-    echo ""
-
-    local benchmark_running=true
-    local last_throughput=0
-
-    while [[ "$benchmark_running" == "true" ]]; do
-        sleep 2
-
-        local status
-        status=$(curl -sf "http://localhost:8080/api/admin/benchmark/status" \
-            -H "x-api-key: $api_key" 2>/dev/null)
-
-        if [[ $? -eq 0 ]]; then
-            local running
-            running=$(echo "$status" | jq -r '.running // false' 2>/dev/null)
-
-            if [[ "$running" == "false" ]]; then
-                benchmark_running=false
-            else
-                # Show live throughput
-                local throughput
-                throughput=$(echo "$status" | jq -r '.lastResult.peakThroughput // 0' 2>/dev/null)
-                if [[ "$throughput" != "0" ]] && [[ "$throughput" != "$last_throughput" ]]; then
-                    printf "\r  Current throughput: %s events/sec    " "$throughput"
-                    last_throughput="$throughput"
-                fi
-            fi
-        else
-            benchmark_running=false
-        fi
-    done
-
-    echo ""
-    echo ""
-
-    # Get final results
-    print_header "Benchmark Results"
-    local final_status
-    final_status=$(curl -sf "http://localhost:8080/api/admin/benchmark/status" \
-        -H "x-api-key: $api_key" 2>/dev/null)
-
-    if [[ $? -eq 0 ]]; then
-        echo "$final_status" | jq '.lastResult // .' 2>/dev/null || echo "$final_status"
-    fi
-
-    # Generate report if requested
-    if [[ "$report" == "true" ]]; then
-        echo ""
-        generate_benchmark_report "$layer" "$output_dir" "$final_status"
-    fi
-
-    # Restore normal operation if we modified SKIP_DROOLS
-    if [[ "$needs_restart" == "true" ]] && [[ "$skip_drools" == "true" ]]; then
-        echo ""
-        print_info "Restoring normal Flink operation (SKIP_DROOLS=false)..."
-        export SKIP_DROOLS="false"
-        docker compose stop flink-taskmanager flink-job-submitter 2>/dev/null
-        docker compose up -d flink-taskmanager flink-job-submitter
-    fi
-
-    end_timer "benchmark" "$layer" "success"
-}
-
-# Generate benchmark report
-generate_benchmark_report() {
-    local layer="$1"
-    local output_dir="$2"
-    local results="$3"
-
-    local timestamp=$(date +%Y%m%d_%H%M%S)
-    local commit=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
-    local report_dir="$output_dir/benchmark_${layer}_${commit}_${timestamp}"
-
-    print_info "Generating benchmark report..."
-
-    # Create report directory
-    mkdir -p "$report_dir"
-
-    # Save raw results
-    echo "$results" > "$report_dir/results.json"
-
-    # Call the report generation script if it exists
-    if [[ -f "$SCRIPT_DIR/scripts/benchmark-report.sh" ]]; then
-        source "$SCRIPT_DIR/scripts/benchmark-report.sh"
-        generate_html_report "$layer" "$report_dir" "$results"
-    else
-        # Generate basic report
-        generate_basic_report "$layer" "$report_dir" "$results"
-    fi
-
-    print_success "Report saved to: $report_dir"
-
-    # Open report in browser if available
-    if [[ -f "$report_dir/index.html" ]]; then
-        if command -v open &>/dev/null; then
-            print_info "Opening report in browser..."
-            open "$report_dir/index.html"
-        elif command -v xdg-open &>/dev/null; then
-            xdg-open "$report_dir/index.html"
-        fi
-    fi
-}
-
-# Generate basic text report (fallback)
-generate_basic_report() {
-    local layer="$1"
-    local report_dir="$2"
-    local results="$3"
-
-    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-    local commit=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
-
-    cat > "$report_dir/summary.md" << EOF
-# Benchmark Report: $layer
-
-**Generated:** $timestamp
-**Commit:** $commit
-**Layer:** $layer
-
-## Results
-
-\`\`\`json
-$(echo "$results" | jq '.lastResult // .' 2>/dev/null || echo "$results")
-\`\`\`
-
-## Layer Description
-
-$(case "$layer" in
-    kafka) echo "Layer 1: Kafka produce/consume only - Tests Kafka throughput in isolation" ;;
-    kafka-flink) echo "Layer 2: Kafka + Flink processing - Tests stream processing without Drools" ;;
-    kafka-flink-drools) echo "Layer 3: Kafka + Flink + Drools - Full stream processing pipeline" ;;
-    full) echo "Layer 4: Full end-to-end - Tests complete system including HTTP overhead" ;;
-esac)
-
----
-Generated by Reactive System CLI
-EOF
-
-    print_success "Basic report generated: $report_dir/summary.md"
-}
-
-# Run a component benchmark (new API)
-run_component_benchmark() {
+# Run benchmark via Go service
+run_go_benchmark() {
     local component="$1"
     local duration="$2"
-    local events="$3"
-    local report="$4"
-    local output_dir="$5"
-    local api_key="${ADMIN_API_KEY:-reactive-admin-key}"
+    local concurrency="$3"
+    local api_key="$4"
+    local base_url="$5"
 
     start_timer
 
-    # Component descriptions
-    local desc=""
-    case "$component" in
-        http) desc="HTTP endpoint latency" ;;
-        kafka) desc="Kafka produce/consume round-trip" ;;
-        flink) desc="Kafka + Flink processing" ;;
-        drools) desc="Direct Drools API evaluation" ;;
-        gateway) desc="HTTP + Kafka publish (no wait)" ;;
-        full) desc="Full end-to-end pipeline (HTTP → Kafka → Flink → Drools)" ;;
-    esac
-
-    print_header "Benchmark: $component"
-    echo ""
-    print_info "$desc"
-    print_info "Duration: ${duration}s"
-    if [[ "$events" -gt 0 ]]; then
-        print_info "Target events: $events"
-    fi
-    echo ""
-
-    # Prepare request body
-    local duration_ms=$((duration * 1000))
-    local body="{\"durationMs\": $duration_ms, \"targetEventCount\": $events, \"concurrency\": 8, \"batchSize\": 100}"
-
-    # Start the benchmark
-    print_info "Starting benchmark..."
-    local response
-    response=$(curl -sf -X POST "http://localhost:8080/api/admin/benchmark/${component}" \
-        -H "x-api-key: $api_key" \
-        -H "Content-Type: application/json" \
-        -d "$body" 2>/dev/null)
-
-    if [[ $? -ne 0 ]]; then
-        print_error "Failed to start benchmark"
-        print_info "Make sure gateway is running and healthy"
-        end_timer "benchmark" "$component" "error"
+    # Check if benchmark service is running
+    if ! curl -sf "$base_url/health" >/dev/null 2>&1; then
+        print_error "Benchmark service not running"
+        print_info "Start the system first: ./cli.sh start"
         return 1
     fi
 
+    # Check if system is healthy
+    if ! curl -sf "http://localhost:8080/actuator/health" >/dev/null 2>&1; then
+        print_error "Gateway not responding"
+        print_info "Start the system first: ./cli.sh start"
+        return 1
+    fi
+
+    local duration_ms=$((duration * 1000))
+    local endpoint="$base_url/api/benchmark/$component"
+
+    print_header "Running Benchmark: $component"
+    echo ""
+    print_info "Duration: ${duration}s | Concurrency: $concurrency"
+    echo ""
+
+    # Start benchmark
+    local response=$(curl -s -X POST "$endpoint" \
+        -H "X-API-Key: $api_key" \
+        -H "Content-Type: application/json" \
+        -d "{\"durationMs\": $duration_ms, \"concurrency\": $concurrency}")
+
+    echo "$response" | grep -q "started" || {
+        print_error "Failed to start benchmark"
+        echo "$response"
+        return 1
+    }
+
     print_success "Benchmark started"
-    echo "$response" | jq -r '.message // .' 2>/dev/null
     echo ""
 
     # Monitor progress
-    print_info "Monitoring progress (Ctrl+C to stop early)..."
-    echo ""
-
-    local benchmark_running=true
-    local last_throughput=0
-
-    while [[ "$benchmark_running" == "true" ]]; do
+    local running=true
+    while $running; do
         sleep 2
-
-        local result
-        result=$(curl -sf "http://localhost:8080/api/admin/benchmark/${component}/result" \
-            -H "x-api-key: $api_key" 2>/dev/null)
-
-        if [[ $? -eq 0 ]]; then
-            local status
-            status=$(echo "$result" | jq -r '.status // "unknown"' 2>/dev/null)
-
-            if [[ "$status" == "completed" ]] || [[ "$status" == "stopped" ]]; then
-                benchmark_running=false
-            else
-                # Show live throughput
-                local throughput
-                throughput=$(echo "$result" | jq -r '.peakThroughput // 0' 2>/dev/null)
-                if [[ "$throughput" != "0" ]] && [[ "$throughput" != "$last_throughput" ]]; then
-                    printf "\r  Current throughput: %s events/sec    " "$throughput"
-                    last_throughput="$throughput"
-                fi
-            fi
+        local status=$(curl -s "$base_url/api/benchmark/status" -H "X-API-Key: $api_key")
+        if echo "$status" | grep -q '"running":false'; then
+            running=false
         else
-            # Result not available yet - benchmark might still be running
-            printf "\r  Waiting for results...    "
+            # Show progress from logs
+            docker logs reactive-benchmark --tail 1 2>&1 | grep -E "Progress:|Duration" || true
         fi
     done
 
     echo ""
+    print_success "Benchmark completed"
     echo ""
 
-    # Get final results
-    print_header "Benchmark Results"
-    local final_result
-    final_result=$(curl -sf "http://localhost:8080/api/admin/benchmark/${component}/result" \
-        -H "x-api-key: $api_key" 2>/dev/null)
+    # Generate reports
+    print_info "Generating reports..."
+    curl -s -X POST "$base_url/api/report/all" -H "X-API-Key: $api_key" >/dev/null
 
-    if [[ $? -eq 0 ]]; then
-        # Show summary
-        local peak=$(echo "$final_result" | jq -r '.peakThroughput // 0' 2>/dev/null)
-        local avg=$(echo "$final_result" | jq -r '.avgThroughput // 0' 2>/dev/null)
-        local p50=$(echo "$final_result" | jq -r '.latency.p50 // 0' 2>/dev/null)
-        local p95=$(echo "$final_result" | jq -r '.latency.p95 // 0' 2>/dev/null)
-        local p99=$(echo "$final_result" | jq -r '.latency.p99 // 0' 2>/dev/null)
-        local success=$(echo "$final_result" | jq -r '.successfulOperations // 0' 2>/dev/null)
-        local failed=$(echo "$final_result" | jq -r '.failedOperations // 0' 2>/dev/null)
-
-        echo ""
-        echo "  Throughput:  ${peak} peak / ${avg} avg events/sec"
-        echo "  Latency:     P50=${p50}ms  P95=${p95}ms  P99=${p99}ms"
-        echo "  Operations:  ${success} successful / ${failed} failed"
-        echo ""
-
-        # Generate report if requested
-        if [[ "$report" == "true" ]]; then
-            generate_component_report "$component" "$output_dir" "$final_result"
-        fi
-    else
-        print_error "Could not get final results"
-    fi
+    # Show summary
+    show_benchmark_results "$api_key" "$base_url"
 
     end_timer "benchmark" "$component" "success"
 }
 
-# Run all benchmarks in sequence
-run_all_benchmarks() {
-    local duration="$1"
-    local report="$2"
-    local output_dir="$3"
-    local api_key="${ADMIN_API_KEY:-reactive-admin-key}"
+# Generate and open benchmark reports
+generate_and_open_reports() {
+    local api_key="$1"
+    local base_url="$2"
+
+    print_info "Generating reports..."
+    curl -s -X POST "$base_url/api/report/all" -H "X-API-Key: $api_key" >/dev/null
+
+    local report_file="$SCRIPT_DIR/reports/index.html"
+    if [[ -f "$report_file" ]]; then
+        print_success "Reports generated"
+        print_info "Opening: $report_file"
+
+        if command -v open &>/dev/null; then
+            open "$report_file"
+        elif command -v xdg-open &>/dev/null; then
+            xdg-open "$report_file"
+        fi
+    else
+        print_error "Reports not found"
+        print_info "Run benchmarks first: ./cli.sh benchmark run"
+    fi
+}
+
+# Show benchmark results summary
+show_benchmark_results() {
+    local api_key="$1"
+    local base_url="$2"
+
+    local results=$(curl -s "$base_url/api/benchmark/results" -H "X-API-Key: $api_key")
+
+    echo ""
+    print_header "Benchmark Results"
+    echo ""
+    printf "%-12s %15s %15s %10s %10s\n" "Component" "Peak (ops/s)" "Avg (ops/s)" "P99 (ms)" "Errors"
+    echo "--------------------------------------------------------------"
+
+    for comp in drools gateway full http; do
+        local peak=$(echo "$results" | python3 -c "import sys,json; d=json.load(sys.stdin).get('$comp',{}); print(d.get('peakThroughput',0))" 2>/dev/null || echo "0")
+        local avg=$(echo "$results" | python3 -c "import sys,json; d=json.load(sys.stdin).get('$comp',{}); print(d.get('avgThroughput',0))" 2>/dev/null || echo "0")
+        local p99=$(echo "$results" | python3 -c "import sys,json; d=json.load(sys.stdin).get('$comp',{}); print(d.get('latency',{}).get('p99',0))" 2>/dev/null || echo "0")
+        local errors=$(echo "$results" | python3 -c "import sys,json; d=json.load(sys.stdin).get('$comp',{}); print(d.get('failedOperations',0))" 2>/dev/null || echo "0")
+
+        printf "%-12s %15.0f %15.0f %10.0f %10.0f\n" "$comp" "$peak" "$avg" "$p99" "$errors"
+    done
+    echo ""
+}
+
+# Get Maven command (use docker if mvn not available)
+get_maven_cmd() {
+    if command -v mvn &>/dev/null; then
+        echo "mvn"
+    else
+        # Use Maven Docker image
+        echo "docker run --rm -v $SCRIPT_DIR:/work -v $HOME/.m2:/root/.m2 -w /work maven:3.9-eclipse-temurin-21"
+    fi
+}
+
+# Run platform benchmark (JMH)
+run_platform_benchmark() {
+    local benchmark_class="$1"
+    local quick="$2"
+    local verbose="$3"
+
+    start_timer
+
+    print_header "Platform Benchmark: $benchmark_class"
+    echo ""
+
+    # Check if platform module exists
+    if [[ ! -f "$SCRIPT_DIR/platform/pom.xml" ]]; then
+        print_error "Platform module not found"
+        print_info "Expected: $SCRIPT_DIR/platform/pom.xml"
+        end_timer "benchmark" "$benchmark_class" "error"
+        return 1
+    fi
+
+    local maven_cmd=$(get_maven_cmd)
+
+    # Build maven args (use benchmark profile to include benchmark tests)
+    local maven_args="-f platform/pom.xml test -Pbenchmark -Dtest=$benchmark_class"
+
+    if [[ "$quick" == "true" ]]; then
+        maven_args="$maven_args -Djmh.warmup.iterations=1 -Djmh.iterations=3"
+        print_info "Running in quick mode (fewer iterations)"
+    fi
+
+    if [[ "$verbose" != "true" ]]; then
+        maven_args="$maven_args -q"
+    fi
+
+    echo ""
+    print_info "Running: $maven_cmd $maven_args"
+    echo ""
+
+    # Run the benchmark
+    if $maven_cmd $maven_args; then
+        print_success "Benchmark completed"
+
+        # Check for generated report
+        local report_file="$SCRIPT_DIR/platform/target/benchmark-report.html"
+        if [[ -f "$report_file" ]]; then
+            echo ""
+            print_info "Report generated: $report_file"
+
+            # Open in browser
+            if command -v open &>/dev/null; then
+                open "$report_file"
+            elif command -v xdg-open &>/dev/null; then
+                xdg-open "$report_file"
+            fi
+        fi
+
+        end_timer "benchmark" "$benchmark_class" "success"
+    else
+        print_error "Benchmark failed"
+        end_timer "benchmark" "$benchmark_class" "error"
+        return 1
+    fi
+}
+
+# Run E2E benchmark (JUnit - requires system running)
+run_e2e_benchmark() {
+    local verbose="$1"
+
+    start_timer
+
+    print_header "End-to-End Benchmark"
+    echo ""
+
+    # Check if system is running
+    print_info "Checking if system is running..."
+    if ! curl -sf http://localhost:8080/actuator/health >/dev/null 2>&1; then
+        print_error "System is not running"
+        print_info "Start the system first: ./cli.sh start"
+        end_timer "benchmark" "e2e" "error"
+        return 1
+    fi
+    print_success "System is healthy"
+    echo ""
+
+    # Check if application module exists
+    if [[ ! -f "$SCRIPT_DIR/application/pom.xml" ]]; then
+        print_error "Application module not found"
+        print_info "Expected: $SCRIPT_DIR/application/pom.xml"
+        end_timer "benchmark" "e2e" "error"
+        return 1
+    fi
+
+    local maven_cmd=$(get_maven_cmd)
+
+    # For Docker, we need to use host.docker.internal to reach localhost services
+    local gateway_url="http://localhost:8080"
+    if [[ "$maven_cmd" == docker* ]]; then
+        gateway_url="http://host.docker.internal:8080"
+        # Add network host for Docker
+        maven_cmd="docker run --rm --add-host=host.docker.internal:host-gateway -v $SCRIPT_DIR:/work -v $HOME/.m2:/root/.m2 -w /work maven:3.9-eclipse-temurin-21"
+    fi
+
+    # Build maven args
+    local maven_args="-f application/pom.xml test -Pe2e-benchmark -Dtest=EndToEndBenchmark"
+    maven_args="$maven_args -DGATEWAY_URL=$gateway_url"
+
+    if [[ "$verbose" != "true" ]]; then
+        maven_args="$maven_args -q"
+    fi
+
+    echo ""
+    print_info "Running: $maven_cmd $maven_args"
+    echo ""
+
+    # Run the benchmark
+    if $maven_cmd $maven_args; then
+        print_success "E2E Benchmark completed"
+
+        # Check for generated report
+        local report_file="$SCRIPT_DIR/application/target/e2e-benchmark-report.html"
+        if [[ -f "$report_file" ]]; then
+            echo ""
+            print_info "Report generated: $report_file"
+
+            # Open in browser
+            if command -v open &>/dev/null; then
+                open "$report_file"
+            elif command -v xdg-open &>/dev/null; then
+                xdg-open "$report_file"
+            fi
+        fi
+
+        end_timer "benchmark" "e2e" "success"
+    else
+        print_error "E2E Benchmark failed"
+        end_timer "benchmark" "e2e" "error"
+        return 1
+    fi
+}
+
+# Run all Maven benchmarks
+run_all_maven_benchmarks() {
+    local quick="$1"
+    local verbose="$2"
 
     start_timer
 
     print_header "Running All Benchmarks"
     echo ""
-    print_info "This will run all 6 component benchmarks in sequence."
-    print_info "Duration per benchmark: ${duration}s"
-    print_info "Total estimated time: $((duration * 6 + 30))s (including delays)"
+    print_info "This will run platform and application benchmarks."
     echo ""
 
-    # Start all benchmarks via API
-    local duration_ms=$((duration * 1000))
-    local response
-    response=$(curl -sf -X POST "http://localhost:8080/api/admin/benchmark/all" \
-        -H "x-api-key: $api_key" \
-        -H "Content-Type: application/json" \
-        -d "{\"durationMs\": $duration_ms}" 2>/dev/null)
+    local all_passed=true
 
-    if [[ $? -ne 0 ]]; then
-        print_error "Failed to start benchmarks"
-        print_info "Make sure gateway is running"
-        return 1
+    # Platform: Serialization benchmark
+    print_info "1/3: Serialization Benchmark"
+    if run_platform_benchmark "SerializationBenchmark" "$quick" "$verbose"; then
+        print_success "Serialization benchmark passed"
+    else
+        print_warning "Serialization benchmark failed"
+        all_passed=false
     fi
-
-    print_success "All benchmarks started"
     echo ""
 
-    # Wait for completion
-    local components="http kafka flink drools gateway full"
-    for component in $components; do
-        print_info "Waiting for $component benchmark..."
+    # Platform: Kafka benchmark
+    print_info "2/3: Kafka Benchmark"
+    if run_platform_benchmark "KafkaBenchmark" "$quick" "$verbose"; then
+        print_success "Kafka benchmark passed"
+    else
+        print_warning "Kafka benchmark failed"
+        all_passed=false
+    fi
+    echo ""
 
-        local completed=false
-        local max_wait=$((duration + 60))
-        local waited=0
-
-        while [[ "$completed" != "true" ]] && [[ $waited -lt $max_wait ]]; do
-            sleep 5
-            waited=$((waited + 5))
-
-            local result
-            result=$(curl -sf "http://localhost:8080/api/admin/benchmark/${component}/result" \
-                -H "x-api-key: $api_key" 2>/dev/null)
-
-            if [[ $? -eq 0 ]]; then
-                local status
-                status=$(echo "$result" | jq -r '.status // ""' 2>/dev/null)
-                if [[ "$status" == "completed" ]]; then
-                    completed=true
-                    local peak
-                    peak=$(echo "$result" | jq -r '.peakThroughput // 0' 2>/dev/null)
-                    print_success "$component: ${peak} events/sec"
-                fi
-            fi
-        done
-
-        if [[ "$completed" != "true" ]]; then
-            print_warning "$component: Timeout or error"
+    # Application: E2E benchmark (only if system is running)
+    print_info "3/3: End-to-End Benchmark"
+    if curl -sf http://localhost:8080/actuator/health >/dev/null 2>&1; then
+        if run_e2e_benchmark "$verbose"; then
+            print_success "E2E benchmark passed"
+        else
+            print_warning "E2E benchmark failed"
+            all_passed=false
         fi
-    done
-
+    else
+        print_warning "Skipping E2E benchmark (system not running)"
+        print_info "Start system with: ./cli.sh start"
+    fi
     echo ""
 
-    # Generate reports if requested
-    if [[ "$report" == "true" ]]; then
-        print_info "Generating reports..."
-
-        for component in $components; do
-            local result
-            result=$(curl -sf "http://localhost:8080/api/admin/benchmark/${component}/result" \
-                -H "x-api-key: $api_key" 2>/dev/null)
-
-            if [[ $? -eq 0 ]]; then
-                generate_component_report "$component" "$output_dir" "$result"
-            fi
-        done
-
-        print_success "All reports generated in: $output_dir"
-
-        # Open report dashboard
-        open_benchmark_reports
+    # Summary
+    print_header "Benchmark Summary"
+    if [[ "$all_passed" == "true" ]]; then
+        print_success "All benchmarks completed successfully"
+    else
+        print_warning "Some benchmarks failed or were skipped"
     fi
+
+    echo ""
+    print_info "Reports location:"
+    echo "  Platform:    $SCRIPT_DIR/platform/target/"
+    echo "  Application: $SCRIPT_DIR/application/target/"
 
     end_timer "benchmark" "all" "success"
 }
 
-# Generate component benchmark report
-generate_component_report() {
-    local component="$1"
-    local output_dir="$2"
-    local results="$3"
+# Open benchmark reports
+open_benchmark_reports() {
+    print_header "Benchmark Reports"
+    echo ""
 
-    local timestamp=$(date +%Y%m%d_%H%M%S)
-    local report_dir="$output_dir/${component}"
+    local found=false
 
-    # Create report directory
-    mkdir -p "$report_dir"
-
-    # Call the report generation script
-    if [[ -f "$SCRIPT_DIR/scripts/benchmark-report.sh" ]]; then
-        source "$SCRIPT_DIR/scripts/benchmark-report.sh"
-        generate_report "$component" "$report_dir" "$results"
+    # Check for platform benchmark reports
+    if [[ -f "$SCRIPT_DIR/platform/target/benchmark-report.html" ]]; then
+        print_info "Platform benchmark report: platform/target/benchmark-report.html"
+        found=true
+        if command -v open &>/dev/null; then
+            open "$SCRIPT_DIR/platform/target/benchmark-report.html"
+        fi
     fi
 
-    # Also save to timestamped directory for history
-    local history_dir="$output_dir/benchmark_${component}_${timestamp}"
-    mkdir -p "$history_dir"
-    cp -r "$report_dir"/* "$history_dir"/ 2>/dev/null
-
-    # Update "latest" symlink
-    local latest_dir="$output_dir/benchmark_${component}_latest"
-    rm -rf "$latest_dir" 2>/dev/null
-    cp -r "$report_dir" "$latest_dir"
-
-    print_success "Report saved: $component"
-}
-
-# Open benchmark reports dashboard
-open_benchmark_reports() {
-    local report_index="$SCRIPT_DIR/reports/index.html"
-
-    if [[ -f "$report_index" ]]; then
-        print_info "Opening benchmark dashboard..."
+    # Check for E2E benchmark reports
+    if [[ -f "$SCRIPT_DIR/application/target/e2e-benchmark-report.html" ]]; then
+        print_info "E2E benchmark report: application/target/e2e-benchmark-report.html"
+        found=true
         if command -v open &>/dev/null; then
-            open "$report_index"
-        elif command -v xdg-open &>/dev/null; then
-            xdg-open "$report_index"
-        else
-            print_info "Open in browser: file://$report_index"
+            open "$SCRIPT_DIR/application/target/e2e-benchmark-report.html"
         fi
-    else
-        print_error "Report dashboard not found"
-        print_info "Run a benchmark with --report first"
+    fi
+
+    # Check for legacy report dashboard
+    if [[ -f "$SCRIPT_DIR/reports/index.html" ]]; then
+        print_info "Legacy report dashboard: reports/index.html"
+        found=true
+        if command -v open &>/dev/null; then
+            open "$SCRIPT_DIR/reports/index.html"
+        fi
+    fi
+
+    if [[ "$found" == "false" ]]; then
+        print_warning "No benchmark reports found"
+        echo ""
+        print_info "Run a benchmark first:"
+        echo "  ./cli.sh benchmark serialization    # Platform serialization"
+        echo "  ./cli.sh benchmark kafka            # Platform Kafka"
+        echo "  ./cli.sh benchmark e2e              # End-to-end (requires system)"
     fi
 }
 
 # Main command router
 case "${1:-help}" in
+    # Namespaces
+    platform|p)
+        cmd_platform "$2" "${@:3}"
+        ;;
+    app|a)
+        cmd_app "$2" "${@:3}"
+        ;;
+
+    # Lifecycle commands
     start|up)
         cmd_start "$2"
         ;;
@@ -1314,26 +1766,16 @@ case "${1:-help}" in
     status)
         cmd_status
         ;;
-    shell)
-        cmd_shell "$2"
-        ;;
-    doctor)
-        cmd_doctor
-        ;;
-    traces)
-        cmd_traces "$2"
-        ;;
-    e2e)
-        cmd_e2e
-        ;;
-    compile)
-        cmd_compile "$2"
-        ;;
     down)
         cmd_down
         ;;
     clean)
         cmd_clean
+        ;;
+
+    # Development commands
+    shell)
+        cmd_shell "$2"
         ;;
     dev)
         cmd_dev
@@ -1341,12 +1783,34 @@ case "${1:-help}" in
     watch)
         cmd_watch "$2"
         ;;
+    compile)
+        cmd_compile "$2"
+        ;;
+
+    # Legacy commands (still work for backwards compatibility)
+    doctor)
+        cmd_doctor
+        ;;
+    traces)
+        cmd_traces "$2"
+        ;;
+    send)
+        cmd_send "$2" "$3" "$4"
+        ;;
+    search)
+        cmd_search "$2"
+        ;;
+    e2e)
+        cmd_e2e
+        ;;
     memory|mem)
         cmd_memory "$2" "$3" "$4"
         ;;
     benchmark|bench)
         cmd_benchmark "$2" "${@:3}"
         ;;
+
+    # Help
     help|--help|-h)
         show_help
         ;;

@@ -110,7 +110,8 @@ type TraceData struct {
 // SampleEvent holds a sample event for reporting
 type SampleEvent struct {
 	ID              string           `json:"id"`
-	TraceID         string           `json:"traceId"`
+	TraceID         string           `json:"traceId"`         // Our custom app.traceId for log correlation
+	OtelTraceID     string           `json:"otelTraceId"`     // OpenTelemetry trace ID for Jaeger lookup
 	Timestamp       int64            `json:"timestamp"`
 	LatencyMs       int64            `json:"latencyMs"`
 	Status          string           `json:"status"` // success, error, timeout

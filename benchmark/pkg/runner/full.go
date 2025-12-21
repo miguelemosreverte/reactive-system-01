@@ -54,6 +54,8 @@ func (f *FullRunner) Run(config types.Config) (*types.Result, error) {
 	benchmarkStart := time.Now()
 	warmupEnd := benchmarkStart.Add(time.Duration(config.WarmupMs) * time.Millisecond)
 	duration := time.Duration(config.DurationMs) * time.Millisecond
+	// Stop collecting samples 5 seconds before the end to allow traces to fully propagate
+	sampleCutoff := benchmarkStart.Add(duration - 5*time.Second)
 
 	var wg sync.WaitGroup
 	var lastOpsCount int64
@@ -62,7 +64,7 @@ func (f *FullRunner) Run(config types.Config) (*types.Result, error) {
 		wg.Add(1)
 		go func(workerID int) {
 			defer wg.Done()
-			f.runWorker(workerID, config, warmupEnd)
+			f.runWorker(workerID, config, warmupEnd, sampleCutoff)
 		}(i)
 	}
 
@@ -110,7 +112,7 @@ func (f *FullRunner) Run(config types.Config) (*types.Result, error) {
 	}
 }
 
-func (f *FullRunner) runWorker(workerID int, config types.Config, warmupEnd time.Time) {
+func (f *FullRunner) runWorker(workerID int, config types.Config, warmupEnd, sampleCutoff time.Time) {
 	// Use the regular counter endpoint that waits for full processing
 	url := config.GatewayURL + "/api/counter"
 
@@ -134,17 +136,23 @@ func (f *FullRunner) runWorker(workerID int, config types.Config, warmupEnd time
 
 		resp, err := f.client.Do(req)
 		latencyMs := time.Since(start).Milliseconds()
+		now := time.Now()
+
+		// Only collect samples during the sample window (after warmup, before cutoff)
+		collectSamples := now.After(warmupEnd) && now.Before(sampleCutoff)
 
 		if err != nil {
 			f.RecordLatency(latencyMs)
 			f.RecordFailure()
-			f.AddSampleEvent(types.SampleEvent{
-				ID:        requestID,
-				Timestamp: start.UnixMilli(),
-				LatencyMs: latencyMs,
-				Status:    "error",
-				Error:     err.Error(),
-			})
+			if collectSamples {
+				f.AddSampleEvent(types.SampleEvent{
+					ID:        requestID,
+					Timestamp: start.UnixMilli(),
+					LatencyMs: latencyMs,
+					Status:    "error",
+					Error:     err.Error(),
+				})
+			}
 			continue
 		}
 
@@ -154,21 +162,23 @@ func (f *FullRunner) runWorker(workerID int, config types.Config, warmupEnd time
 			f.RecordSuccess()
 
 			var result struct {
-				TraceID string `json:"traceId"`
-				Result  struct {
+				RequestID   string `json:"requestId"`
+				OtelTraceID string `json:"otelTraceId"`
+				Result      struct {
 					ProcessingTimeMs int64 `json:"processingTimeMs"`
 				} `json:"result"`
 			}
 			json.NewDecoder(resp.Body).Decode(&result)
 			resp.Body.Close()
 
-			if time.Now().After(warmupEnd) {
+			if collectSamples {
 				f.AddSampleEvent(types.SampleEvent{
-					ID:        requestID,
-					TraceID:   result.TraceID,
-					Timestamp: start.UnixMilli(),
-					LatencyMs: latencyMs,
-					Status:    "success",
+					ID:          requestID,
+					TraceID:     result.RequestID,   // Use requestId for log correlation
+					OtelTraceID: result.OtelTraceID, // Use otelTraceId for Jaeger lookup
+					Timestamp:   start.UnixMilli(),
+					LatencyMs:   latencyMs,
+					Status:      "success",
 					ComponentTiming: &types.ComponentTiming{
 						GatewayMs: latencyMs - result.Result.ProcessingTimeMs,
 						FlinkMs:   result.Result.ProcessingTimeMs,
@@ -178,13 +188,15 @@ func (f *FullRunner) runWorker(workerID int, config types.Config, warmupEnd time
 		} else {
 			resp.Body.Close()
 			f.RecordFailure()
-			f.AddSampleEvent(types.SampleEvent{
-				ID:        requestID,
-				Timestamp: start.UnixMilli(),
-				LatencyMs: latencyMs,
-				Status:    "error",
-				Error:     fmt.Sprintf("HTTP %d", resp.StatusCode),
-			})
+			if collectSamples {
+				f.AddSampleEvent(types.SampleEvent{
+					ID:        requestID,
+					Timestamp: start.UnixMilli(),
+					LatencyMs: latencyMs,
+					Status:    "error",
+					Error:     fmt.Sprintf("HTTP %d", resp.StatusCode),
+				})
+			}
 		}
 	}
 }

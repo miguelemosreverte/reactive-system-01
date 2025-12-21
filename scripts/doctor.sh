@@ -44,7 +44,7 @@ check_websocket() {
         print_success "WebSocket: Connection upgrade successful"
         return 0
     elif [[ "$response" == "000" ]] || [[ -z "$response" ]]; then
-        if curl -sf --max-time 3 "http://localhost:8080/health" > /dev/null 2>&1; then
+        if curl -sf --max-time 3 "http://localhost:8080/actuator/health" > /dev/null 2>&1; then
             print_success "WebSocket: Gateway reachable (WS endpoint available)"
             return 0
         fi
@@ -59,7 +59,7 @@ check_websocket() {
 # Check Kafka topics exist
 check_kafka_topics() {
     local response
-    response=$(curl -sf "http://localhost:8080/health" 2>/dev/null)
+    response=$(curl -sf "http://localhost:8080/actuator/health" 2>/dev/null)
 
     if [[ $? -eq 0 ]]; then
         print_success "Kafka Topics: Gateway connected to Kafka"
@@ -223,12 +223,13 @@ check_e2e_flow() {
         return 1
     fi
 
-    # Extract traceId
-    local trace_id
-    trace_id=$(echo "$publish_response" | grep -o '"traceId":"[^"]*"' | cut -d'"' -f4)
+    # Extract requestId and otelTraceId
+    local request_id otel_trace_id
+    request_id=$(echo "$publish_response" | grep -o '"requestId":"[^"]*"' | cut -d'"' -f4)
+    otel_trace_id=$(echo "$publish_response" | grep -o '"otelTraceId":"[^"]*"' | cut -d'"' -f4)
 
-    if [[ -z "$trace_id" ]]; then
-        print_error "E2E Test: No traceId in response"
+    if [[ -z "$request_id" ]]; then
+        print_error "E2E Test: No requestId in response"
         return 1
     fi
 
@@ -249,7 +250,7 @@ check_e2e_flow() {
     result_value=$(echo "$result_response" | grep -o '"value":[0-9]*' | cut -d':' -f2)
 
     if [[ "$result_value" == "1" ]]; then
-        print_success "E2E Test: Full flow working (value=1, traceId=${trace_id:0:8}...)"
+        print_success "E2E Test: Full flow working (value=1, requestId=${request_id:0:8}...)"
         return 0
     elif [[ "$result_value" == "0" ]]; then
         print_error "E2E Test: Event not processed (value still 0)"
@@ -347,7 +348,7 @@ run_doctor() {
     fi
 
     # Check Gateway
-    if ! check_http_health "Gateway" "http://localhost:8080/health"; then
+    if ! check_http_health "Gateway" "http://localhost:8080/actuator/health"; then
         all_healthy=false
     fi
 
@@ -396,7 +397,7 @@ run_doctor() {
     echo -e "${CYAN}── Service Versions ──${NC}"
 
     # Check versions
-    if ! check_service_version "Gateway" "http://localhost:8080/health" "$EXPECTED_VERSION"; then
+    if ! check_service_version "Gateway" "http://localhost:8080/actuator/health" "$EXPECTED_VERSION"; then
         version_mismatch=true
     fi
 

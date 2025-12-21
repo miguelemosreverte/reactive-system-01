@@ -2,6 +2,18 @@
 # Build args are injected at build time, env vars at runtime
 x-version: &version "1.0.0"
 
+# ============================================
+# Tracing Strategy
+# ============================================
+# Default: Production-safe sampling (~1 trace per 10s at 100 ops/s)
+# On-demand: Add ?trace=true or X-Debug:true for full tracing on any request
+#
+# This means:
+#   - Normal requests: ~0.1% are traced (low overhead, no OOM)
+#   - Debug requests:  Always fully traced with detailed logs
+#
+# Override sampling: OTEL_SAMPLING_RATE=1.0 docker compose up (100% for debugging)
+
 services:
   # ============================================
   # Observability Infrastructure
@@ -22,12 +34,17 @@ services:
       - "13133:13133" # Health check
     environment:
       - OTEL_FEATURE_ENABLED=${OTEL_FEATURE_ENABLED:-true}
-      - GOMEMLIMIT=480MiB  # Go runtime memory limit (must be > memory_limiter limit)
+      - GOMEMLIMIT=1800MiB  # Go runtime memory limit - generous for dev benchmarks
     deploy:
       resources:
         limits:
-          memory: 512M
-          cpus: '1.0'
+          memory: 2G    # Increased from 1G to handle benchmark load
+          cpus: '1.5'
+    depends_on:
+      jaeger:
+        condition: service_healthy
+      loki:
+        condition: service_started
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:13133/"]
       interval: 10s
@@ -45,14 +62,16 @@ services:
       - "14250:14250" # gRPC
     environment:
       - COLLECTOR_OTLP_ENABLED=true
-      # Memory management for high load
+      # Memory storage - balanced for dev benchmarks
       - SPAN_STORAGE_TYPE=memory
-      - MEMORY_MAX_TRACES=50000  # Limit stored traces
+      - MEMORY_MAX_TRACES=20000   # Balanced: retention vs memory
+      - GOMAXPROCS=2
+      - GOMEMLIMIT=3500MiB        # Leave headroom for GC
     deploy:
       resources:
         limits:
-          memory: 1G
-          cpus: '1.0'
+          memory: 4G    # Increased to prevent OOM during benchmarks
+          cpus: '1.5'
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:16686"]
       interval: 10s
@@ -220,11 +239,21 @@ services:
     entrypoint: ["/bin/sh", "-c"]
     command: |
       "
-      echo 'Creating Kafka topics...'
-      kafka-topics --create --if-not-exists --topic counter-events --bootstrap-server kafka:29092 --partitions 8 --replication-factor 1
-      kafka-topics --create --if-not-exists --topic counter-results --bootstrap-server kafka:29092 --partitions 8 --replication-factor 1
-      kafka-topics --create --if-not-exists --topic counter-alerts --bootstrap-server kafka:29092 --partitions 8 --replication-factor 1
-      echo 'Kafka topics created successfully!'
+      echo 'Creating Kafka topics with development retention settings...'
+      echo 'Retention: 5 minutes (300000ms), 100MB per partition'
+
+      kafka-topics --create --if-not-exists --topic counter-events --bootstrap-server kafka:29092 --partitions 8 --replication-factor 1 --config retention.ms=300000 --config retention.bytes=104857600 --config segment.ms=60000
+
+      kafka-topics --create --if-not-exists --topic counter-results --bootstrap-server kafka:29092 --partitions 8 --replication-factor 1 --config retention.ms=300000 --config retention.bytes=104857600 --config segment.ms=60000
+
+      kafka-topics --create --if-not-exists --topic counter-alerts --bootstrap-server kafka:29092 --partitions 8 --replication-factor 1 --config retention.ms=300000 --config retention.bytes=104857600 --config segment.ms=60000
+
+      echo 'Updating retention on existing topics...'
+      kafka-configs --bootstrap-server kafka:29092 --alter --entity-type topics --entity-name counter-events --add-config retention.ms=300000,retention.bytes=104857600,segment.ms=60000 2>/dev/null || true
+      kafka-configs --bootstrap-server kafka:29092 --alter --entity-type topics --entity-name counter-results --add-config retention.ms=300000,retention.bytes=104857600,segment.ms=60000 2>/dev/null || true
+      kafka-configs --bootstrap-server kafka:29092 --alter --entity-type topics --entity-name counter-alerts --add-config retention.ms=300000,retention.bytes=104857600,segment.ms=60000 2>/dev/null || true
+
+      echo 'Kafka topics configured with 5-minute retention (dev mode)!'
       "
     networks:
       - reactive-network
@@ -250,7 +279,7 @@ services:
       - OTEL_SERVICE_NAME=drools
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
       - OTEL_TRACES_SAMPLER=parentbased_traceidratio
-      - OTEL_TRACES_SAMPLER_ARG=${OTEL_SAMPLING_RATE:-1.0}
+      - OTEL_TRACES_SAMPLER_ARG=${OTEL_SAMPLING_RATE:-0.001}
       - OTEL_METRICS_EXPORTER=otlp
       - OTEL_LOGS_EXPORTER=otlp
     deploy:
@@ -286,13 +315,13 @@ services:
       - |
         FLINK_PROPERTIES=
         jobmanager.rpc.address: flink-jobmanager
-        parallelism.default: 8
+        parallelism.default: 4
       # OpenTelemetry Configuration
       - OTEL_ENABLED=${OTEL_FEATURE_ENABLED:-true}
       - OTEL_SERVICE_NAME=flink-jobmanager
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
       - OTEL_TRACES_SAMPLER=parentbased_traceidratio
-      - OTEL_TRACES_SAMPLER_ARG=${OTEL_SAMPLING_RATE:-1.0}
+      - OTEL_TRACES_SAMPLER_ARG=${OTEL_SAMPLING_RATE:-0.001}
     depends_on:
       kafka:
         condition: service_healthy
@@ -315,7 +344,10 @@ services:
       dockerfile: Dockerfile
     container_name: reactive-flink-taskmanager
     depends_on:
-      - flink-jobmanager
+      flink-jobmanager:
+        condition: service_started
+      otel-collector:
+        condition: service_healthy
     command: taskmanager
     ports:
       - "9249:9249"  # Prometheus metrics
@@ -323,15 +355,15 @@ services:
       - |
         FLINK_PROPERTIES=
         jobmanager.rpc.address: flink-jobmanager
-        taskmanager.numberOfTaskSlots: 8
-        parallelism.default: 8
+        taskmanager.numberOfTaskSlots: 4
+        parallelism.default: 4
         metrics.reporter.prom.factory.class: org.apache.flink.metrics.prometheus.PrometheusReporterFactory
         metrics.reporter.prom.port: 9249
         taskmanager.network.memory.buffer-debloat.enabled: true
         taskmanager.network.memory.buffer-debloat.target: 50ms
         taskmanager.network.memory.buffer-debloat.period: 25ms
         execution.buffer-timeout: 1ms
-        taskmanager.memory.process.size: 2g
+        taskmanager.memory.process.size: 3g
       # System-wide latency bounds (CQRS snapshot evaluation)
       - LATENCY_MIN_MS=${LATENCY_MIN_MS:-1}
       - LATENCY_MAX_MS=${LATENCY_MAX_MS:-100}
@@ -340,13 +372,22 @@ services:
       # Kafka consumer tuning for high throughput
       - KAFKA_FETCH_MAX_WAIT_MS=1
       - FLINK_BUFFER_TIMEOUT_MS=1
-      - ASYNC_CAPACITY=1000
+      # Dev mode: reduced async capacity for memory stability
+      - ASYNC_CAPACITY=200
       # Benchmark mode: Skip Drools for Layer 2 benchmarks
       - SKIP_DROOLS=${SKIP_DROOLS:-false}
       # OpenTelemetry Configuration
       - OTEL_ENABLED=${OTEL_FEATURE_ENABLED:-true}
       - OTEL_SERVICE_NAME=flink-taskmanager
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      - OTEL_TRACES_EXPORTER=otlp
+      - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
+      - OTEL_TRACES_SAMPLER=always_on
+    deploy:
+      resources:
+        limits:
+          memory: 3584M  # Increased for processing backlog + async operations
+          cpus: '3.0'
     networks:
       - reactive-network
 
@@ -398,10 +439,12 @@ services:
       tail -f /dev/null
       "
     environment:
+      # Dev mode: reduced parallelism and async capacity for stability
+      - FLINK_PARALLELISM=4
+      - ASYNC_CAPACITY=200
       # Kafka consumer tuning for high throughput
       - KAFKA_FETCH_MAX_WAIT_MS=1
       - FLINK_BUFFER_TIMEOUT_MS=1
-      - ASYNC_CAPACITY=1000
       # System-wide latency bounds
       - LATENCY_MIN_MS=${LATENCY_MIN_MS:-1}
       - LATENCY_MAX_MS=${LATENCY_MAX_MS:-100}
@@ -413,14 +456,14 @@ services:
       - reactive-network
 
   # ============================================
-  # Gateway Service (Java/Spring Boot WebFlux)
+  # Application Service (Counter Domain)
   # ============================================
 
   gateway:
     build:
-      context: ./gateway-java
-      dockerfile: Dockerfile
-    container_name: reactive-gateway
+      context: .
+      dockerfile: application/Dockerfile
+    container_name: reactive-application
     ports:
       - "8080:3000"
     environment:
@@ -429,11 +472,11 @@ services:
       - SERVICE_VERSION=1.0.0
       # OpenTelemetry Configuration
       - OTEL_ENABLED=${OTEL_FEATURE_ENABLED:-true}
-      - OTEL_SERVICE_NAME=gateway-java
+      - OTEL_SERVICE_NAME=counter-application
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
       - OTEL_TRACES_SAMPLER=parentbased_traceidratio
-      - OTEL_TRACES_SAMPLER_ARG=${OTEL_SAMPLING_RATE:-1.0}
-      # JVM tuning - increased heap for higher throughput
+      - OTEL_TRACES_SAMPLER_ARG=${OTEL_SAMPLING_RATE:-0.001}
+      # JVM tuning
       - JAVA_OPTS=-XX:+UseG1GC -XX:MaxGCPauseMillis=10 -Xms512m -Xmx1024m
     deploy:
       resources:
@@ -446,7 +489,7 @@ services:
       otel-collector:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:3000/actuator/health"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -469,6 +512,8 @@ services:
       - PORT=8090
       - REPORT_DIR=/reports
       - API_KEY=${ADMIN_API_KEY:-reactive-admin-key}
+      - JAEGER_QUERY_URL=http://reactive-jaeger:16686
+      - LOKI_URL=http://reactive-loki:3100
     volumes:
       - ./reports:/reports
     deploy:
@@ -481,6 +526,10 @@ services:
         condition: service_healthy
       gateway:
         condition: service_healthy
+      jaeger:
+        condition: service_healthy
+      loki:
+        condition: service_started
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8090/health"]
       interval: 10s
@@ -553,3 +602,4 @@ volumes:
   grafana-data:
   prometheus-data:
   loki-data:
+  jaeger-badger:

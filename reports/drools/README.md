@@ -1,42 +1,33 @@
-# Benchmark Report: Drools
+# Benchmark Report: Drools Benchmark
 
-**Rule evaluation via direct HTTP**
+**Direct Drools rule evaluation via HTTP. NOTE: In CQRS architecture, Drools processes global snapshots periodically (decoupled from main event flow). This benchmark measures raw capacity, not a bottleneck.**
 
 | Metric | Value |
 |--------|-------|
-| Peak Throughput | **4176 events/sec** |
-| Average Throughput | 3519 events/sec |
-| Total Operations | 55080 |
-| Successful | 55080 |
+| Peak Throughput | **5481 events/sec** |
+| Average Throughput | 4228 events/sec |
+| Total Operations | 47197 |
+| Successful | 47197 |
 | Failed | 0 |
 | Success Rate | 100% |
-| Duration | 17s |
+| Duration | 10s |
 
 ## Latency
 
 | Percentile | Value |
 |------------|-------|
 | Min | 0ms |
-| P50 (Median) | 1ms |
-| P95 | 3ms |
-| P99 | 16ms |
-| Max | 77ms |
-
-## Component Timing
-
-| Component | Time |
-|-----------|------|
-| Gateway | 0ms |
-| Kafka | 0ms |
-| Flink | 0ms |
-| Drools | 0ms |
+| P50 (Median) | 0ms |
+| P95 | 2ms |
+| P99 | 56ms |
+| Max | 306ms |
 
 ## Resources
 
 | Metric | Value |
 |--------|-------|
-| Peak CPU | 16% |
-| Peak Memory | 91% |
+| Peak CPU | 63% |
+| Peak Memory | 85% |
 
 ---
-*Generated: 2025-12-19 19:09:03 | Commit: 354d89d*
+*Generated: 2025-12-21 00:47:21 | Go Benchmark Tool*

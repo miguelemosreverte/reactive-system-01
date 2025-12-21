@@ -45,6 +45,8 @@ limits_config:
   max_global_streams_per_user: 100000
   max_line_size: 256kb
   reject_old_samples: false
+  reject_old_samples_max_age: 168h
+  creation_grace_period: 10m
 
 # Compactor for storage management
 compactor:

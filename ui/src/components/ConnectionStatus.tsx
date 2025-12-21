@@ -1,95 +1,71 @@
+import { Badge, Space, Typography, theme } from 'antd';
+import { WifiOutlined, DisconnectOutlined, LoadingOutlined } from '@ant-design/icons';
+
+const { Text } = Typography;
+
 interface ConnectionStatusProps {
-  isConnected: boolean
-  sessionId: string | null
-  isReconnecting?: boolean
-  reconnectAttempt?: number
+  isConnected: boolean;
+  sessionId: string | null;
+  isReconnecting?: boolean;
+  reconnectAttempt?: number;
 }
 
-function ConnectionStatus({ isConnected, sessionId, isReconnecting, reconnectAttempt }: ConnectionStatusProps) {
-  const getStatusText = () => {
-    if (isConnected) return 'Connected'
-    if (isReconnecting) return `Reconnecting${reconnectAttempt ? ` (${reconnectAttempt})` : ''}...`
-    return 'Disconnected'
-  }
+function ConnectionStatus({
+  isConnected,
+  sessionId,
+  isReconnecting,
+  reconnectAttempt,
+}: ConnectionStatusProps) {
+  const { token } = theme.useToken();
 
-  const getIndicatorColor = () => {
-    if (isConnected) return '#10b981'
-    if (isReconnecting) return '#f59e0b'
-    return '#ef4444'
-  }
+  const getStatus = () => {
+    if (isReconnecting) {
+      return {
+        status: 'processing' as const,
+        text: `Reconnecting... (${reconnectAttempt})`,
+        icon: <LoadingOutlined spin />,
+        color: token.colorWarning,
+      };
+    }
+    if (isConnected) {
+      return {
+        status: 'success' as const,
+        text: 'Connected',
+        icon: <WifiOutlined />,
+        color: token.colorSuccess,
+      };
+    }
+    return {
+      status: 'error' as const,
+      text: 'Disconnected',
+      icon: <DisconnectOutlined />,
+      color: token.colorError,
+    };
+  };
+
+  const statusConfig = getStatus();
 
   return (
-    <div style={styles.container}>
-      <div style={styles.statusRow}>
-        <span
-          style={{
-            ...styles.indicator,
-            backgroundColor: getIndicatorColor(),
-            animation: isReconnecting ? 'pulse 1s infinite' : 'pulse 2s infinite'
-          }}
-        />
-        <span style={styles.statusText}>
-          {getStatusText()}
-        </span>
-      </div>
-      {sessionId && (
-        <div style={styles.sessionContainer}>
-          <span style={styles.sessionLabel}>Session:</span>
-          <code style={styles.sessionId}>{sessionId}</code>
-        </div>
-      )}
+    <div
+      style={{
+        padding: '8px 16px',
+        background: token.colorBgContainer,
+        borderRadius: token.borderRadius,
+        border: `1px solid ${token.colorBorderSecondary}`,
+      }}
+    >
+      <Space>
+        <Badge status={statusConfig.status} />
+        <Text style={{ color: statusConfig.color }}>{statusConfig.icon}</Text>
+        <Text>{statusConfig.text}</Text>
+        {sessionId && isConnected && (
+          <Text type="secondary" style={{ fontSize: 11 }}>
+            ID: {sessionId.substring(0, 8)}...
+          </Text>
+        )}
+      </Space>
     </div>
-  )
+  );
 }
 
-const styles: { [key: string]: React.CSSProperties } = {
-  container: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: '0.25rem'
-  },
-  statusRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem'
-  },
-  indicator: {
-    width: '8px',
-    height: '8px',
-    borderRadius: '50%',
-    animation: 'pulse 2s infinite'
-  },
-  statusText: {
-    fontSize: '0.75rem',
-    color: '#94a3b8',
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em'
-  },
-  sessionContainer: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: '0.15rem',
-    maxWidth: '100%',
-  },
-  sessionLabel: {
-    fontSize: '0.6rem',
-    color: '#64748b',
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em',
-  },
-  sessionId: {
-    fontSize: '0.6rem',
-    color: '#94a3b8',
-    fontFamily: 'monospace',
-    background: 'rgba(0, 0, 0, 0.3)',
-    padding: '0.2rem 0.4rem',
-    borderRadius: '0.25rem',
-    wordBreak: 'break-all',
-    textAlign: 'center',
-    maxWidth: '200px',
-  }
-}
-
-export default ConnectionStatus
+export default ConnectionStatus;

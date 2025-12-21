@@ -117,7 +117,7 @@ func (h *HTTPRunner) Run(config types.Config) (*types.Result, error) {
 }
 
 func (h *HTTPRunner) runWorker(workerID int, config types.Config, warmupEnd time.Time) {
-	url := config.GatewayURL + "/health"
+	url := config.GatewayURL + "/actuator/health"
 
 	for h.running.Load() {
 		start := time.Now()

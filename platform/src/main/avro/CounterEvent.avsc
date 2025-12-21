@@ -1,0 +1,27 @@
+{
+  "type": "record",
+  "name": "CounterEvent",
+  "namespace": "com.reactive.platform.schema",
+  "doc": "Event representing a counter action",
+  "fields": [
+    {"name": "eventId", "type": "string", "doc": "Unique event identifier"},
+    {"name": "sessionId", "type": "string", "doc": "Session identifier"},
+    {"name": "action", "type": "string", "doc": "Action: increment, decrement, set, reset"},
+    {"name": "value", "type": "int", "doc": "Value for the action"},
+    {"name": "timestamp", "type": "long", "doc": "Event timestamp in millis"},
+    {"name": "traceId", "type": ["null", "string"], "default": null, "doc": "OpenTelemetry trace ID"},
+    {"name": "spanId", "type": ["null", "string"], "default": null, "doc": "OpenTelemetry span ID"},
+    {
+      "name": "timing",
+      "type": ["null", {
+        "type": "record",
+        "name": "EventTiming",
+        "fields": [
+          {"name": "gatewayReceivedAt", "type": "long"},
+          {"name": "gatewayPublishedAt", "type": ["null", "long"], "default": null}
+        ]
+      }],
+      "default": null
+    }
+  ]
+}

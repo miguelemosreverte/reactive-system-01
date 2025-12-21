@@ -6,11 +6,8 @@ import com.reactive.flink.model.EventTiming;
 import com.reactive.flink.model.PreDroolsResult;
 import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.api.trace.SpanContext;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.StatusCode;
-import io.opentelemetry.api.trace.TraceFlags;
-import io.opentelemetry.api.trace.TraceState;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Scope;
 import org.apache.flink.api.common.state.ValueState;
@@ -22,6 +19,7 @@ import org.apache.flink.util.Collector;
 import org.apache.flink.util.OutputTag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 
 /**
  * CQRS-based Counter Processor with timer-based snapshot evaluation.
@@ -34,13 +32,15 @@ import org.slf4j.LoggerFactory;
  *   calls at bounded intervals (MIN/MAX latency). This ensures Drools load
  *   is bounded regardless of input throughput.
  *
- * The separation allows:
- * - Unlimited write throughput (memory-speed state updates)
- * - Bounded read throughput (Drools calls capped by latency bounds)
- * - Eventual consistency: Alerts arrive after state updates, within MAX_LATENCY
+ * Business IDs:
+ * - requestId: Correlation ID for request tracking
+ * - customerId: Customer/tenant ID for multi-tenancy
+ * - eventId: Unique event ID
+ *
+ * Note: OpenTelemetry trace propagation is handled automatically by the OTel agent.
  */
 public class CounterProcessor extends KeyedProcessFunction<String, CounterEvent, CounterResult> {
-    private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 2L;
     private static final Logger LOG = LoggerFactory.getLogger(CounterProcessor.class);
 
     // Output tag for snapshot evaluation (side output)
@@ -55,7 +55,8 @@ public class CounterProcessor extends KeyedProcessFunction<String, CounterEvent,
     private transient ValueState<Integer> counterState;
     private transient ValueState<Long> lastEvaluationTime;
     private transient ValueState<Long> pendingTimerTime;
-    private transient ValueState<String> lastTraceId;
+    private transient ValueState<String> lastRequestId;      // Correlation ID
+    private transient ValueState<String> lastCustomerId;     // Customer/tenant ID
     private transient ValueState<String> lastEventId;
     private transient ValueState<EventTiming> lastTiming;
     private transient Tracer tracer;
@@ -79,11 +80,13 @@ public class CounterProcessor extends KeyedProcessFunction<String, CounterEvent,
         pendingTimerTime = getRuntimeContext().getState(
                 new ValueStateDescriptor<>("pendingTimerTime", Types.LONG));
 
-        // Last trace ID for correlation
-        lastTraceId = getRuntimeContext().getState(
-                new ValueStateDescriptor<>("lastTraceId", Types.STRING));
+        // Business ID states
+        lastRequestId = getRuntimeContext().getState(
+                new ValueStateDescriptor<>("lastRequestId", Types.STRING));
 
-        // Last event ID for transaction tracking
+        lastCustomerId = getRuntimeContext().getState(
+                new ValueStateDescriptor<>("lastCustomerId", Types.STRING));
+
         lastEventId = getRuntimeContext().getState(
                 new ValueStateDescriptor<>("lastEventId", Types.STRING));
 
@@ -106,18 +109,25 @@ public class CounterProcessor extends KeyedProcessFunction<String, CounterEvent,
         EventTiming timing = EventTiming.copyFrom(event.getTiming());
         timing.setFlinkReceivedAt(arrivalTime);
 
-        // Reconstruct parent context for trace linking
-        io.opentelemetry.context.Context parentContext = reconstructParentContext(event);
-
-        // Create processing span
+        // Create processing span (OTel agent provides parent context automatically)
         Span span = tracer.spanBuilder("flink.process_counter")
-                .setParent(parentContext)
                 .setSpanKind(SpanKind.CONSUMER)
                 .setAttribute("session.id", sessionId)
                 .setAttribute("counter.action", event.getAction())
+                .setAttribute("requestId", event.getRequestId() != null ? event.getRequestId() : "")
+                .setAttribute("customerId", event.getCustomerId() != null ? event.getCustomerId() : "")
+                .setAttribute("eventId", event.getEventId() != null ? event.getEventId() : "")
                 .startSpan();
 
         try (Scope scope = span.makeCurrent()) {
+            // Set MDC for log correlation with business IDs
+            if (event.getRequestId() != null) {
+                MDC.put("requestId", event.getRequestId());
+            }
+            if (event.getCustomerId() != null) {
+                MDC.put("customerId", event.getCustomerId());
+            }
+
             // ============================================
             // WRITE SIDE: Immediate state update
             // ============================================
@@ -149,7 +159,8 @@ public class CounterProcessor extends KeyedProcessFunction<String, CounterEvent,
 
             // Update state
             counterState.update(currentValue);
-            lastTraceId.update(event.getTraceId());
+            lastRequestId.update(event.getRequestId());
+            lastCustomerId.update(event.getCustomerId());
             lastEventId.update(event.getEventId());
             lastTiming.update(timing);
             span.setAttribute("counter.new_value", currentValue);
@@ -160,11 +171,15 @@ public class CounterProcessor extends KeyedProcessFunction<String, CounterEvent,
                     currentValue,
                     "PENDING",  // Alert is pending (will be evaluated via timer)
                     "Alert evaluation pending",
-                    event.getTraceId(),
+                    event.getRequestId(),
+                    event.getCustomerId(),
                     event.getEventId(),
                     timing
             );
             out.collect(result);
+
+            LOG.info("Flink processed event: sessionId={}, action={}, newValue={}, requestId={}, customerId={}",
+                    sessionId, event.getAction(), currentValue, event.getRequestId(), event.getCustomerId());
 
             // ============================================
             // READ SIDE: Schedule snapshot evaluation
@@ -175,18 +190,13 @@ public class CounterProcessor extends KeyedProcessFunction<String, CounterEvent,
             span.setAttribute("processing.latency_ms", processedAt - arrivalTime);
 
         } finally {
+            MDC.clear();
             span.end();
         }
     }
 
     /**
      * Schedule a timer for snapshot evaluation based on latency bounds.
-     *
-     * Logic:
-     * - If no timer is pending, schedule one for MIN(now + maxLatency, lastEval + minLatency)
-     * - This ensures:
-     *   - We don't evaluate more frequently than minLatency (aggregate events)
-     *   - We always evaluate within maxLatency (guaranteed SLA)
      */
     private void scheduleSnapshotEvaluation(Context ctx, long now) throws Exception {
         Long pendingTimer = pendingTimerTime.value();
@@ -200,22 +210,19 @@ public class CounterProcessor extends KeyedProcessFunction<String, CounterEvent,
         // Calculate next evaluation time
         long nextEvalTime;
         if (lastEval == null) {
-            // First event: evaluate after minLatency (or immediately if minLatency is 0)
+            // First event: evaluate after minLatency
             nextEvalTime = now + minLatencyMs;
         } else {
             // Subsequent events: respect both min and max latency
             long minAllowed = lastEval + minLatencyMs;
             long maxAllowed = now + maxLatencyMs;
-            nextEvalTime = Math.max(minAllowed, now + 1); // At least 1ms from now
-            nextEvalTime = Math.min(nextEvalTime, maxAllowed); // But within max latency
+            nextEvalTime = Math.max(minAllowed, now + 1);
+            nextEvalTime = Math.min(nextEvalTime, maxAllowed);
         }
 
         // Register timer
         ctx.timerService().registerProcessingTimeTimer(nextEvalTime);
         pendingTimerTime.update(nextEvalTime);
-
-        LOG.debug("Scheduled snapshot evaluation for session {} at {}",
-                ctx.getCurrentKey(), nextEvalTime);
     }
 
     @Override
@@ -225,12 +232,12 @@ public class CounterProcessor extends KeyedProcessFunction<String, CounterEvent,
         // Get current state snapshot
         Integer currentValue = counterState.value();
         if (currentValue == null) {
-            // No state, nothing to evaluate
             pendingTimerTime.clear();
             return;
         }
 
-        String traceId = lastTraceId.value();
+        String requestId = lastRequestId.value();
+        String customerId = lastCustomerId.value();
         String eventId = lastEventId.value();
         EventTiming timing = lastTiming.value();
 
@@ -238,11 +245,11 @@ public class CounterProcessor extends KeyedProcessFunction<String, CounterEvent,
         PreDroolsResult snapshot = new PreDroolsResult(
                 sessionId,
                 currentValue,
-                traceId,
-                null,  // No span ID for timer-based evaluation
-                System.currentTimeMillis(),
+                requestId,
+                customerId,
                 eventId,
-                timing
+                timing,
+                System.currentTimeMillis()
         );
 
         // Emit to side output for async Drools evaluation
@@ -251,26 +258,5 @@ public class CounterProcessor extends KeyedProcessFunction<String, CounterEvent,
         // Update evaluation time and clear pending timer
         lastEvaluationTime.update(timestamp);
         pendingTimerTime.clear();
-
-        LOG.debug("Emitted snapshot for session {} with value {}", sessionId, currentValue);
-    }
-
-    private io.opentelemetry.context.Context reconstructParentContext(CounterEvent event) {
-        io.opentelemetry.context.Context parentContext = io.opentelemetry.context.Context.current();
-        if (event.getTraceId() != null && event.getSpanId() != null) {
-            try {
-                SpanContext remoteContext = SpanContext.createFromRemoteParent(
-                        event.getTraceId(),
-                        event.getSpanId(),
-                        TraceFlags.getSampled(),
-                        TraceState.getDefault()
-                );
-                Span remoteParentSpan = Span.wrap(remoteContext);
-                parentContext = parentContext.with(remoteParentSpan);
-            } catch (Exception e) {
-                LOG.warn("Failed to reconstruct parent span context: {}", e.getMessage());
-            }
-        }
-        return parentContext;
     }
 }

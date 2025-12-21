@@ -183,7 +183,10 @@ public class CounterJob {
                             pre.getCounterValue(),
                             "BYPASS",
                             "Drools bypassed (Layer 2 benchmark)",
-                            pre.getTraceId()
+                            pre.getRequestId(),
+                            pre.getCustomerId(),
+                            pre.getEventId(),
+                            pre.getTiming()
                     ));
             bypassedAlerts.sinkTo(alertsSink);
         } else {

@@ -2,16 +2,26 @@ package com.reactive.flink.model;
 
 import java.io.Serializable;
 
+/**
+ * Counter result to be published to Kafka.
+ *
+ * Business IDs:
+ * - requestId: Correlation ID for this request
+ * - customerId: Customer/tenant ID for multi-tenancy
+ * - eventId: Unique event ID
+ * - sessionId: Counter instance ID
+ */
 public class CounterResult implements Serializable {
-    private static final long serialVersionUID = 2L;
+    private static final long serialVersionUID = 3L;
 
-    private String sessionId;
+    private String requestId;      // Correlation ID for this request
+    private String customerId;     // Customer/tenant ID for multi-tenancy
+    private String eventId;        // Unique event ID
+    private String sessionId;      // Counter instance ID
     private int currentValue;
     private String alert;
     private String message;
     private long timestamp;
-    private String traceId;
-    private String eventId;
     private EventTiming timing;
 
     public CounterResult() {
@@ -25,15 +35,42 @@ public class CounterResult implements Serializable {
         this.timestamp = System.currentTimeMillis();
     }
 
-    public CounterResult(String sessionId, int currentValue, String alert, String message, String traceId) {
+    public CounterResult(String sessionId, int currentValue, String alert, String message,
+                         String requestId, String customerId) {
         this(sessionId, currentValue, alert, message);
-        this.traceId = traceId;
+        this.requestId = requestId;
+        this.customerId = customerId;
     }
 
-    public CounterResult(String sessionId, int currentValue, String alert, String message, String traceId, String eventId, EventTiming timing) {
-        this(sessionId, currentValue, alert, message, traceId);
+    public CounterResult(String sessionId, int currentValue, String alert, String message,
+                         String requestId, String customerId, String eventId, EventTiming timing) {
+        this(sessionId, currentValue, alert, message, requestId, customerId);
         this.eventId = eventId;
         this.timing = timing;
+    }
+
+    public String getRequestId() {
+        return requestId;
+    }
+
+    public void setRequestId(String requestId) {
+        this.requestId = requestId;
+    }
+
+    public String getCustomerId() {
+        return customerId;
+    }
+
+    public void setCustomerId(String customerId) {
+        this.customerId = customerId;
+    }
+
+    public String getEventId() {
+        return eventId;
+    }
+
+    public void setEventId(String eventId) {
+        this.eventId = eventId;
     }
 
     public String getSessionId() {
@@ -76,22 +113,6 @@ public class CounterResult implements Serializable {
         this.timestamp = timestamp;
     }
 
-    public String getTraceId() {
-        return traceId;
-    }
-
-    public void setTraceId(String traceId) {
-        this.traceId = traceId;
-    }
-
-    public String getEventId() {
-        return eventId;
-    }
-
-    public void setEventId(String eventId) {
-        this.eventId = eventId;
-    }
-
     public EventTiming getTiming() {
         return timing;
     }
@@ -102,6 +123,13 @@ public class CounterResult implements Serializable {
 
     @Override
     public String toString() {
-        return "CounterResult{sessionId='" + sessionId + "', value=" + currentValue + ", alert='" + alert + "', traceId='" + traceId + "', eventId='" + eventId + "'}";
+        return "CounterResult{" +
+                "requestId='" + requestId + '\'' +
+                ", customerId='" + customerId + '\'' +
+                ", sessionId='" + sessionId + '\'' +
+                ", value=" + currentValue +
+                ", alert='" + alert + '\'' +
+                ", eventId='" + eventId + '\'' +
+                '}';
     }
 }

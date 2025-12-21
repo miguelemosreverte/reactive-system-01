@@ -3,461 +3,481 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Benchmark: Gateway - 1696 events/sec</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <title>Gateway Benchmark Report</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #0f172a; color: #e2e8f0; padding: 2rem; max-width: 1400px; margin: 0 auto; line-height: 1.5; }
-        h1 { font-size: 1rem; color: #64748b; font-weight: 400; margin-bottom: 0.5rem; }
-        h2 { font-size: 0.75rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.1em; margin: 2rem 0 1rem; border-bottom: 1px solid #334155; padding-bottom: 0.5rem; }
-        .hero { margin-bottom: 2rem; }
-        .hero .value { font-size: 4rem; font-weight: 700; line-height: 1; }
-        .hero .unit { font-size: 1.25rem; color: #64748b; }
-        .hero .subtitle { color: #94a3b8; font-size: 0.875rem; margin-top: 0.5rem; }
-        .meta { color: #64748b; font-size: 0.75rem; margin-bottom: 2rem; }
-        .meta strong { color: #94a3b8; }
-        .card { background: #1e293b; border-radius: 8px; padding: 1.25rem; }
-        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem; }
-        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
-        .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
-        .stat-label { font-size: 0.7rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; }
-        .stat-value { font-size: 1.5rem; font-weight: 700; color: #f1f5f9; }
-        .stat-value.green { color: #22c55e; }
-        .stat-value.yellow { color: #eab308; }
-        .stat-value.red { color: #ef4444; }
-        .stat-unit { font-size: 0.7rem; color: #64748b; }
-        .chart-container { background: #1e293b; border-radius: 8px; padding: 1.25rem; margin-bottom: 1.5rem; }
-        .chart-wrapper { height: 180px; }
-        .chart-title { font-size: 0.75rem; color: #94a3b8; margin-bottom: 0.75rem; }
-        .info-box { background: #1e3a5f; border-left: 3px solid #3b82f6; padding: 1rem; border-radius: 0 8px 8px 0; margin-bottom: 1.5rem; font-size: 0.875rem; }
-        .info-box strong { color: #60a5fa; }
-        .component-bar { display: flex; height: 32px; border-radius: 6px; overflow: hidden; margin: 1rem 0; }
-        .component-bar > div { display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 600; color: white; min-width: 40px; }
-        .legend { display: flex; gap: 1rem; flex-wrap: wrap; font-size: 0.75rem; }
-        .legend-item { display: flex; align-items: center; gap: 0.375rem; }
-        .legend-dot { width: 10px; height: 10px; border-radius: 2px; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1a1a2e; color: #eee; padding: 20px; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        h1 { color: #00d4ff; margin-bottom: 10px; }
+        .description { color: #888; margin-bottom: 30px; font-size: 14px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .card { background: #16213e; border-radius: 12px; padding: 20px; }
+        .card h3 { color: #00d4ff; margin-bottom: 15px; font-size: 14px; text-transform: uppercase; }
+        .metric { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #2a2a4a; }
+        .metric:last-child { border-bottom: none; }
+        .metric-label { color: #888; }
+        .metric-value { font-weight: bold; color: #00d4ff; }
+        .metric-value.success { color: #4ade80; }
+        .metric-value.error { color: #f87171; }
+        .chart-container { height: 250px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #2a2a4a; }
+        th { color: #00d4ff; font-size: 12px; text-transform: uppercase; }
+        .status-success { color: #4ade80; }
+        .status-error { color: #f87171; }
+        .footer { margin-top: 30px; text-align: center; color: #666; font-size: 12px; }
+        code { background: #2a2a4a; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
 
-        /* Sample Events Table */
-        .events-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; margin-top: 1rem; }
-        .events-table th { background: #0f172a; color: #64748b; font-weight: 500; text-align: left; padding: 0.75rem 0.5rem; border-bottom: 1px solid #334155; }
-        .events-table td { padding: 0.75rem 0.5rem; border-bottom: 1px solid #1e293b; vertical-align: middle; }
-        .events-table tr:hover { background: #1e3a5f; }
-        .events-table .id { font-family: monospace; color: #60a5fa; font-size: 0.7rem; }
-        .events-table .trace-id { font-family: monospace; color: #94a3b8; font-size: 0.65rem; max-width: 80px; overflow: hidden; text-overflow: ellipsis; }
-        .events-table .timing { color: #22c55e; font-family: monospace; }
-        .events-table .status-success { color: #22c55e; }
-        .events-table .status-error { color: #ef4444; }
-        .events-table .btn { background: #334155; border: none; color: #e2e8f0; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer; font-size: 0.7rem; margin-right: 0.25rem; }
-        .events-table .btn:hover { background: #475569; }
-        .events-table .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+         
+        .btn { padding: 4px 10px; border-radius: 4px; border: none; cursor: pointer; font-size: 11px; margin-right: 4px; }
+        .btn-trace { background: #8b5cf6; color: white; }
+        .btn-logs { background: #f59e0b; color: #1a1a2e; }
+        .btn:hover { opacity: 0.8; }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-        /* Modal */
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; }
-        .modal.active { display: flex; align-items: center; justify-content: center; }
-        .modal-content { background: #1e293b; border-radius: 8px; width: 90%; max-width: 900px; max-height: 80vh; overflow: hidden; display: flex; flex-direction: column; }
-        .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 1rem; border-bottom: 1px solid #334155; }
-        .modal-header h3 { font-size: 1rem; color: #f1f5f9; }
-        .modal-close { background: none; border: none; color: #64748b; font-size: 1.5rem; cursor: pointer; }
-        .modal-close:hover { color: #f1f5f9; }
-        .modal-body { overflow-y: auto; padding: 1rem; flex: 1; }
+         
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; overflow-y: auto; }
+        .modal.active { display: flex; justify-content: center; align-items: flex-start; padding: 40px 20px; }
+        .modal-content { background: #16213e; border-radius: 12px; max-width: 1000px; width: 100%; max-height: 90vh; overflow-y: auto; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; border-bottom: 1px solid #2a2a4a; position: sticky; top: 0; background: #16213e; z-index: 10; }
+        .modal-header h3 { color: #00d4ff; font-size: 14px; }
+        .modal-close { background: none; border: none; color: #888; font-size: 24px; cursor: pointer; }
+        .modal-close:hover { color: #fff; }
+        .modal-body { padding: 20px; }
 
-        /* Trace Viewer */
-        .trace-timeline { font-family: monospace; font-size: 0.75rem; }
-        .trace-span { display: flex; align-items: center; margin-bottom: 0.5rem; }
-        .trace-span-bar { height: 20px; border-radius: 3px; display: flex; align-items: center; padding: 0 0.5rem; color: white; font-size: 0.65rem; white-space: nowrap; }
-        .trace-span-label { min-width: 150px; color: #94a3b8; }
-        .trace-span-duration { min-width: 80px; color: #64748b; text-align: right; margin-left: 0.5rem; }
+         
+        .trace-viewer { font-family: monospace; font-size: 12px; }
+        .span-row { display: flex; align-items: center; padding: 8px 0; border-bottom: 1px solid #2a2a4a; }
+        .span-service { width: 120px; padding: 4px 8px; border-radius: 4px; text-align: center; font-size: 11px; font-weight: 500; flex-shrink: 0; }
+        .span-service.gateway { background: #4ade80; color: #1a1a2e; }
+        .span-service.kafka { background: #f59e0b; color: #1a1a2e; }
+        .span-service.flink { background: #8b5cf6; color: white; }
+        .span-service.drools { background: #f87171; color: #1a1a2e; }
+        .span-service.unknown { background: #666; color: white; }
+        .span-info { flex: 1; margin-left: 15px; }
+        .span-operation { color: #eee; }
+        .span-duration { color: #00d4ff; margin-left: 10px; }
+        .span-bar-container { flex: 1; margin-left: 20px; height: 20px; background: #2a2a4a; border-radius: 4px; position: relative; min-width: 200px; }
+        .span-bar { position: absolute; height: 100%; border-radius: 4px; min-width: 2px; }
+        .span-bar.gateway { background: #4ade80; }
+        .span-bar.kafka { background: #f59e0b; }
+        .span-bar.flink { background: #8b5cf6; }
+        .span-bar.drools { background: #f87171; }
+        .span-bar.unknown { background: #666; }
 
-        /* Log Viewer */
-        .log-entry { font-family: monospace; font-size: 0.7rem; padding: 0.5rem; border-bottom: 1px solid #334155; }
-        .log-entry:hover { background: #0f172a; }
-        .log-timestamp { color: #64748b; margin-right: 1rem; }
-        .log-level-info { color: #3b82f6; }
-        .log-level-warn { color: #eab308; }
-        .log-level-error { color: #ef4444; }
-        .log-message { color: #e2e8f0; }
+         
+        .log-viewer { font-family: monospace; font-size: 11px; }
+        .log-entry { padding: 8px 12px; border-bottom: 1px solid #2a2a4a; display: flex; gap: 10px; align-items: flex-start; }
+        .log-entry:hover { background: #1a1a2e; }
+        .log-time { color: #666; white-space: nowrap; flex-shrink: 0; font-size: 10px; }
+        .log-level { padding: 2px 6px; border-radius: 3px; font-size: 9px; font-weight: bold; flex-shrink: 0; min-width: 45px; text-align: center; }
+        .log-level.error { background: #f87171; color: #1a1a2e; }
+        .log-level.warn { background: #f59e0b; color: #1a1a2e; }
+        .log-level.info { background: #3b82f6; color: white; }
+        .log-level.debug { background: #6b7280; color: white; }
+        .log-service { padding: 2px 8px; border-radius: 4px; font-size: 10px; flex-shrink: 0; }
+        .log-service.gateway { background: #4ade80; color: #1a1a2e; }
+        .log-service.kafka { background: #f59e0b; color: #1a1a2e; }
+        .log-service.flink { background: #8b5cf6; color: white; }
+        .log-service.drools { background: #f87171; color: #1a1a2e; }
+        .log-logger { color: #666; font-size: 10px; flex-shrink: 0; }
+        .log-message { color: #eee; flex: 1; word-break: break-word; }
 
-        .footer { margin-top: 2rem; color: #475569; font-size: 0.7rem; text-align: center; }
-        @media (max-width: 768px) { .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; } .hero .value { font-size: 3rem; } }
+        .no-data { color: #666; text-align: center; padding: 40px; }
     </style>
 </head>
 <body>
-    <div class="hero">
-        <h1>HTTP + Kafka publish (no wait)</h1>
-        <div><span class="value" style="color: #f59e0b;">1696</span> <span class="unit">events/sec</span></div>
-        <div class="subtitle">Peak throughput for Gateway benchmark</div>
-    </div>
+    <div class="container">
+        <h1>Gateway Benchmark</h1>
+        <p class="description">Gateway HTTP handling with delivery guarantees (waits for Kafka ack)</p>
 
-    <div class="meta">
-        <strong>21120</strong> operations |
-        <strong>21120</strong> successful |
-        <strong>0</strong> failed |
-        <strong>100%</strong> success rate |
-        <strong>17s</strong> duration |
-        Commit: <strong>354d89d</strong> |
-        2025-12-19 19:09:03
-    </div>
-    <h2>Throughput</h2>
+        <div class="grid">
+            <div class="card">
+                <h3>Throughput</h3>
+                <div class="metric">
+                    <span class="metric-label">Peak</span>
+                    <span class="metric-value">5375 ops/sec</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Average</span>
+                    <span class="metric-value">4275 ops/sec</span>
+                </div>
+            </div>
 
-    <div class="chart-container">
-        <div class="chart-title">Throughput Over Time (events/sec)</div>
-        <div class="chart-wrapper">
-            <canvas id="throughputChart"></canvas>
-        </div>
-    </div>
+            <div class="card">
+                <h3>Operations</h3>
+                <div class="metric">
+                    <span class="metric-label">Total</span>
+                    <span class="metric-value">47919</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Successful</span>
+                    <span class="metric-value success">47919</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Failed</span>
+                    <span class="metric-value error">0</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Success Rate</span>
+                    <span class="metric-value">100.0%</span>
+                </div>
+            </div>
 
-    <div class="grid-2">
-        <div class="card">
-            <div class="stat-label">Peak Throughput</div>
-            <div class="stat-value green">1696</div>
-            <div class="stat-unit">events/sec</div>
-        </div>
-        <div class="card">
-            <div class="stat-label">Average Throughput</div>
-            <div class="stat-value">1363</div>
-            <div class="stat-unit">events/sec</div>
-        </div>
-    </div>
+            <div class="card">
+                <h3>Latency (ms)</h3>
+                <div class="metric">
+                    <span class="metric-label">P50</span>
+                    <span class="metric-value">1</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">P95</span>
+                    <span class="metric-value">5</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">P99</span>
+                    <span class="metric-value">9</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Max</span>
+                    <span class="metric-value">54</span>
+                </div>
+            </div>
 
-    <h2>Latency Distribution</h2>
-
-    <div class="grid-4">
-        <div class="card">
-            <div class="stat-label">P50 (Median)</div>
-            <div class="stat-value">4</div>
-            <div class="stat-unit">ms</div>
-        </div>
-        <div class="card">
-            <div class="stat-label">P95</div>
-            <div class="stat-value">9</div>
-            <div class="stat-unit">ms</div>
-        </div>
-        <div class="card">
-            <div class="stat-label">P99</div>
-            <div class="stat-value">42</div>
-            <div class="stat-unit">ms</div>
-        </div>
-        <div class="card">
-            <div class="stat-label">Max</div>
-            <div class="stat-value">79</div>
-            <div class="stat-unit">ms</div>
-        </div>
-    </div>
-    <h2>Component Timing Breakdown</h2>
-
-    <div class="card">
-        <div class="component-bar">
-            <div style="width: 0%; background: #3b82f6;">0ms</div>
-            <div style="width: 0%; background: #8b5cf6;">0ms</div>
-            <div style="width: 0%; background: #06b6d4;">0ms</div>
-            <div style="width: 0%; background: #10b981;">0ms</div>
-        </div>
-        <div class="legend">
-            <div class="legend-item"><span class="legend-dot" style="background:#3b82f6;"></span> Gateway 0ms</div>
-            <div class="legend-item"><span class="legend-dot" style="background:#8b5cf6;"></span> Kafka 0ms</div>
-            <div class="legend-item"><span class="legend-dot" style="background:#06b6d4;"></span> Flink 0ms</div>
-            <div class="legend-item"><span class="legend-dot" style="background:#10b981;"></span> Drools 0ms</div>
-        </div>
-    </div>
-    <h2>Resource Usage</h2>
-
-    <div class="grid-2">
-        <div class="chart-container">
-            <div class="chart-title">CPU Usage (%)</div>
-            <div class="chart-wrapper">
-                <canvas id="cpuChart"></canvas>
+            <div class="card">
+                <h3>Resources</h3>
+                <div class="metric">
+                    <span class="metric-label">Peak CPU</span>
+                    <span class="metric-value">99.5%</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Peak Memory</span>
+                    <span class="metric-value">93.8%</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Duration</span>
+                    <span class="metric-value">10s</span>
+                </div>
             </div>
         </div>
-        <div class="chart-container">
-            <div class="chart-title">Memory Usage (%)</div>
-            <div class="chart-wrapper">
-                <canvas id="memoryChart"></canvas>
+
+        <div class="grid">
+            <div class="card">
+                <h3>Throughput Over Time</h3>
+                <div class="chart-container">
+                    <canvas id="throughputChart"></canvas>
+                </div>
+            </div>
+            <div class="card">
+                <h3>Resource Usage</h3>
+                <div class="chart-container">
+                    <canvas id="resourceChart"></canvas>
+                </div>
             </div>
         </div>
-    </div>
 
-    <div class="grid-2">
+        
         <div class="card">
-            <div class="stat-label">Peak CPU</div>
-            <div class="stat-value">16%</div>
+            <h3>Sample Events</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Trace ID</th>
+                        <th>Latency</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="sample-events-table">
+                </tbody>
+            </table>
         </div>
-        <div class="card">
-            <div class="stat-label">Peak Memory</div>
-            <div class="stat-value">91%</div>
+        
+
+        <div class="footer">
+            Generated: 2025-12-21 00:47:51 | Commit: unknown | Go Benchmark Tool
         </div>
     </div>
-    <h2>Sample Events</h2>
 
-    <div class="info-box">
-        <strong>Event Samples:</strong> Up to 2 successful events and up to 10 error/timeout events are captured for analysis.
-        Click "Trace" to view the distributed trace timeline, or "Logs" to see correlated log entries.
-    </div>
-
-    <div class="card">
-        <table class="events-table">
-            <thead>
-                <tr>
-                    <th>Status</th>
-                    <th>Event ID</th>
-                    <th>Trace ID</th>
-                    <th>Latency</th>
-                    <th>Gateway</th><th>Kafka</th><th>Flink</th><th>Drools</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td><span class="status-success">✓ Success</span></td>
-                    <td class="id">gateway_1766182045241</td>
-                    <td class="trace-id" title="fast-1766182045240-yo6sxt1rw">fast-17661820452...</td>
-                    <td class="timing">10ms</td>
-                    <td class="timing">10ms</td><td class="timing">0ms</td><td class="timing">0ms</td><td class="timing">0ms</td>
-                    <td>
-                        <button class="btn" onclick="showTrace('fast-1766182045240-yo6sxt1rw')" disabled>Trace</button>
-                        <button class="btn" onclick="showLogs('fast-1766182045240-yo6sxt1rw')" disabled>Logs</button>
-                    </td>
-                </tr>
-                <tr>
-                    <td><span class="status-success">✓ Success</span></td>
-                    <td class="id">gateway_1766182045243</td>
-                    <td class="trace-id" title="fast-1766182045242-ihl1p3vis">fast-17661820452...</td>
-                    <td class="timing">11ms</td>
-                    <td class="timing">11ms</td><td class="timing">0ms</td><td class="timing">0ms</td><td class="timing">0ms</td>
-                    <td>
-                        <button class="btn" onclick="showTrace('fast-1766182045242-ihl1p3vis')" disabled>Trace</button>
-                        <button class="btn" onclick="showLogs('fast-1766182045242-ihl1p3vis')" disabled>Logs</button>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-    <!-- Trace Viewer Modal -->
-    <div id="traceModal" class="modal">
+    
+    <div id="trace-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>Trace Timeline</h3>
-                <button class="modal-close" onclick="closeModal('traceModal')">&times;</button>
+                <h3>Trace Viewer - <span id="trace-modal-id"></span></h3>
+                <button class="modal-close" onclick="closeModal('trace-modal')">&times;</button>
             </div>
             <div class="modal-body">
-                <div id="traceViewer" class="trace-timeline"></div>
+                <div id="trace-viewer" class="trace-viewer"></div>
             </div>
         </div>
     </div>
 
-    <!-- Logs Viewer Modal -->
-    <div id="logsModal" class="modal">
+    
+    <div id="logs-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>Correlated Logs</h3>
-                <button class="modal-close" onclick="closeModal('logsModal')">&times;</button>
+                <h3>Logs - <span id="logs-modal-id"></span></h3>
+                <button class="modal-close" onclick="closeModal('logs-modal')">&times;</button>
             </div>
             <div class="modal-body">
-                <div id="logsViewer"></div>
+                <div id="logs-viewer" class="log-viewer"></div>
             </div>
         </div>
     </div>
-
-    <div class="footer">
-        Generated 2025-12-19 19:09:03 | Gateway Benchmark | Reactive System
-    </div>
-
-    <!-- Embedded Data -->
-    <script id="trace-data" type="application/json">{}</script>
-    <script id="logs-data" type="application/json">{}</script>
 
     <script>
-        Chart.defaults.animation = false;
-        Chart.defaults.responsive = true;
-        Chart.defaults.maintainAspectRatio = false;
+        const labels = ["1s","2s","3s","4s","5s","6s","7s","8s","9s"];
+        const throughputData = [0,4591,4457,4578,4466,4675,5375,5083,5257];
+        const cpuData = [73.69758576939662,98.72773536778844,98.49246231156515,99.49748743819278,99.49999999953434,98.99749373485868,98.74686716674981,98.49624060155861,98.48484848489304];
+        const memoryData = [86.36492268069192,88.55005714026531,90.453483682732,91.3407107874313,93.29126942103451,92.87940593844628,93.76628793369166,93.27864827529085,93.58495756632757];
+        const sampleEvents = [{"id":"gateway_4_1766275601274584304","traceId":"","otelTraceId":"","timestamp":1766275601274,"latencyMs":3,"status":"success","componentTiming":{"gatewayMs":3,"kafkaMs":0,"flinkMs":0,"droolsMs":0}},{"id":"gateway_1_1766275601274564680","traceId":"","otelTraceId":"","timestamp":1766275601274,"latencyMs":3,"status":"success","componentTiming":{"gatewayMs":3,"kafkaMs":0,"flinkMs":0,"droolsMs":0}}];
 
-        // Chart data
-        const throughputTimeline = [16,1264,1376,1464,1384,1456,1496,1552,1696,1584,1568,1496];
-        const cpuTimeline = [15.708302270440658,15.708305141368639,15.708308023256018,15.708310894183214,15.708313231857598,15.70831790136806,15.70831790136806,15.708323643078792,15.708326524965063,15.708328872395791,15.708331743320642,15.708340358359257,15.708340358359257,15.708342157080185,15.708341622625577,15.708350246216135,15.708353116998572,15.708355987921074,15.708358860046731,15.708358860046731,15.708364068638542,15.708363532772504,15.70836586735536,15.708368738136691,15.70838023384412,15.70837969938916,15.708388324173756,15.708391195093126,15.70839406721533,15.708399820014973,15.708399820014973,15.708407361626818,15.708410243507082,15.708410243507082,15.708413114424108,15.708412579968334,15.708417797628742,15.708425875574436,15.708428746351222,15.708431617266683,15.70843449914505,15.708442588394611,15.708444386963235,15.708447259081353,15.70845012999447,15.708449595538026,15.708452466450357,15.708454800885216,15.708460017667484,15.708465226239433,15.708465226239433,15.708465226239433,15.708468097150199,15.708473840039453,15.708476712154903,15.708482464939925,15.708487148131198,15.7084900190404,15.708495760720742,15.70850150360576,15.708520554053868,15.708540674461984,15.708560794996865,15.70856941974059,15.70858091538537,15.708607156306268,15.708612908933862,15.70861866290077,15.708635900187268,15.708641105971594,15.708643443612397,15.708657811330879,15.708671641496489,15.708676858461207,15.708676858461207,15.708684946097234,15.708687827956174,15.708699323561682,15.708704540436585,15.708707411192046,15.708716034695264,15.708715498820203,15.708715498820203,15.708726994417239,15.708729865307635,15.708735617915751,15.708740825025199,15.708749449726023,15.708755191366407,15.708758073219833,15.708757536872223,15.708759871884547,15.708765624487633,15.708765624487633,15.70877371352601,15.708782337012906,15.70878467202318,15.70878467202318,15.708796178700407,15.708801921539802,15.708801921539802,15.708804803388505,15.708807674273107,15.708815761738482,15.708824386559625,15.70882959183873,15.708838217863105,15.708846294494288,15.708846294494288,15.70885203611885,15.708854917964398,15.708860671896685,15.708865877642314,15.708868759486288,15.708880243935674,15.708879709467888,15.708888323172612,15.70889120501548,15.708894075893042,15.7088992939418,15.708902164681756,15.708905035558535,15.708907917399825,15.708919401973976,15.708927490283436,15.708930361157869,15.708936124836512,15.708941867792353,15.708944738529645,15.708952826098171,15.708952826098171,15.708964321624427,15.7089700755413,15.708975817147552,15.708975281268073,15.708992529356106,15.709032757625579,15.709044253129568,15.709050007035907,15.709063504814294,15.709072118478273,15.709077872378947,15.709083625069367,15.70908936786737,15.709091704255524,15.709100328878437,15.709100328878437,15.70911182449585,15.709114159554069,15.709116495266182,15.7091280004984,15.709133754390109,15.709136625113146,15.709136625113146,15.709150455084112,15.709150455084112,15.709155673305172,15.709155673305172,15.709161416227943,15.709170039490425,15.70917578241163,15.70917578241163,15.709190149934718,15.709192486312451,15.709198238850322,15.709201110913233,15.709203981766832,15.709209734303126,15.709212070005938,15.709220693393167,15.709226436306542,15.709237397137516,15.709243140048546,15.709243140048546,15.709243140048546,15.709248882958008,15.709254635488174,15.709259308247567,15.709262178961358,15.709267921867372,15.709276545107093,15.7092794159549,15.709284625589268,15.709287496300714,15.709287496300714,15.709296121016186,15.709296121016186,15.709304734491022,15.709312823516678,15.709318566279288,15.709318566279288,15.709323773504385,15.709326644212702,15.70932952602418,15.709335268783658,15.709340486958798,15.709348575635786,15.709348575635786,15.709357189234613,15.709359525460497,15.709368139193018,15.709371009897419,15.709382505298453,15.709385377346166,15.709390584409192,15.709396338263485,15.709402079804418,15.709418792681825,15.709424739129604,15.709432816952756,15.70944090580941,15.709448984226729,15.709448984226729,15.709454736863062,15.70945994250009,15.70945994250009,15.70947036702362,15.70946929545341,15.709472166148716,15.709470752007022,15.709469681849972,15.70947255268022,15.709483513357602,15.709486384049923,15.709495008715862,15.709500750236089,15.709503632034119,15.709509384659267,15.709512255350026,15.709520878663572,15.709523750700441,15.709526085632666,15.709533639301714,15.709533639301714,15.70953651012727,15.709539380815363,15.709544587780517,15.709549805916417,15.709549805916417,15.709549269547141,15.70955501240423,15.709557883091222,15.709563635707099,15.709565973257375,15.709574597768244,15.709577468589886,15.709576932694475,15.70957639632471,15.709578742436245,15.709578742436245,15.709584495047554,15.709589165498352,15.709592047288334,15.709591511608137,15.709597264081337,15.709605877614125,15.709607679263096,15.709610549945538,15.709610014265172,15.709610014265172,15.709620975097028,15.709629588622912,15.709629588622912,15.709631398832464,15.70963426951256,15.70963715129875,15.709640023325095,15.709645764820864,15.709645230335909,15.709647565333409,15.709647565333409,15.709656191168836,15.709661396764565,15.709661396764565,15.709663197275198,15.709671820549612,15.70967469257329,15.709679908796662,15.709688533277033,15.709687997379168,15.709687997379168,15.709690879160778,15.709693214291459,15.709701827799147,15.709718006024561,15.709726619526453,15.709731301728546,15.709739968706419,15.709748045822487,15.709747511335811,15.709750382140655,15.709749846241754,15.709755600032368,15.709758470836427,15.709761341504125,15.709764213518525,15.709771765901056,15.709774636703555,15.709777508717174,15.709779843483279,15.709782714284993,15.709785061571177,15.709785061571177,15.709787932372107,15.709793675049658,15.709805170298216,15.709803563534559,15.709806434333926,15.70980931610524,15.709812188115874,15.70981165242982,15.709813998299971,15.709813461924178,15.709819203519926,15.709824955952495,15.709827290714315,15.70983304449248,15.70983304449248,15.709834843226037,15.7098377249942,15.709843477422522,15.709848684325836,15.70985730875992,15.70985730875992,15.709860180766466,15.709863062532264,15.709874010409171,15.709875821996256,15.709877621936762,15.709877621936762,15.70987708744665,15.709888571558611,15.709888571558611,15.709891443562023,15.709893253260477,15.709896123916556,15.709898460016387,15.709903667108351,15.709903667108351,15.709903667108351,15.709906539109882,15.709912302634043,15.709926122356277,15.709925586667772,15.709928468428675,15.709931340427854,15.70993080593675,15.70993080593675,15.70993314155705,15.709936012345901,15.709938358417014,15.709944101067725,15.709946982826729,15.709951653396608,15.70995452539344,15.70995739618041,15.70995739618041,15.709963149934355,15.709963149934355,15.709971228886152,15.709985594858345,15.709997143356077,15.710000025109538,15.710008104036206,15.710008104036206,15.710010438302472,15.710012784364796,15.710015119238955,15.710023733862617,15.710028940928353,15.710028940928353,15.710031275192247,15.710033610063565,15.710035947558938,15.710035947558938,15.710044581837238,15.710047452480284,15.710050324467373,15.710053195243828,15.710058070500974,15.7100609411426,15.7100609411426,15.710066149409036,15.710068495464355,15.710076572482008,15.710079454228817,15.710088067624572,15.710090949370597,15.710096692125045,15.710102444509246,15.710111059243099,15.710116811625726,15.710116275244147,15.710123829549808,15.710123829549808,15.710123829549808,15.710126701529214,15.710135313571833,15.710141056318916,15.710142867184421,15.710142867184421,15.710142867184421,15.710148085209488,15.710148085209488,15.710150955844684,15.710153827821744,15.710159569223519,15.710167657324467,15.71017052929996,15.710169993388604,15.71016892319842,15.710171793831734,15.710171793831734,15.710177547545673,15.710183300049913,15.710186172023521,15.710188506273001,15.710190842550945,15.71019892142282,15.71019892142282,15.710201793394079,15.710204675131735,15.710207545762383,15.710213288496453,15.71021562476312,15.710215088379579,15.710220306390127,15.710220306390127,15.710228930724343,15.710231801486053,15.710234672114817,15.710237009586303,15.710236473202274,15.71023880947376,15.710247432596683,15.71025839318668,15.710267401608316,15.710273144329982,15.71027782649085,15.71027782649085,15.710280698454108,15.710288774673945,15.710291112138908,15.710296328793632,15.710299199548276,15.710298663632871,15.710298127247203,15.710306217193537,15.71030908781445,15.7103148305278,15.710316833578538,15.710319704330516,15.710321505875877,15.710327247245786,15.710326710859599,15.71032959258585,15.710337679980535,15.710337679980535,15.710340551938284,15.710345768496179,15.710348639244708,15.710356727155398,15.710356191239134,15.71035853726294,15.71035853726294,15.71035853726294,15.710361418985249,15.710361418985249,15.710368960131904,15.710374712468841,15.71037758308347,15.71038280105887,15.710388017607757,15.710388017607757,15.710390351834267,15.71039610550677,15.710398976251536,15.710398441750902,15.710403648615937,15.710409401077655,15.71041227168962,15.710417488100969,15.710416953599843,15.710419289850853,15.71042216046125,15.71042216046125,15.71042216046125,15.71043365548027,15.710434921310332,15.710437791919166,15.710437791919166,15.71044354424227,15.710452168646786,15.710451632945993,15.710459711605962,15.710459711605962,15.710459711605962,15.710465463924821,15.710467798964222,15.71047300573199,15.710475876336913,15.710475876336913,15.710475341834943,15.710483966097252,15.710486300444723,15.710489182155982,15.710489182155982,15.71049960673053,15.710499071028758,15.71050195273812,15.71050428694888,15.710518642910145,15.71052152461872,15.710530877086395,15.710539490361175,15.710550996447678,15.710555668561256,15.710558003455894,15.710556976352583,15.71056559924629,15.71056559924629,15.71056559924629,15.710573676802827,15.710576558505219,15.710578358201174,15.710577822280586,15.710583574709977,15.710586445302186,15.71059218917226,15.710591653468791,15.710594524060214,15.710594524060214,15.710594524060214,15.710602602807693,15.710604948586473,15.710619314260155,15.710622195958754,15.710627948381228,15.710629746653806,15.71064124159435,15.710644113525227,15.71064644974283,15.71064644974283,15.71064644974283,15.710652203368843,15.710657944678353,15.710657944678353,15.710663685986301,15.710662079162507,15.710667821812255,15.710670692532222,15.710676435045743,15.71067931674055,15.710678245111179,15.710683472102522,15.710683472102522,15.71068634282139,15.710692095098047,15.710694431102116,15.710694431102116,15.710703055303208,15.7107053903143,15.710713476908083,15.71071294098487,15.71071294098487,15.71071582267495,15.710721565316064,15.710721565316064,15.710730189511027,15.710729653114136,15.710728581482947,15.710734333886556,15.710734333886556,15.710737215574275,15.71074242168068,15.710744756471124,15.710750508737403,15.710749973029431,15.71075284374265,15.71075284374265,15.710761479036073,15.710763813690583,15.710766695375153,15.710774774076175,15.710782862466791,15.710788614726459,15.710798500373205,15.710807113575925,15.710808966502302,15.710814173935272,15.71081705561398,15.710816519904652,15.710819390610489,15.710818854686014,15.710827477640166,15.710833229887694,15.710836111564038,15.710838447079176,15.710838447079176,15.710843663534357,15.71084653410365,15.71084941577842,15.710848880068284,15.710857493253222,15.710863245494936,15.710867915784629,15.710867915784629,15.710870797457824,15.71087653872606,15.710879420398467,15.710881220673587,15.710880684273388,15.710883565945007,15.710883565945007,15.710889307211042,15.710891652956713,15.710897395431408,15.710902612089741,15.710901541174781,15.710901541174781,15.710901005249447,15.710909639285155,15.710915381757651,15.710924006030918,15.710924006030918,15.710929747290841,15.71093102091817,15.71093389147993,15.710936762175887,15.710942515748636,15.710945387654817,15.710948258349994,15.710952402535252,15.710952402535252,15.710952402535252,15.710960489527254,15.710960489527254,15.710963371190676,15.71096624309544,15.710965706693598,15.71097666445308,15.710979000430397,15.71098187112259,15.710984752784437,15.71099049524453,15.710993376905591,15.710993376905591,15.710992840978758,15.71099805692779,15.711003798174533,15.711003798174533,15.711012422291128,15.711012422291128,15.711017102998317,15.711017102998317,15.711016566595179,15.711028061396739,15.711028061396739,15.711030407126685,15.71103274331174,15.711044247864713,15.711049454046739,15.71106616652293,15.711071425657197,15.711071425657197,15.71107663251991,15.711079514170704,15.711082384852846,15.711084718996302,15.711087064718418,15.711087064718418,15.711095688942745,15.711100905422152,15.711100905422152,15.711103777315117,15.711106112802636,15.711108448961483,15.711114191398629,15.71112282523745,15.711122289521406,15.711124625006873,15.71112749568603,15.711133977326567,15.711133977326567,15.71113918523676,15.711138113115194,15.711140994759514,15.711143866647465,15.711146737324421,15.711149618967951,15.711158231939223,15.711159495970278,15.711162366645354,15.711165238531738,15.71116812017416,15.711173862600322,15.711176744241959,15.711176744241959,15.711181950395229,15.711184832036077,15.711187703920112,15.71118663367935,15.711192376102062,15.711200989196403,15.711200989196403,15.71120673040671,15.711211949404568,15.711223444132841,15.711232066977864,15.711237272985931,15.711236737267436,15.711239609146773,15.711242479816518,15.711241409358804,15.711244279893252,15.711250033408225,15.711249497689558,15.711254169303643,15.711254169303643,15.711262782381525,15.711268524789975,15.711271406425602,15.711274288060443,15.711276622319259,15.711279494194361,15.711279494194361,15.71128470088067,15.71128703702192,15.71128703702192,15.711295661059873,15.71129512465112,15.711300878156816,15.711303213102045,15.711306083766145,15.71131416351366,15.711317045145497,15.71132565820802,15.711331410367086,15.71134236933596,15.711351913082543,15.711360001165053,15.711365207821826,15.711367543966857,15.71137042559379,15.71137329611694,15.71137617774309,15.711383720324074,15.711386592188509,15.711388926988631,15.711391263118921,15.711394133639725,15.711397005503377,15.711400807167575,15.711400270755881,15.711406012064758,15.71140835796575,15.711414111450164,15.711413575511635,15.71141879123977,15.711423997882312,15.711426869743123,15.711426869743123,15.711429205880684,15.711431541327894,15.711434422948503,15.71144538306663,15.71144538306663,15.711448254924312,15.711448254924312,15.711451125575376,15.711456330328433,15.711462083804042,15.711464418594964,15.711466755922821,15.711466219510124,15.711469090159305,15.711474307908787,15.711477189525604,15.711480061380156,15.71148293202824,15.711484731599715,15.711490474100778,15.711493355716485,15.711495691845528,15.71149857346045,15.711504315824648,15.711506650057805,15.711509520568706,15.711514728536288,15.711514728536288,15.711519946276306,15.711519946276306,15.711519946276306,15.711528559280588,15.711528022867057,15.711530894716125,15.711533766564411,15.711538448347422,15.711540783131516,15.711543664743436,15.711552277741289,15.711552277741289,15.71155514824874,15.711556949840125,15.711562701957604,15.711562701957604,15.711567908029899,15.711573671249154,15.711573671249154,15.711578878008956,15.711578341594443,15.711584084077945,15.711592173503853,15.711598107925875,15.71161535475791,15.711623978706218,15.711632066370884,15.711631530644002,15.71163674680281,15.711635190968822,15.711640944406641,15.711643815039169,15.711649567137723,15.711649567137723,15.711655309605494,15.71166106304017,15.711660527093546,15.711665207046893,15.711670413640597,15.711673285474737,15.711673285474737,15.711676167072275,15.711678502489573,15.711678502489573,15.711678502489573,15.711687115581096,15.711692331945425,15.711697550838977,15.711700421333541,15.711700421333541,15.711706162455302,15.711705626727362,15.711710844205157,15.711713714698158,15.711713714698158,15.711721804079652,15.711724140180976,15.711727010807541,15.711732762891936,15.711735633517717,15.711735097569157,15.711737433524938,15.711739768286522,15.711748382566466,15.711756479819694,15.711756479819694,15.711762222134137,15.711765092758037,15.71176402249389,15.711763486544521,15.711769238621685,15.711769238621685,15.71177211044704,15.711777852758036,15.71178360497,15.711788821315073,15.71179456376056,15.711800304729492,15.711799770193307,15.711802104864049,15.71180784717003,15.711807311440593,15.71181307461435,15.71181487460983,15.711820617051231,15.711820617051231,15.711823487670262,15.711829229972798,15.711832111558174,15.711837852657373,15.71184073424196,15.71183966256087,15.711842533041034,15.711844869121009,15.711850611420095,15.711853481898693,15.711859224333983,15.711862094811801,15.71186102312973,15.711866240791132,15.711874864668355,15.71188869523357,15.711897308138212,15.711897360222235,15.71190310130495,15.711914051476278,15.711914051476278,15.711916397102168,15.711919267573238,15.711922149150533,15.711927355838814,15.7119302263091,15.711933098120632,15.711935434052204,15.711935434052204,15.711938315628396,15.711945856829553,15.7119516102146,15.7119516102146,15.711960221894392,15.711959687355966,15.711964893343588,15.71197064538472,15.71197478087819,15.71197478087819,15.71197371038607,15.711982333027866,15.71198807529948,15.711990410167399,15.711992744342046,15.712004239988946,15.712004239988946,15.712009457621493,15.712008921667017,15.712008921667017,15.712014673836938,15.712020416104005,15.712022750138829,15.712025631708224,15.712030838155428,15.712030838155428,15.712033183988419,15.71203551815896,15.71203551815896,15.712043606170829,15.7120464766317,15.7120464766317,15.712052239764976,15.712054041288825,15.71205637666156,15.71206211771731,15.712067859975736,15.712070741540874,15.712073611999083,15.712073611999083,15.71207254030686,15.71207254030686,15.712077746817938,15.712083500180304,15.712083500180304,15.712092111686898,15.712094993250139,15.712103070139651,15.712105951702105,15.712111168118897,15.712116385046656,15.712116385046656,15.712122126092062,15.712125007652153,15.712130213944095,15.712135967297968,15.712135967297968,15.712140636172753,15.71214351773127,15.712145853567637,15.712145853567637,15.712157357723164,15.712160228311928,15.712159691881375,15.712171187472332,15.712171187472332,15.712173522102404,15.712178729798032,15.712184481940275,15.712184481940275,15.712184481940275,15.712187352526694,15.712195439888257,15.712197775928791,15.71219723997039,15.712205862555939,15.712208734344859,15.712220228716193,15.712236393825252,15.712267652609249,15.71227340473624,15.712276276519823,15.712281481104823,15.712280410598192,15.712283292145335,15.71228616272251,15.712291904944864,15.712297122530366,15.712302874652009,15.712301802257228,15.712301802257228,15.712304683802008,15.712310424816073,15.712310424816073,15.712318511412024,15.712321383192307,15.712320311014357,15.712326063130973,15.712326790880645,15.71233200824104,15.71233487881335,15.712340632132737,15.712343502568524,15.7123487071398,15.712351052936304,15.71235051697525,15.712353388752229,15.712356270291961,15.71235914086239,15.712367774373398,15.712370646149592,15.71237351671924,15.712375862295067,15.712378196292443,15.71238053111648,15.71238053111648,15.712388620445283,15.712391490877303,15.712394362651613,15.712393826215699,15.712399579524696,15.712402450091679,15.712401914346364,15.71240713176084,15.71240659579849,15.712415209908437,15.712418091442014,15.712429573430923,15.7124290369942,15.712428501031356,15.712434264096151,15.712438936131838,15.712441806560093,15.712444676987564,15.712450419319756,15.712449883356424,15.712449883356424,15.712449348804622,15.712454554697716,15.712454554697716,15.712460306654663,15.712463177215533,15.712466047775619,15.712471266520986,15.712477008847381,15.71247934330883,15.71247934330883,15.712481142877493,15.71248688372569,15.71248688372569,15.71249263581179,15.712494971613467,15.712497842170423,15.712497842170423,15.712497307618097,15.712497307618097,15.712508801889339,15.712511135872651,15.712511135872651,15.712514006428044,15.712512935911056,15.71252443017664,15.71252443017664,15.712527301939645,15.712535378236636,15.712535378236636,15.712537723796693,15.71253718804658,15.712545275989717,15.712544739550227,15.712552816315887,15.712558579362017,15.71256378578871,15.712577616033101,15.71258336796959,15.712591497915218,15.712596714013252,15.712599585768547,15.712605337698553,15.712604801257884,15.712604801257884,15.712604801257884,15.7126123532227,15.712615223633694,15.712620975694277,15.712620975694277,15.712623857209046,15.71263193481817,15.712634805228062,15.712637675771523,15.712644885896932,15.712647232853488,15.71265530966714,15.71265530966714,15.712657654736908,15.712659989310199,15.712659989310199,15.712665742569396,15.712668612975989,15.712676163844607,15.712676163844607,15.712681905997858,15.712684777744515,15.712684777744515,15.712692876609466,15.712698083140483,15.712700953544728,15.712700417101926,15.712702751670468,15.712702751670468,15.71271084076794,15.712713711304339,15.712716581706701,15.712719452242313,15.712719452242313,15.712722322777143,15.712721786808334,15.712724133756609,15.712727004290658,15.712732209992303,15.712740833640638,15.712740833640638,15.712740833640638,15.71274317917552,15.712746049708787,15.712748920241271,15.712753599945048,15.712756471686836,15.712759353189446,15.712762223588042,15.712767429890642,15.712773181790277,15.712773181790277,15.712775527535925,15.71277786148805,15.712780732018333,15.712785949288518,15.71278881981802,15.71279457305628,15.712797443585,15.712797443585,15.71280031398093,15.712806067217617,15.712806067217617,15.712814153668134,15.712814153668134,15.712815951860277,15.71281883335737,15.71281883335737,15.712824575621124,15.712830327510696,15.712830327510696,15.712832663275888,15.712835009014725,15.712840224589305,15.712843096324338,15.712843096324338,15.71284884821045,15.71284884821045,15.712851718735404,15.712854600228562,15.712859806515556,15.712865558399308,15.712867893032417,15.712866822022612,15.712872564278832,15.712872564278832,15.712875445770095,15.712884058414254,15.712898424277336,15.712909381958204,15.712916976165674,15.712916976165674,15.712919321204632,15.71292219172142,15.712930289103607,15.712930289103607,15.712930289103607,15.712936042314297,15.712938912830301,15.712937840623415,15.712943592489669,15.71294646421543,15.712945928242469,15.712948809725042,15.712954550754068,15.712957421136187,15.71296030261797,15.71295976664516,15.712964982058958,15.712964446299305,15.712973797649193,15.712973797649193,15.712973797649193,15.712976143155455,15.712979013667377,15.712981885390299,15.712987626280572,15.712990507758887,15.712989971310009,15.712989971310009,15.712992317027219,15.712994651432242,15.71299752315406,15.713000404630797,15.713009017371135,15.713014758124855,15.713014758124855,15.713019974871372,15.713019440303515,15.71302519228683,15.71302752824518,15.713030398620548,15.713033270339235,15.713039022320666,15.713039022320666,15.713037951302452,15.713046040235334,15.71304837484831,15.713054115860075,15.713054115860075,15.71305645166503,15.713059333136869,15.713067945730302,15.713067945730302,15.713073697573273,15.713078367921964,15.713084110139707,15.713089851012896,15.713092732483162,15.713092197913813,15.713095079382972,15.713100820254589,15.713103691967941,15.713108362309997,15.71311411427931,15.71311411427931,15.713119866114903,15.713119866114903,15.713118795781655,15.713124537860354,15.713124537860354,15.71313262421655,15.713135495926918,15.71314070222131,15.713143573930893,15.713145908532198,15.713151649394257,15.713154530859624,15.713157402568426,15.713157402568426,15.713162074091558,15.713162074091558,15.713162074091558,15.713167814951271,15.713173042114933,15.713173042114933,15.713175912476684,15.713178784183604,15.713184536142363,15.713183465593172,15.713186335954141,15.713188670684882,15.713191541045068,15.713200164706656,15.71321164896876,15.713220272491638,15.713228894802109,15.713228894802109,15.713234356207234,15.713233820442282,15.713236690931442,15.713242444087147,15.713248184929427,15.713250520171707,15.713250520171707,15.713252320108003,15.713258071915408,15.713260942402222,15.713263814100328,15.713263814100328,15.713263814100328,15.713272436392192,15.713278188196462,15.713278188196462,15.713286811831278,15.71328914760837,15.713290945655217,15.71329381735144,15.713296698802573,15.713296698802573,15.713299569286256,15.713300842531611,15.713300842531611,15.713303712880647,15.713309455058353,15.713315206856166,15.713318078550506,15.713320959999278,15.713320959999278,15.713323294500855,15.713331916777332,15.713331380318612,15.713334261765807,15.713336061710493,15.713338943156902,15.713341814849038,15.71334468519541,15.71335330746654,15.713352771007333,15.713355642698687,15.713355106930358,15.713357452394309,15.713368945139699,15.713368945139699,15.713371816829952,15.713371816829952,15.713374698273212,15.713374698273212,15.713379902634472,15.713382784076943,15.713382784076943,15.713388527455102,15.713390326180424,15.713396077964713,15.713396077964713,15.713396077964713,15.71339895940561,15.713407581662917,15.713409916890313,15.713409916890313,15.713412798329637,15.71341172657814,15.713414598264627,15.713417479703162,15.713420350043886,15.713423220518157,15.713428962677348,15.713431844115094,15.713431307654735,15.713431307654735,15.713439931116232,15.713442265818504,15.713445136157345,15.713444600174666,15.71345035329466,15.71345035329466,15.713452687305418,15.713452687305418,15.713458439211628,15.713458439211628,15.713461309549368,15.713472267490832,15.713472267490832,15.713474613153396,15.713480364922598,15.713480364922598,15.713486116823775,15.71348845204405,15.713502280310522,15.713510903888608,15.713512027152596,15.713526391519103,15.713526391519103,15.713529261850095,15.71353446666003,15.71353446666003,15.713536803754993,15.7135425556442,15.7135425556442,15.71354201918122,15.713544889642952,15.713550631648173,15.71355296874139,15.71355296874139,15.713555303217962,15.713558173546291,15.713570599125434,15.713572933677375,15.713572933677375,15.713572397693124,15.713581021114006,15.71358676324336,15.713586228660875,15.713591433667625,15.713591433667625,15.713591433667625,15.713597185413345,15.713597185413345,15.713597185413345,15.71360868049856,15.71360868049856,15.71360868049856,15.713610480385961,15.713612814933327,15.713615686602367,15.713620902011671,15.713623772465555,15.713629514454924,15.71362897987177,15.71363418465933,15.71363418465933,15.713637066078267,15.713642282697679,15.713650904886592,15.7136532405666,15.7136532405666,15.713656121983174,15.71366186275316,15.713664208392652,15.713667078843088,15.713666542856872,15.713672284839491,15.713680908368314,15.71368324221818,15.713686123632392,15.713686123632392,15.71369079398052,15.713693675393948,15.713696556806584,15.713696556806584,15.71370229743737,15.713704642381716,15.713706976842609,15.713709847289598,15.713715600362626,15.713715600362626,15.713715064585035,15.713715064585035,15.713723686755099,15.713729428729401,15.713735180583996,15.713737515776396,15.7137403971851,15.713739861197412,15.713748473613057,15.71375422546451,15.71375422546451,15.71375368947665,15.713758905416295,15.71376751782739,15.71376698323925,15.71376644677044,15.713772199833876,15.713772199833876,15.713772199833876,15.713780286210913,15.713783157867548,15.713785491839127,15.713787828906339,15.713790700561406,15.713790700561406,15.713793571001181,15.713799324059588,15.713799324059588,15.713807399991186,15.71380974680539,15.713820704825372,15.713837939364147,15.7138408110153,15.713843733479854,15.713846605128168,15.713846605128168,15.71384947556166,15.71386098030832,15.713860445718316,15.713860445718316,15.713865114680537,15.713867996077221,15.713867996077221,15.713876608325245,15.713879478756853,15.713881279341358,15.713883613780427,15.713888831038867,15.713888831038867,15.713894582732962,15.713897453162689,15.713902669729322,15.713902669729322,15.713905540027529,15.71390680530509,15.71390680530509,15.713911475658263,15.713911475658263,15.71391328458679,15.71391328458679,15.713927649984763,15.713927649984763,15.713930520411507,15.71393339070705,15.71393627209805,15.713941478039573,15.713940942257054,15.713943287174834,15.713946157600478,15.713946157600478,15.713949038989906,15.713951373290477,15.713954243715339,15.713962867166634,15.713965737459509,15.713968083064032,15.713967546591107,15.713967010597848,15.7139727525271,15.713978504337145,15.713981375973834,15.713984257360108,15.713984257360108,15.713989473042844,15.713991271207808,15.713997013133291,15.713999894517992,15.714002764939089,15.714005646323004,15.714008527706127,15.714013732421634,15.714013732421634,15.71401606758222,15.714021820598264,15.714021820598264,15.71402756130581,15.714035647608396,15.714035647608396,15.714035647608396,15.714037992994747,15.71404032815296,15.714043198439088,15.714046079819063,15.714046079819063,15.714048951450884,15.714051821868535,15.714053632866134,15.714053096871233,15.714061707857693,15.714064579488413,15.714066924391295,15.714066924391295,15.714069794807061,15.714072676184355,15.714075021565787,15.714077357409803,15.71408022782447,15.714091721395171,15.714091721395171,15.71409406629441,15.71409406629441,15.71409406629441,15.714102152368453,15.714101616582354,15.714107358622877,15.714110239996234,15.71412640312187,15.714135026529943,15.714149390624232,15.714154606485033,15.714157478108536,15.714160359477955,15.714165563686555,15.714165563686555,15.71416454369346,15.71417317804628,15.71417317804628,15.71418125455878,15.71418125455878,15.714180718081566,15.714180718081566,15.714183053885778,15.714183053885778,15.714188261126393,15.714191131399492,15.714199753439992,15.714202634803549,15.7142049687289,15.714210176016891,15.714210176016891,15.714215927781613,15.714215391783718,15.714215391783718,15.71421826218521,15.714221132455641,15.714221132455641,15.714229755834591,15.714229755834591,15.714237833518565,15.714240703917712,15.714240703917712,15.714243574186579,15.714245373324056,15.714251113990182,15.714253995350735,15.714253460749164,15.714256331146744,15.714256331146744,15.714259202760653,15.714264954516896,15.714270695050084,15.714276446804758,15.714275374326247,15.714280582949018,15.714283453344253,15.714283453344253,15.714283453344253,15.714289194003802,15.71429441049279,15.714296221454921,15.714296221454921,15.714304833592601,15.714307703985952,15.714307703985952,15.714312909857743,15.714312374065498,15.714314720818415,15.714320461472322,15.714320461472322,15.71432621321834,15.714329083479212,15.714329083479212,15.71433195508779,15.714334289555145,15.714339505298774,15.714342376906249,15.71434812851853,15.714353870514811,15.714356740773336,15.714362492514327,15.714362492514327,15.7143739861174,15.71437972810977,15.714388349973522,15.714388349973522,15.714390696718509,15.714392495178103,15.714395366782128,15.714395366782128,15.714398237036741,15.714401107422878,15.714403979026123,15.71440919602366,15.71440866022931,15.71440866022931,15.714414400998605,15.714419606369685,15.714421942148297,15.714424287493149,15.714432899729152,15.714435771329729,15.714441511962807,15.714440977357768,15.71445447254591,15.71446883771405,15.714482665523397,15.714488406279543,15.71448787167366,15.71448733518744,15.714493086906408,15.714493086906408,15.714498292743562,15.714504034714286,15.714509786300301,15.714509786300301,15.71451500340943,15.714515387170472,15.714523474677142,15.714522402185963,15.714525283523917,15.714525283523917,15.71453102413832,15.71453390547549,15.714536239842758,15.71454199277012,15.71454199277012,15.714544327212673,15.714549553395996,15.714551887761994,15.714554759351875,15.714559976317405,15.714559976317405,15.714565718276338,15.714567516228954,15.71457038646709,15.71457612842414,15.714581891089175,15.714587634263461,15.714587634263461,15.714587099654462,15.71458943475269,15.71459465052151,15.714597520889145,15.714600392474331,15.714600392474331,15.714603273804558,15.714609015755816,15.714614230833282,15.714619971434502,15.714622843018123,15.714622308408305,15.714622308408305,15.71462177260827,15.714630395884408,15.714630395884408,15.714630395884408,15.714633267466462,15.714635612305608,15.71464422313712,15.714647094718392,15.714647094718392,15.71464889467064,15.714651766251128,15.714654636613435,15.71465751793987,15.714659853030685,15.714665594971128,15.714679969663342,15.714679969663342,15.714682306629571,15.714688047220918,15.714690918797494,15.714696134679235,15.714696134679235,15.714698469765326,15.714698469765326,15.714709428640047,15.714712298868772,15.714712298868772,15.714717515753698,15.71472039707477,15.714726139005968,15.714731343788424,15.714736560190545,15.714739430417385,15.714739430417385,15.714742301988943,15.714742301988943,15.71474518330844,15.714750923890694,15.714756129325885,15.71475794022825,15.71475794022825,15.714760811798243,15.714760811798243,15.714760811798243,15.714766553721764,15.714769435039367,15.714780392011926,15.714789013904557,15.714797637010516,15.714808443608844,15.714814185393742,15.714817055743188,15.714822807404556,15.714825678968115,15.714828023788174,15.714828023788174,15.714830369294388,15.714838981295296,15.714841851642861,15.714841851642861,15.714847593551633,15.714847058936577,15.7148556820257,15.71485514601035,15.714854073712287,15.714856955021517,15.71486416259352,15.71486416259352,15.714866507885306,15.71486937810068,15.71487224965905,15.714880871524137,15.714883741867617,15.714883205852214,15.714891292564449,15.714891292564449,15.714894173869101,15.714896508276357,15.714899378489067,15.714902259792934,15.714904594118961,15.714904594118961,15.714904594118961,15.714910346978206,15.714912680825352,15.714912680825352,15.714921304023067,15.714927044445501,15.71492650842944,15.714929389730942,15.714929389730942,15.714929389730942,15.714931735224615,15.714931735224615,15.714946089219534,15.714951840728727,15.714951304233931,15.714959401152246,15.714959401152246,15.714962272704646,15.714970894546962,15.714970894546962,15.714970894546962,15.714973764882767,15.714981853318474,15.71498131730143,15.71498078149294,15.714989393584764,15.714989393584764,15.714992274880435,15.714995145086249,15.715003768135901,15.715003768135901,15.715009508674074,15.715011853950637,15.715019395605697,15.715019395605697,15.715022265808384,15.715025137356234,15.715024602735491,15.715032688544081,15.715035569835962,15.715040775774366,15.715043111484068,15.71504545627701,15.71504832660717,15.715059283954002,15.715059283954002,15.715065035571795,15.715070777315901,15.715073122585624,15.715081734655655,15.715081734655655,15.715084070230958,15.715086404746758,15.715097898099867,15.715097363477318,15.715097363477318,15.715103105215627,15.715104906114826,15.715110646504701,15.715113516829849,15.715118723941668,15.715126809374624,15.715135421429624,15.71515145572252,15.715159541493248,15.715168153536924,15.715168153536924,15.715168153536924,15.715171023725505,15.715173905006157,15.715175706103862,15.715181457571207,15.715184327758221,15.715187198076302,15.715192939927167,15.715198145624228,15.715198145624228,15.715197609810694,15.715203361274908,15.715205696967017,15.715208568498696,15.715211438683365,15.715214319961019,15.715217190276437,15.71521791749645,15.715223134281278,15.715228340310874,15.715230675869218,15.715230675869218,15.715233546051225,15.715233546051225,15.715242167821101,15.715244502318848,15.715255451242616,15.71525779649384,15.715260677767379,15.715263548077932,15.715263011573349,15.715263011573349,15.715268217437348,15.715271088964155,15.715273434213312,15.715279174700857,15.715279174700857,15.715284926150277,15.715293004883515,15.71529588615405,15.71529588615405,15.715298219956086,15.715303424415636,15.71530863027161,15.71530863027161,15.715314383064863,15.715317254587907,15.715322995068098,15.715322995068098,15.715328210616775,15.715330020751836,15.715332892273775,15.715335762447785,15.715344384191274,15.715343848166846,15.715343848166846,15.715346729432806,15.715351934749686,15.715357150368629,15.715360020670257,15.715362892190315,15.715362892190315,15.715368643626046,15.71537098051759,15.715369908191882,15.715375659755686,15.715381402791886,15.715384272962135,15.715390014648523,15.715392884948272,15.715400981263757,15.71539937478968,15.715405116473868,15.715405116473868,15.715405116473868,15.715405116473868,15.715410867902044,15.71541373819991,15.715418408035555,15.715429366643043,15.715429366643043,15.715432247901742,15.715435118066976,15.715434582247292,15.715434582247292,15.715437452411745,15.715440323924904,15.71544319422057,15.7154541625643,15.71546799127346,15.715476603239376,15.715484680572917,15.715490431988362,15.715487601827382,15.715493342275568,15.715498560405333,15.715507183320854,15.715512387738025,15.715512387738025,15.715512387738025,15.715517593683401,15.715523345090162,15.715528550370014,15.71553034867376,15.71553034867376,15.715536101427476,15.715541841867209,15.715544723116254,15.715544186604054,15.7155465318233,15.7155465318233,15.71555228335546,15.71555748796927,15.715555880796456,15.71556163354528,15.715567373980146,15.715566838156716,15.715575461055254,15.715575461055254,15.715577796043293,15.71558354756979,15.715583012937397,15.715585884437516,15.715588765681195,15.715591100138202,15.715593970288378,15.715596304538204,15.715604917684844,15.715604917684844,15.715603847228188,15.715606717376799,15.715612479861157,15.715615350008985,15.715621091785161,15.715621091785161,15.715628640774042,15.715637263788546,15.715637263788546,15.715641934970993,15.715644805247836,15.715656298402164,15.715658632514149,15.71566150400783,15.715666709792053,15.715668519172867,15.715671389314902,15.71567427055211,15.715682882460122,15.715682882460122,15.715688624092392,15.71569383956993,15.715699045347542,15.715698509521342,15.715704262247348,15.715712872795894,15.715712872795894,15.715715754030422,15.715718624167764,15.71572096102249,15.71572096102249,15.715726165397015,15.715728510803743,15.715734252428334,15.715740003930595,15.715742875418625,15.715750952674036,15.715762444441268,15.715776818788349,15.715790109612874,15.715790109612874,15.715795851362394,15.715795316725572,15.7158005321834,15.715805747021061,15.715811488767914,15.715811488767914,15.715822447231714,15.715821911196837,15.715821911196837,15.715830523069126,15.715832867773639,15.715838074877672,15.715840408970086,15.715840408970086,15.715846160454591,15.715857653544246,15.715875625207582,15.71588424803054,15.71588711828734,15.715895741107941,15.715895205276137,15.71589701393653,15.71589988419223,15.715908507009058,15.715913044688303,15.715917712706403,15.715920582958487,15.71592633564748,15.715929205766315,15.715928133897714,15.715933886584818,15.715933886584818,15.715942508167382,15.715947723106993,15.715952394017641,15.715955264133813,15.71595759977188,15.715966221348005,15.715966221348005,15.715971962932732,15.715980574897925,15.71598345610877,15.715988672790271,15.715988672790271,15.715991008425178,15.715993342500347,15.715993342500347,15.715996212612609,15.716004835535452,15.716004835535452,15.716010575892586,15.716010041250028,15.716012375660446,15.716020998445654,15.716023333872863,15.716023333872863,15.71602620398278,15.716029074091912,15.716028003614872,15.716039496638196,15.716042377844145,15.716042377844145,15.716045247951712,15.716045247951712,15.716047582155529,15.71604938178429,15.71605512471088,15.716057994816884,15.716060876021725,15.716063746263295,15.716066080329172,15.716066080329172,15.716068951790973,15.716077037504968,15.716082255525214,15.716085125628867,15.716087997089105,15.716087997089105,15.716093737431667,15.716095546758213,15.716104158558029,15.71610362391381,15.71610362391381,15.71610362391381,15.716112245453976,15.71611512665424,15.716120868213125,15.716123202409504,15.716122131928522,15.71612787226419,15.716133624920598,15.716133624920598,15.716136495019562,15.716136495019562,15.716142236711173,15.716144572164467,15.71614690642511,15.716146370383976,15.716154993134007,15.716154993134007,15.716157863368046,15.716163603697145,15.716166484894403,15.716169366090876,15.716171700144624,15.716171164307374,15.716170629661672,15.716173499755943,15.716176371210208,15.71617925240557,15.716184992731218,15.716184992731218,15.716203704874617,15.716212316646363,15.716219865581452,15.716225617000632,15.716225617000632,15.716225082353445,15.716233694119863,15.716236564208488,15.716241768618735,15.716241768618735,15.716246984722515,15.71625165590826,15.716253849438225,15.71625671952401,15.71625671952401,15.716262461192215,15.716265342379035,15.716264805844787,15.716273428559724,15.716272358072578,15.716272358072578,15.71627809973812,15.71628096995945,15.71628672122828,15.716289056136187,15.71629479643954,15.716297677623677,15.71629947721725,15.716305220100194,15.716304684055283,15.716307554136522,15.716307554136522,15.716315639779074,15.716321392401298,15.716324263840495,15.716329469489787,15.71633233970735,15.716335209786244,15.71633809096738,15.716349574138318,15.71635192066944,15.71635192066944,15.716357124916733,15.716360006095972,15.716370952058204,15.716376703450774,15.716379037479546,15.716384779128317,15.716390530380183,15.71639341155706,15.716399164167797,15.716404904453768,15.716407240044994,15.716410121220298,15.71641873293747,15.716421614111987,15.716421614111987,15.716433095897884,15.716435977071614,15.716435977071614,15.716438848503127,15.716447469956252,15.716453211596093,15.716456092768247,15.716458962837754,15.716461834267703,15.716464179595304,15.716472253891368,15.716475135061946,15.716480876698025,15.716489499363043,15.716489499363043,15.716492369569487,15.716498120804873,15.716498120804873,15.716506207621398,15.716509077826741,15.716514829058987,15.716517163073599,15.716525787091824,15.716528657296386,15.71653727872927,15.71653727872927,15.716543018994736,15.716545900159803,15.71654877158442,15.71654877158442,15.71654877158442,15.716560264436438,15.716560264436438,15.71656888708388,15.716571221234451,15.71657930681128,15.71658217687062,15.71658504707017,15.716593669712594];
-        const memoryTimeline = [89.70045485426029,89.70356083934563,89.70306782584002,89.70306782584002,89.70972350816578,89.70972350816578,89.70972350816578,89.70972350816578,89.70972350816578,89.70972350816578,89.70972350816578,89.70972350816578,89.70972350816578,89.71874565531847,89.72140792824878,89.72140792824878,89.7198795863814,89.7198795863814,89.7198795863814,89.7198795863814,89.7198795863814,89.71775962830726,89.72505622819031,89.72505622819031,89.73314164968235,89.73314164968235,89.73314164968235,89.73314164968235,89.73314164968235,89.73314164968235,89.73314164968235,89.73659274422164,89.74112846847326,89.74112846847326,89.74112846847326,89.74206519413393,89.74206519413393,89.74201589278337,89.74201589278337,89.74201589278337,89.74098056442158,89.74098056442158,89.74339633059908,89.74339633059908,89.74339633059908,89.74339633059908,89.74339633059908,89.74339633059908,89.74339633059908,89.76479311674264,89.75513005203265,89.75513005203265,89.75513005203265,89.75513005203265,89.75513005203265,89.75301009395852,89.75301009395852,89.75301009395852,89.76784980047744,89.75542586013601,89.76528613024826,89.964069175711,90.06898244970523,90.07519441987594,90.08451237513201,90.19677155035986,90.19953242599128,90.19953242599128,90.20244120567439,90.13277839733142,90.05419204453686,90.0790399252197,90.01381423842724,90.01376493707669,90.01376493707669,90.03550683267417,90.06030541200646,90.0752437212265,90.0752437212265,90.08145569139721,90.08145569139721,90.08890019533196,90.08890019533196,90.08830857912523,90.09861256139251,90.10443012075872,90.10709239368904,90.11951633403046,90.11951633403046,90.11951633403046,90.12257301776525,90.12257301776525,90.12257301776525,90.12257301776525,90.13341931488871,90.12888359063707,90.15841509962324,90.15841509962324,90.15836579827268,90.15816859287044,90.15816859287044,90.15816859287044,90.15816859287044,90.16748654812649,90.21491444736637,90.21797113110117,90.21925296621576,90.22857092147181,90.22857092147181,90.24099486181323,90.24099486181323,90.24099486181323,90.24099486181323,90.26825850867358,90.24705892793227,90.25327089810298,90.25327089810298,90.25327089810298,90.2656948384444,90.2656948384444,90.26623715330058,90.26623715330058,90.26623715330058,90.26806130327134,90.26806130327134,90.26806130327134,90.26806130327134,90.26806130327134,90.26806130327134,90.26648366005338,90.26648366005338,90.26648366005338,90.2714137951095,90.27239982212073,90.27516069775216,90.27516069775216,90.43169248578396,90.4565403664668,90.45801940698364,90.50687704538977,90.50687704538977,90.46176630962628,90.46447788390715,90.46447788390715,90.46447788390715,90.46447788390715,90.46447788390715,90.46447788390715,90.46723875953859,90.46723875953859,90.46945732031382,90.47256330539919,90.47256330539919,90.47256330539919,90.47256330539919,90.48188126065526,90.49430520099668,90.49218524292255,90.49129781861245,90.50337664949993,90.51368063176723,90.51368063176723,90.51368063176723,90.51368063176723,90.51545548038743,90.51545548038743,90.5184135614211,90.5184135614211,90.54567720828143,90.5358169381692,90.53852851245007,90.53788759489278,90.53788759489278,90.53788759489278,90.53788759489278,90.54099357997814,90.54819157716007,90.56648237821827,90.54952271362522,90.57890631855969,90.60686018432789,90.60686018432789,90.60686018432789,90.61617813958395,90.61617813958395,90.61617813958395,90.62860207992539,90.62978531233885,90.62820766912088,90.62820766912088,90.63131365420625,90.6561615348891,90.6561615348891,90.6561615348891,90.6561615348891,90.6561615348891,90.66616970905301,90.7158654704187,90.7158654704187,90.7158654704187,90.71897145550405,90.71897145550405,90.71685149742991,90.71685149742991,90.71685149742991,90.7255285351287,90.74105846055546,90.74209378891726,90.7420444875667,90.7420444875667,90.7420444875667,90.7420444875667,90.7420444875667,90.7420444875667,90.71137904751762,90.71566826501645,90.73065587558705,90.72853591751291,90.72853591751291,90.7284373148118,90.7284373148118,90.7284373148118,90.7284373148118,90.72883172561629,90.72883172561629,90.72814150670844,90.72814150670844,90.72814150670844,90.72814150670844,90.72814150670844,90.72814150670844,90.72567643918038,90.71517525151084,90.71423852585018,90.71734451093553,90.72010538656696,90.72316207030175,90.72316207030175,90.72316207030175,90.72257045409502,90.72257045409502,90.72257045409502,90.73450138093084,90.73450138093084,90.7403682416476,90.7403682416476,90.7403682416476,90.73824828357347,90.73824828357347,90.73824828357347,90.73824828357347,90.74692532127226,90.7500313063576,90.7500313063576,90.7500313063576,90.7500313063576,90.75279218198902,90.75279218198902,90.75279218198902,90.75279218198902,90.72261975544558,90.72261975544558,90.72261975544558,90.72049979737145,90.71837983929731,90.71837983929731,90.72143652303211,90.72143652303211,90.72143652303211,90.72671176754216,90.72671176754216,90.72671176754216,90.72671176754216,90.72981775262751,90.72981775262751,90.72981775262751,90.72981775262751,90.72981775262751,89.78204858943906,89.77992863136492,89.77992863136492,89.78268950699635,89.78268950699635,89.78268950699635,89.78268950699635,89.78268950699635,89.78268950699635,89.68413610722452,89.68413610722452,89.68413610722452,89.68413610722452,89.68201614915039,89.69133410440647,89.69133410440647,89.69133410440647,89.69133410440647,89.69956742995018,89.69956742995018,89.69956742995018,89.69956742995018,89.69956742995018,89.69956742995018,89.69956742995018,89.69956742995018,89.70267341503553,89.71337180810731,89.71337180810731,89.71337180810731,89.71337180810731,89.71647779319267,89.71647779319267,89.71647779319267,89.71647779319267,89.71435783511853,89.71435783511853,89.71997818908251,89.73038077405093,89.73038077405093,89.7282608159768,89.7282608159768,89.73131749971158,89.73131749971158,89.73131749971158,89.73131749971158,89.66988801691234,89.66988801691234,89.67299400199768,89.67683950734147,89.67481815196845,89.67481815196845,89.67757902759989,89.67757902759989,89.67757902759989,89.68147383429421,89.68147383429421,89.68147383429421,89.68147383429421,89.68147383429421,89.68147383429421,89.67935387622008,89.68211475185151,89.68211475185151,89.68980576253905,89.68980576253905,89.68980576253905,89.68980576253905,89.68980576253905,89.68980576253905,89.68980576253905,89.68980576253905,89.68980576253905,89.6999125394041,89.70420175690292,89.70420175690292,89.70420175690292,89.70420175690292,89.70420175690292,89.70420175690292,89.70420175690292,89.70420175690292,89.71726661480164,89.67038103041794,89.67038103041794,89.67038103041794,89.67314190604937,89.67314190604937,89.67314190604937,89.67314190604937,89.67314190604937,89.6224108163219,89.6224108163219,89.6224108163219,89.6224108163219,89.6224108163219,89.6224108163219,89.6224108163219,89.6224108163219,89.62029085824777,89.62324893928144,89.63389803100266,89.63389803100266,89.63389803100266,89.63389803100266,89.63389803100266,89.63389803100266,89.6366589066341,89.6366589066341,89.63976489171944,89.6460261632407,89.6460261632407,89.64878703887214,89.64878703887214,89.64878703887214,89.61447329888155,89.56862304285964,89.56862304285964,89.55220569312276,89.56043901866649,89.56043901866649,89.5602911146148,89.47638021595964,89.4727319160181,89.4727319160181,89.4727319160181,89.4727319160181,89.4727319160181,89.48022572130341,89.48022572130341,89.48022572130341,89.48022572130341,89.48022572130341,89.48022572130341,89.48022572130341,89.48022572130341,89.47726764026974,89.49112131977743,89.4910227170763,89.48890275900217,89.48890275900217,89.48890275900217,89.48890275900217,89.48845904684713,89.48845904684713,89.48845904684713,89.51685662477038,89.49708678319533,89.49708678319533,89.49708678319533,89.50310154796381,89.50310154796381,89.50310154796381,89.50310154796381,89.50310154796381,89.50872190192779,89.51177858566257,89.51488457074794,89.51074325730079,89.51074325730079,89.51384924238614,89.51384924238614,89.51384924238614,89.51384924238614,89.51384924238614,89.45301137579364,89.45301137579364,89.45301137579364,89.45301137579364,89.45301137579364,89.45301137579364,89.45301137579364,89.45286347174195,89.45286347174195,89.46311815265867,89.46311815265867,89.46587902829009,89.46587902829009,89.46587902829009,89.46587902829009,89.46587902829009,89.46390697426764,89.46390697426764,89.45498342981608,89.45498342981608,89.45498342981608,89.45498342981608,89.45286347174195,89.45286347174195,89.45286347174195,89.45562434737337,89.45488482711495,89.4680482877148,89.47268261466755,89.47268261466755,89.47268261466755,89.47268261466755,89.47268261466755,89.47268261466755,89.47268261466755,89.47268261466755,89.44615848806562,89.44615848806562,89.44615848806562,89.44615848806562,89.44615848806562,89.44615848806562,89.44615848806562,89.44615848806562,89.44403852999149,89.4548355257644,89.45271556769026,89.43659402605675,89.43970001114211,89.44477805024991,89.44477805024991,89.44477805024991,89.44477805024991,89.44477805024991,89.47204169711026,89.45059560961613,89.448475651542,89.448475651542,89.45123652717342,89.45434251225878,89.4535536906498,89.45665967573517,89.45665967573517,89.4563638676318,89.46504090533057,89.46430138507215,89.46430138507215,89.46430138507215,89.46706226070357,89.46706226070357,89.47800716052815,89.47539418894841,89.47539418894841,89.44315110568138,89.44315110568138,89.44152416111287,89.44463014619822,89.44463014619822,89.44463014619822,89.44739102182965,89.44739102182965,89.44739102182965,89.4390590935848,89.4390590935848,89.4390590935848,89.4390590935848,89.4390590935848,89.4390590935848,89.4390590935848,89.4390590935848,89.4390590935848,89.39626552129769,89.39414556322356,89.39513159023478,89.39419486457412,89.39419486457412,89.39419486457412,89.39419486457412,89.39419486457412,89.39419486457412,89.39419486457412,89.40144216310661,89.40454814819198,89.40454814819198,89.40765413327732,89.40765413327732,89.40691461301891,89.40691461301891,89.40691461301891,89.40691461301891,89.38882101736296,89.39158189299438,89.39158189299438,89.3943427686258,89.3943427686258,89.3943427686258,89.3943427686258,89.3943427686258,89.3943427686258,89.40395653198524,89.40030823204371,89.40030823204371,89.40306910767514,89.40928107784585,89.40928107784585,89.40716111977171,89.40716111977171,89.40716111977171,89.41021780350651,89.40987269405258,89.40987269405258,89.40987269405258,89.40987269405258,89.40987269405258,89.40987269405258,89.40987269405258,89.40987269405258,89.42239523709512,89.42239523709512,89.42027527902098,89.41997947091762,89.41997947091762,89.42308545600298,89.42619144108833,89.42929742617369,89.42629004378946,89.42811419376022,89.42811419376022,89.42811419376022,89.42811419376022,89.42811419376022,89.42811419376022,89.42811419376022,89.42811419376022,89.42811419376022,89.44241158542297,89.44241158542297,89.44241158542297,89.44241158542297,89.44241158542297,89.44241158542297,89.44241158542297,89.44241158542297,89.44241158542297,89.45498342981608,89.45286347174195,89.44921517180042,89.44921517180042,89.44921517180042,89.44921517180042,89.44921517180042,89.44921517180042,89.44921517180042,89.44921517180042,89.46548461748561,89.46548461748561,89.46548461748561,89.46548461748561,89.46548461748561,89.46548461748561,89.46859060257097,89.46647064449684,89.46647064449684,89.4680482877148,89.4680482877148,89.4680482877148,89.47115427280015,89.47115427280015,89.47115427280015,89.46933012282938,89.46908361607659,89.46908361607659,89.47539418894841,89.47539418894841,89.47327423087428,89.47327423087428,89.47327423087428,89.47327423087428,89.47327423087428,89.47327423087428,89.47327423087428,89.48431773339999,89.48707860903141,89.48707860903141,89.48707860903141,89.48707860903141,89.48707860903141,89.48983948466285,89.48983948466285,89.48983948466285,89.50093228853912,89.49881233046499,89.49881233046499,89.49881233046499,89.49881233046499,89.49881233046499,89.49881233046499,89.50191831555033,89.4997983574762,89.50729216276152,89.51064465459967,89.51064465459967,89.51064465459967,89.51996260985572,89.51996260985572,89.51996260985572,89.51996260985572,89.51996260985572,89.52568156652083,89.53071030427807,89.53071030427807,89.53071030427807,89.53071030427807,89.53071030427807,89.53071030427807,89.53071030427807,89.53071030427807,89.53071030427807,89.49304407244932,89.49304407244932,89.49304407244932,89.49092411437519,89.49092411437519,89.49092411437519,89.49092411437519,89.49092411437519,89.48919856710555,89.49748119399983,89.50058717908519,89.49723468724702,89.49723468724702,89.49723468724702,89.49723468724702,89.49723468724702,89.49723468724702,89.49723468724702,89.50280573986043,89.50280573986043,89.50280573986043,89.50280573986043,89.50280573986043,89.50280573986043,89.52454763545794,89.52765362054328,89.52765362054328,89.53963384872965,89.54027476628694,89.54027476628694,89.54027476628694,89.54027476628694,89.54323284732062,89.54200031355658,89.54200031355658,89.54200031355658,89.54668394185991,89.54668394185991,89.54510629864194,89.54510629864194,89.54510629864194,89.5482122837273,89.5482122837273,89.5482122837273,89.55097315935873,89.60559905578054,89.60426791931539,89.63222178508357,89.63532777016894,89.644645725425,89.644645725425,89.6477024091598,89.6477024091598,89.64558245108567,89.66042215760459,89.63887746740934,89.63887746740934,89.6419834524947,89.64065231602954,89.64065231602954,89.64065231602954,89.64065231602954,89.64065231602954,89.64341319166097,89.58942821279646,89.59524577216268,89.59524577216268,89.59524577216268,89.59524577216268,89.59524577216268,89.59524577216268,89.59499926540988,89.59499926540988,89.56221386728667,89.56221386728667,89.56221386728667,89.56221386728667,89.56221386728667,89.56221386728667,89.56221386728667,89.56221386728667,89.56221386728667,89.57177832929555,89.57177832929555,89.57177832929555,89.56965837122142,89.56965837122142,89.56965837122142,89.56965837122142,89.56965837122142,89.56965837122142,89.57651125894944,89.57907492917862,89.57907492917862,89.57695497110448,89.57695497110448,89.57483501303035,89.57759588866178,89.57759588866178,89.57759588866178,89.59006913035375,89.59283000598518,89.59283000598518,89.59283000598518,89.59283000598518,89.59283000598518,89.59283000598518,89.59283000598518,89.59283000598518,89.60037311262104,89.59785874374244,89.59785874374244,89.59785874374244,89.59785874374244,89.5957387856683,89.5957387856683,89.5957387856683,89.5957387856683,89.5768070670528,89.57636335489775,89.57636335489775,89.57636335489775,89.57636335489775,89.58060327104602,89.58060327104602,89.58060327104602,89.58060327104602,89.5836599547808,89.58602641960773,89.58602641960773,89.58602641960773,89.58602641960773,89.58785056957849,89.58785056957849,89.58785056957849,89.58785056957849,89.59095655466386,89.57951864133365,89.58025816159207,89.58025816159207,89.58025816159207,89.58025816159207,89.58025816159207,89.58025816159207,89.58025816159207,89.58025816159207,89.58627292636055,89.58627292636055,89.58627292636055,89.58627292636055,89.58627292636055,89.58627292636055,89.58627292636055,89.58627292636055,89.58627292636055,89.59209048572676,89.59209048572676,89.59209048572676,89.59075934926162,89.59075934926162,89.59066074656049,89.59066074656049,89.59066074656049,89.59066074656049,89.60540185037829,89.60540185037829,89.60540185037829,89.60357770040753,89.60357770040753,89.60357770040753,89.60668368549288,89.60668368549288,89.60668368549288,89.61590303804783,89.61866391367926,89.61654395560512,89.61654395560512,89.61654395560512,89.61654395560512,89.61654395560512,89.61590303804783,89.6137830799737,89.64415271191939,89.67353631685387,89.67186007093478,89.67141635877974,89.67141635877974,89.67126845472805,89.67116985202692,89.67116985202692,89.67733252084707,89.69685585566931,89.67319120739994,89.67319120739994,89.6717121668831,89.67718461679539,89.69582052730752,89.69892651239289,89.69907441644457,89.69907441644457,89.69907441644457,89.6701838250157,89.67447304251452,89.67447304251452,89.67447304251452,89.67757902759989,89.67757902759989,89.67757902759989,89.67545906952576,89.6785650546111,89.70065205966252,89.70972350816578,89.7091811933096,89.7091811933096,89.71194206894104,89.71194206894104,89.71194206894104,89.7128787946017,89.7128787946017,89.71006861761971,89.71006861761971,89.71006861761971,89.71006861761971,89.71006861761971,89.71006861761971,89.7146536432219,89.71381552026236,89.71381552026236,89.74176938603055,89.75419332637198,89.77534360576274,89.77534360576274,89.77534360576274,89.77534360576274,89.77534360576274,89.78776754610416,89.78776754610416,89.78840846366145,89.78840846366145,89.78840846366145,89.78840846366145,89.78840846366145,89.78840846366145,89.79151444874681,89.79151444874681,89.79151444874681,89.79151444874681,89.78944379202323,89.78944379202323,89.78944379202323,89.78944379202323,89.78944379202323,89.7873238339491,89.7873238339491,89.7873238339491,89.7873238339491,89.7873238339491,89.7873238339491,89.7873238339491,89.7873238339491,89.7873238339491,89.7873238339491,89.7873238339491,89.78604199883452,89.78604199883452,89.78604199883452,89.78604199883452,89.78604199883452,89.78914798391988,89.91028140224874,89.93808736396525,89.997101080587,89.997101080587,89.997101080587,89.997101080587,89.99986195621842,89.96337895680314,89.96337895680314,89.96125899872901,89.96125899872901,89.96125899872901,89.96125899872901,89.95913904065488,89.95913904065488,89.95913904065488,89.95913904065488,89.95859672579871,89.95859672579871,89.96170271088405,89.86502276243355,89.86502276243355,89.86502276243355,89.86290280435942,89.86290280435942,89.86078284628529,89.86078284628529,89.86078284628529,89.86078284628529,89.86078284628529,89.86354372191671,89.86354372191671,89.86664970700208,90.00819388446327,89.94420073143485,89.94420073143485,89.9442500327854,89.9442500327854,89.9442500327854,89.9442500327854,89.9442500327854,89.9442500327854,89.9442500327854,89.94213007471127,89.94213007471127,89.94213007471127,89.94213007471127,89.94213007471127,89.94213007471127,89.94213007471127,89.94321470442361,89.94321470442361,89.94632068950897,89.94474304629101,89.94474304629101,89.94474304629101,89.94474304629101,89.94474304629101,89.94474304629101,89.94262308821688,89.94262308821688,89.94262308821688,89.94262308821688,89.94262308821688,89.94262308821688,89.94262308821688,89.94262308821688,89.94262308821688,89.94262308821688,89.94262308821688,89.94262308821688,89.94262308821688,89.94262308821688,89.94262308821688,89.94262308821688,89.94262308821688,89.94262308821688,89.94262308821688,89.94262308821688,89.94262308821688,89.94572907330223,89.94360911522811,89.94360911522811,89.94982108539882,89.9535186866909,89.95139872861677,89.95139872861677,89.95139872861677,89.95139872861677,89.95139872861677,89.95139872861677,89.95139872861677,89.95139872861677,89.95139872861677,89.95139872861677,89.95139872861677,89.95139872861677,89.95139872861677,89.95139872861677,89.95139872861677,89.9471588124685,89.9471588124685,89.9471588124685,89.9471588124685,89.9471588124685,89.9471588124685,89.9471588124685,89.94252448551575,89.94252448551575,89.94252448551575,89.94252448551575,89.91915564534975,89.91915564534975,89.91915564534975,89.93074146273163,89.93074146273163,89.93074146273163,89.9295089289676,89.9295089289676,89.9295089289676,89.9295089289676,89.9295089289676,89.93261491405295,89.93261491405295,89.93261491405295,89.93261491405295,89.93261491405295,89.93261491405295,89.93572089913832,89.93848177476974,89.93512928293158,89.93512928293158,89.93512928293158,89.93512928293158,89.93512928293158,89.93512928293158,89.93512928293158,89.93512928293158,89.93789015856301,89.93789015856301,89.90584428069822,89.90609078745103,89.9278326830485,89.93715063830459,89.93715063830459,89.93606600859223,89.93606600859223,89.93606600859223,89.93606600859223,89.93606600859223,89.93606600859223,89.93606600859223,89.93606600859223,89.93606600859223,89.93463626942597,89.93463626942597,89.8812429067682,89.86004332602687,89.86004332602687,89.86004332602687,89.86004332602687,89.86068424358416,89.86068424358416,89.86068424358416,89.86068424358416,89.86068424358416,89.86068424358416,89.86068424358416,89.86068424358416,89.86068424358416,89.86068424358416,89.86068424358416,89.86068424358416,89.85856428551003,89.85856428551003,89.85856428551003,89.85644432743591,89.85644432743591,89.85644432743591,89.85644432743591,89.85920520306733,89.85920520306733,89.85920520306733,89.85856428551003,89.85856428551003,89.85856428551003,89.85644432743591,89.85644432743591,89.85644432743591,89.85644432743591,89.85644432743591,89.85644432743591,89.85644432743591,89.85644432743591,89.85644432743591,89.85644432743591,89.85644432743591,89.85644432743591,89.85644432743591,89.85644432743591,89.85476808151682,89.85476808151682,89.85476808151682,89.85264812344269,89.85264812344269,89.85264812344269,89.85264812344269,89.85240161668989,89.85240161668989,89.85240161668989,89.85028165861576,89.85028165861576,89.85028165861576,89.85028165861576,89.85028165861576,89.85028165861576,89.85018305591464,89.85018305591464,89.84806309784051,89.84806309784051,89.84806309784051,89.84806309784051,89.84806309784051,89.84806309784051,89.84806309784051,89.84806309784051,89.84347807223831,89.84347807223831,89.84347807223831,89.84347807223831,89.84347807223831,89.84347807223831,89.84347807223831,89.84347807223831,89.84347807223831,89.84347807223831,89.84347807223831,89.84347807223831,89.84347807223831,89.84347807223831,89.84347807223831,89.84347807223831,89.84135811416418,89.84135811416418,89.84051999120464,89.84051999120464,89.84002697769903,89.84002697769903,89.84002697769903,89.84002697769903,89.84002697769903,89.84002697769903,89.84002697769903,89.84002697769903,89.84002697769903,89.84002697769903,89.84002697769903,89.84002697769903,89.84002697769903,89.84002697769903,89.84002697769903,89.84002697769903,89.84002697769903,89.84002697769903,89.84002697769903,89.84278785333045,89.84066789525632,89.84066789525632,89.84066789525632,89.84066789525632,89.84066789525632,89.84066789525632,89.84066789525632,89.83854793718218,89.83854793718218,89.83854793718218,89.83854793718218,89.83854793718218,89.83854793718218,89.83854793718218,89.83608286965413,89.83608286965413,89.83608286965413,89.83608286965413,89.83608286965413,89.83608286965413,89.83608286965413,89.83608286965413,89.83608286965413,89.83608286965413,89.83608286965413,89.83396291158,89.83396291158,89.83396291158,89.83396291158,89.83396291158,89.83396291158,89.83396291158,89.83396291158,89.83396291158,89.82987089948342,89.82987089948342,89.82987089948342,89.82987089948342,89.82987089948342,89.82987089948342,89.82987089948342,89.82503936712843,89.82503936712843,89.82503936712843,89.82503936712843,89.82503936712843,89.82503936712843,89.8246942576745,89.8246942576745,89.8246942576745,89.8246942576745,89.82775094140929,89.82775094140929,89.82637050359358,89.82637050359358,89.82637050359358,89.82637050359358,89.82637050359358,89.82592679143852,89.82592679143852,89.82592679143852,89.82592679143852,89.82592679143852,89.82592679143852,89.8238068333644,89.8238068333644,89.8238068333644,89.8238068333644,89.8238068333644,89.82262360095092,89.82262360095092,89.82242639554869,89.82242639554869,89.82548307928347,89.82518727118011,89.82518727118011,89.82518727118011,89.8246942576745,89.8246942576745,89.8246942576745,89.8246942576745,89.8246942576745,89.8246942576745,89.8246942576745,89.82257429960036,89.82257429960036,89.82257429960036,89.82257429960036,89.82257429960036,89.82257429960036,89.82257429960036,89.82257429960036,89.82134176583634,89.82134176583634,89.81882739695772,89.81882739695772,89.81882739695772,89.81882739695772,89.81882739695772,89.81882739695772,89.81882739695772,89.81882739695772,89.81882739695772,89.81882739695772,89.81882739695772,89.81882739695772,89.81882739695772,89.82158827258914,89.82158827258914,89.82158827258914,89.82158827258914,89.81734835644087,89.81734835644087,89.81685534293527,89.81685534293527,89.81685534293527,89.81685534293527,89.81685534293527,89.81670743888358,89.81670743888358,89.81670743888358,89.81670743888358,89.81670743888358,89.81670743888358,89.81670743888358,89.81670743888358,89.72313347551842,89.72313347551842,89.72313347551842,89.72101351744429,89.72101351744429,89.71889355937016,89.7188442580196,89.7188442580196,89.7188442580196,89.7188442580196,89.72195024310497,89.72195024310497,89.72195024310497,89.72195024310497,89.71943587422633,89.71943587422633,89.71943587422633,89.73185981456776,89.73496579965311,89.73496579965311,89.73496579965311,89.73496579965311,89.73496579965311,89.73496579965311,89.7315640064644,89.7315640064644,89.73141610241271,89.73141610241271,89.73141610241271,89.73141610241271,89.73141610241271,89.72929614433858,89.72929614433858,89.72929614433858,89.72717618626444,89.72717618626444,89.72717618626444,89.72717618626444,89.72717618626444,89.72717618626444,89.72535203629369,89.72535203629369,89.72535203629369,89.72535203629369,89.72535203629369,89.72535203629369,89.72535203629369,89.72535203629369,89.72436600928246,89.72436600928246,89.72436600928246,89.72436600928246,89.72436600928246,89.72224605120833,89.72224605120833,89.72224605120833,89.72224605120833,89.72224605120833,89.72224605120833,89.72224605120833,89.72224605120833,89.72224605120833,89.72224605120833,89.72224605120833,89.72224605120833,89.72224605120833,89.72224605120833,89.72224605120833,89.72224605120833,89.72224605120833,89.72224605120833,89.72224605120833,89.74186798873168,89.74497397381704,89.74364283735189,89.71396342431404,89.71396342431404,89.71396342431404,89.71396342431404,89.71396342431404,89.71396342431404,89.71184346623991,89.71184346623991,89.71184346623991,89.71184346623991,89.71184346623991,89.71184346623991,89.71184346623991,89.71184346623991,89.71184346623991,89.70972350816578,89.70972350816578,89.70972350816578,89.70972350816578,89.70972350816578,89.70972350816578,89.70883608385569,89.70671612578155,89.70671612578155,89.70671612578155,89.70671612578155,89.70671612578155,89.70671612578155,89.70671612578155,89.70671612578155,89.70671612578155,89.70671612578155,89.70395525015013,89.70395525015013,89.70395525015013,89.70395525015013,89.70395525015013,89.70395525015013,89.70395525015013,89.70395525015013,89.70395525015013,89.70395525015013,89.70356083934563,89.69981393670298,89.69981393670298,89.70291992178834,89.70291992178834,89.70227900423104,89.699025115094,89.699025115094,89.699025115094,89.699025115094,89.699025115094,89.699025115094,89.699025115094,89.70213110017936,89.70213110017936,89.70213110017936,89.70213110017936,89.70213110017936,89.70213110017936,89.70213110017936,89.70213110017936,89.70213110017936,89.70213110017936,89.70213110017936,89.70213110017936,89.70213110017936,89.70213110017936,89.70331433259283,89.70331433259283,89.70331433259283,89.70331433259283,89.7011943745187,89.7011943745187,89.7011943745187,89.7011943745187,89.7011943745187,89.7011943745187,89.7011943745187,89.7011943745187,89.7011943745187,89.7011943745187,89.7011943745187,89.69695445837044,89.69695445837044,89.69695445837044,89.69695445837044,89.69695445837044,89.7124843837972,89.71559036888257,89.71559036888257,89.71559036888257,89.71559036888257,89.71559036888257,89.71559036888257,89.71559036888257,89.71559036888257,89.71450573917022,89.7140127256646,89.7140127256646,89.71189276759047,89.71179416488935,89.71179416488935,89.71179416488935,89.71179416488935,89.71179416488935,89.71105464463093,89.71105464463093,89.71105464463093,89.71105464463093,89.71105464463093,89.71105464463093,89.71105464463093,89.71105464463093,89.71105464463093,89.71061093247589,89.70849097440176,89.70849097440176,89.70849097440176,89.70849097440176,89.70849097440176,89.70849097440176,89.70849097440176,89.70849097440176,89.70849097440176,89.70849097440176,89.70849097440176,89.70637101632762,89.70637101632762,89.70637101632762,89.70637101632762,89.70637101632762,89.70637101632762,89.70637101632762,89.70637101632762,89.70637101632762,89.70425105825349,89.70425105825349,89.70425105825349,89.70425105825349,89.70425105825349,89.70001114210523,89.70001114210523,89.70001114210523,89.70001114210523,89.70001114210523,89.70001114210523,89.70001114210523,89.69872930699063,89.69872930699063,89.69872930699063,89.69872930699063,89.69872930699063,89.69872930699063,89.69872930699063,89.69872930699063,89.69872930699063,89.69872930699063,89.69872930699063,89.69872930699063,89.69872930699063,89.69872930699063,89.69872930699063,89.69872930699063,89.69872930699063,89.69872930699063,89.70178599072543,89.69843349888727,89.69843349888727,89.69843349888727,89.69843349888727,89.69843349888727,89.69843349888727,89.69843349888727,89.69843349888727,89.69843349888727,89.69843349888727,89.69843349888727,89.69843349888727,89.69843349888727,89.69843349888727,89.69631354081314,89.69631354081314,89.69631354081314,89.69631354081314,89.694193582739,89.694193582739,89.694193582739,89.694193582739,89.694193582739,89.694193582739,89.694193582739,89.694193582739,89.69301035032554,89.69301035032554,89.69301035032554,89.69172851521094,89.69172851521094,89.69172851521094,89.69172851521094,89.68960855713681,89.68960855713681,89.68960855713681,89.68960855713681,89.68960855713681,89.68960855713681,89.68960855713681,89.68960855713681,89.68960855713681,89.68960855713681,89.68960855713681,89.68960855713681,89.68960855713681,89.68960855713681,89.68803091391887,89.68803091391887,89.68591095584473,89.68591095584473,89.68591095584473,89.68482632613238,89.68482632613238,89.68482632613238,89.68482632613238,89.68482632613238,89.68457981937958,89.68457981937958,89.68457981937958,89.68457981937958,89.68457981937958,89.68457981937958,89.68457981937958,89.68457981937958,89.68457981937958,89.68216405320207,89.68216405320207,89.68216405320207,89.68216405320207,89.69675725296818,89.69951812859962,89.69941952589849,89.69941952589849,89.60594416523446,89.60130983828171,89.60130983828171,89.60121123558059,89.60121123558059,89.60121123558059,89.60121123558059,89.60121123558059,89.60397211121202,89.60121123558059,89.60121123558059,89.60121123558059,89.60121123558059,89.60121123558059,89.60121123558059,89.60121123558059,89.60121123558059,89.60121123558059,89.60426791931539,89.60426791931539,89.60683158954457,89.60683158954457,89.60683158954457,89.60683158954457,89.60683158954457,89.60683158954457,89.60683158954457,89.60471163147044,89.60471163147044,89.60471163147044,89.60471163147044,89.60471163147044,89.60471163147044,89.60421861796483,89.60421861796483,89.60421861796483,89.60421861796483,89.6020986598907,89.6020986598907,89.6020986598907,89.6020986598907,89.6020986598907,89.6020986598907,89.6020986598907,89.6020986598907,89.6020986598907,89.6020986598907,89.6020986598907,89.6020986598907,89.59874616805253,89.59874616805253,89.59874616805253,89.59874616805253,89.59874616805253,89.59874616805253,89.59874616805253,89.59874616805253,89.59805594914468,89.62354474738481,89.63286270264088,89.64824472401597,89.65445669418668,89.65756267927205,89.65756267927205,89.65756267927205,89.65756267927205,89.65756267927205,89.65756267927205,89.65716826846754,89.65716826846754,89.65716826846754,89.65716826846754,89.65322416042265,89.65322416042265,89.65322416042265,89.65322416042265,89.65011817533728,89.65011817533728,89.65011817533728,89.65011817533728,89.65011817533728,89.65011817533728,89.65011817533728,89.65011817533728,89.64799821726317,89.64799821726317,89.64799821726317,89.64622336864296,89.64622336864296,89.64622336864296,89.64622336864296,89.64622336864296,89.64533594433286,89.65465389958892,89.66012634950123,89.66012634950123,89.65904171978887,89.65904171978887,89.65904171978887,89.65904171978887,89.65904171978887,89.65904171978887,89.65904171978887,89.65904171978887,89.65904171978887,89.65904171978887,89.65884451438663,89.65884451438663,89.65884451438663,89.6567245563125,89.6567245563125,89.6560836387552,89.6560836387552,89.6560836387552,89.6560836387552,89.6560836387552,89.66540159401126,89.6807343140358,89.69315825437722,89.69315825437722,89.69315825437722,89.69281314492329,89.69281314492329,89.69281314492329,89.69281314492329,89.69281314492329,89.69281314492329,89.69069318684916,89.69069318684916,89.69069318684916,89.69069318684916,89.69069318684916,89.69069318684916,89.69069318684916,89.69069318684916,89.69069318684916,89.69069318684916,89.69069318684916,89.68857322877503,89.68857322877503,89.68857322877503,89.68857322877503,89.6864532707009,89.70819516629838,89.70819516629838,89.70819516629838,89.70780075549389,89.70780075549389,89.70780075549389,89.70612450957482,89.70612450957482,89.70612450957482,89.70612450957482,89.70612450957482,89.70612450957482,89.70400455150069,89.70400455150069,89.70400455150069,89.75059432778102,89.75005201292484,89.75005201292484,89.75005201292484,89.75005201292484,89.75005201292484,89.75005201292484,89.75005201292484,89.75005201292484,89.75005201292484,89.74793205485071,89.74793205485071,89.74793205485071,89.74763624674735,89.74753764404622,89.75685559930228,89.7692795396437,89.7692795396437,89.7692795396437,89.7692795396437,89.76898373154035,89.76898373154035,89.76898373154035,89.74098056442158,89.74098056442158,89.74098056442158,89.74024104416316,89.74024104416316,89.73812108608902,89.74191729008224,89.74812926025295,89.74812926025295,89.74699532919004,89.74531908327097,89.74531908327097,89.74531908327097,89.74531908327097,89.74531908327097,89.74531908327097,89.74531908327097,89.74531908327097,89.74531908327097,89.74531908327097,89.74531908327097,89.74531908327097,89.7386634009452,89.7386634009452,89.7386634009452,89.73846619554297,89.73846619554297,89.73846619554297,89.73846619554297,89.73846619554297,89.73733226448005,89.73733226448005,89.73733226448005,89.73733226448005,89.73733226448005,89.73733226448005,89.73733226448005,89.73733226448005,89.73733226448005,89.73733226448005,89.73733226448005,89.74319912519684,89.74319912519684,89.74625580893164,89.74625580893164,89.74625580893164,89.74625580893164,89.74625580893164,89.74625580893164,89.74472746706424,89.7426075089901,89.7426075089901,89.7426075089901,89.7426075089901,89.7426075089901,89.7426075089901,89.7426075089901,89.7426075089901,89.7426075089901,89.7426075089901,89.74571349407545,89.74571349407545,89.7351137037048,89.7351137037048,89.7351137037048,89.73821968879015,89.73821968879015,89.73821968879015,89.73821968879015,89.73821968879015,89.73821968879015,89.73821968879015,89.73609973071602,89.73920571580138,89.73920571580138,89.73920571580138,89.73920571580138,89.73920571580138,89.73920571580138,89.73920571580138,89.73920571580138,89.73757877123286,89.73757877123286,89.73757877123286,89.73757877123286,89.73545881315873,89.73545881315873,89.73545881315873,89.73545881315873,89.7333388550846,89.7333388550846,89.7333388550846,89.73259933482618,89.73259933482618,89.73259933482618,89.73259933482618,89.73259933482618,89.73259933482618,89.73259933482618,89.73259933482618,89.73259933482618,89.73570531991153,89.74403724815637,89.74403724815637,89.74403724815637,89.74117776982382,89.73876200364633,89.73876200364633,89.73876200364633,89.74497397381704,89.74497397381704,89.74497397381704,89.74497397381704,89.7447767684148,89.7447767684148,89.7447767684148,89.7447767684148,89.7447767684148,89.7447767684148,89.7447767684148,89.7447767684148,89.7447767684148,89.7447767684148,89.7447767684148,89.74265681034066,89.74265681034066,89.74063545496766,89.74063545496766,89.74063545496766,89.74063545496766,89.74063545496766,89.74063545496766,89.74063545496766,89.74063545496766,89.74339633059908,89.74339633059908,89.74339633059908,89.74339633059908,89.74127637252495,89.74127637252495,89.74127637252495,89.74127637252495,89.74127637252495,89.73915641445082,89.73915641445082,89.73915641445082,89.73915641445082,89.73915641445082,89.73915641445082,89.73915641445082,89.73915641445082,89.73915641445082,89.73915641445082,89.72209814715664,89.72229535255889,89.72229535255889,89.72229535255889,89.7285073227296,89.7285073227296,89.7285073227296,89.7285073227296,89.73782527798566,89.78130906918064,89.82168687529027,89.83100483054632,89.73565601856097,89.73565601856097,89.73565601856097,89.73565601856097,89.73476859425087,89.73476859425087,89.73476859425087,89.73476859425087,89.73476859425087,89.73476859425087,89.73476859425087,89.73476859425087,89.73264863617673,89.73264863617673,89.73264863617673,89.83825212907882,89.80329747153094,89.70607520822426,89.70607520822426,89.70395525015013,89.70395525015013,89.70395525015013,89.70395525015013,89.70671612578155,89.70671612578155,89.70977280951634,89.70977280951634,89.70977280951634,89.7076528514422,89.7076528514422,89.7076528514422,89.7076528514422,89.7076528514422,89.70607520822426,89.71327320540618,89.71327320540618,89.71268158919945,89.71573827293426,89.71573827293426,89.71573827293426,89.71849914856568,89.71849914856568,89.71844984721511,89.71844984721511,89.71844984721511,89.71844984721511,89.72121072284655,89.71909076477242,89.71909076477242,89.71909076477242,89.71909076477242,89.71909076477242,89.71909076477242,89.71909076477242,89.71840054586455,89.71840054586455,89.71800613506007,89.71800613506007,89.71800613506007,89.71800613506007,89.71800613506007,89.71800613506007,89.71800613506007,89.71800613506007,89.71800613506007,89.71800613506007,89.71800613506007,89.71588617698593,89.71588617698593,89.71588617698593,89.71588617698593,89.71588617698593,89.71588617698593,89.71588617698593,89.7137662189118,89.7137662189118,89.7137662189118,89.7137662189118,89.7137662189118,89.7137662189118,89.7137662189118,89.7137662189118,89.7137662189118,89.7137662189118,89.7137662189118,89.7137662189118,89.7137662189118,89.7137662189118,89.71164626083767,89.71164626083767,89.71164626083767,89.71164626083767,89.71164626083767,89.70849097440176,89.70849097440176,89.70849097440176,89.70849097440176,89.70849097440176,89.70849097440176,89.70849097440176,89.70834307035007,89.70834307035007,89.70834307035007,89.70834307035007,89.70834307035007,89.70834307035007,89.70834307035007,89.70637101632762,89.70637101632762,89.70637101632762,89.70637101632762,89.70637101632762,89.70637101632762,89.70637101632762,89.70637101632762,89.70637101632762,89.70637101632762,89.70484267446022,89.70484267446022,89.70646961902874,89.70646961902874,89.7043496609546,89.7043496609546,89.7043496609546,89.7043496609546,89.7043496609546,89.7043496609546,89.7043496609546,89.7043496609546,89.70745564603997,89.70863887845344,89.70863887845344,89.71174486353878,89.71174486353878,89.71174486353878,89.69868000564007,89.69868000564007,89.69868000564007,89.69868000564007,89.69868000564007,89.69868000564007,89.70375804474789,89.7011943745187,89.7011943745187,89.7011943745187,89.7011943745187,89.7011943745187,89.7011943745187,89.7011943745187,89.7011943745187,89.7011943745187,89.7011943745187,89.7011943745187,89.7011943745187,89.70395525015013,89.70395525015013,89.70395525015013,89.70395525015013,89.70706123523547,89.70706123523547,89.70494127716134,89.70494127716134,89.70494127716134,89.70799796089614,89.71110394598149,89.73284584157898,89.75769372226183,89.77011766260325,89.77011766260325,89.77110368961448,89.77420967469983,89.77731565978519,89.82701142115087,89.838794443935,89.86364232461784,89.91397900354082,89.91397900354082,89.91708498862619,89.91708498862619,89.91708498862619,89.91708498862619,89.91708498862619,89.93882688422367,89.93882688422367,89.96367476490651,89.96367476490651,89.96367476490651,89.97609870524794,89.97609870524794,90.00094658593078,90.00094658593078,89.99882662785664,89.99882662785664,89.99670666978251,89.99547413601849,90.00479209127454,90.01721603161596,90.02653398687204,90.02653398687204,90.07933573332308,90.08244171840843,90.10107762892056,90.10063391676552,90.10063391676552,90.10373990185087,90.10995187202158,90.11305785710694,90.11926982727765,90.11897401917427,90.13139795951571,90.13139795951571,90.12927800144158,90.12927800144158,90.15412588212442,90.15412588212442,90.15412588212442,90.15200592405029,90.15200592405029,90.15200592405029,90.15200592405029,90.15200592405029,90.15200592405029,90.15200592405029,90.15200592405029,90.15200592405029,90.15200592405029];
-
-        // Throughput Chart
-        if (throughputTimeline && throughputTimeline.length > 0) {
-            new Chart(document.getElementById('throughputChart'), {
-                type: 'line',
-                data: {
-                    labels: throughputTimeline.map((_, i) => i + 's'),
-                    datasets: [{
-                        label: 'Throughput',
-                        data: throughputTimeline,
-                        borderColor: '#f59e0b',
-                        backgroundColor: '#f59e0b22',
-                        fill: true,
-                        tension: 0.3,
-                        pointRadius: 0,
-                        borderWidth: 2
-                    }]
-                },
-                options: {
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        y: { beginAtZero: true, grid: { color: '#334155' }, ticks: { color: '#64748b' } },
-                        x: { grid: { display: false }, ticks: { color: '#64748b', maxTicksLimit: 10 } }
-                    }
+        
+        new Chart(document.getElementById('throughputChart'), {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Throughput (ops/sec)',
+                    data: throughputData,
+                    borderColor: '#00d4ff',
+                    backgroundColor: 'rgba(0, 212, 255, 0.1)',
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, grid: { color: '#2a2a4a' }, ticks: { color: '#888' } },
+                    x: { grid: { color: '#2a2a4a' }, ticks: { color: '#888' } }
                 }
-            });
-        } else {
-            document.getElementById('throughputChart').parentElement.innerHTML = '<div style="color:#64748b;text-align:center;padding:2rem;">No timeline data available</div>';
-        }
+            }
+        });
 
-        // CPU Chart
-        if (cpuTimeline && cpuTimeline.length > 0) {
-            new Chart(document.getElementById('cpuChart'), {
-                type: 'line',
-                data: {
-                    labels: cpuTimeline.map((_, i) => i + 's'),
-                    datasets: [{
+        new Chart(document.getElementById('resourceChart'), {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
                         label: 'CPU %',
-                        data: cpuTimeline,
+                        data: cpuData,
                         borderColor: '#f59e0b',
-                        backgroundColor: '#f59e0b22',
-                        fill: true,
-                        tension: 0.3,
-                        pointRadius: 0,
-                        borderWidth: 2
-                    }]
-                },
-                options: {
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        y: { beginAtZero: true, max: 100, grid: { color: '#334155' }, ticks: { color: '#64748b' } },
-                        x: { grid: { display: false }, ticks: { color: '#64748b', maxTicksLimit: 10 } }
-                    }
-                }
-            });
-        } else {
-            document.getElementById('cpuChart').parentElement.innerHTML = '<div style="color:#64748b;text-align:center;padding:2rem;">No CPU data available</div>';
-        }
-
-        // Memory Chart
-        if (memoryTimeline && memoryTimeline.length > 0) {
-            new Chart(document.getElementById('memoryChart'), {
-                type: 'line',
-                data: {
-                    labels: memoryTimeline.map((_, i) => i + 's'),
-                    datasets: [{
+                        tension: 0.3
+                    },
+                    {
                         label: 'Memory %',
-                        data: memoryTimeline,
+                        data: memoryData,
                         borderColor: '#8b5cf6',
-                        backgroundColor: '#8b5cf622',
-                        fill: true,
-                        tension: 0.3,
-                        pointRadius: 0,
-                        borderWidth: 2
-                    }]
-                },
-                options: {
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        y: { beginAtZero: true, max: 100, grid: { color: '#334155' }, ticks: { color: '#64748b' } },
-                        x: { grid: { display: false }, ticks: { color: '#64748b', maxTicksLimit: 10 } }
+                        tension: 0.3
                     }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { labels: { color: '#888' } } },
+                scales: {
+                    y: { beginAtZero: true, max: 100, grid: { color: '#2a2a4a' }, ticks: { color: '#888' } },
+                    x: { grid: { color: '#2a2a4a' }, ticks: { color: '#888' } }
                 }
-            });
-        } else {
-            document.getElementById('memoryChart').parentElement.innerHTML = '<div style="color:#64748b;text-align:center;padding:2rem;">No memory data available</div>';
+            }
+        });
+
+        
+        function renderSampleEventsTable() {
+            const tbody = document.getElementById('sample-events-table');
+            if (!tbody || !sampleEvents) return;
+
+            tbody.innerHTML = sampleEvents.map((event, idx) => {
+                const hasTrace = event.traceData && event.traceData.trace;
+                const hasLogs = event.traceData && event.traceData.logs && event.traceData.logs.length > 0;
+                return `
+                    <tr>
+                        <td><code>${event.id || '-'}</code></td>
+                        <td><code>${event.traceId || '-'}</code></td>
+                        <td>${event.latencyMs}ms</td>
+                        <td class="status-${event.status}">${event.status}</td>
+                        <td>
+                            <button class="btn btn-trace" onclick="showTrace(${idx})" ${hasTrace ? '' : 'disabled'}>
+                                Trace ${hasTrace ? '(' + event.traceData.trace.spans.length + ')' : ''}
+                            </button>
+                            <button class="btn btn-logs" onclick="showLogs(${idx})" ${hasLogs ? '' : 'disabled'}>
+                                Logs ${hasLogs ? '(' + event.traceData.logs.length + ')' : ''}
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
         }
 
-        // Trace and Log Viewer Functions
-        const traceData = JSON.parse(document.getElementById('trace-data').textContent || '{}');
-        const logsData = JSON.parse(document.getElementById('logs-data').textContent || '{}');
+        
+        function getServiceClass(serviceName) {
+            const name = (serviceName || '').toLowerCase();
+            if (name.includes('gateway')) return 'gateway';
+            if (name.includes('kafka')) return 'kafka';
+            if (name.includes('flink')) return 'flink';
+            if (name.includes('drools')) return 'drools';
+            return 'unknown';
+        }
 
-        function showTrace(traceId) {
-            const data = traceData[traceId];
-            if (!data || !data.trace) {
-                alert('No trace data available for this event');
+        
+        function showTrace(idx) {
+            const event = sampleEvents[idx];
+            if (!event || !event.traceData || !event.traceData.trace) return;
+
+            const trace = event.traceData.trace;
+            const viewer = document.getElementById('trace-viewer');
+            document.getElementById('trace-modal-id').textContent = event.traceId;
+
+            
+            const spans = [...trace.spans].sort((a, b) => a.startTime - b.startTime);
+            if (spans.length === 0) {
+                viewer.innerHTML = '<div class="no-data">No spans found</div>';
+                openModal('trace-modal');
                 return;
             }
 
-            const trace = data.trace;
-            const spans = trace.spans.sort((a, b) => a.startTime - b.startTime);
-            const baseTime = spans[0]?.startTime || 0;
-            const maxDuration = Math.max(...spans.map(s => (s.startTime - baseTime) + s.duration));
+            
+            const minTime = spans[0].startTime;
+            const maxTime = Math.max(...spans.map(s => s.startTime + s.duration));
+            const totalDuration = maxTime - minTime;
 
-            const colors = {
-                'gateway-service': '#3b82f6',
-                'flink-processor': '#06b6d4',
-                'drools-service': '#10b981',
-                'kafka': '#8b5cf6'
-            };
-
-            const html = spans.map(span => {
-                const offset = ((span.startTime - baseTime) / maxDuration) * 80;
-                const width = Math.max((span.duration / maxDuration) * 80, 2);
+            viewer.innerHTML = spans.map(span => {
                 const serviceName = trace.processes[span.processID]?.serviceName || 'unknown';
-                const color = colors[serviceName] || '#64748b';
+                const serviceClass = getServiceClass(serviceName);
                 const durationMs = (span.duration / 1000).toFixed(2);
+                const offsetPct = ((span.startTime - minTime) / totalDuration * 100).toFixed(2);
+                const widthPct = Math.max((span.duration / totalDuration * 100), 0.5).toFixed(2);
 
                 return `
-                    <div class="trace-span">
-                        <span class="trace-span-label">${serviceName}</span>
-                        <div style="flex:1;position:relative;height:20px;">
-                            <div class="trace-span-bar" style="position:absolute;left:${offset}%;width:${width}%;background:${color};">
-                                ${span.operationName}
-                            </div>
+                    <div class="span-row">
+                        <div class="span-service ${serviceClass}">${serviceName}</div>
+                        <div class="span-info">
+                            <span class="span-operation">${span.operationName}</span>
+                            <span class="span-duration">${durationMs}ms</span>
                         </div>
-                        <span class="trace-span-duration">${durationMs}ms</span>
+                        <div class="span-bar-container">
+                            <div class="span-bar ${serviceClass}" style="left: ${offsetPct}%; width: ${widthPct}%"></div>
+                        </div>
                     </div>
                 `;
             }).join('');
 
-            document.getElementById('traceViewer').innerHTML = html || '<div style="color:#64748b;">No spans found</div>';
-            document.getElementById('traceModal').classList.add('active');
+            openModal('trace-modal');
         }
 
-        function showLogs(traceId) {
-            const data = logsData[traceId];
-            if (!data || !data.logs || data.logs.length === 0) {
-                alert('No logs available for this event');
+        
+        function showLogs(idx) {
+            const event = sampleEvents[idx];
+            if (!event || !event.traceData || !event.traceData.logs) return;
+
+            const logs = event.traceData.logs;
+            const viewer = document.getElementById('logs-viewer');
+            document.getElementById('logs-modal-id').textContent = event.traceId;
+
+            if (logs.length === 0) {
+                viewer.innerHTML = '<div class="no-data">No logs found</div>';
+                openModal('logs-modal');
                 return;
             }
 
-            const html = data.logs.map(log => {
-                const ts = new Date(parseInt(log.timestamp) / 1000000).toISOString().substr(11, 12);
-                let level = 'info';
-                let message = log.line;
+            viewer.innerHTML = logs.map(log => {
+                const service = log.labels?.service || log.labels?.container || 'unknown';
+                const serviceClass = getServiceClass(service);
 
-                if (log.fields) {
-                    level = log.fields.level || 'info';
-                    message = log.fields.msg || log.fields.message || log.line;
+                
+                let parsed = null;
+                try {
+                    parsed = JSON.parse(log.line);
+                } catch (e) {}
+
+                
+                let time = '-';
+                let level = 'INFO';
+                let message = log.line;
+                let logger = '';
+
+                if (parsed) {
+                    
+                    if (parsed.timestamp) {
+                        time = parsed.timestamp.split('T')[1] || parsed.timestamp;
+                    }
+                    
+                    level = (parsed.level || 'INFO').trim().toUpperCase();
+                    
+                    message = parsed.message || parsed.msg || log.line;
+                    
+                    if (parsed.logger) {
+                        const parts = parsed.logger.split('.');
+                        logger = parts[parts.length - 1];
+                    }
+                } else if (log.timestamp) {
+                    try {
+                        const ts = parseInt(log.timestamp) / 1000000;
+                        time = new Date(ts).toISOString().split('T')[1].replace('Z', '');
+                    } catch (e) {}
                 }
 
-                const levelClass = level === 'error' ? 'log-level-error' : level === 'warn' ? 'log-level-warn' : 'log-level-info';
+                
+                const levelClass = level === 'ERROR' ? 'error' : level === 'WARN' ? 'warn' : level === 'DEBUG' ? 'debug' : 'info';
 
                 return `
                     <div class="log-entry">
-                        <span class="log-timestamp">${ts}</span>
-                        <span class="${levelClass}">[${level.toUpperCase()}]</span>
-                        <span class="log-message">${message}</span>
+                        <span class="log-time">${time}</span>
+                        <span class="log-level ${levelClass}">${level}</span>
+                        <span class="log-service ${serviceClass}">${service}</span>
+                        ${logger ? `<span class="log-logger">${logger}</span>` : ''}
+                        <span class="log-message">${escapeHtml(message)}</span>
                     </div>
                 `;
             }).join('');
 
-            document.getElementById('logsViewer').innerHTML = html;
-            document.getElementById('logsModal').classList.add('active');
+            openModal('logs-modal');
+        }
+
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        
+        function openModal(id) {
+            document.getElementById(id).classList.add('active');
+            document.body.style.overflow = 'hidden';
         }
 
         function closeModal(id) {
             document.getElementById(id).classList.remove('active');
+            document.body.style.overflow = '';
         }
 
-        // Close modal on escape key
+        
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 document.querySelectorAll('.modal.active').forEach(m => m.classList.remove('active'));
+                document.body.style.overflow = '';
             }
         });
 
-        // Close modal on background click
         document.querySelectorAll('.modal').forEach(modal => {
             modal.addEventListener('click', (e) => {
-                if (e.target === modal) modal.classList.remove('active');
+                if (e.target === modal) {
+                    modal.classList.remove('active');
+                    document.body.style.overflow = '';
+                }
             });
         });
+
+        
+        renderSampleEventsTable();
     </script>
 </body>
 </html>
