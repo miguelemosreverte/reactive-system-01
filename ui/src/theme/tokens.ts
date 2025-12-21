@@ -8,6 +8,26 @@ export const serviceColors = {
   drools: '#ff4d4f',
 } as const;
 
+// Get service color by name (supports partial matching)
+export const getServiceColor = (serviceName: string): string => {
+  const name = serviceName.toLowerCase();
+  if (name.includes('gateway') || name.includes('counter-application')) return serviceColors.gateway;
+  if (name.includes('kafka')) return serviceColors.kafka;
+  if (name.includes('flink')) return serviceColors.flink;
+  if (name.includes('drools')) return serviceColors.drools;
+  return '#1890ff'; // default to primary blue
+};
+
+// Get Ant Design tag color name by service
+export const getServiceTagColor = (serviceName: string): string => {
+  const name = serviceName.toLowerCase();
+  if (name.includes('gateway') || name.includes('counter-application')) return 'green';
+  if (name.includes('kafka')) return 'orange';
+  if (name.includes('flink')) return 'purple';
+  if (name.includes('drools')) return 'red';
+  return 'blue';
+};
+
 // Shared token configuration
 const sharedTokens = {
   colorPrimary: '#1890ff',

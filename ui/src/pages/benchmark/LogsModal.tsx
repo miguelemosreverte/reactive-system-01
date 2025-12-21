@@ -1,6 +1,7 @@
 import React from 'react';
 import { Modal, Space, Tag, Typography, List } from 'antd';
 import type { SampleEvent, LokiLogEntry } from './types';
+import { getServiceTagColor } from '../../theme/tokens';
 
 const { Text } = Typography;
 
@@ -9,15 +10,6 @@ interface LogsModalProps {
   onClose: () => void;
   event: SampleEvent | null;
 }
-
-const getServiceColor = (serviceName: string): string => {
-  const name = serviceName.toLowerCase();
-  if (name.includes('gateway')) return 'green';
-  if (name.includes('kafka')) return 'orange';
-  if (name.includes('flink')) return 'purple';
-  if (name.includes('drools')) return 'red';
-  return 'blue';
-};
 
 const getLevelColor = (level: string): string => {
   switch (level.toUpperCase()) {
@@ -105,7 +97,7 @@ const LogsModal: React.FC<LogsModalProps> = ({ open, onClose, event }) => {
                 <Tag color={getLevelColor(level)} style={{ fontSize: 10 }}>
                   {level}
                 </Tag>
-                <Tag color={getServiceColor(service)} style={{ fontSize: 10 }}>
+                <Tag color={getServiceTagColor(service)} style={{ fontSize: 10 }}>
                   {service}
                 </Tag>
                 {logger && (

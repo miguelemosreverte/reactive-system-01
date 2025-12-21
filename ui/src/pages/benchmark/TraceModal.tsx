@@ -2,6 +2,7 @@ import React from 'react';
 import { Modal, Space, Tag, Typography, List, theme } from 'antd';
 import { ClockCircleOutlined } from '@ant-design/icons';
 import type { SampleEvent, JaegerSpan } from './types';
+import { getServiceColor, getServiceTagColor } from '../../theme/tokens';
 
 const { Text } = Typography;
 
@@ -10,15 +11,6 @@ interface TraceModalProps {
   onClose: () => void;
   event: SampleEvent | null;
 }
-
-const getServiceColor = (serviceName: string): string => {
-  const name = serviceName.toLowerCase();
-  if (name.includes('gateway') || name.includes('counter-application')) return 'green';
-  if (name.includes('kafka')) return 'orange';
-  if (name.includes('flink')) return 'purple';
-  if (name.includes('drools')) return 'red';
-  return 'blue';
-};
 
 const formatDuration = (microseconds: number): string => {
   if (microseconds < 1000) return `${microseconds}µs`;
@@ -75,7 +67,7 @@ const TraceModal: React.FC<TraceModalProps> = ({ open, onClose, event }) => {
             <List.Item style={{ padding: '8px 0' }}>
               <div style={{ width: '100%' }}>
                 <Space style={{ marginBottom: 8 }}>
-                  <Tag color={getServiceColor(serviceName)}>{serviceName}</Tag>
+                  <Tag color={getServiceTagColor(serviceName)}>{serviceName}</Tag>
                   <Text strong>{span.operationName}</Text>
                   <Tag icon={<ClockCircleOutlined />} color="gold">
                     {formatDuration(span.duration)}
@@ -97,11 +89,7 @@ const TraceModal: React.FC<TraceModalProps> = ({ open, onClose, event }) => {
                       width: `${widthPct}%`,
                       height: '100%',
                       borderRadius: 4,
-                      background: getServiceColor(serviceName) === 'green' ? token.colorSuccess :
-                                  getServiceColor(serviceName) === 'orange' ? token.colorWarning :
-                                  getServiceColor(serviceName) === 'purple' ? '#722ed1' :
-                                  getServiceColor(serviceName) === 'red' ? token.colorError :
-                                  token.colorPrimary,
+                      background: getServiceColor(serviceName),
                       minWidth: 4,
                     }}
                   />
