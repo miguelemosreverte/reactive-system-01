@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal, Space, Tag, Typography, List, theme } from 'antd';
+import { Modal, Space, Tag, Typography, List } from 'antd';
 import type { SampleEvent, LokiLogEntry } from './types';
 
 const { Text } = Typography;
@@ -29,8 +29,6 @@ const getLevelColor = (level: string): string => {
 };
 
 const LogsModal: React.FC<LogsModalProps> = ({ open, onClose, event }) => {
-  const { token } = theme.useToken();
-
   if (!event?.traceData?.logs || event.traceData.logs.length === 0) {
     return (
       <Modal

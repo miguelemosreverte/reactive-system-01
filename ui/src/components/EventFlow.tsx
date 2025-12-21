@@ -10,9 +10,9 @@ import {
   LoadingOutlined,
   ClockCircleOutlined,
 } from '@ant-design/icons';
-import { ServiceTag } from './common';
 
-const { Title, Text, Paragraph } = Typography;
+
+const { Text, Paragraph } = Typography;
 
 export type FlowStage = 'idle' | 'sending' | 'processing' | 'complete';
 

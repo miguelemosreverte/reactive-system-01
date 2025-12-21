@@ -18,8 +18,8 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     if (stored !== null) {
       return stored === 'dark';
     }
-    // Fall back to system preference
-    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    // Default to light mode (like Flink)
+    return false;
   });
 
   useEffect(() => {

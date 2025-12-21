@@ -62,6 +62,16 @@ var benchmarkDoctorCmd = &cobra.Command{
 	Run:   runBenchmarkDoctor,
 }
 
+var benchmarkBuildUICmd = &cobra.Command{
+	Use:   "build-ui",
+	Short: "Build benchmark UI assets",
+	Long: `Build the React-based benchmark report UI.
+
+This compiles the React components into static JavaScript bundles
+that are loaded by the generated HTML reports.`,
+	Run: runBenchmarkBuildUI,
+}
+
 func init() {
 	benchmarkRunCmd.Flags().IntVarP(&benchmarkDuration, "duration", "d", 30, "Duration in seconds")
 	benchmarkRunCmd.Flags().StringVarP(&benchmarkComponent, "component", "c", "full", "Component to benchmark (full, http, kafka, flink, drools, gateway)")
@@ -70,6 +80,7 @@ func init() {
 	benchmarkCmd.AddCommand(benchmarkStatusCmd)
 	benchmarkCmd.AddCommand(benchmarkReportCmd)
 	benchmarkCmd.AddCommand(benchmarkDoctorCmd)
+	benchmarkCmd.AddCommand(benchmarkBuildUICmd)
 }
 
 type BenchmarkConfig struct {
@@ -472,4 +483,66 @@ func runBenchmarkDoctor(cmd *cobra.Command, args []string) {
 		fmt.Printf("  Services: %s\n", strings.Join(services, ", "))
 		fmt.Println()
 	}
+}
+
+func runBenchmarkBuildUI(cmd *cobra.Command, args []string) {
+	fmt.Println("Building Benchmark UI Assets")
+	fmt.Println(strings.Repeat("=", 60))
+	fmt.Println()
+
+	// Find the ui directory - try common paths
+	uiPaths := []string{"ui", "../ui", "../../ui"}
+	var uiDir string
+	for _, path := range uiPaths {
+		checkCmd := exec.Command("ls", path+"/package.json")
+		if err := checkCmd.Run(); err == nil {
+			uiDir = path
+			break
+		}
+	}
+
+	if uiDir == "" {
+		fmt.Println("Error: Could not find ui directory")
+		fmt.Println("Please run this command from the project root")
+		return
+	}
+
+	fmt.Printf("Found UI directory: %s\n", uiDir)
+	fmt.Println()
+
+	// Check if npm is installed
+	if _, err := exec.LookPath("npm"); err != nil {
+		fmt.Println("Error: npm is not installed")
+		fmt.Println("Please install Node.js and npm first")
+		return
+	}
+
+	// Run npm install
+	fmt.Println("Installing dependencies...")
+	installCmd := exec.Command("npm", "install")
+	installCmd.Dir = uiDir
+	if err := installCmd.Run(); err != nil {
+		fmt.Printf("Warning: npm install had issues: %v\n", err)
+	}
+	fmt.Println("  Done")
+	fmt.Println()
+
+	// Run npm run build:benchmark
+	fmt.Println("Building benchmark bundles...")
+	buildCmd := exec.Command("npm", "run", "build:benchmark")
+	buildCmd.Dir = uiDir
+	output, err := buildCmd.CombinedOutput()
+	if err != nil {
+		fmt.Printf("Error building UI: %v\n", err)
+		fmt.Println(string(output))
+		return
+	}
+	fmt.Println("  Done")
+	fmt.Println()
+
+	fmt.Println("Build completed successfully!")
+	fmt.Println()
+	fmt.Println("Generated files:")
+	fmt.Println("  reports/assets/benchmark-report.js  (for individual reports)")
+	fmt.Println("  reports/assets/benchmark-index.js   (for dashboard)")
 }

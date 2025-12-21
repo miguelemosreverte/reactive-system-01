@@ -20,8 +20,9 @@ Debugging:
   reactive send               Send a test event
 
 Benchmarks:
-  reactive benchmark run      Run all benchmarks
-  reactive benchmark report   View benchmark reports`,
+  reactive benchmark run       Run all benchmarks
+  reactive benchmark report    View benchmark reports
+  reactive benchmark build-ui  Build React UI assets`,
 }
 
 func Execute() error {

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Card, Menu, Typography, Spin, Alert, Divider, theme } from 'antd';
+import { Card, Menu, Typography, Spin, Alert, theme } from 'antd';
 import { FileTextOutlined } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 
@@ -56,7 +56,6 @@ function Documentation() {
     const elements: JSX.Element[] = [];
     let inCodeBlock = false;
     let codeContent = '';
-    let codeLanguage = '';
     let inTable = false;
     let tableRows: string[][] = [];
     let listItems: string[] = [];
@@ -152,12 +151,10 @@ function Documentation() {
             </pre>
           );
           codeContent = '';
-          codeLanguage = '';
           inCodeBlock = false;
         } else {
           flushList();
           flushTable();
-          codeLanguage = line.slice(3);
           inCodeBlock = true;
         }
         continue;

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Card, Row, Col, Statistic, Table, Tag, Button, Modal, Space, Typography, Badge, theme } from 'antd';
+import { Card, Row, Col, Statistic, Table, Tag, Button, Space, Typography, Badge, theme } from 'antd';
 import {
   ThunderboltOutlined,
   CheckCircleOutlined,
@@ -7,10 +7,9 @@ import {
   ClockCircleOutlined,
   DesktopOutlined,
   DatabaseOutlined,
-  ExportOutlined,
 } from '@ant-design/icons';
 import { Line } from '@ant-design/charts';
-import type { BenchmarkResult, SampleEvent, JaegerTrace } from './types';
+import type { BenchmarkResult, SampleEvent } from './types';
 import TraceModal from './TraceModal';
 import LogsModal from './LogsModal';
 

@@ -2,11 +2,25 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { resolve } from 'path';
 
+// Get which bundle to build from environment variable
+const bundle = process.env.BENCHMARK_BUNDLE || 'report';
+
+const entries: Record<string, { entry: string; name: string }> = {
+  report: {
+    entry: resolve(__dirname, 'src/pages/benchmark/report-entry.tsx'),
+    name: 'BenchmarkReport',
+  },
+  index: {
+    entry: resolve(__dirname, 'src/pages/benchmark/index-entry.tsx'),
+    name: 'BenchmarkIndex',
+  },
+};
+
+const config = entries[bundle];
+
 /**
  * Vite configuration for building benchmark report bundles.
- * This creates two separate bundles:
- * 1. benchmark-report.js - For individual report pages
- * 2. benchmark-index.js - For the main dashboard
+ * Run with BENCHMARK_BUNDLE=report or BENCHMARK_BUNDLE=index
  */
 export default defineConfig({
   plugins: [react()],
@@ -14,22 +28,16 @@ export default defineConfig({
     outDir: '../reports/assets',
     emptyDir: false,
     lib: {
-      entry: {
-        'benchmark-report': resolve(__dirname, 'src/pages/benchmark/report-entry.tsx'),
-        'benchmark-index': resolve(__dirname, 'src/pages/benchmark/index-entry.tsx'),
-      },
+      entry: config.entry,
       formats: ['iife'],
-      name: 'BenchmarkReport',
+      name: config.name,
+      fileName: () => `benchmark-${bundle}.js`,
     },
     rollupOptions: {
       output: {
-        entryFileNames: '[name].js',
-        assetFileNames: '[name].[ext]',
-        // Keep all code in a single bundle (no external dependencies)
-        inlineDynamicImports: false,
+        assetFileNames: `benchmark-${bundle}.[ext]`,
       },
     },
-    // Don't minify for easier debugging in development
     minify: true,
     sourcemap: false,
   },

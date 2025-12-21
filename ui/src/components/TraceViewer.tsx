@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Card, Input, Button, Typography, Space, Spin, Alert, Tag, Row, Col, List, Badge, theme } from 'antd';
+import { Card, Input, Button, Typography, Space, Spin, Alert, Tag, Row, Col, List, theme } from 'antd';
 import { SearchOutlined, ExportOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import { getJaegerUrl, getJaegerTraceUrl } from '../utils/urls';
-import { ServiceTag } from './common';
 
 const { Title, Text } = Typography;
 

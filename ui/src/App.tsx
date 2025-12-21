@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
-import { Typography, Space, Button, Row, Col, Card, Steps, theme } from 'antd';
+import { Typography, Space, Button, Row, Col, Card, Steps } from 'antd';
 import { ExportOutlined } from '@ant-design/icons';
 import Counter from './components/Counter';
 import ConnectionStatus from './components/ConnectionStatus';
@@ -12,7 +12,7 @@ import { AppLayout, NavItem } from './components/layout';
 import { useWebSocket } from './hooks/useWebSocket';
 import { getJaegerTraceUrl } from './utils/urls';
 
-const { Title, Text, Paragraph } = Typography;
+const { Title, Text } = Typography;
 
 const pathToNav: Record<string, NavItem> = {
   '/': 'demo',
@@ -33,7 +33,7 @@ function App() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const { token } = theme.useToken();
+  
 
   const [counterValue, setCounterValue] = useState(0);
   const [alert, setAlert] = useState<string>('NONE');

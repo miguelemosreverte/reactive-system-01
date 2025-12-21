@@ -1,5 +1,5 @@
 import React from 'react';
-import { Layout, Space, Typography } from 'antd';
+import { Layout, Space, Typography, theme } from 'antd';
 import { ThemeToggle, StatusBadge } from '../common';
 import { layout } from '../../theme/tokens';
 
@@ -12,6 +12,8 @@ interface AppHeaderProps {
 }
 
 const AppHeader: React.FC<AppHeaderProps> = ({ isConnected, title }) => {
+  const { token } = theme.useToken();
+
   return (
     <Header
       style={{
@@ -20,7 +22,8 @@ const AppHeader: React.FC<AppHeaderProps> = ({ isConnected, title }) => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        borderBottom: '1px solid rgba(0, 0, 0, 0.06)',
+        background: token.colorBgContainer,
+        borderBottom: `1px solid ${token.colorBorderSecondary}`,
       }}
     >
       <Space>
