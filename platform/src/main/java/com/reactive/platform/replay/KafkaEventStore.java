@@ -34,24 +34,22 @@ public class KafkaEventStore implements EventStore {
     private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<>() {};
 
     // ========================================================================
-    // Static factories (Scala-style: KafkaEventStore.forTopic(...))
+    // Static factories with lambda config (Scala-style named parameters)
     // ========================================================================
 
-    /** Create event store with default field mappings. */
+    /**
+     * Create event store with lambda configuration.
+     * Example: KafkaEventStore.create(c -> c.bootstrapServers(s).topic(t))
+     */
+    public static KafkaEventStore create(java.util.function.Consumer<Builder> configure) {
+        Builder builder = new Builder();
+        configure.accept(builder);
+        return builder.build();
+    }
+
+    /** Simple factory for default field mappings. */
     public static KafkaEventStore forTopic(String bootstrapServers, String topic) {
         return new KafkaEventStore(bootstrapServers, topic, "sessionId", "requestId", "action");
-    }
-
-    /** Create event store with custom field mappings. */
-    public static KafkaEventStore forTopic(String bootstrapServers, String topic,
-                                            String aggregateIdField, String eventIdField) {
-        return new KafkaEventStore(bootstrapServers, topic, aggregateIdField, eventIdField, "action");
-    }
-
-    /** @deprecated Use forTopic() instead */
-    @Deprecated
-    public static Builder builder() {
-        return new Builder();
     }
 
     // ========================================================================
@@ -77,8 +75,7 @@ public class KafkaEventStore implements EventStore {
         this.maxEventsToScan = 100_000;
     }
 
-    /** @deprecated Use forTopic() instead */
-    @Deprecated
+    /** Configuration builder - use via create(c -> c.xxx()) */
     public static class Builder {
         private String bootstrapServers = "localhost:9092";
         private String topic;
@@ -90,8 +87,8 @@ public class KafkaEventStore implements EventStore {
         public Builder aggregateIdField(String f) { this.aggregateIdField = f; return this; }
         public Builder eventIdField(String f) { this.eventIdField = f; return this; }
 
-        public KafkaEventStore build() {
-            return KafkaEventStore.forTopic(bootstrapServers, topic, aggregateIdField, eventIdField);
+        KafkaEventStore build() {
+            return new KafkaEventStore(bootstrapServers, topic, aggregateIdField, eventIdField, "action");
         }
     }
 

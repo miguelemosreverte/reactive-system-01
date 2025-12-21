@@ -34,42 +34,24 @@ public class KafkaPublisher<A> implements AutoCloseable {
     private static final Logger log = LoggerFactory.getLogger(KafkaPublisher.class);
 
     // ========================================================================
-    // Static factories (Scala-style)
+    // Static factories with lambda config (Scala-style named parameters)
     // ========================================================================
 
-    /** Create publisher with default settings. */
-    public static <A> KafkaPublisher<A> create(
-            String bootstrapServers,
-            String topic,
-            Codec<A> codec,
-            Function<A, String> keyExtractor,
-            Tracer tracer
-    ) {
-        return KafkaPublisher.<A>builder()
-                .bootstrapServers(bootstrapServers)
-                .topic(topic)
-                .codec(codec)
-                .keyExtractor(keyExtractor)
-                .tracer(tracer)
-                .build();
+    /**
+     * Create publisher with lambda configuration.
+     * Example: KafkaPublisher.create(c -> c.bootstrapServers(s).topic(t).codec(c))
+     */
+    public static <A> KafkaPublisher<A> create(java.util.function.Consumer<Builder<A>> configure) {
+        Builder<A> builder = new Builder<>();
+        configure.accept(builder);
+        return builder.build();
     }
 
-    /** Create fire-and-forget publisher (no acks). */
-    public static <A> KafkaPublisher<A> fireAndForget(
-            String bootstrapServers,
-            String topic,
-            Codec<A> codec,
-            Function<A, String> keyExtractor,
-            Tracer tracer
-    ) {
-        return KafkaPublisher.<A>builder()
-                .bootstrapServers(bootstrapServers)
-                .topic(topic)
-                .codec(codec)
-                .keyExtractor(keyExtractor)
-                .tracer(tracer)
-                .fireAndForget()
-                .build();
+    /** Create fire-and-forget publisher with lambda configuration. */
+    public static <A> KafkaPublisher<A> fireAndForget(java.util.function.Consumer<Builder<A>> configure) {
+        Builder<A> builder = new Builder<>();
+        configure.accept(builder);
+        return builder.fireAndForget().build();
     }
 
     // ========================================================================

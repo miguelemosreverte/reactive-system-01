@@ -34,8 +34,11 @@ public class ReplayController {
 
     @PostConstruct
     void init() {
-        store = KafkaEventStore.forTopic(kafkaBootstrap, eventsTopic,
-                fsm.aggregateIdField(), fsm.eventIdField());
+        store = KafkaEventStore.create(c -> c
+                .bootstrapServers(kafkaBootstrap)
+                .topic(eventsTopic)
+                .aggregateIdField(fsm.aggregateIdField())
+                .eventIdField(fsm.eventIdField()));
 
         replay = ReplayService.withSnapshots(store, fsm, Tracing.create("replay"));
     }

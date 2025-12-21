@@ -53,13 +53,12 @@ public class CounterController {
 
     @PostConstruct
     void init() {
-        publisher = KafkaPublisher.create(
-                kafkaBootstrap,
-                eventsTopic,
-                JsonCodec.forClass(CounterEvent.class),
-                e -> buildKafkaKey(e.customerId(), e.sessionId()),
-                tracing.tracer()
-        );
+        publisher = KafkaPublisher.create(c -> c
+                .bootstrapServers(kafkaBootstrap)
+                .topic(eventsTopic)
+                .codec(JsonCodec.forClass(CounterEvent.class))
+                .keyExtractor(e -> buildKafkaKey(e.customerId(), e.sessionId()))
+                .tracer(tracing.tracer()));
     }
 
     @PreDestroy
