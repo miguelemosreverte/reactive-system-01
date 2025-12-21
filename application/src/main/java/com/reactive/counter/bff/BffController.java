@@ -191,15 +191,13 @@ public class BffController {
                     observability.fetchLogs(base.requestId(), now.minusSeconds(60), now);
 
             return traceFuture.thenCombine(logsFuture, (traceResult, logsResult) -> {
-                TraceInfo trace = traceResult.isSuccess()
-                        ? TraceInfo.from(traceResult.getOrThrow())
-                        : null;
-
-                List<LogInfo> logs = logsResult.isSuccess()
-                        ? logsResult.getOrThrow().stream()
-                            .map(l -> new LogInfo(l.timestamp(), l.service(), l.message()))
-                            .toList()
-                        : null;
+                TraceInfo trace = traceResult.fold(e -> null, TraceInfo::from);
+                List<LogInfo> logs = logsResult.fold(
+                        e -> null,
+                        entries -> entries.stream()
+                                .map(l -> new LogInfo(l.timestamp(), l.service(), l.message()))
+                                .toList()
+                );
 
                 return new ActionDebugResponse(
                         base.success(), base.requestId(), base.customerId(),
@@ -221,12 +219,10 @@ public class BffController {
     @GetMapping("/traces/{traceId}")
     public Mono<ResponseEntity<TraceInfo>> fetchTrace(@PathVariable String traceId) {
         return Mono.fromFuture(() -> observability.fetchTrace(traceId))
-                .map(result -> {
-                    if (result.isSuccess()) {
-                        return ResponseEntity.ok(TraceInfo.from(result.getOrThrow()));
-                    }
-                    return ResponseEntity.notFound().<TraceInfo>build();
-                });
+                .map(result -> result.fold(
+                        e -> ResponseEntity.notFound().<TraceInfo>build(),
+                        t -> ResponseEntity.ok(TraceInfo.from(t))
+                ));
     }
 
     /**
@@ -242,15 +238,12 @@ public class BffController {
         Instant start = now.minusSeconds(lookbackSeconds);
 
         return Mono.fromFuture(() -> observability.fetchLogs(requestId, start, now))
-                .map(result -> {
-                    if (result.isSuccess()) {
-                        List<LogInfo> logs = result.getOrThrow().stream()
+                .map(result -> ResponseEntity.ok(result.fold(
+                        e -> List.<LogInfo>of(),
+                        entries -> entries.stream()
                                 .map(l -> new LogInfo(l.timestamp(), l.service(), l.message()))
-                                .toList();
-                        return ResponseEntity.ok(logs);
-                    }
-                    return ResponseEntity.ok(List.<LogInfo>of());
-                });
+                                .toList()
+                )));
     }
 
     /**
@@ -265,15 +258,10 @@ public class BffController {
     ) {
         return Mono.fromFuture(() ->
                 observability.searchTraces(service, limit, Duration.ofSeconds(lookbackSeconds)))
-                .map(result -> {
-                    if (result.isSuccess()) {
-                        List<TraceInfo> traces = result.getOrThrow().stream()
-                                .map(TraceInfo::from)
-                                .toList();
-                        return ResponseEntity.ok(traces);
-                    }
-                    return ResponseEntity.ok(List.<TraceInfo>of());
-                });
+                .map(result -> ResponseEntity.ok(result.fold(
+                        e -> List.<TraceInfo>of(),
+                        traces -> traces.stream().map(TraceInfo::from).toList()
+                )));
     }
 
     /**
