@@ -30,36 +30,44 @@ public class ReplayService<S> {
 
     private static final Logger log = LoggerFactory.getLogger(ReplayService.class);
 
+    // ========================================================================
+    // Static factories (Scala-style)
+    // ========================================================================
+
+    /** Create replay service. */
+    public static <S> ReplayService<S> create(EventStore eventStore, FSMAdapter<S> fsm, Tracing tracing) {
+        return new ReplayService<>(eventStore, fsm, tracing, false);
+    }
+
+    /** Create replay service with snapshot capture. */
+    public static <S> ReplayService<S> withSnapshots(EventStore eventStore, FSMAdapter<S> fsm, Tracing tracing) {
+        return new ReplayService<>(eventStore, fsm, tracing, true);
+    }
+
+    /** @deprecated Use create() instead */
+    @Deprecated
+    public static <S> Builder<S> builder() {
+        return new Builder<>();
+    }
+
+    // ========================================================================
+    // Internal state
+    // ========================================================================
+
     private final EventStore eventStore;
     private final FSMAdapter<S> fsm;
     private final Tracing tracing;
     private final boolean captureSnapshots;
 
-    /**
-     * Create a replay service.
-     */
-    public ReplayService(EventStore eventStore, FSMAdapter<S> fsm, Tracing tracing) {
-        this(eventStore, fsm, tracing, false);
-    }
-
-    /**
-     * Create a replay service with optional snapshot capture.
-     */
-    public ReplayService(EventStore eventStore, FSMAdapter<S> fsm, Tracing tracing, boolean captureSnapshots) {
+    private ReplayService(EventStore eventStore, FSMAdapter<S> fsm, Tracing tracing, boolean captureSnapshots) {
         this.eventStore = Objects.requireNonNull(eventStore, "eventStore required");
         this.fsm = Objects.requireNonNull(fsm, "fsm required");
         this.tracing = Objects.requireNonNull(tracing, "tracing required");
         this.captureSnapshots = captureSnapshots;
     }
 
-    // ========================================================================
-    // Builder (kept for backwards compatibility)
-    // ========================================================================
-
-    public static <S> Builder<S> builder() {
-        return new Builder<>();
-    }
-
+    /** @deprecated Use create() instead */
+    @Deprecated
     public static class Builder<S> {
         private EventStore eventStore;
         private FSMAdapter<S> fsmAdapter;
@@ -72,7 +80,9 @@ public class ReplayService<S> {
         public Builder<S> captureSnapshots(boolean c) { this.captureSnapshots = c; return this; }
 
         public ReplayService<S> build() {
-            return new ReplayService<>(eventStore, fsmAdapter, tracing, captureSnapshots);
+            return captureSnapshots
+                    ? ReplayService.withSnapshots(eventStore, fsmAdapter, tracing)
+                    : ReplayService.create(eventStore, fsmAdapter, tracing);
         }
     }
 
@@ -148,7 +158,7 @@ public class ReplayService<S> {
      * Get state history for an aggregate.
      */
     public Result<List<StateSnapshot<S>>> getStateHistory(String aggregateId) {
-        return new ReplayService<>(eventStore, fsm, tracing, true)
+        return ReplayService.withSnapshots(eventStore, fsm, tracing)
                 .replay(aggregateId)
                 .map(ReplayResult::stateSnapshots);
     }

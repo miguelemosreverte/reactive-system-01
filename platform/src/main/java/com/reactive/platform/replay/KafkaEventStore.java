@@ -33,78 +33,65 @@ public class KafkaEventStore implements EventStore {
     private static final ObjectMapper mapper = new ObjectMapper();
     private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<>() {};
 
-    /**
-     * Configuration for KafkaEventStore.
-     */
-    public record Config(
-            String bootstrapServers,
-            String topic,
-            String aggregateIdField,
-            String eventIdField,
-            String eventTypeField,
-            Duration pollTimeout,
-            int maxEventsToScan
-    ) {
-        public Config {
-            Objects.requireNonNull(topic, "topic required");
-        }
-
-        public static Config forTopic(String bootstrapServers, String topic) {
-            return new Config(bootstrapServers, topic, "sessionId", "requestId", "action",
-                    Duration.ofMillis(500), 100_000);
-        }
-
-        public Config withFields(String aggregateId, String eventId, String eventType) {
-            return new Config(bootstrapServers, topic, aggregateId, eventId, eventType,
-                    pollTimeout, maxEventsToScan);
-        }
-    }
-
-    private final Config config;
-
-    public KafkaEventStore(Config config) {
-        this.config = config;
-    }
-
-    // Convenience factory
-    public static KafkaEventStore create(String bootstrapServers, String topic,
-                                          String aggregateIdField, String eventIdField) {
-        return new KafkaEventStore(new Config(
-                bootstrapServers, topic, aggregateIdField, eventIdField, "action",
-                Duration.ofMillis(500), 100_000
-        ));
-    }
-
     // ========================================================================
-    // Builder (kept for backwards compatibility)
+    // Static factories (Scala-style: KafkaEventStore.forTopic(...))
     // ========================================================================
 
+    /** Create event store with default field mappings. */
+    public static KafkaEventStore forTopic(String bootstrapServers, String topic) {
+        return new KafkaEventStore(bootstrapServers, topic, "sessionId", "requestId", "action");
+    }
+
+    /** Create event store with custom field mappings. */
+    public static KafkaEventStore forTopic(String bootstrapServers, String topic,
+                                            String aggregateIdField, String eventIdField) {
+        return new KafkaEventStore(bootstrapServers, topic, aggregateIdField, eventIdField, "action");
+    }
+
+    /** @deprecated Use forTopic() instead */
+    @Deprecated
     public static Builder builder() {
         return new Builder();
     }
 
+    // ========================================================================
+    // Internal state
+    // ========================================================================
+
+    private final String bootstrapServers;
+    private final String topic;
+    private final String aggregateIdField;
+    private final String eventIdField;
+    private final String eventTypeField;
+    private final Duration pollTimeout;
+    private final int maxEventsToScan;
+
+    private KafkaEventStore(String bootstrapServers, String topic,
+                            String aggregateIdField, String eventIdField, String eventTypeField) {
+        this.bootstrapServers = Objects.requireNonNull(bootstrapServers);
+        this.topic = Objects.requireNonNull(topic);
+        this.aggregateIdField = aggregateIdField;
+        this.eventIdField = eventIdField;
+        this.eventTypeField = eventTypeField;
+        this.pollTimeout = Duration.ofMillis(500);
+        this.maxEventsToScan = 100_000;
+    }
+
+    /** @deprecated Use forTopic() instead */
+    @Deprecated
     public static class Builder {
         private String bootstrapServers = "localhost:9092";
         private String topic;
         private String aggregateIdField = "sessionId";
         private String eventIdField = "requestId";
-        private String eventTypeField = "action";
-        private Duration pollTimeout = Duration.ofMillis(500);
-        private int maxEventsToScan = 100_000;
 
         public Builder bootstrapServers(String s) { this.bootstrapServers = s; return this; }
         public Builder topic(String t) { this.topic = t; return this; }
         public Builder aggregateIdField(String f) { this.aggregateIdField = f; return this; }
         public Builder eventIdField(String f) { this.eventIdField = f; return this; }
-        public Builder eventTypeField(String f) { this.eventTypeField = f; return this; }
-        public Builder pollTimeout(Duration d) { this.pollTimeout = d; return this; }
-        public Builder maxEventsToScan(int m) { this.maxEventsToScan = m; return this; }
 
         public KafkaEventStore build() {
-            return new KafkaEventStore(new Config(
-                    bootstrapServers, topic, aggregateIdField, eventIdField,
-                    eventTypeField, pollTimeout, maxEventsToScan
-            ));
+            return KafkaEventStore.forTopic(bootstrapServers, topic, aggregateIdField, eventIdField);
         }
     }
 
@@ -130,7 +117,7 @@ public class KafkaEventStore implements EventStore {
     public Result<Optional<StoredEvent>> getEventById(String eventId) {
         return scanTopic(record ->
             parsePayload(record.value())
-                .map(p -> eventId.equals(extractField(p, config.eventIdField)))
+                .map(p -> eventId.equals(extractField(p, eventIdField)))
                 .getOrElse(false)
         ).map(events -> events.stream().findFirst());
     }
@@ -174,7 +161,7 @@ public class KafkaEventStore implements EventStore {
             try (var consumer = createConsumer()) {
                 var partitions = getPartitions(consumer);
                 if (partitions.isEmpty()) {
-                    log.warn("No partitions for topic: {}", config.topic);
+                    log.warn("No partitions for topic: {}", topic);
                     return List.<StoredEvent>of();
                 }
 
@@ -188,7 +175,7 @@ public class KafkaEventStore implements EventStore {
                         .sorted(Comparator.comparingLong(StoredEvent::offset))
                         .toList();
 
-                log.debug("Found {} events for topic {}", events.size(), config.topic);
+                log.debug("Found {} events for topic {}", events.size(), topic);
                 return events;
             }
         });
@@ -202,12 +189,12 @@ public class KafkaEventStore implements EventStore {
         List<ConsumerRecord<String, byte[]>> allRecords = new ArrayList<>();
         int scanned = 0;
 
-        while (scanned < config.maxEventsToScan && !reachedEnd(consumer, partitions, endOffsets)) {
-            var records = consumer.poll(config.pollTimeout);
+        while (scanned < maxEventsToScan && !reachedEnd(consumer, partitions, endOffsets)) {
+            var records = consumer.poll(pollTimeout);
             for (var record : records) {
                 allRecords.add(record);
                 scanned++;
-                if (scanned >= config.maxEventsToScan) break;
+                if (scanned >= maxEventsToScan) break;
             }
         }
 
@@ -223,8 +210,8 @@ public class KafkaEventStore implements EventStore {
     }
 
     private List<TopicPartition> getPartitions(KafkaConsumer<?, ?> consumer) {
-        return consumer.partitionsFor(config.topic).stream()
-                .map(info -> new TopicPartition(config.topic, info.partition()))
+        return consumer.partitionsFor(topic).stream()
+                .map(info -> new TopicPartition(topic, info.partition()))
                 .toList();
     }
 
@@ -245,7 +232,7 @@ public class KafkaEventStore implements EventStore {
     private StoredEvent buildStoredEvent(ConsumerRecord<String, byte[]> record, Map<String, Object> payload) {
         var headers = extractHeaders(record);
         var aggregateId = Optional.ofNullable(extractAggregateId(record)).orElse(record.key());
-        var eventId = Optional.ofNullable(extractField(payload, config.eventIdField))
+        var eventId = Optional.ofNullable(extractField(payload, eventIdField))
                 .orElse(String.valueOf(record.offset()));
         var traceId = headers.getOrDefault("traceparent",
                 headers.getOrDefault("traceId", extractField(payload, "traceId")));
@@ -253,7 +240,7 @@ public class KafkaEventStore implements EventStore {
         return new StoredEvent(
                 aggregateId,
                 eventId,
-                extractField(payload, config.eventTypeField),
+                extractField(payload, eventTypeField),
                 payload,
                 Instant.ofEpochMilli(record.timestamp()),
                 record.offset(),
@@ -275,7 +262,7 @@ public class KafkaEventStore implements EventStore {
             return record.key();
         }
         return parsePayload(record.value())
-                .map(p -> extractField(p, config.aggregateIdField))
+                .map(p -> extractField(p, aggregateIdField))
                 .getOrElse((String) null);
     }
 
@@ -312,7 +299,7 @@ public class KafkaEventStore implements EventStore {
 
     private KafkaConsumer<String, byte[]> createConsumer() {
         var props = new Properties();
-        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, config.bootstrapServers);
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         props.put(ConsumerConfig.GROUP_ID_CONFIG, "replay-" + UUID.randomUUID());
         props.put(ConsumerConfig.CLIENT_ID_CONFIG, "replay");
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());

@@ -33,13 +33,54 @@ public class KafkaPublisher<A> implements AutoCloseable {
 
     private static final Logger log = LoggerFactory.getLogger(KafkaPublisher.class);
 
+    // ========================================================================
+    // Static factories (Scala-style)
+    // ========================================================================
+
+    /** Create publisher with default settings. */
+    public static <A> KafkaPublisher<A> create(
+            String bootstrapServers,
+            String topic,
+            Codec<A> codec,
+            Function<A, String> keyExtractor,
+            Tracer tracer
+    ) {
+        return KafkaPublisher.<A>builder()
+                .bootstrapServers(bootstrapServers)
+                .topic(topic)
+                .codec(codec)
+                .keyExtractor(keyExtractor)
+                .tracer(tracer)
+                .build();
+    }
+
+    /** Create fire-and-forget publisher (no acks). */
+    public static <A> KafkaPublisher<A> fireAndForget(
+            String bootstrapServers,
+            String topic,
+            Codec<A> codec,
+            Function<A, String> keyExtractor,
+            Tracer tracer
+    ) {
+        return KafkaPublisher.<A>builder()
+                .bootstrapServers(bootstrapServers)
+                .topic(topic)
+                .codec(codec)
+                .keyExtractor(keyExtractor)
+                .tracer(tracer)
+                .fireAndForget()
+                .build();
+    }
+
+    // ========================================================================
+    // Internal state
+    // ========================================================================
+
     private final KafkaProducer<String, byte[]> producer;
     private final String topic;
     private final Codec<A> codec;
     private final Function<A, String> keyExtractor;
     private final Tracer tracer;
-
-    // Metrics
     private final AtomicLong publishedCount = new AtomicLong(0);
     private final AtomicLong errorCount = new AtomicLong(0);
 

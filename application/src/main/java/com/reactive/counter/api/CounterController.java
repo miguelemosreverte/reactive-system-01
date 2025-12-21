@@ -4,7 +4,6 @@ import com.reactive.counter.domain.CounterEvent;
 import com.reactive.counter.domain.CounterState;
 import com.reactive.platform.id.IdGenerator;
 import com.reactive.platform.kafka.KafkaPublisher;
-import com.reactive.platform.serialization.Codec;
 import com.reactive.platform.serialization.JsonCodec;
 import com.reactive.platform.tracing.Tracing;
 import io.opentelemetry.api.trace.Span;
@@ -54,15 +53,13 @@ public class CounterController {
 
     @PostConstruct
     void init() {
-        Codec<CounterEvent> codec = JsonCodec.forClass(CounterEvent.class);
-
-        publisher = KafkaPublisher.<CounterEvent>builder()
-                .bootstrapServers(kafkaBootstrap)
-                .topic(eventsTopic)
-                .codec(codec)
-                .keyExtractor(e -> buildKafkaKey(e.customerId(), e.sessionId()))
-                .tracer(tracing.tracer())
-                .build();
+        publisher = KafkaPublisher.create(
+                kafkaBootstrap,
+                eventsTopic,
+                JsonCodec.forClass(CounterEvent.class),
+                e -> buildKafkaKey(e.customerId(), e.sessionId()),
+                tracing.tracer()
+        );
     }
 
     @PreDestroy

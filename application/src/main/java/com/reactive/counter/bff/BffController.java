@@ -7,7 +7,6 @@ import com.reactive.platform.kafka.KafkaPublisher;
 import com.reactive.platform.observability.ObservabilityClient;
 import com.reactive.platform.observability.ObservabilityClient.LogEntry;
 import com.reactive.platform.observability.ObservabilityClient.TraceData;
-import com.reactive.platform.serialization.Codec;
 import com.reactive.platform.serialization.JsonCodec;
 import com.reactive.platform.serialization.Result;
 import com.reactive.platform.tracing.Tracing;
@@ -66,18 +65,14 @@ public class BffController {
 
     @PostConstruct
     void init() {
-        Codec<CounterEvent> codec = JsonCodec.forClass(CounterEvent.class);
-
-        publisher = KafkaPublisher.<CounterEvent>builder()
-                .bootstrapServers(kafkaBootstrap)
-                .topic(eventsTopic)
-                .codec(codec)
-                .keyExtractor(e -> buildKafkaKey(e.customerId(), e.sessionId()))
-                .tracer(tracing.tracer())
-                .build();
-
+        publisher = KafkaPublisher.create(
+                kafkaBootstrap,
+                eventsTopic,
+                JsonCodec.forClass(CounterEvent.class),
+                e -> buildKafkaKey(e.customerId(), e.sessionId()),
+                tracing.tracer()
+        );
         observability = ObservabilityClient.create(jaegerUrl, lokiUrl);
-
         log.info("BFF initialized with Jaeger={}, Loki={}", jaegerUrl, lokiUrl);
     }
 
