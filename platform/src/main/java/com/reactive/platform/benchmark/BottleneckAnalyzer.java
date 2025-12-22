@@ -1,8 +1,6 @@
 package com.reactive.platform.benchmark;
 
 import com.reactive.platform.benchmark.BenchmarkTypes.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -14,8 +12,6 @@ import java.util.stream.Collectors;
  * and provides actionable recommendations.
  */
 public class BottleneckAnalyzer {
-
-    private static final Logger log = LoggerFactory.getLogger(BottleneckAnalyzer.class);
 
     // ========================================================================
     // Result Types

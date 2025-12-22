@@ -16,8 +16,7 @@ import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.header.internals.RecordHeader;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.kafka.common.serialization.StringSerializer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import static com.reactive.platform.observe.Log.error;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Properties;
@@ -31,8 +30,6 @@ import java.util.function.Function;
  * @param <A> The message type
  */
 public class KafkaPublisher<A> implements AutoCloseable {
-
-    private static final Logger log = LoggerFactory.getLogger(KafkaPublisher.class);
 
     // ========================================================================
     // Static factories with lambda config (Scala-style named parameters)
@@ -176,7 +173,7 @@ public class KafkaPublisher<A> implements AutoCloseable {
 
             producer.send(record, (metadata, exception) -> {
                 if (exception != null) {
-                    log.error("Fire-and-forget publish failed: {}", exception.getMessage());
+                    error("Fire-and-forget publish failed: {}", exception.getMessage());
                     errorCount.incrementAndGet();
                 }
             });

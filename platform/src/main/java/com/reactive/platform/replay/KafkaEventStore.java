@@ -10,8 +10,7 @@ import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import static com.reactive.platform.observe.Log.*;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -29,7 +28,6 @@ import java.util.stream.StreamSupport;
  */
 public class KafkaEventStore implements EventStore {
 
-    private static final Logger log = LoggerFactory.getLogger(KafkaEventStore.class);
     private static final ObjectMapper mapper = new ObjectMapper();
     private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<>() {};
 
@@ -144,7 +142,7 @@ public class KafkaEventStore implements EventStore {
             consumer.listTopics(Duration.ofSeconds(5));
             return true;
         } catch (Exception e) {
-            log.warn("Kafka health check failed", e);
+            warn("Kafka health check failed: {}", e.getMessage());
             return false;
         }
     }
@@ -158,7 +156,7 @@ public class KafkaEventStore implements EventStore {
             try (var consumer = createConsumer()) {
                 var partitions = getPartitions(consumer);
                 if (partitions.isEmpty()) {
-                    log.warn("No partitions for topic: {}", topic);
+                    warn("No partitions for topic: {}", topic);
                     return List.<StoredEvent>of();
                 }
 
@@ -172,7 +170,6 @@ public class KafkaEventStore implements EventStore {
                         .sorted(Comparator.comparingLong(StoredEvent::offset))
                         .toList();
 
-                log.debug("Found {} events for topic {}", events.size(), topic);
                 return events;
             }
         });
@@ -218,8 +215,8 @@ public class KafkaEventStore implements EventStore {
 
     private Optional<StoredEvent> toStoredEvent(ConsumerRecord<String, byte[]> record) {
         return parsePayload(record.value()).fold(
-            error -> {
-                log.warn("Failed to parse event at offset {}: {}", record.offset(), error.getMessage());
+            err -> {
+                warn("Failed to parse event at offset {}: {}", record.offset(), err.getMessage());
                 return Optional.empty();
             },
             payload -> Optional.of(buildStoredEvent(record, payload))

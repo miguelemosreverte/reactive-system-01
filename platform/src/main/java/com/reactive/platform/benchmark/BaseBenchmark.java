@@ -1,10 +1,10 @@
 package com.reactive.platform.benchmark;
 
 import com.reactive.platform.benchmark.BenchmarkTypes.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.lang.management.ManagementFactory;
+
+import static com.reactive.platform.observe.Log.*;
 import java.lang.management.OperatingSystemMXBean;
 import java.time.Instant;
 import java.util.*;
@@ -18,8 +18,6 @@ import java.util.concurrent.atomic.AtomicLong;
  * Subclasses implement runBenchmarkLoop() for component-specific logic.
  */
 public abstract class BaseBenchmark implements Benchmark {
-
-    protected final Logger log = LoggerFactory.getLogger(getClass());
 
     private final ComponentId componentId;
     private final AtomicBoolean running = new AtomicBoolean(false);
@@ -70,14 +68,14 @@ public abstract class BaseBenchmark implements Benchmark {
         try {
             reset();
             startTime = Instant.now();
-            log.info("Starting {} benchmark (duration={}ms)", componentId.id(), config.durationMs());
+            info("Starting {} benchmark (duration={}ms)", componentId.id(), config.durationMs());
 
             // Start resource sampling thread
             Thread resourceSampler = startResourceSampler(config);
 
             // Run warmup
             if (config.warmupMs() > 0) {
-                log.info("Warmup phase: {}ms", config.warmupMs());
+                info("Warmup phase: {}ms", config.warmupMs());
                 warmup(config);
             }
 
@@ -86,7 +84,7 @@ public abstract class BaseBenchmark implements Benchmark {
 
             // Cooldown
             if (config.cooldownMs() > 0) {
-                log.info("Cooldown phase: {}ms", config.cooldownMs());
+                info("Cooldown phase: {}ms", config.cooldownMs());
                 Thread.sleep(config.cooldownMs());
             }
 
@@ -101,7 +99,7 @@ public abstract class BaseBenchmark implements Benchmark {
             Thread.currentThread().interrupt();
             return buildResult("stopped", config);
         } catch (Exception e) {
-            log.error("Benchmark error", e);
+            error("Benchmark error", e);
             this.errorMessage = e.getMessage();
             return buildResult("error", config);
         } finally {
@@ -240,7 +238,7 @@ public abstract class BaseBenchmark implements Benchmark {
         // Enrich sample events with traces and logs (skip in quick mode)
         List<SampleEvent> enrichedEvents;
         if (config.skipEnrichment()) {
-            log.info("Skipping trace/log enrichment (quick mode)");
+            info("Skipping trace/log enrichment (quick mode)");
             enrichedEvents = List.copyOf(sampleEvents);
         } else {
             enrichedEvents = enrichSampleEvents(List.copyOf(sampleEvents), startTime, endTime);
@@ -287,7 +285,7 @@ public abstract class BaseBenchmark implements Benchmark {
             String jaegerUrl = System.getenv().getOrDefault("JAEGER_QUERY_URL", "http://host.docker.internal:16686");
             String lokiUrl = System.getenv().getOrDefault("LOKI_URL", "http://host.docker.internal:3100");
 
-            log.info("Enriching {} sample events with traces/logs (jaeger={}, loki={})",
+            info("Enriching {} sample events with traces/logs (jaeger={}, loki={})",
                     events.size(), jaegerUrl, lokiUrl);
 
             ObservabilityFetcher fetcher = ObservabilityFetcher.withUrls(jaegerUrl, lokiUrl);
@@ -300,10 +298,10 @@ public abstract class BaseBenchmark implements Benchmark {
                     .filter(e -> e.traceData() != null && !e.traceData().logs().isEmpty())
                     .count();
 
-            log.info("Enrichment complete: {} traces, {} logs found", tracesFound, logsFound);
+            info("Enrichment complete: {} traces, {} logs found", tracesFound, logsFound);
             return enriched;
         } catch (Exception e) {
-            log.warn("Failed to enrich sample events: {}", e.getMessage());
+            warn("Failed to enrich sample events: {}", e.getMessage());
             return events;
         }
     }

@@ -3,10 +3,10 @@ package com.reactive.platform.benchmark;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+
+import static com.reactive.platform.observe.Log.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
@@ -20,7 +20,6 @@ import java.util.List;
  */
 public class BenchmarkReportGenerator {
 
-    private static final Logger log = LoggerFactory.getLogger(BenchmarkReportGenerator.class);
     private static final ObjectMapper mapper = createMapper();
 
     private final Path outputDir;
@@ -71,7 +70,7 @@ public class BenchmarkReportGenerator {
         Path jsonPath = componentDir.resolve("benchmark-result.json");
         mapper.writeValue(jsonPath.toFile(), enrichedResult);
 
-        log.info("Generated report: {}", jsonPath);
+        info("Generated report: {}", jsonPath);
         return jsonPath;
     }
 
@@ -116,7 +115,7 @@ public class BenchmarkReportGenerator {
         );
 
         mapper.writeValue(indexPath.toFile(), index);
-        log.info("Generated index: {}", indexPath);
+        info("Generated index: {}", indexPath);
     }
 
     // ========================================================================
@@ -163,7 +162,7 @@ public class BenchmarkReportGenerator {
                     result.errorMessage()
             );
         } catch (Exception e) {
-            log.warn("Failed to enrich sample events: {}", e.getMessage());
+            warn("Failed to enrich sample events: {}", e.getMessage());
             return result;
         }
     }

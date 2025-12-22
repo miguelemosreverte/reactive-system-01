@@ -4,10 +4,10 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.reactive.platform.benchmark.BenchmarkTypes.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.net.URI;
+
+import static com.reactive.platform.observe.Log.*;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -24,7 +24,6 @@ import java.util.*;
  */
 public class ObservabilityFetcher {
 
-    private static final Logger log = LoggerFactory.getLogger(ObservabilityFetcher.class);
     private static final ObjectMapper mapper = new ObjectMapper();
 
     private final String jaegerUrl;
@@ -81,7 +80,6 @@ public class ObservabilityFetcher {
                 var response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
                 if (response.statusCode() != 200) {
-                    log.debug("Trace {} not found by direct lookup (status {})", otelTraceId, response.statusCode());
                     break; // Direct lookup 404 means trace doesn't exist, no need to retry
                 }
 
@@ -92,11 +90,11 @@ public class ObservabilityFetcher {
                 }
 
                 JaegerTrace trace = parseJaegerTrace(data.get(0));
-                log.info("Found trace by otelTraceId={} with {} spans", otelTraceId, trace.spans().size());
+                info("Found trace by otelTraceId={} with {} spans", otelTraceId, trace.spans().size());
                 return Optional.of(trace);
 
             } catch (Exception e) {
-                log.debug("Failed to fetch trace {}: {}", otelTraceId, e.getMessage());
+                // Trace not found, will retry
             }
         }
 
@@ -144,11 +142,11 @@ public class ObservabilityFetcher {
                     }
 
                     JaegerTrace trace = parseJaegerTrace(data.get(0));
-                    log.info("Found trace for requestId={} in service={} (Jaeger traceId={})", requestId, service, trace.traceId());
+                    info("Found trace for requestId={} in service={} (Jaeger traceId={})", requestId, service, trace.traceId());
                     return Optional.of(trace);
 
                 } catch (Exception e) {
-                    log.debug("Attempt {}: Failed to search trace {} in {}: {}", attempt + 1, requestId, service, e.getMessage());
+                    // Trace not found in this service, will try next
                 }
             }
         }
@@ -217,7 +215,7 @@ public class ObservabilityFetcher {
         List<LokiLogEntry> logs = queryLoki(query, startNs, endNs);
 
         if (!logs.isEmpty()) {
-            log.info("Found {} logs for requestId {}", logs.size(), requestId);
+            info("Found {} logs for requestId {}", logs.size(), requestId);
         }
 
         return logs;
@@ -252,7 +250,7 @@ public class ObservabilityFetcher {
         }
 
         if (!allLogs.isEmpty()) {
-            log.info("Found {} total logs (requestId={}, otelTraceId={})", allLogs.size(), requestId, otelTraceId);
+            info("Found {} total logs (requestId={}, otelTraceId={})", allLogs.size(), requestId, otelTraceId);
         }
 
         // Sort by timestamp
@@ -323,7 +321,7 @@ public class ObservabilityFetcher {
             return entries;
 
         } catch (Exception e) {
-            log.warn("Failed to query Loki: {}", e.getMessage());
+            warn("Failed to query Loki: {}", e.getMessage());
             return List.of();
         }
     }
@@ -349,7 +347,7 @@ public class ObservabilityFetcher {
             Optional<String> extractedTraceId = extractTraceIdFromLogs(logs);
             if (extractedTraceId.isPresent()) {
                 effectiveOtelTraceId = extractedTraceId.get();
-                log.info("Extracted traceId from logs: {}", effectiveOtelTraceId);
+                info("Extracted traceId from logs: {}", effectiveOtelTraceId);
             }
         }
 

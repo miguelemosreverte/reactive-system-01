@@ -3,8 +3,6 @@ package com.reactive.platform.observability;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.reactive.platform.serialization.Result;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -23,8 +21,6 @@ import java.util.concurrent.CompletableFuture;
  * Provides unified API for fetching traces and logs by trace ID.
  */
 public class ObservabilityClient {
-
-    private static final Logger log = LoggerFactory.getLogger(ObservabilityClient.class);
 
     private final HttpClient httpClient;
     private final ObjectMapper mapper;
