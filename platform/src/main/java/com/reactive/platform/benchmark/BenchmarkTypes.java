@@ -224,6 +224,10 @@ public final class BenchmarkTypes {
             List<JaegerSpan> spans,
             Map<String, JaegerProcess> processes
     ) {
+        public static JaegerTrace empty() {
+            return new JaegerTrace("", List.of(), Map.of());
+        }
+
         public static JaegerTrace empty(String traceId) {
             return new JaegerTrace(traceId, List.of(), Map.of());
         }

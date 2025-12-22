@@ -96,10 +96,10 @@ public record BenchmarkResult(
                 peakMemory,
                 avgCpu,
                 avgMemory,
-                null,
+                ComponentTiming.empty(),
                 List.copyOf(samples),
                 "completed",
-                null
+                ""
         );
     }
 
@@ -118,7 +118,7 @@ public record BenchmarkResult(
                 List.of(),
                 List.of(),
                 0, 0, 0, 0,
-                null,
+                ComponentTiming.empty(),
                 List.of(),
                 "error",
                 errorMessage
@@ -166,7 +166,7 @@ public record BenchmarkResult(
                 result.componentTiming(),
                 result.sampleEvents(),
                 "stopped",
-                null
+                ""
         );
     }
 

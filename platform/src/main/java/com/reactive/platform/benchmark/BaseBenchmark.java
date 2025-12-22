@@ -32,7 +32,7 @@ public abstract class BaseBenchmark implements Benchmark {
     private final List<SampleEvent> sampleEvents = Collections.synchronizedList(new ArrayList<>());
 
     private volatile Instant startTime;
-    private volatile String errorMessage;
+    private volatile String errorMessage = "";
 
     protected BaseBenchmark(ComponentId componentId) {
         this.componentId = componentId;
@@ -221,7 +221,7 @@ public abstract class BaseBenchmark implements Benchmark {
         successCount.set(0);
         failCount.set(0);
         sampleEvents.clear();
-        errorMessage = null;
+        errorMessage = "";
     }
 
     private BenchmarkResult buildResult(String status, Config config) {

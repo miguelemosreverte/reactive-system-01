@@ -46,7 +46,7 @@ public record ReplayResult<S>(
             long durationMs
     ) {
         return new ReplayResult<>(
-                aggregateId, null, initialState, finalState,
+                aggregateId, "", initialState, finalState,
                 events.size(), events, List.of(), traceId, durationMs
         );
     }
@@ -75,7 +75,7 @@ public record ReplayResult<S>(
      */
     public static <S> ReplayResult<S> empty(String aggregateId, S initialState, String traceId, long durationMs) {
         return new ReplayResult<>(
-                aggregateId, null, initialState, initialState,
+                aggregateId, "", initialState, initialState,
                 0, List.of(), List.of(), traceId, durationMs
         );
     }
@@ -86,11 +86,11 @@ public record ReplayResult<S>(
     public Map<String, Object> toMap(Function<S, Map<String, Object>> stateSerializer) {
         return Map.of(
                 "aggregateId", aggregateId,
-                "targetEventId", targetEventId != null ? targetEventId : "",
+                "targetEventId", targetEventId,
                 "initialState", stateSerializer.apply(initialState),
                 "finalState", stateSerializer.apply(finalState),
                 "eventsReplayed", eventsReplayed,
-                "replayTraceId", replayTraceId != null ? replayTraceId : "",
+                "replayTraceId", replayTraceId,
                 "replayDurationMs", replayDurationMs
         );
     }

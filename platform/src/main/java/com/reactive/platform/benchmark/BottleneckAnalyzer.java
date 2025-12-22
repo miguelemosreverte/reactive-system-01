@@ -737,16 +737,12 @@ public class BottleneckAnalyzer {
             }
 
             // Find parent span ID from references (each reference is a Map)
-            String parentSpanId = null;
-            if (span.references() != null) {
-                for (var ref : span.references()) {
-                    String refType = String.valueOf(ref.get("refType"));
-                    if ("CHILD_OF".equals(refType)) {
-                        parentSpanId = String.valueOf(ref.get("spanID"));
-                        break;
-                    }
-                }
-            }
+            String parentSpanId = Optional.ofNullable(span.references())
+                    .flatMap(refs -> refs.stream()
+                            .filter(ref -> "CHILD_OF".equals(String.valueOf(ref.get("refType"))))
+                            .map(ref -> String.valueOf(ref.get("spanID")))
+                            .findFirst())
+                    .orElse("");
 
             timings.add(new OperationTiming(
                     service,

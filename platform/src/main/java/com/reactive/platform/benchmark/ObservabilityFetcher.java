@@ -332,42 +332,35 @@ public class ObservabilityFetcher {
 
     /** Fetch both trace and logs for a trace ID. */
     public TraceData fetchTraceData(String otelTraceId, String traceId, Instant start, Instant end) {
-        if ((otelTraceId == null || otelTraceId.isEmpty()) && (traceId == null || traceId.isEmpty())) {
+        var otelId = Optional.ofNullable(otelTraceId).filter(s -> !s.isEmpty());
+        var appId = Optional.ofNullable(traceId).filter(s -> !s.isEmpty());
+
+        if (otelId.isEmpty() && appId.isEmpty()) {
             return TraceData.empty();
         }
 
         // First, fetch logs (we need them to extract traceId if not provided)
-        List<LokiLogEntry> logs = fetchLogsMulti(otelTraceId, traceId, start, end);
-
-        JaegerTrace trace = null;
-        String effectiveOtelTraceId = otelTraceId;
+        final List<LokiLogEntry> initialLogs = fetchLogsMulti(otelTraceId, traceId, start, end);
 
         // If no otelTraceId provided, try to extract from logs
-        if ((effectiveOtelTraceId == null || effectiveOtelTraceId.isEmpty()) && !logs.isEmpty()) {
-            Optional<String> extractedTraceId = extractTraceIdFromLogs(logs);
-            if (extractedTraceId.isPresent()) {
-                effectiveOtelTraceId = extractedTraceId.get();
-                info("Extracted traceId from logs: {}", effectiveOtelTraceId);
-            }
-        }
+        String effectiveOtelTraceId = otelId
+                .or(() -> initialLogs.isEmpty() ? Optional.empty() : extractTraceIdFromLogs(initialLogs)
+                        .map(id -> { info("Extracted traceId from logs: {}", id); return id; }))
+                .orElse("");
 
-        // Fetch trace using OTel trace ID (direct lookup)
-        if (effectiveOtelTraceId != null && !effectiveOtelTraceId.isEmpty()) {
-            trace = fetchTraceByOtelId(effectiveOtelTraceId).orElse(null);
-        }
-
-        // Fallback: search by app.traceId tag
-        if (trace == null && traceId != null && !traceId.isEmpty()) {
-            trace = fetchTraceByAppId(traceId).orElse(null);
-        }
+        // Fetch trace using OTel trace ID (direct lookup), then fallback to app.traceId
+        Optional<JaegerTrace> trace = Optional.ofNullable(effectiveOtelTraceId)
+                .filter(s -> !s.isEmpty())
+                .flatMap(this::fetchTraceByOtelId)
+                .or(() -> appId.flatMap(this::fetchTraceByAppId));
 
         // If we found the trace but had to extract traceId, also search for additional logs
-        if (trace != null && effectiveOtelTraceId != null && !effectiveOtelTraceId.equals(otelTraceId)) {
-            // Search for more logs using the extracted traceId
-            List<LokiLogEntry> additionalLogs = fetchLogsMulti(effectiveOtelTraceId, null, start, end);
+        List<LokiLogEntry> finalLogs = initialLogs;
+        if (trace.isPresent() && !effectiveOtelTraceId.isEmpty() && !effectiveOtelTraceId.equals(otelTraceId)) {
+            List<LokiLogEntry> additionalLogs = fetchLogsMulti(effectiveOtelTraceId, "", start, end);
             Set<String> seenLines = new HashSet<>();
             List<LokiLogEntry> allLogs = new ArrayList<>();
-            for (var entry : logs) {
+            for (var entry : initialLogs) {
                 if (seenLines.add(entry.line())) {
                     allLogs.add(entry);
                 }
@@ -378,14 +371,14 @@ public class ObservabilityFetcher {
                 }
             }
             allLogs.sort(Comparator.comparing(LokiLogEntry::timestamp));
-            logs = allLogs;
+            finalLogs = allLogs;
         }
 
-        if (trace == null && logs.isEmpty()) {
+        if (trace.isEmpty() && finalLogs.isEmpty()) {
             return TraceData.empty();
         }
 
-        return new TraceData(trace, logs);
+        return new TraceData(trace.orElse(JaegerTrace.empty()), finalLogs);
     }
 
     /** Enrich sample events with trace and log data. */
