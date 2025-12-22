@@ -161,6 +161,86 @@ final class LogImpl {
     }
 
     // ========================================================================
+    // Async Span Support
+    // ========================================================================
+
+    Log.SpanHandle asyncSpan(String operation, Log.SpanType type) {
+        SpanKind kind = switch (type) {
+            case PRODUCER -> SpanKind.PRODUCER;
+            case CONSUMER -> SpanKind.CONSUMER;
+            case INTERNAL -> SpanKind.INTERNAL;
+        };
+
+        Span span = tracer.spanBuilder(operation)
+                .setSpanKind(kind)
+                .startSpan();
+
+        // Create context with this span for header injection
+        Context context = Context.current().with(span);
+
+        // Extract propagation headers
+        Map<String, String> headers = new HashMap<>();
+        GlobalOpenTelemetry.getPropagators()
+                .getTextMapPropagator()
+                .inject(context, headers, Map::put);
+
+        return new SpanHandleImpl(span, headers);
+    }
+
+    /**
+     * Implementation of SpanHandle - all OTel details contained here.
+     */
+    private static final class SpanHandleImpl implements Log.SpanHandle {
+        private final Span span;
+        private final Map<String, String> headers;
+        private volatile boolean ended = false;
+
+        SpanHandleImpl(Span span, Map<String, String> headers) {
+            this.span = span;
+            this.headers = Map.copyOf(headers); // Immutable copy
+        }
+
+        @Override
+        public String traceId() {
+            return span.getSpanContext().getTraceId();
+        }
+
+        @Override
+        public Map<String, String> headers() {
+            return headers;
+        }
+
+        @Override
+        public void attr(String key, String value) {
+            span.setAttribute(key, value);
+        }
+
+        @Override
+        public void attr(String key, long value) {
+            span.setAttribute(key, value);
+        }
+
+        @Override
+        public void success() {
+            if (!ended) {
+                ended = true;
+                span.setStatus(io.opentelemetry.api.trace.StatusCode.OK);
+                span.end();
+            }
+        }
+
+        @Override
+        public void failure(Throwable error) {
+            if (!ended) {
+                ended = true;
+                span.setStatus(io.opentelemetry.api.trace.StatusCode.ERROR, error.getMessage());
+                span.recordException(error);
+                span.end();
+            }
+        }
+    }
+
+    // ========================================================================
     // Helper
     // ========================================================================
 

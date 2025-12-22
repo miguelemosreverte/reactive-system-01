@@ -206,7 +206,7 @@ public final class BenchmarkTypes {
     // Jaeger Types (field names match Go JSON tags)
     // ========================================================================
 
-    public record JaegerSpan(
+    public record Span(
             @JsonProperty("traceID") String traceId,
             @JsonProperty("spanID") String spanId,
             String operationName,
@@ -217,19 +217,19 @@ public final class BenchmarkTypes {
             List<Map<String, Object>> references
     ) {}
 
-    public record JaegerProcess(String serviceName) {}
+    public record Service(String serviceName) {}
 
-    public record JaegerTrace(
+    public record Trace(
             String traceId,
-            List<JaegerSpan> spans,
-            Map<String, JaegerProcess> processes
+            List<Span> spans,
+            Map<String, Service> processes
     ) {
-        public static JaegerTrace empty() {
-            return new JaegerTrace("", List.of(), Map.of());
+        public static Trace empty() {
+            return new Trace("", List.of(), Map.of());
         }
 
-        public static JaegerTrace empty(String traceId) {
-            return new JaegerTrace(traceId, List.of(), Map.of());
+        public static Trace empty(String traceId) {
+            return new Trace(traceId, List.of(), Map.of());
         }
     }
 
@@ -237,7 +237,7 @@ public final class BenchmarkTypes {
     // Loki Log Entry
     // ========================================================================
 
-    public record LokiLogEntry(
+    public record LogEntry(
             String timestamp,
             String line,
             Map<String, String> labels,
@@ -249,18 +249,18 @@ public final class BenchmarkTypes {
     // ========================================================================
 
     public record TraceData(
-            JaegerTrace trace,
-            List<LokiLogEntry> logs
+            Trace trace,
+            List<LogEntry> logs
     ) {
         public static TraceData empty() {
             return new TraceData(null, List.of());
         }
 
-        public static TraceData withTrace(JaegerTrace trace) {
+        public static TraceData withTrace(Trace trace) {
             return new TraceData(trace, List.of());
         }
 
-        public static TraceData withLogs(List<LokiLogEntry> logs) {
+        public static TraceData withLogs(List<LogEntry> logs) {
             return new TraceData(null, logs);
         }
     }

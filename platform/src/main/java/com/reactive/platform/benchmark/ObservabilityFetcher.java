@@ -57,7 +57,7 @@ public class ObservabilityFetcher {
     // ========================================================================
 
     /** Fetch trace by OTel trace ID (direct lookup). */
-    public Optional<JaegerTrace> fetchTraceByOtelId(String otelTraceId) {
+    public Optional<Trace> fetchTraceByOtelId(String otelTraceId) {
         if (otelTraceId == null || otelTraceId.isEmpty()) {
             return Optional.empty();
         }
@@ -89,7 +89,7 @@ public class ObservabilityFetcher {
                     break;
                 }
 
-                JaegerTrace trace = parseJaegerTrace(data.get(0));
+                Trace trace = parseTrace(data.get(0));
                 info("Found trace by otelTraceId={} with {} spans", otelTraceId, trace.spans().size());
                 return Optional.of(trace);
 
@@ -102,7 +102,7 @@ public class ObservabilityFetcher {
     }
 
     /** Fetch trace by requestId tag (searches both counter-application and flink-taskmanager). */
-    public Optional<JaegerTrace> fetchTraceByAppId(String requestId) {
+    public Optional<Trace> fetchTraceByAppId(String requestId) {
         if (requestId == null || requestId.isEmpty()) {
             return Optional.empty();
         }
@@ -141,7 +141,7 @@ public class ObservabilityFetcher {
                         continue;
                     }
 
-                    JaegerTrace trace = parseJaegerTrace(data.get(0));
+                    Trace trace = parseTrace(data.get(0));
                     info("Found trace for requestId={} in service={} (Jaeger traceId={})", requestId, service, trace.traceId());
                     return Optional.of(trace);
 
@@ -154,12 +154,12 @@ public class ObservabilityFetcher {
         return Optional.empty();
     }
 
-    private JaegerTrace parseJaegerTrace(JsonNode node) {
+    private Trace parseTrace(JsonNode node) {
         String traceId = node.path("traceID").asText();
 
-        List<JaegerSpan> spans = new ArrayList<>();
+        List<Span> spans = new ArrayList<>();
         for (JsonNode spanNode : node.path("spans")) {
-            spans.add(new JaegerSpan(
+            spans.add(new Span(
                     spanNode.path("traceID").asText(),
                     spanNode.path("spanID").asText(),
                     spanNode.path("operationName").asText(),
@@ -171,18 +171,18 @@ public class ObservabilityFetcher {
             ));
         }
 
-        Map<String, JaegerProcess> processes = new HashMap<>();
+        Map<String, Service> processes = new HashMap<>();
         JsonNode processesNode = node.path("processes");
         if (processesNode.isObject()) {
             var fields = processesNode.fields();
             while (fields.hasNext()) {
                 var entry = fields.next();
                 String serviceName = entry.getValue().path("serviceName").asText();
-                processes.put(entry.getKey(), new JaegerProcess(serviceName));
+                processes.put(entry.getKey(), new Service(serviceName));
             }
         }
 
-        return new JaegerTrace(traceId, spans, processes);
+        return new Trace(traceId, spans, processes);
     }
 
     private List<Map<String, Object>> parseListOfMaps(JsonNode node) {
@@ -201,7 +201,7 @@ public class ObservabilityFetcher {
     // ========================================================================
 
     /** Fetch logs by requestId - searches all services. */
-    public List<LokiLogEntry> fetchLogs(String requestId, Instant start, Instant end) {
+    public List<LogEntry> fetchLogs(String requestId, Instant start, Instant end) {
         if (requestId == null || requestId.isEmpty()) {
             return List.of();
         }
@@ -212,7 +212,7 @@ public class ObservabilityFetcher {
 
         // Search ALL services for the requestId
         String query = "{service=~\".+\"} |= \"" + requestId + "\"";
-        List<LokiLogEntry> logs = queryLoki(query, startNs, endNs);
+        List<LogEntry> logs = queryLoki(query, startNs, endNs);
 
         if (!logs.isEmpty()) {
             info("Found {} logs for requestId {}", logs.size(), requestId);
@@ -222,12 +222,12 @@ public class ObservabilityFetcher {
     }
 
     /** Fetch logs by multiple IDs (requestId and otelTraceId) - searches all services. */
-    public List<LokiLogEntry> fetchLogsMulti(String otelTraceId, String requestId, Instant start, Instant end) {
+    public List<LogEntry> fetchLogsMulti(String otelTraceId, String requestId, Instant start, Instant end) {
         long startNs = start.minusSeconds(60).toEpochMilli() * 1_000_000;
         long endNs = end.plusSeconds(60).toEpochMilli() * 1_000_000;
 
         Set<String> seenLines = new HashSet<>();
-        List<LokiLogEntry> allLogs = new ArrayList<>();
+        List<LogEntry> allLogs = new ArrayList<>();
 
         // Search ALL services by requestId
         if (requestId != null && !requestId.isEmpty()) {
@@ -254,13 +254,13 @@ public class ObservabilityFetcher {
         }
 
         // Sort by timestamp
-        allLogs.sort(Comparator.comparing(LokiLogEntry::timestamp));
+        allLogs.sort(Comparator.comparing(LogEntry::timestamp));
         return allLogs;
     }
 
     /** Extract OTel traceId from log entries. */
-    public Optional<String> extractTraceIdFromLogs(List<LokiLogEntry> logs) {
-        for (LokiLogEntry entry : logs) {
+    public Optional<String> extractTraceIdFromLogs(List<LogEntry> logs) {
+        for (LogEntry entry : logs) {
             // Try to extract traceId from parsed fields
             Object traceId = entry.fields().get("traceId");
             if (traceId != null && !traceId.toString().isEmpty() && !traceId.toString().equals("null")) {
@@ -270,7 +270,7 @@ public class ObservabilityFetcher {
         return Optional.empty();
     }
 
-    private List<LokiLogEntry> queryLoki(String query, long startNs, long endNs) {
+    private List<LogEntry> queryLoki(String query, long startNs, long endNs) {
         String url = lokiUrl + "/loki/api/v1/query_range?" +
                 "query=" + urlEncode(query) +
                 "&start=" + startNs +
@@ -295,7 +295,7 @@ public class ObservabilityFetcher {
                 return List.of();
             }
 
-            List<LokiLogEntry> entries = new ArrayList<>();
+            List<LogEntry> entries = new ArrayList<>();
             for (JsonNode stream : root.path("data").path("result")) {
                 Map<String, String> labels = mapper.convertValue(
                         stream.path("stream"),
@@ -312,12 +312,12 @@ public class ObservabilityFetcher {
                             fields = mapper.readValue(line, new TypeReference<>() {});
                         } catch (Exception ignored) {}
 
-                        entries.add(new LokiLogEntry(timestamp, line, labels, fields));
+                        entries.add(new LogEntry(timestamp, line, labels, fields));
                     }
                 }
             }
 
-            entries.sort(Comparator.comparing(LokiLogEntry::timestamp));
+            entries.sort(Comparator.comparing(LogEntry::timestamp));
             return entries;
 
         } catch (Exception e) {
@@ -340,7 +340,7 @@ public class ObservabilityFetcher {
         }
 
         // First, fetch logs (we need them to extract traceId if not provided)
-        final List<LokiLogEntry> initialLogs = fetchLogsMulti(otelTraceId, traceId, start, end);
+        final List<LogEntry> initialLogs = fetchLogsMulti(otelTraceId, traceId, start, end);
 
         // If no otelTraceId provided, try to extract from logs
         String effectiveOtelTraceId = otelId
@@ -349,17 +349,17 @@ public class ObservabilityFetcher {
                 .orElse("");
 
         // Fetch trace using OTel trace ID (direct lookup), then fallback to app.traceId
-        Optional<JaegerTrace> trace = Optional.ofNullable(effectiveOtelTraceId)
+        Optional<Trace> trace = Optional.ofNullable(effectiveOtelTraceId)
                 .filter(s -> !s.isEmpty())
                 .flatMap(this::fetchTraceByOtelId)
                 .or(() -> appId.flatMap(this::fetchTraceByAppId));
 
         // If we found the trace but had to extract traceId, also search for additional logs
-        List<LokiLogEntry> finalLogs = initialLogs;
+        List<LogEntry> finalLogs = initialLogs;
         if (trace.isPresent() && !effectiveOtelTraceId.isEmpty() && !effectiveOtelTraceId.equals(otelTraceId)) {
-            List<LokiLogEntry> additionalLogs = fetchLogsMulti(effectiveOtelTraceId, "", start, end);
+            List<LogEntry> additionalLogs = fetchLogsMulti(effectiveOtelTraceId, "", start, end);
             Set<String> seenLines = new HashSet<>();
-            List<LokiLogEntry> allLogs = new ArrayList<>();
+            List<LogEntry> allLogs = new ArrayList<>();
             for (var entry : initialLogs) {
                 if (seenLines.add(entry.line())) {
                     allLogs.add(entry);
@@ -370,7 +370,7 @@ public class ObservabilityFetcher {
                     allLogs.add(entry);
                 }
             }
-            allLogs.sort(Comparator.comparing(LokiLogEntry::timestamp));
+            allLogs.sort(Comparator.comparing(LogEntry::timestamp));
             finalLogs = allLogs;
         }
 
@@ -378,7 +378,7 @@ public class ObservabilityFetcher {
             return TraceData.empty();
         }
 
-        return new TraceData(trace.orElse(JaegerTrace.empty()), finalLogs);
+        return new TraceData(trace.orElse(Trace.empty()), finalLogs);
     }
 
     /** Enrich sample events with trace and log data. */

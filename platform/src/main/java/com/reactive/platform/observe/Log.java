@@ -193,4 +193,79 @@ public final class Log {
             return !traceparent.isEmpty() && !traceparent.startsWith("00-00000000");
         }
     }
+
+    // ========================================================================
+    // Async Span Support (for Kafka, async HTTP, etc.)
+    // ========================================================================
+
+    /**
+     * Span type for async operations.
+     */
+    public enum SpanType {
+        INTERNAL,
+        PRODUCER,
+        CONSUMER
+    }
+
+    /**
+     * Handle for async span operations.
+     * Use this when work is async (e.g., Kafka callbacks, async HTTP).
+     *
+     * Usage:
+     *   SpanHandle span = Log.asyncSpan("kafka.publish", SpanType.PRODUCER);
+     *   span.attr("messaging.destination", topic);
+     *
+     *   // Inject headers into Kafka record
+     *   span.headers().forEach((k, v) -> record.headers().add(k, v.getBytes()));
+     *
+     *   producer.send(record, (metadata, error) -> {
+     *       if (error != null) span.failure(error);
+     *       else span.success();
+     *   });
+     */
+    public interface SpanHandle extends AutoCloseable {
+        /** Get trace ID for this span. */
+        String traceId();
+
+        /** Get propagation headers (W3C format) for downstream context injection. */
+        java.util.Map<String, String> headers();
+
+        /** Add string attribute to span. */
+        void attr(String key, String value);
+
+        /** Add numeric attribute to span. */
+        void attr(String key, long value);
+
+        /** Mark span as successful and end it. */
+        void success();
+
+        /** Mark span as failed with error and end it. */
+        void failure(Throwable error);
+
+        /** End span (equivalent to success). */
+        @Override
+        default void close() { success(); }
+    }
+
+    /**
+     * Start an async span for producer/consumer/internal operations.
+     * Caller is responsible for calling success() or failure() to end the span.
+     */
+    public static SpanHandle asyncSpan(String operation, SpanType type) {
+        return impl.asyncSpan(operation, type);
+    }
+
+    /**
+     * Start a producer span (convenience for SpanType.PRODUCER).
+     */
+    public static SpanHandle producerSpan(String operation) {
+        return impl.asyncSpan(operation, SpanType.PRODUCER);
+    }
+
+    /**
+     * Start a consumer span (convenience for SpanType.CONSUMER).
+     */
+    public static SpanHandle consumerSpan(String operation) {
+        return impl.asyncSpan(operation, SpanType.CONSUMER);
+    }
 }

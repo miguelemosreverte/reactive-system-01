@@ -250,7 +250,7 @@ public class BottleneckAnalyzer {
     // ========================================================================
 
     /** Analyze a single trace to identify bottleneck. */
-    public TraceAnalysis analyzeTrace(JaegerTrace trace) {
+    public TraceAnalysis analyzeTrace(Trace trace) {
         if (trace == null || trace.spans() == null || trace.spans().isEmpty()) {
             return TraceAnalysis.empty(trace != null ? trace.traceId() : "unknown");
         }
@@ -259,7 +259,7 @@ public class BottleneckAnalyzer {
         Map<String, Long> durationByService = new HashMap<>();
         long totalDuration = 0;
 
-        for (JaegerSpan span : trace.spans()) {
+        for (Span span : trace.spans()) {
             String service = getServiceName(trace, span);
             long duration = span.duration();
 
@@ -300,7 +300,7 @@ public class BottleneckAnalyzer {
     }
 
     /** Analyze multiple traces to get aggregate statistics. */
-    public AggregateAnalysis analyzeTraces(List<JaegerTrace> traces) {
+    public AggregateAnalysis analyzeTraces(List<Trace> traces) {
         if (traces == null || traces.isEmpty()) {
             return new AggregateAnalysis(0, Map.of(), "unknown", 0, Map.of(), List.of("No traces available for analysis"));
         }
@@ -308,7 +308,7 @@ public class BottleneckAnalyzer {
         Map<String, List<Double>> percentsByService = new HashMap<>();
         Map<String, Integer> bottleneckCounts = new HashMap<>();
 
-        for (JaegerTrace trace : traces) {
+        for (Trace trace : traces) {
             TraceAnalysis analysis = analyzeTrace(trace);
 
             for (var entry : analysis.percentByService().entrySet()) {
@@ -361,7 +361,7 @@ public class BottleneckAnalyzer {
 
     /** Analyze sample events and their traces. */
     public AggregateAnalysis analyzeSampleEvents(List<SampleEvent> events) {
-        List<JaegerTrace> traces = events.stream()
+        List<Trace> traces = events.stream()
                 .filter(e -> e.traceData() != null && e.traceData().trace() != null)
                 .map(e -> e.traceData().trace())
                 .collect(Collectors.toList());
@@ -371,7 +371,7 @@ public class BottleneckAnalyzer {
 
     /** Generate a comprehensive diagnostic report from sample events. */
     public DiagnosticReport generateDiagnosticReport(List<SampleEvent> events) {
-        List<JaegerTrace> traces = events.stream()
+        List<Trace> traces = events.stream()
                 .filter(e -> e.traceData() != null && e.traceData().trace() != null)
                 .map(e -> e.traceData().trace())
                 .collect(Collectors.toList());
@@ -392,7 +392,7 @@ public class BottleneckAnalyzer {
         List<Long> totalDurations = new ArrayList<>();
         Map<String, Integer> bottleneckCounts = new HashMap<>();
 
-        for (JaegerTrace trace : traces) {
+        for (Trace trace : traces) {
             TraceAnalysis analysis = analyzeTrace(trace);
             totalDurations.add(analysis.totalDurationUs());
 
@@ -573,18 +573,18 @@ public class BottleneckAnalyzer {
     // Helpers
     // ========================================================================
 
-    private String getServiceName(JaegerTrace trace, JaegerSpan span) {
-        JaegerProcess process = trace.processes().get(span.processId());
+    private String getServiceName(Trace trace, Span span) {
+        Service process = trace.processes().get(span.processId());
         return process != null ? process.serviceName() : "unknown";
     }
 
-    private long getSpanEndTime(JaegerSpan span) {
+    private long getSpanEndTime(Span span) {
         return span.startTime() + span.duration();
     }
 
-    private long getEarliestStartTime(JaegerTrace trace) {
+    private long getEarliestStartTime(Trace trace) {
         return trace.spans().stream()
-                .mapToLong(JaegerSpan::startTime)
+                .mapToLong(Span::startTime)
                 .min()
                 .orElse(0);
     }
@@ -712,14 +712,14 @@ public class BottleneckAnalyzer {
     // ========================================================================
 
     /** Extract all operation timings from a trace. */
-    public List<OperationTiming> extractOperationTimings(JaegerTrace trace) {
+    public List<OperationTiming> extractOperationTimings(Trace trace) {
         if (trace == null || trace.spans() == null) {
             return List.of();
         }
 
         List<OperationTiming> timings = new ArrayList<>();
 
-        for (JaegerSpan span : trace.spans()) {
+        for (Span span : trace.spans()) {
             String service = getServiceName(trace, span);
             String operation = span.operationName();
 
@@ -758,7 +758,7 @@ public class BottleneckAnalyzer {
     }
 
     /** Calculate aggregate statistics for each operation across multiple traces. */
-    public List<OperationStats> calculateOperationStats(List<JaegerTrace> traces) {
+    public List<OperationStats> calculateOperationStats(List<Trace> traces) {
         if (traces == null || traces.isEmpty()) {
             return List.of();
         }
@@ -767,7 +767,7 @@ public class BottleneckAnalyzer {
         Map<String, List<Long>> durationsByOperation = new HashMap<>();
         long totalDuration = 0;
 
-        for (JaegerTrace trace : traces) {
+        for (Trace trace : traces) {
             for (OperationTiming timing : extractOperationTimings(trace)) {
                 String key = timing.service() + ":" + timing.operation();
                 durationsByOperation.computeIfAbsent(key, k -> new ArrayList<>())
@@ -805,7 +805,7 @@ public class BottleneckAnalyzer {
     }
 
     /** Find the slowest individual operations across all traces. */
-    public List<OperationTiming> findSlowestOperations(List<JaegerTrace> traces, int limit) {
+    public List<OperationTiming> findSlowestOperations(List<Trace> traces, int limit) {
         if (traces == null || traces.isEmpty()) {
             return List.of();
         }

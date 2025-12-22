@@ -101,14 +101,14 @@ public class TraceValidator {
     /**
      * Validate a trace for full E2E completeness.
      */
-    public static ValidationResult validateE2E(JaegerTrace trace) {
+    public static ValidationResult validateE2E(Trace trace) {
         return validate(trace, E2E_EXPECTED_SERVICES);
     }
 
     /**
      * Validate a trace for a specific component's expected services.
      */
-    public static ValidationResult validateForComponent(JaegerTrace trace, String componentId) {
+    public static ValidationResult validateForComponent(Trace trace, String componentId) {
         List<String> expected = COMPONENT_EXPECTED_SERVICES.getOrDefault(
                 componentId.toLowerCase(),
                 E2E_EXPECTED_SERVICES
@@ -119,7 +119,7 @@ public class TraceValidator {
     /**
      * Validate a trace against expected services.
      */
-    public static ValidationResult validate(JaegerTrace trace, List<String> expectedServices) {
+    public static ValidationResult validate(Trace trace, List<String> expectedServices) {
         if (trace == null) {
             return ValidationResult.failure("No trace data available");
         }
@@ -134,9 +134,9 @@ public class TraceValidator {
         Set<String> presentServicesSet = new HashSet<>();
         Map<String, Integer> spanCountByService = new HashMap<>();
 
-        for (JaegerSpan span : trace.spans()) {
+        for (Span span : trace.spans()) {
             String processId = span.processId();
-            JaegerProcess process = trace.processes().get(processId);
+            Service process = trace.processes().get(processId);
             if (process != null) {
                 String serviceName = process.serviceName();
                 presentServicesSet.add(serviceName);
@@ -163,7 +163,7 @@ public class TraceValidator {
         List<String> operations = trace.spans().stream()
                 .map(span -> {
                     String processId = span.processId();
-                    JaegerProcess process = trace.processes().get(processId);
+                    Service process = trace.processes().get(processId);
                     String svc = process != null ? process.serviceName() : "unknown";
                     return svc + ":" + span.operationName();
                 })
@@ -195,7 +195,7 @@ public class TraceValidator {
 
         // Calculate trace timing
         long traceStartTime = trace.spans().stream()
-                .mapToLong(JaegerSpan::startTime)
+                .mapToLong(Span::startTime)
                 .min()
                 .orElse(0);
 
@@ -234,14 +234,14 @@ public class TraceValidator {
     /**
      * Validate multiple traces and return summary statistics.
      */
-    public static TraceSummary validateMultiple(List<JaegerTrace> traces, List<String> expectedServices) {
+    public static TraceSummary validateMultiple(List<Trace> traces, List<String> expectedServices) {
         int total = traces.size();
         int complete = 0;
         int incomplete = 0;
         Map<String, Integer> missingServiceCounts = new HashMap<>();
         List<String> incompleteTraceIds = new ArrayList<>();
 
-        for (JaegerTrace trace : traces) {
+        for (Trace trace : traces) {
             ValidationResult result = validate(trace, expectedServices);
             if (result.isComplete()) {
                 complete++;

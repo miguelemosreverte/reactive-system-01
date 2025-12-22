@@ -1,18 +1,12 @@
 package com.reactive.platform.kafka;
 
+import com.reactive.platform.observe.Log;
+import com.reactive.platform.observe.Log.SpanHandle;
 import com.reactive.platform.serialization.Codec;
 import com.reactive.platform.serialization.Result;
-import io.opentelemetry.api.GlobalOpenTelemetry;
-import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.api.trace.SpanKind;
-import io.opentelemetry.api.trace.StatusCode;
-import io.opentelemetry.api.trace.Tracer;
-import io.opentelemetry.context.Context;
-import io.opentelemetry.context.propagation.TextMapSetter;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.header.internals.RecordHeader;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.kafka.common.serialization.StringSerializer;
@@ -60,7 +54,6 @@ public class KafkaPublisher<A> implements AutoCloseable {
     private final String topic;
     private final Codec<A> codec;
     private final Function<A, String> keyExtractor;
-    private final Tracer tracer;
     private final AtomicLong publishedCount = new AtomicLong(0);
     private final AtomicLong errorCount = new AtomicLong(0);
 
@@ -68,14 +61,12 @@ public class KafkaPublisher<A> implements AutoCloseable {
             KafkaProducer<String, byte[]> producer,
             String topic,
             Codec<A> codec,
-            Function<A, String> keyExtractor,
-            Tracer tracer
+            Function<A, String> keyExtractor
     ) {
         this.producer = producer;
         this.topic = topic;
         this.codec = codec;
         this.keyExtractor = keyExtractor;
-        this.tracer = tracer;
     }
 
     /**
@@ -83,18 +74,13 @@ public class KafkaPublisher<A> implements AutoCloseable {
      * Returns the trace ID on success.
      */
     public CompletableFuture<Result<String>> publish(A message) {
-        // Capture current context to ensure parent span is preserved
-        Context parentContext = Context.current();
+        // Create producer span using Log API (no OTel types leaked)
+        SpanHandle span = Log.producerSpan("kafka.publish");
+        span.attr("messaging.system", "kafka");
+        span.attr("messaging.destination", topic);
+        span.attr("messaging.operation", "publish");
 
-        Span span = tracer.spanBuilder("kafka.publish")
-                .setParent(parentContext)  // Explicitly set parent
-                .setSpanKind(SpanKind.PRODUCER)
-                .setAttribute("messaging.system", "kafka")
-                .setAttribute("messaging.destination", topic)
-                .setAttribute("messaging.operation", "publish")
-                .startSpan();
-
-        String traceId = span.getSpanContext().getTraceId();
+        String traceId = span.traceId();
 
         return Result.of(() -> {
                     byte[] bytes = codec.encode(message).getOrThrow();
@@ -102,20 +88,17 @@ public class KafkaPublisher<A> implements AutoCloseable {
 
                     ProducerRecord<String, byte[]> record = new ProducerRecord<>(topic, key, bytes);
 
-                    // Inject trace context into headers
-                    Context context = Context.current().with(span);
-                    injectTraceContext(context, record);
+                    // Inject trace context into headers using Log API
+                    injectTraceContext(span, record);
 
-                    span.setAttribute("messaging.kafka.message_key", key);
-                    span.setAttribute("serialization.codec", codec.name());
+                    span.attr("messaging.kafka.message_key", key);
+                    span.attr("serialization.codec", codec.name());
 
                     return record;
                 })
                 .fold(
                         error -> {
-                            span.setStatus(StatusCode.ERROR, error.getMessage());
-                            span.recordException(error);
-                            span.end();
+                            span.failure(error);
                             errorCount.incrementAndGet();
                             return CompletableFuture.completedFuture(Result.failure(error));
                         },
@@ -124,16 +107,13 @@ public class KafkaPublisher<A> implements AutoCloseable {
 
                             producer.send(record, (metadata, exception) -> {
                                 if (exception != null) {
-                                    span.setStatus(StatusCode.ERROR, exception.getMessage());
-                                    span.recordException(exception);
-                                    span.end();
+                                    span.failure(exception);
                                     errorCount.incrementAndGet();
                                     future.complete(Result.failure(exception));
                                 } else {
-                                    span.setAttribute("messaging.kafka.partition", metadata.partition());
-                                    span.setAttribute("messaging.kafka.offset", metadata.offset());
-                                    span.setStatus(StatusCode.OK);
-                                    span.end();
+                                    span.attr("messaging.kafka.partition", metadata.partition());
+                                    span.attr("messaging.kafka.offset", metadata.offset());
+                                    span.success();
                                     publishedCount.incrementAndGet();
                                     future.complete(Result.success(traceId));
                                 }
@@ -149,27 +129,21 @@ public class KafkaPublisher<A> implements AutoCloseable {
      * Returns trace ID immediately without waiting for ack.
      */
     public String publishFireAndForget(A message) {
-        // Capture current context to ensure parent span is preserved
-        Context parentContext = Context.current();
+        // Create producer span using Log API (no OTel types leaked)
+        SpanHandle span = Log.producerSpan("kafka.publish.fast");
+        span.attr("messaging.system", "kafka");
+        span.attr("messaging.destination", topic);
+        span.attr("messaging.operation", "publish");
+        span.attr("messaging.kafka.acks", "0");
 
-        Span span = tracer.spanBuilder("kafka.publish.fast")
-                .setParent(parentContext)  // Explicitly set parent
-                .setSpanKind(SpanKind.PRODUCER)
-                .setAttribute("messaging.system", "kafka")
-                .setAttribute("messaging.destination", topic)
-                .setAttribute("messaging.operation", "publish")
-                .setAttribute("messaging.kafka.acks", "0")
-                .startSpan();
-
-        String traceId = span.getSpanContext().getTraceId();
+        String traceId = span.traceId();
 
         try {
             byte[] bytes = codec.encode(message).getOrThrow();
             String key = keyExtractor.apply(message);
 
             ProducerRecord<String, byte[]> record = new ProducerRecord<>(topic, key, bytes);
-            Context context = Context.current().with(span);
-            injectTraceContext(context, record);
+            injectTraceContext(span, record);
 
             producer.send(record, (metadata, exception) -> {
                 if (exception != null) {
@@ -179,15 +153,12 @@ public class KafkaPublisher<A> implements AutoCloseable {
             });
 
             publishedCount.incrementAndGet();
-            span.setStatus(StatusCode.OK);
+            span.success();
 
         } catch (Exception e) {
-            span.setStatus(StatusCode.ERROR, e.getMessage());
-            span.recordException(e);
+            span.failure(e);
             errorCount.incrementAndGet();
             throw new RuntimeException("Publish failed", e);
-        } finally {
-            span.end();
         }
 
         return traceId;
@@ -216,16 +187,13 @@ public class KafkaPublisher<A> implements AutoCloseable {
     // Trace context injection
     // ========================================================================
 
-    private void injectTraceContext(Context context, ProducerRecord<String, byte[]> record) {
-        TextMapSetter<ProducerRecord<String, byte[]>> setter = (carrier, key, value) -> {
-            if (carrier != null && key != null && value != null) {
-                carrier.headers().add(new RecordHeader(key, value.getBytes(StandardCharsets.UTF_8)));
+    private void injectTraceContext(SpanHandle span, ProducerRecord<String, byte[]> record) {
+        // Inject propagation headers from the span into Kafka record headers
+        span.headers().forEach((key, value) -> {
+            if (key != null && value != null) {
+                record.headers().add(new RecordHeader(key, value.getBytes(StandardCharsets.UTF_8)));
             }
-        };
-
-        io.opentelemetry.api.GlobalOpenTelemetry.getPropagators()
-                .getTextMapPropagator()
-                .inject(context, record, setter);
+        });
     }
 
     // ========================================================================
@@ -241,7 +209,6 @@ public class KafkaPublisher<A> implements AutoCloseable {
         private String topic;
         private Codec<A> codec;
         private Function<A, String> keyExtractor = Object::toString;
-        private Tracer tracer;
         private String clientId = "platform-publisher";
         private int maxInFlightRequests = 5;
         private String acks = "1";
@@ -263,11 +230,6 @@ public class KafkaPublisher<A> implements AutoCloseable {
 
         public Builder<A> keyExtractor(Function<A, String> extractor) {
             this.keyExtractor = extractor;
-            return this;
-        }
-
-        public Builder<A> tracer(Tracer tracer) {
-            this.tracer = tracer;
             return this;
         }
 
@@ -303,13 +265,9 @@ public class KafkaPublisher<A> implements AutoCloseable {
             props.put(ProducerConfig.LINGER_MS_CONFIG, 0);
             props.put(ProducerConfig.BATCH_SIZE_CONFIG, 16384);
 
-            // Default to GlobalOpenTelemetry if no tracer provided (no abstraction leak)
-            Tracer effectiveTracer = tracer != null
-                    ? tracer
-                    : GlobalOpenTelemetry.get().getTracer("kafka-publisher");
-
+            // Tracing is handled via Log API - no tracer injection needed
             KafkaProducer<String, byte[]> producer = new KafkaProducer<>(props);
-            return new KafkaPublisher<>(producer, topic, codec, keyExtractor, effectiveTracer);
+            return new KafkaPublisher<>(producer, topic, codec, keyExtractor);
         }
     }
 }
