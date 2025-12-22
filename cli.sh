@@ -1246,6 +1246,105 @@ cmd_replay() {
     fi
 }
 
+# Quick diagnostic - run a single request and analyze the trace
+cmd_diagnose() {
+    print_header "Quick Diagnostic"
+    echo ""
+
+    # Check if application is running (gateway is on port 8080)
+    if ! curl -s "http://localhost:8080/actuator/health" > /dev/null 2>&1; then
+        print_error "Application not running. Start with: ./cli.sh start"
+        exit 1
+    fi
+
+    print_info "Running diagnostic request..."
+
+    # Call the diagnostic endpoint (via gateway on port 8080)
+    # This endpoint waits ~8s for trace propagation, so needs longer timeout
+    local response
+    response=$(curl -s -X POST "http://localhost:8080/api/diagnostic/run" \
+        -H "Content-Type: application/json" \
+        --connect-timeout 10 \
+        --max-time 60)
+
+    if [[ $? -ne 0 ]]; then
+        print_error "Failed to reach diagnostic endpoint"
+        exit 1
+    fi
+
+    local success=$(echo "$response" | jq -r '.success // false')
+    local trace_id=$(echo "$response" | jq -r '.actualTraceId // "unknown"')
+    local request_id=$(echo "$response" | jq -r '.actualRequestId // "unknown"')
+
+    echo ""
+    print_info "Request ID: $request_id"
+    print_info "Trace ID: $trace_id"
+    echo ""
+
+    if [[ "$success" == "true" ]]; then
+        print_success "E2E trace propagation verified!"
+        echo ""
+
+        # Show validation summary
+        local span_count=$(echo "$response" | jq -r '.validation.spanCount // 0')
+        local services=$(echo "$response" | jq -r '.validation.presentServices | join(", ")')
+        local log_count=$(echo "$response" | jq -r '.logCount // 0')
+
+        echo "╔══════════════════════════════════════════════════════════════╗"
+        echo "║                    DIAGNOSTIC SUMMARY                         ║"
+        echo "╠══════════════════════════════════════════════════════════════╣"
+        printf "║ Spans: %-5d   Logs: %-5d                                   ║\n" "$span_count" "$log_count"
+        echo "╠══════════════════════════════════════════════════════════════╣"
+        echo "║ SERVICES TRACED                                               ║"
+        echo "╠══════════════════════════════════════════════════════════════╣"
+
+        # Show per-service span counts
+        echo "$response" | jq -r '.validation.spanCountByService | to_entries | .[] | "║   \(.key): \(.value) spans"' 2>/dev/null | while read line; do
+            printf "%-65s║\n" "$line"
+        done
+
+        echo "╠══════════════════════════════════════════════════════════════╣"
+        echo "║ OPERATIONS                                                     ║"
+        echo "╠══════════════════════════════════════════════════════════════╣"
+
+        # Show operations
+        echo "$response" | jq -r '.validation.operations[]' 2>/dev/null | head -10 | while read op; do
+            printf "║   %-60s║\n" "$op"
+        done
+
+        echo "╚══════════════════════════════════════════════════════════════╝"
+        echo ""
+
+        # Show logs if available
+        local log_count=$(echo "$response" | jq -r '.logCount // 0')
+        if [[ "$log_count" -gt 0 ]]; then
+            print_info "Sample logs:"
+            echo "$response" | jq -r '.logs[:5][] | "  [\(.service)] \(.line | split("\n")[0][:80])"' 2>/dev/null
+        fi
+
+        echo ""
+        print_info "View full trace: http://localhost:16686/trace/$trace_id"
+        print_info "For detailed benchmark: ./cli.sh benchmark full --duration 10"
+
+    else
+        print_error "Diagnostic failed"
+        local error=$(echo "$response" | jq -r '.error // "Unknown error"')
+        local missing=$(echo "$response" | jq -r '.validation.missingServices // []')
+
+        echo ""
+        echo "Error: $error"
+        if [[ "$missing" != "[]" ]]; then
+            echo "Missing services: $missing"
+        fi
+
+        echo ""
+        print_info "Troubleshooting:"
+        echo "  1. Check if all services are running: ./cli.sh status"
+        echo "  2. Check logs: ./cli.sh logs application"
+        echo "  3. Check Jaeger: http://localhost:16686"
+    fi
+}
+
 # Benchmark control - Java benchmark runner
 cmd_benchmark() {
     local subcmd="${1:-help}"
@@ -1274,6 +1373,10 @@ cmd_benchmark() {
         doctor)
             # Run benchmark observability diagnostics
             "$SCRIPT_DIR/scripts/benchmark-doctor.sh"
+            ;;
+        diagnose)
+            # Run quick diagnostic with detailed trace analysis
+            cmd_diagnose "$@"
             ;;
         history)
             # Benchmark history management
@@ -1316,6 +1419,7 @@ cmd_benchmark() {
             echo "    ./cli.sh benchmark compare <sha>  # Compare with commit"
             echo ""
             echo "  Diagnostics:"
+            echo "    ./cli.sh benchmark diagnose  # Quick single-request trace analysis"
             echo "    ./cli.sh benchmark doctor    # Check observability health"
             echo ""
             echo "Options:"

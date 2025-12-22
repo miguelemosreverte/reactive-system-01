@@ -79,6 +79,40 @@ public class BottleneckAnalyzer {
             String diagnosis
     ) {}
 
+    /** Individual operation timing from a span. */
+    public record OperationTiming(
+            String service,
+            String operation,
+            long durationUs,
+            String spanId,
+            String parentSpanId,
+            Map<String, String> tags
+    ) {}
+
+    /** Aggregated statistics for an operation. */
+    public record OperationStats(
+            String service,
+            String operation,
+            int count,
+            long minUs,
+            long maxUs,
+            long avgUs,
+            long p50Us,
+            long p99Us,
+            double percentOfTotal
+    ) {
+        public String fullName() {
+            return service + ":" + operation;
+        }
+    }
+
+    /** Hot path - the slowest operation chain in the trace. */
+    public record HotPath(
+            List<OperationTiming> operations,
+            long totalDurationUs,
+            double percentOfTrace
+    ) {}
+
     /** Comparison with previous benchmark run. */
     public record BenchmarkComparison(
             long previousThroughput,
@@ -116,6 +150,8 @@ public class BottleneckAnalyzer {
             int traceCount,
             long avgTotalDurationUs,
             List<ComponentHealth> componentHealth,
+            List<OperationStats> operationStats,     // NEW: per-operation breakdown
+            List<OperationTiming> slowestOperations, // NEW: top 5 slowest operations
             String primaryBottleneck,
             double bottleneckPercent,
             double confidence,
@@ -170,6 +206,39 @@ public class BottleneckAnalyzer {
             sb.append("╠══════════════════════════════════════════════════════════════╣\n");
             sb.append("║ NEXT STEP                                                     ║\n");
             sb.append(String.format("║ ▶ %-60s ║\n", truncate(verdict, 60)));
+
+            // Operation breakdown (if available)
+            if (operationStats != null && !operationStats.isEmpty()) {
+                sb.append("╠══════════════════════════════════════════════════════════════╣\n");
+                sb.append("║ OPERATION BREAKDOWN (Top 5 by time)                          ║\n");
+                sb.append("╠══════════════════════════════════════════════════════════════╣\n");
+
+                operationStats.stream()
+                        .sorted((a, b) -> Long.compare(b.avgUs(), a.avgUs()))
+                        .limit(5)
+                        .forEach(op -> {
+                            String name = truncate(op.operation(), 25);
+                            String svc = truncate(op.service(), 10);
+                            sb.append(String.format("║ %-10s %-25s avg:%4dµs p99:%5dµs ║\n",
+                                    svc, name, op.avgUs(), op.p99Us()));
+                        });
+            }
+
+            // Slowest individual spans
+            if (slowestOperations != null && !slowestOperations.isEmpty()) {
+                sb.append("╠══════════════════════════════════════════════════════════════╣\n");
+                sb.append("║ SLOWEST SPANS (investigate these first)                      ║\n");
+                sb.append("╠══════════════════════════════════════════════════════════════╣\n");
+
+                slowestOperations.stream()
+                        .limit(3)
+                        .forEach(span -> {
+                            String op = truncate(span.operation(), 30);
+                            sb.append(String.format("║ ⚠ %-30s %6dµs (%.1fms)        ║\n",
+                                    op, span.durationUs(), span.durationUs() / 1000.0));
+                        });
+            }
+
             sb.append("╚══════════════════════════════════════════════════════════════╝\n");
             return sb.toString();
         }
@@ -313,7 +382,7 @@ public class BottleneckAnalyzer {
 
         if (traces.isEmpty()) {
             return new DiagnosticReport(
-                    0, 0, List.of(), "unknown", 0, 0,
+                    0, 0, List.of(), List.of(), List.of(), "unknown", 0, 0,
                     "No trace data available for analysis",
                     List.of("Enable trace enrichment (remove --quick flag)"),
                     "INFO",
@@ -383,10 +452,16 @@ public class BottleneckAnalyzer {
         String oneLiner = generateOneLiner(primaryBottleneck, bottleneckPercent, severity);
         String verdict = generateVerdict(primaryBottleneck, bottleneckPercent);
 
+        // NEW: Calculate operation-level statistics
+        List<OperationStats> operationStats = calculateOperationStats(traces);
+        List<OperationTiming> slowestOperations = findSlowestOperations(traces, 5);
+
         return new DiagnosticReport(
                 traces.size(),
                 avgTotalDuration,
                 componentHealth,
+                operationStats,       // NEW
+                slowestOperations,    // NEW
                 primaryBottleneck,
                 bottleneckPercent,
                 confidence,
@@ -634,5 +709,125 @@ public class BottleneckAnalyzer {
         }
 
         return sb.toString();
+    }
+
+    // ========================================================================
+    // Operation-Level Analysis
+    // ========================================================================
+
+    /** Extract all operation timings from a trace. */
+    public List<OperationTiming> extractOperationTimings(JaegerTrace trace) {
+        if (trace == null || trace.spans() == null) {
+            return List.of();
+        }
+
+        List<OperationTiming> timings = new ArrayList<>();
+
+        for (JaegerSpan span : trace.spans()) {
+            String service = getServiceName(trace, span);
+            String operation = span.operationName();
+
+            // Extract relevant tags from Map<String, Object>
+            Map<String, String> tags = new HashMap<>();
+            if (span.tags() != null) {
+                for (var tag : span.tags()) {
+                    // Only include relevant tags
+                    String key = String.valueOf(tag.get("key"));
+                    if (key.startsWith("http.") || key.startsWith("db.") ||
+                        key.startsWith("messaging.") || key.equals("error")) {
+                        tags.put(key, String.valueOf(tag.get("value")));
+                    }
+                }
+            }
+
+            // Find parent span ID from references (each reference is a Map)
+            String parentSpanId = null;
+            if (span.references() != null) {
+                for (var ref : span.references()) {
+                    String refType = String.valueOf(ref.get("refType"));
+                    if ("CHILD_OF".equals(refType)) {
+                        parentSpanId = String.valueOf(ref.get("spanID"));
+                        break;
+                    }
+                }
+            }
+
+            timings.add(new OperationTiming(
+                    service,
+                    operation,
+                    span.duration(),
+                    span.spanId(),
+                    parentSpanId,
+                    tags
+            ));
+        }
+
+        return timings;
+    }
+
+    /** Calculate aggregate statistics for each operation across multiple traces. */
+    public List<OperationStats> calculateOperationStats(List<JaegerTrace> traces) {
+        if (traces == null || traces.isEmpty()) {
+            return List.of();
+        }
+
+        // Collect all timings by operation
+        Map<String, List<Long>> durationsByOperation = new HashMap<>();
+        long totalDuration = 0;
+
+        for (JaegerTrace trace : traces) {
+            for (OperationTiming timing : extractOperationTimings(trace)) {
+                String key = timing.service() + ":" + timing.operation();
+                durationsByOperation.computeIfAbsent(key, k -> new ArrayList<>())
+                        .add(timing.durationUs());
+                totalDuration += timing.durationUs();
+            }
+        }
+
+        final long finalTotalDuration = totalDuration;
+
+        // Calculate stats for each operation
+        return durationsByOperation.entrySet().stream()
+                .map(entry -> {
+                    String[] parts = entry.getKey().split(":", 2);
+                    String service = parts[0];
+                    String operation = parts.length > 1 ? parts[1] : "unknown";
+                    List<Long> durations = entry.getValue();
+
+                    // Sort for percentiles
+                    durations.sort(Long::compare);
+
+                    long sum = durations.stream().mapToLong(Long::longValue).sum();
+                    long min = durations.get(0);
+                    long max = durations.get(durations.size() - 1);
+                    long avg = sum / durations.size();
+                    long p50 = percentileLong(durations, 50);
+                    long p99 = percentileLong(durations, 99);
+                    double percent = finalTotalDuration > 0 ? (sum * 100.0) / finalTotalDuration : 0;
+
+                    return new OperationStats(service, operation, durations.size(),
+                            min, max, avg, p50, p99, percent);
+                })
+                .sorted((a, b) -> Long.compare(b.avgUs(), a.avgUs())) // Sort by avg duration descending
+                .collect(Collectors.toList());
+    }
+
+    /** Find the slowest individual operations across all traces. */
+    public List<OperationTiming> findSlowestOperations(List<JaegerTrace> traces, int limit) {
+        if (traces == null || traces.isEmpty()) {
+            return List.of();
+        }
+
+        return traces.stream()
+                .flatMap(trace -> extractOperationTimings(trace).stream())
+                .sorted((a, b) -> Long.compare(b.durationUs(), a.durationUs()))
+                .limit(limit)
+                .collect(Collectors.toList());
+    }
+
+    private long percentileLong(List<Long> sorted, int p) {
+        if (sorted.isEmpty()) return 0;
+        int index = (int) Math.ceil(p / 100.0 * sorted.size()) - 1;
+        return sorted.get(Math.max(0, Math.min(index, sorted.size() - 1)));
     }
 }
