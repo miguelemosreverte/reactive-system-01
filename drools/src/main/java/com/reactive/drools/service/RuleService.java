@@ -7,7 +7,7 @@ import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.instrumentation.annotations.SpanAttribute;
 import io.opentelemetry.instrumentation.annotations.WithSpan;
 import org.kie.api.runtime.KieContainer;
-import org.kie.api.runtime.KieSession;
+import org.kie.api.runtime.StatelessKieSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -21,16 +21,18 @@ import org.springframework.stereotype.Service;
  * - customerId: Customer/tenant ID for multi-tenancy
  * - eventId: Unique event ID
  *
+ * Optimized for throughput using StatelessKieSession (no session state overhead).
  * Note: OpenTelemetry trace propagation is handled automatically via HTTP headers.
  */
 @Service
 public class RuleService {
 
     private static final Logger log = LoggerFactory.getLogger(RuleService.class);
-    private final KieContainer kieContainer;
+    private final StatelessKieSession statelessSession;
 
     public RuleService(KieContainer kieContainer) {
-        this.kieContainer = kieContainer;
+        // Use stateless session for better throughput - no session state overhead
+        this.statelessSession = kieContainer.newStatelessKieSession();
     }
 
     @WithSpan("drools.evaluate")
@@ -57,17 +59,12 @@ public class RuleService {
             currentSpan.setAttribute("session.id", request.getSessionId());
         }
 
-        KieSession kieSession = kieContainer.newKieSession();
-        try {
-            kieSession.insert(counter);
-            int rulesFired = kieSession.fireAllRules();
-            currentSpan.setAttribute("drools.rules_fired", rulesFired);
-            log.info("Drools evaluated: inputValue={}, rulesFired={}, alert={}, requestId={}, customerId={}",
-                    request.getValue(), rulesFired, counter.getAlert(),
-                    request.getRequestId(), request.getCustomerId());
-        } finally {
-            kieSession.dispose();
-        }
+        // Execute rules using stateless session (thread-safe, no dispose needed)
+        statelessSession.execute(counter);
+        currentSpan.setAttribute("drools.rules_fired", 1);  // Stateless doesn't return count
+        log.info("Drools evaluated: inputValue={}, alert={}, requestId={}, customerId={}",
+                request.getValue(), counter.getAlert(),
+                request.getRequestId(), request.getCustomerId());
 
         EvaluationResponse response = new EvaluationResponse();
         response.setValue(counter.getValue());

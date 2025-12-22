@@ -122,7 +122,7 @@ show_help() {
     echo ""
     echo "  Debugging:"
     echo "    doctor            Health check all services"
-    echo "    memory [cmd]      Memory diagnostics (overview/jvm/watch)"
+    echo "    memory [cmd]      Memory diagnostics (pressure/risk/crashes/kpis/diagnose)"
     echo "    benchmark [type]  Run benchmarks (http/kafka/drools/full)"
     echo ""
     echo "  Infrastructure:"

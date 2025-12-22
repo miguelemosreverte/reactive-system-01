@@ -6,8 +6,6 @@ Track command execution times to identify optimization opportunities.
 
 | Timestamp | Command | Service | Duration | Status |
 |-----------|---------|---------|----------|--------|
-| 2025-12-19 13:57:56 | benchmark | full | 33.00s | success |
-| 2025-12-19 14:02:18 | benchmark | full | 33.00s | success |
 | 2025-12-19 14:03:13 | benchmark | full | 33.00s | success |
 | 2025-12-19 14:04:54 | benchmark | full | 13.00s | success |
 | 2025-12-19 15:29:27 | benchmark | full | 14.00s | success |
@@ -56,3 +54,5 @@ Track command execution times to identify optimization opportunities.
 | 2025-12-20 21:09:55 | benchmark | all | 224.00s | success |
 | 2025-12-20 21:41:56 | rebuild | gateway | 161.00s | success |
 | 2025-12-20 21:47:52 | benchmark | full | 213.00s | success |
+| 2025-12-22 14:17:47 | start | all | 110.00s | success |
+| 2025-12-22 14:43:30 | rebuild | drools | 28.00s | success |

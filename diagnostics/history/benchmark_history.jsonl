@@ -1,0 +1,7 @@
+{"timestamp":1766424900,"throughput":4500,"status":"success","type":"full","duration":30}
+{"timestamp":1766424900,"throughput":4800,"status":"success","type":"full","duration":30}
+{"timestamp":1766424900,"throughput":0,"status":"crash","type":"full","duration":30,"crash_reason":"flink OOM"}
+{"timestamp":1766424900,"throughput":5100,"status":"success","type":"full","duration":30}
+{"timestamp":1766424900,"throughput":5200,"status":"success","type":"full","duration":30}
+{"timestamp":1766425287,"throughput":200,"status":"success","type":"full","duration":30}
+{"timestamp":1766426462,"throughput":10620,"status":"success","type":"full","duration":30}

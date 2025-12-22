@@ -1,6 +1,6 @@
 #!/bin/bash
 # Memory Diagnostics Tool for Reactive System
-# Helps identify memory bottlenecks across all services
+# Provides multi-level granularity analysis of memory pressure, crash tracking, and stability KPIs
 
 set -e
 
@@ -10,11 +10,21 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 CYAN='\033[0;36m'
+BOLD='\033[1m'
 NC='\033[0m'
 
 # Get script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+
+# Data directory for history tracking
+DATA_DIR="${PROJECT_ROOT}/diagnostics/history"
+mkdir -p "$DATA_DIR"
+
+# Pressure thresholds
+PRESSURE_LOW=50
+PRESSURE_MEDIUM=75
+PRESSURE_HIGH=90
 
 print_header() {
     echo -e "${BLUE}╔════════════════════════════════════════════════════════════╗${NC}"
@@ -25,6 +35,32 @@ print_header() {
 
 print_section() {
     echo -e "${CYAN}── $1 ──${NC}"
+}
+
+# Pressure visualization bar
+pressure_bar() {
+    local pct=$1
+    local width=10
+    local filled=$((pct * width / 100))
+    local empty=$((width - filled))
+    local bar=""
+    for ((i=0; i<filled; i++)); do bar+="▓"; done
+    for ((i=0; i<empty; i++)); do bar+="░"; done
+    echo "$bar"
+}
+
+# Pressure level with color
+pressure_level() {
+    local pct=$1
+    if [ "$pct" -lt "$PRESSURE_LOW" ]; then
+        echo -e "${GREEN}LOW${NC}"
+    elif [ "$pct" -lt "$PRESSURE_MEDIUM" ]; then
+        echo -e "${YELLOW}MEDIUM${NC}"
+    elif [ "$pct" -lt "$PRESSURE_HIGH" ]; then
+        echo -e "${YELLOW}HIGH${NC}"
+    else
+        echo -e "${RED}CRITICAL${NC}"
+    fi
 }
 
 # Get container memory stats
@@ -300,6 +336,376 @@ show_recommendations() {
     echo "5. Loki: Reduce retention period or increase memory"
 }
 
+# ============================================
+# CRASH TRACKING AND HISTORY
+# ============================================
+
+show_crash_history() {
+    print_header "Crash History & Stability"
+
+    local crash_log="$DATA_DIR/crash_history.jsonl"
+    touch "$crash_log"
+
+    # Detect current OOM-killed containers
+    local oom_detected=0
+    while IFS= read -r container; do
+        local oom=$(docker inspect "$container" 2>/dev/null | jq -r '.[0].State.OOMKilled' 2>/dev/null)
+        if [ "$oom" = "true" ]; then
+            oom_detected=$((oom_detected + 1))
+            local name=$(docker inspect "$container" 2>/dev/null | jq -r '.[0].Name' 2>/dev/null | sed 's|^/||')
+            local ts=$(date +%s)
+            echo "{\"timestamp\":$ts,\"container\":\"$name\",\"type\":\"OOM\"}" >> "$crash_log"
+            echo -e "${RED}⚠ OOM Detected: $name${NC}"
+        fi
+    done < <(docker ps -aq 2>/dev/null)
+
+    # Check for exited containers
+    local exit_detected=0
+    while IFS= read -r line; do
+        [ -z "$line" ] && continue
+        exit_detected=$((exit_detected + 1))
+    done < <(docker ps -a --filter "status=exited" --format "{{.Names}}" 2>/dev/null | grep -E "reactive|flink")
+
+    # Calculate stats from history
+    local total_crashes=$(wc -l < "$crash_log" 2>/dev/null | tr -d ' ')
+    local now=$(date +%s)
+    local day_ago=$((now - 86400))
+    local week_ago=$((now - 604800))
+
+    local crashes_24h=$(awk -v cutoff="$day_ago" -F'"timestamp":' '{split($2,a,","); if(a[1]+0 > cutoff) print}' "$crash_log" 2>/dev/null | wc -l | tr -d ' ')
+    local crashes_7d=$(awk -v cutoff="$week_ago" -F'"timestamp":' '{split($2,a,","); if(a[1]+0 > cutoff) print}' "$crash_log" 2>/dev/null | wc -l | tr -d ' ')
+
+    echo ""
+    print_section "Crash Summary"
+    echo -e "  Last 24 hours: ${BOLD}$crashes_24h${NC} crashes"
+    echo -e "  Last 7 days:   ${BOLD}$crashes_7d${NC} crashes"
+    echo -e "  All time:      ${BOLD}$total_crashes${NC} recorded"
+    echo ""
+
+    # Show recent crashes
+    if [ "$total_crashes" -gt 0 ]; then
+        print_section "Recent Crashes (last 5)"
+        tail -5 "$crash_log" 2>/dev/null | while IFS= read -r line; do
+            local ts=$(echo "$line" | jq -r '.timestamp' 2>/dev/null)
+            local container=$(echo "$line" | jq -r '.container' 2>/dev/null)
+            local type=$(echo "$line" | jq -r '.type' 2>/dev/null)
+            # macOS date vs GNU date
+            local date_str=$(date -r "$ts" "+%Y-%m-%d %H:%M" 2>/dev/null || date -d "@$ts" "+%Y-%m-%d %H:%M" 2>/dev/null || echo "unknown")
+            echo -e "    ${RED}[$type]${NC} $container at $date_str"
+        done
+        echo ""
+    fi
+
+    # Current health
+    print_section "Current Container Health"
+    local healthy=0
+    local total=0
+    while IFS= read -r name; do
+        [ -z "$name" ] && continue
+        total=$((total + 1))
+        local health=$(docker inspect "$name" 2>/dev/null | jq -r '.[0].State.Health.Status // "running"' 2>/dev/null)
+        if [ "$health" = "healthy" ] || [ "$health" = "running" ]; then
+            healthy=$((healthy + 1))
+        else
+            local short_name=$(echo "$name" | sed 's/reactive-//;s/-system-01//')
+            echo -e "  ${RED}✗${NC} $short_name: $health"
+        fi
+    done < <(docker ps --format "{{.Names}}" 2>/dev/null | grep -E "reactive|flink")
+
+    if [ "$healthy" -eq "$total" ]; then
+        echo -e "  ${GREEN}✓ All $total containers healthy${NC}"
+    else
+        echo -e "  ${YELLOW}$healthy/$total containers healthy${NC}"
+    fi
+    echo ""
+}
+
+# ============================================
+# BENCHMARK STABILITY KPIs
+# ============================================
+
+show_stability_kpis() {
+    print_header "Benchmark Stability KPIs"
+
+    local benchmark_log="$DATA_DIR/benchmark_history.jsonl"
+
+    if [ ! -f "$benchmark_log" ] || [ ! -s "$benchmark_log" ]; then
+        echo -e "  ${YELLOW}No benchmark history yet.${NC}"
+        echo ""
+        echo "  Record benchmarks with:"
+        echo "    $0 record-benchmark <throughput> <status> [crash_reason]"
+        echo ""
+        echo "  Examples:"
+        echo "    $0 record-benchmark 5107 success"
+        echo "    $0 record-benchmark 0 crash \"flink OOM\""
+        echo ""
+        return
+    fi
+
+    # Calculate stats
+    local total_runs=$(wc -l < "$benchmark_log" | tr -d ' ')
+    local success_runs=$(grep -c '"status":"success"' "$benchmark_log" 2>/dev/null || echo 0)
+    local crash_runs=$((total_runs - success_runs))
+    local success_rate=0
+    [ "$total_runs" -gt 0 ] && success_rate=$((success_runs * 100 / total_runs))
+
+    print_section "Run History (last 10)"
+    local run_num=$total_runs
+    tail -10 "$benchmark_log" | while IFS= read -r line; do
+        local throughput=$(echo "$line" | jq -r '.throughput' 2>/dev/null)
+        local status=$(echo "$line" | jq -r '.status' 2>/dev/null)
+        local type=$(echo "$line" | jq -r '.type // "full"' 2>/dev/null)
+        local duration=$(echo "$line" | jq -r '.duration // 30' 2>/dev/null)
+        local reason=$(echo "$line" | jq -r '.crash_reason // ""' 2>/dev/null)
+
+        if [ "$status" = "success" ]; then
+            echo -e "  #$run_num: ${GREEN}✓${NC} ${throughput} ops/s ($type, ${duration}s)"
+        else
+            echo -e "  #$run_num: ${RED}✗${NC} CRASHED - $reason"
+        fi
+        run_num=$((run_num + 1))
+    done
+    echo ""
+
+    # Success rate with color coding
+    print_section "Stability Metrics"
+    local rate_color="$GREEN"
+    [ "$success_rate" -lt 90 ] && rate_color="$YELLOW"
+    [ "$success_rate" -lt 70 ] && rate_color="$RED"
+
+    echo -e "  Success Rate: ${rate_color}${BOLD}${success_rate}%${NC} ($success_runs/$total_runs runs)"
+
+    # Crash causes breakdown
+    if [ "$crash_runs" -gt 0 ]; then
+        echo ""
+        echo "  Crash Causes:"
+        grep '"status":"crash"' "$benchmark_log" 2>/dev/null | jq -r '.crash_reason // "unknown"' | sort | uniq -c | sort -rn | while read count reason; do
+            echo -e "    - $reason: ${RED}$count${NC}"
+        done
+    fi
+
+    # Throughput trend
+    echo ""
+    echo "  Throughput Trend:"
+    local recent_avg=$(grep '"status":"success"' "$benchmark_log" 2>/dev/null | tail -5 | jq -r '.throughput' | awk '{sum+=$1; count++} END {if(count>0) printf "%.0f", sum/count; else print 0}')
+    local older_avg=$(grep '"status":"success"' "$benchmark_log" 2>/dev/null | head -5 | jq -r '.throughput' | awk '{sum+=$1; count++} END {if(count>0) printf "%.0f", sum/count; else print 0}')
+
+    if [ "$recent_avg" -gt 0 ] && [ "$older_avg" -gt 0 ]; then
+        local diff=$((recent_avg - older_avg))
+        if [ "$diff" -gt 100 ]; then
+            echo -e "    ${GREEN}↑ Improving${NC} (recent: ${recent_avg} ops/s, earlier: ${older_avg} ops/s)"
+        elif [ "$diff" -lt -100 ]; then
+            echo -e "    ${RED}↓ Declining${NC} (recent: ${recent_avg} ops/s, earlier: ${older_avg} ops/s)"
+        else
+            echo -e "    → Stable (avg: ${recent_avg} ops/s)"
+        fi
+    else
+        echo "    Insufficient data for trend analysis"
+    fi
+    echo ""
+}
+
+# Record a benchmark result
+record_benchmark() {
+    local throughput=$1
+    local status=$2
+    local crash_reason=${3:-""}
+    local type=${4:-"full"}
+    local duration=${5:-30}
+
+    local benchmark_log="$DATA_DIR/benchmark_history.jsonl"
+
+    local entry="{\"timestamp\":$(date +%s),\"throughput\":$throughput,\"status\":\"$status\",\"type\":\"$type\",\"duration\":$duration"
+    [ -n "$crash_reason" ] && entry+=",\"crash_reason\":\"$crash_reason\""
+    entry+="}"
+
+    echo "$entry" >> "$benchmark_log"
+    echo -e "${GREEN}✓${NC} Recorded: $throughput ops/s ($status)"
+}
+
+# ============================================
+# RISK ASSESSMENT
+# ============================================
+
+show_risk_assessment() {
+    print_header "Crash Risk Assessment"
+
+    local risk_score=0
+    local risk_factors=()
+
+    # Check memory pressure for each container
+    while IFS=$'\t' read -r name pct_raw; do
+        [[ ! "$name" =~ reactive|flink ]] && continue
+
+        # Parse percentage - remove % and decimal
+        local pct=$(echo "$pct_raw" | tr -d '%' | cut -d'.' -f1)
+        pct=${pct:-0}
+
+        local short_name=$(echo "$name" | sed 's/reactive-//;s/-system-01//')
+
+        if [ "$pct" -gt 90 ]; then
+            risk_score=$((risk_score + 30))
+            risk_factors+=("${short_name} at ${pct}% memory (CRITICAL)")
+        elif [ "$pct" -gt 75 ]; then
+            risk_score=$((risk_score + 15))
+            risk_factors+=("${short_name} at ${pct}% memory (HIGH)")
+        elif [ "$pct" -gt 60 ]; then
+            risk_score=$((risk_score + 5))
+            risk_factors+=("${short_name} at ${pct}% memory (MEDIUM)")
+        fi
+    done < <(docker stats --no-stream --format "{{.Name}}\t{{.MemPerc}}" 2>/dev/null)
+
+    # Determine risk level
+    local risk_level="LOW"
+    local risk_color="$GREEN"
+    if [ "$risk_score" -gt 50 ]; then
+        risk_level="CRITICAL"
+        risk_color="$RED"
+    elif [ "$risk_score" -gt 30 ]; then
+        risk_level="HIGH"
+        risk_color="$RED"
+    elif [ "$risk_score" -gt 15 ]; then
+        risk_level="MEDIUM"
+        risk_color="$YELLOW"
+    fi
+
+    echo -e "  Overall Risk: ${risk_color}${BOLD}$risk_level${NC} (score: $risk_score/100)"
+    echo ""
+
+    if [ ${#risk_factors[@]} -gt 0 ]; then
+        print_section "Risk Factors"
+        for factor in "${risk_factors[@]}"; do
+            echo -e "  ${YELLOW}⚠${NC} $factor"
+        done
+        echo ""
+    fi
+
+    print_section "Recommendations"
+    if [ "$risk_score" -gt 30 ]; then
+        echo -e "  ${RED}→ Reduce load or increase memory limits immediately${NC}"
+        echo -e "  ${RED}→ Check for memory leaks in high-pressure components${NC}"
+    elif [ "$risk_score" -gt 15 ]; then
+        echo -e "  ${YELLOW}→ Monitor closely during benchmarks${NC}"
+        echo -e "  ${YELLOW}→ Consider increasing memory limits${NC}"
+    else
+        echo -e "  ${GREEN}→ System is stable, safe to run benchmarks${NC}"
+    fi
+    echo ""
+}
+
+# ============================================
+# QUICK PRESSURE SUMMARY
+# ============================================
+
+show_pressure_summary() {
+    print_header "Memory Pressure Summary"
+
+    printf "  ${BOLD}%-25s %18s %12s %12s${NC}\n" "COMPONENT" "USAGE" "PRESSURE" "STATUS"
+    echo "  ─────────────────────────────────────────────────────────────────"
+
+    docker stats --no-stream --format "{{.Name}}\t{{.MemUsage}}\t{{.MemPerc}}" 2>/dev/null | while IFS=$'\t' read -r name usage pct_raw; do
+        [[ ! "$name" =~ reactive|flink ]] && continue
+
+        # Parse percentage - remove % and decimal
+        local pct=$(echo "$pct_raw" | tr -d '%' | cut -d'.' -f1)
+        pct=${pct:-0}
+
+        local short_name=$(echo "$name" | sed 's/reactive-//;s/-system-01//')
+
+        printf "  %-25s %18s " "$short_name" "$usage"
+        echo -ne "$(pressure_bar $pct) "
+        pressure_level $pct
+    done
+    echo ""
+}
+
+# ============================================
+# ACTIONABLE VERDICT
+# ============================================
+
+show_verdict() {
+    print_header "VERDICT: Action Required"
+
+    local dominated_by=""
+    local max_pressure=0
+    local action=""
+
+    # Find the component with highest memory pressure
+    while IFS=$'\t' read -r name pct_raw; do
+        [[ ! "$name" =~ reactive|flink ]] && continue
+        local pct=$(echo "$pct_raw" | tr -d '%' | cut -d'.' -f1)
+        pct=${pct:-0}
+
+        if [ "$pct" -gt "$max_pressure" ]; then
+            max_pressure=$pct
+            dominated_by=$(echo "$name" | sed 's/reactive-//;s/-system-01//')
+        fi
+    done < <(docker stats --no-stream --format "{{.Name}}\t{{.MemPerc}}" 2>/dev/null)
+
+    # Determine verdict
+    if [ "$max_pressure" -gt 90 ]; then
+        echo -e "  ${RED}${BOLD}CRITICAL: $dominated_by at ${max_pressure}% memory${NC}"
+        echo ""
+        echo -e "  ${BOLD}Immediate Actions:${NC}"
+        case "$dominated_by" in
+            *flink*|*taskmanager*)
+                echo "    1. Reduce ASYNC_CAPACITY in docker-compose.yml (current: 200 → try 100)"
+                echo "    2. Increase taskmanager.memory.process.size (current: 3g → try 4g)"
+                echo "    3. Check for state accumulation: ./cli.sh p memory heap flink-taskmanager"
+                ;;
+            *drools*)
+                echo "    1. Increase Drools memory limit (current: 768M → try 1G)"
+                echo "    2. Check rule session leaks: ./cli.sh p memory jfr drools 30"
+                ;;
+            *jaeger*)
+                echo "    1. Reduce MEMORY_MAX_TRACES (current: 20000 → try 10000)"
+                echo "    2. Increase Jaeger memory limit (current: 4G → try 6G)"
+                ;;
+            *prometheus*)
+                echo "    1. Reduce scrape frequency or retention period"
+                echo "    2. Increase Prometheus memory limit"
+                ;;
+            *)
+                echo "    1. Increase memory limit for $dominated_by"
+                echo "    2. Check for memory leaks with heap dump"
+                ;;
+        esac
+    elif [ "$max_pressure" -gt 75 ]; then
+        echo -e "  ${YELLOW}${BOLD}WARNING: $dominated_by at ${max_pressure}% memory${NC}"
+        echo ""
+        echo -e "  ${BOLD}Recommended Actions:${NC}"
+        echo "    1. Monitor $dominated_by during benchmark"
+        echo "    2. Consider increasing memory limit before heavy load"
+    elif [ "$max_pressure" -gt 60 ]; then
+        echo -e "  ${YELLOW}CAUTION: $dominated_by at ${max_pressure}% memory${NC}"
+        echo ""
+        echo -e "  ${BOLD}Optional Actions:${NC}"
+        echo "    1. Watch $dominated_by: docker stats $dominated_by"
+    else
+        echo -e "  ${GREEN}${BOLD}ALL CLEAR: System healthy${NC}"
+        echo ""
+        echo -e "  Memory pressure is low across all components."
+        echo -e "  Highest: $dominated_by at ${max_pressure}%"
+        echo ""
+        echo -e "  ${BOLD}Next Step:${NC} Run benchmark to measure throughput"
+        echo "    ./cli.sh p benchmark full --duration 30"
+    fi
+    echo ""
+}
+
+# ============================================
+# COMPREHENSIVE DIAGNOSTIC REPORT
+# ============================================
+
+show_full_diagnostic() {
+    show_pressure_summary
+    show_risk_assessment
+    show_crash_history
+    show_stability_kpis
+    show_recommendations
+    show_verdict
+}
+
 # Main command router
 case "${1:-overview}" in
     overview|status)
@@ -339,26 +745,66 @@ case "${1:-overview}" in
     recommend|recommendations)
         show_recommendations
         ;;
+    pressure|summary)
+        show_pressure_summary
+        ;;
+    risk)
+        show_risk_assessment
+        ;;
+    crashes|history)
+        show_crash_history
+        ;;
+    kpis|stability)
+        show_stability_kpis
+        ;;
+    verdict|action)
+        show_verdict
+        ;;
+    record-benchmark)
+        if [ -z "$2" ] || [ -z "$3" ]; then
+            echo "Usage: $0 record-benchmark <throughput> <status> [crash_reason] [type] [duration]"
+            echo "  status: success or crash"
+            exit 1
+        fi
+        record_benchmark "$2" "$3" "${4:-}" "${5:-full}" "${6:-30}"
+        ;;
+    diagnose|full)
+        show_full_diagnostic
+        ;;
     help|--help|-h)
         echo "Memory Diagnostics Tool"
         echo
         echo "Usage: $0 <command> [args]"
         echo
-        echo "Commands:"
-        echo "  overview      Show memory usage overview (default)"
-        echo "  jvm           Show detailed JVM memory for Java services"
-        echo "  observability Show observability stack memory"
-        echo "  all           Show all memory information"
+        echo "Quick Commands:"
+        echo "  pressure      Quick memory pressure summary with visual bars"
+        echo "  risk          Crash risk assessment with recommendations"
+        echo "  crashes       Crash history and current health"
+        echo "  kpis          Benchmark stability KPIs and trends"
+        echo "  diagnose      Full diagnostic report (pressure + risk + crashes + kpis)"
+        echo
+        echo "Detailed Analysis:"
+        echo "  overview      Memory usage overview (default)"
+        echo "  jvm           Detailed JVM memory for Java services"
+        echo "  observability Observability stack memory"
+        echo "  all           All memory information"
         echo "  watch         Live memory monitoring"
-        echo "  recommend     Show tuning recommendations"
+        echo "  recommend     Tuning recommendations"
+        echo
+        echo "Profiling:"
         echo "  heap <svc>    Take heap dump (drools, flink-taskmanager)"
         echo "  jfr <svc> [s] Start Java Flight Recorder for N seconds"
         echo
+        echo "Recording:"
+        echo "  record-benchmark <throughput> <status> [crash_reason] [type] [duration]"
+        echo "                Record a benchmark result for KPI tracking"
+        echo
         echo "Examples:"
-        echo "  $0 all                    # Full memory report"
-        echo "  $0 watch                  # Live monitoring"
-        echo "  $0 heap drools            # Heap dump of Drools"
-        echo "  $0 jfr flink-taskmanager 30  # 30s JFR recording"
+        echo "  $0 pressure                    # Quick pressure check"
+        echo "  $0 diagnose                    # Full diagnostic report"
+        echo "  $0 record-benchmark 5107 success"
+        echo "  $0 record-benchmark 0 crash \"flink OOM\""
+        echo "  $0 heap drools                 # Heap dump of Drools"
         ;;
     *)
         echo "Unknown command: $1"

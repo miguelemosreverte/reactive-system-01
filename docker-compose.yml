@@ -272,7 +272,7 @@ services:
     ports:
       - "8180:8080"
     environment:
-      - JAVA_OPTS=-Xmx512m
+      - JAVA_OPTS=-Xmx1g -XX:+UseG1GC -XX:MaxGCPauseMillis=10
       - SERVICE_VERSION=1.0.0
       # OpenTelemetry Configuration
       - OTEL_ENABLED=${OTEL_FEATURE_ENABLED:-true}
@@ -285,8 +285,8 @@ services:
     deploy:
       resources:
         limits:
-          memory: 768M
-          cpus: '0.5'
+          memory: 1280M
+          cpus: '2.0'
     depends_on:
       otel-collector:
         condition: service_healthy
@@ -349,6 +349,8 @@ services:
       otel-collector:
         condition: service_healthy
     command: taskmanager
+    volumes:
+      - ./diagnostics:/tmp/diagnostics  # Persist heap dumps and GC logs
     # Note: Prometheus metrics port removed to allow scaling (use port range if needed)
     environment:
       - |
@@ -363,6 +365,7 @@ services:
         taskmanager.network.memory.buffer-debloat.period: 25ms
         execution.buffer-timeout: 1ms
         taskmanager.memory.process.size: 3g
+        env.java.opts.taskmanager: -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/tmp/diagnostics/heapdump.hprof -Xlog:gc*:file=/tmp/diagnostics/gc.log:time,uptime,level,tags -XX:NativeMemoryTracking=summary
       # System-wide latency bounds (CQRS snapshot evaluation)
       - LATENCY_MIN_MS=${LATENCY_MIN_MS:-1}
       - LATENCY_MAX_MS=${LATENCY_MAX_MS:-100}
