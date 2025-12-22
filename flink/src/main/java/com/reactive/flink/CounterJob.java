@@ -5,8 +5,8 @@ import com.reactive.flink.model.CounterEvent;
 import com.reactive.flink.model.CounterResult;
 import com.reactive.flink.model.PreDroolsResult;
 import com.reactive.flink.processor.CounterProcessor;
-import com.reactive.flink.serialization.CounterEventDeserializer;
-import com.reactive.flink.serialization.CounterResultSerializer;
+import com.reactive.flink.serialization.TracingKafkaDeserializer;
+import com.reactive.flink.serialization.TracingCounterResultSerializer;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.connector.kafka.sink.KafkaRecordSerializationSchema;
 import org.apache.flink.connector.kafka.sink.KafkaSink;
@@ -110,13 +110,13 @@ public class CounterJob {
         // Auto commit is handled by Flink checkpoints
         kafkaProps.setProperty("enable.auto.commit", "false");
 
-        // Configure Kafka source with unbounded streaming
+        // Configure Kafka source with unbounded streaming and trace context extraction
         KafkaSource<CounterEvent> source = KafkaSource.<CounterEvent>builder()
                 .setBootstrapServers(KAFKA_BROKERS)
                 .setTopics(INPUT_TOPIC)
-                .setGroupId("flink-counter-group-v2")  // New group ID to start fresh
+                .setGroupId("flink-counter-group-v3")  // New group ID for trace-aware version
                 .setStartingOffsets(OffsetsInitializer.latest())
-                .setValueOnlyDeserializer(new CounterEventDeserializer())
+                .setDeserializer(new TracingKafkaDeserializer())  // Extracts trace context from headers
                 .setProperties(kafkaProps)
                 .build();
 
@@ -125,24 +125,18 @@ public class CounterJob {
         producerProps.setProperty("linger.ms", "0");
         producerProps.setProperty("acks", "1");
 
-        // Sink for immediate results (counter-results topic)
+        // Sink for immediate results (counter-results topic) - with trace context propagation
         KafkaSink<CounterResult> resultsSink = KafkaSink.<CounterResult>builder()
                 .setBootstrapServers(KAFKA_BROKERS)
                 .setKafkaProducerConfig(producerProps)
-                .setRecordSerializer(KafkaRecordSerializationSchema.builder()
-                        .setTopic(OUTPUT_TOPIC)
-                        .setValueSerializationSchema(new CounterResultSerializer())
-                        .build())
+                .setRecordSerializer(new TracingCounterResultSerializer(OUTPUT_TOPIC))
                 .build();
 
-        // Sink for alerts (counter-alerts topic)
+        // Sink for alerts (counter-alerts topic) - with trace context propagation
         KafkaSink<CounterResult> alertsSink = KafkaSink.<CounterResult>builder()
                 .setBootstrapServers(KAFKA_BROKERS)
                 .setKafkaProducerConfig(producerProps)
-                .setRecordSerializer(KafkaRecordSerializationSchema.builder()
-                        .setTopic(ALERTS_TOPIC)
-                        .setValueSerializationSchema(new CounterResultSerializer())
-                        .build())
+                .setRecordSerializer(new TracingCounterResultSerializer(ALERTS_TOPIC))
                 .build();
 
         // Build the streaming pipeline

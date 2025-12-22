@@ -1,0 +1,117 @@
+# Flink TaskManager Deployment
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flink-taskmanager
+  namespace: reactive-app
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      app: flink
+      component: taskmanager
+  template:
+    metadata:
+      labels:
+        app: flink
+        component: taskmanager
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9249"
+    spec:
+      containers:
+        - name: taskmanager
+          image: reactive-system-01-flink-taskmanager:latest
+          imagePullPolicy: IfNotPresent
+          args: ["taskmanager"]
+          ports:
+            - containerPort: 6122
+              name: rpc
+            - containerPort: 9249
+              name: metrics
+          env:
+            - name: DROOLS_URL
+              value: "http://drools.reactive-app.svc.cluster.local:8080"
+            - name: KAFKA_BROKERS
+              value: "kafka.reactive-infra.svc.cluster.local:29092"
+            - name: ASYNC_CAPACITY
+              value: "200"
+            - name: SKIP_DROOLS
+              value: "false"
+            - name: OTEL_ENABLED
+              value: "true"
+            - name: OTEL_SERVICE_NAME
+              value: "flink-taskmanager"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://otel-collector.reactive-observability.svc.cluster.local:4317"
+          resources:
+            requests:
+              memory: "2Gi"
+              cpu: "1000m"
+            limits:
+              memory: "3584Mi"
+              cpu: "3000m"
+          volumeMounts:
+            - name: flink-config-volume
+              mountPath: /opt/flink/conf/flink-conf.yaml
+              subPath: flink-conf.yaml
+            - name: flink-config-volume
+              mountPath: /opt/flink/conf/log4j-console.properties
+              subPath: log4j-console.properties
+            - name: flink-data
+              mountPath: /flink-data
+      volumes:
+        - name: flink-config-volume
+          configMap:
+            name: flink-config
+        - name: flink-data
+          emptyDir: {}
+---
+# Job submission job
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: flink-job-submitter
+  namespace: reactive-app
+spec:
+  ttlSecondsAfterFinished: 600
+  template:
+    spec:
+      restartPolicy: OnFailure
+      initContainers:
+        - name: wait-for-flink
+          image: curlimages/curl:8.4.0
+          command:
+            - sh
+            - -c
+            - |
+              echo "Waiting for Flink JobManager..."
+              until curl -sf http://flink-jobmanager:8081/overview > /dev/null; do
+                echo "Waiting..."
+                sleep 5
+              done
+              echo "JobManager is ready!"
+
+              echo "Waiting for TaskManager..."
+              until curl -sf http://flink-jobmanager:8081/taskmanagers | grep -q 'taskmanagers'; do
+                echo "Waiting for TaskManager..."
+                sleep 5
+              done
+              echo "TaskManager registered!"
+      containers:
+        - name: job-submitter
+          image: reactive-system-01-flink-jobmanager:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: KAFKA_BROKERS
+              value: "kafka.reactive-infra.svc.cluster.local:29092"
+            - name: DROOLS_URL
+              value: "http://drools.reactive-app.svc.cluster.local:8080"
+          command:
+            - sh
+            - -c
+            - |
+              echo "Submitting Flink job..."
+              /opt/flink/bin/flink run -m flink-jobmanager:8081 -d /opt/flink/jobs/counter-job.jar
+              echo "Job submitted!"

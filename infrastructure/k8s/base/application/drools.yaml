@@ -1,0 +1,97 @@
+# Drools Service - Business Rules Engine
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: drools
+  namespace: reactive-app
+  labels:
+    app: drools
+spec:
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+  selector:
+    app: drools
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: drools-web
+  namespace: reactive-app
+  labels:
+    app: drools
+spec:
+  type: NodePort
+  ports:
+    - name: http
+      port: 8080
+      nodePort: 30180
+  selector:
+    app: drools
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: drools
+  namespace: reactive-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: drools
+  template:
+    metadata:
+      labels:
+        app: drools
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/actuator/prometheus"
+    spec:
+      containers:
+        - name: drools
+          image: reactive-system-01-drools:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: JAVA_OPTS
+              value: "-Xmx512m"
+            - name: SERVICE_VERSION
+              value: "1.0.0"
+            - name: OTEL_ENABLED
+              value: "true"
+            - name: OTEL_SERVICE_NAME
+              value: "drools"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://otel-collector.reactive-observability.svc.cluster.local:4317"
+            - name: OTEL_TRACES_SAMPLER
+              value: "parentbased_traceidratio"
+            - name: OTEL_TRACES_SAMPLER_ARG
+              value: "1.0"
+            - name: OTEL_METRICS_EXPORTER
+              value: "otlp"
+            - name: OTEL_LOGS_EXPORTER
+              value: "otlp"
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "768Mi"
+              cpu: "500m"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 20

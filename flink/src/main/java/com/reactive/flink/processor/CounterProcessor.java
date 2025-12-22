@@ -9,7 +9,12 @@ import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.api.trace.Tracer;
+import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
+import io.opentelemetry.context.propagation.TextMapGetter;
+
+import java.util.HashMap;
+import java.util.Map;
 import org.apache.flink.api.common.state.ValueState;
 import org.apache.flink.api.common.state.ValueStateDescriptor;
 import org.apache.flink.api.common.typeinfo.Types;
@@ -59,6 +64,8 @@ public class CounterProcessor extends KeyedProcessFunction<String, CounterEvent,
     private transient ValueState<String> lastCustomerId;     // Customer/tenant ID
     private transient ValueState<String> lastEventId;
     private transient ValueState<EventTiming> lastTiming;
+    private transient ValueState<String> lastTraceparent;
+    private transient ValueState<String> lastTracestate;
     private transient Tracer tracer;
 
     public CounterProcessor(long minLatencyMs, long maxLatencyMs) {
@@ -94,11 +101,30 @@ public class CounterProcessor extends KeyedProcessFunction<String, CounterEvent,
         lastTiming = getRuntimeContext().getState(
                 new ValueStateDescriptor<>("lastTiming", EventTiming.class));
 
+        // Trace context state for propagation to Drools
+        lastTraceparent = getRuntimeContext().getState(
+                new ValueStateDescriptor<>("lastTraceparent", Types.STRING));
+        lastTracestate = getRuntimeContext().getState(
+                new ValueStateDescriptor<>("lastTracestate", Types.STRING));
+
         tracer = GlobalOpenTelemetry.getTracer("flink-counter-processor");
 
         LOG.info("CounterProcessor initialized - CQRS mode (minLatency={}ms, maxLatency={}ms)",
                 minLatencyMs, maxLatencyMs);
     }
+
+    // TextMapGetter for extracting trace context from a Map
+    private static final TextMapGetter<Map<String, String>> MAP_GETTER = new TextMapGetter<>() {
+        @Override
+        public Iterable<String> keys(Map<String, String> carrier) {
+            return carrier.keySet();
+        }
+
+        @Override
+        public String get(Map<String, String> carrier, String key) {
+            return carrier != null ? carrier.get(key) : null;
+        }
+    };
 
     @Override
     public void processElement(CounterEvent event, Context ctx, Collector<CounterResult> out) throws Exception {
@@ -109,8 +135,22 @@ public class CounterProcessor extends KeyedProcessFunction<String, CounterEvent,
         EventTiming timing = EventTiming.copyFrom(event.getTiming());
         timing.setFlinkReceivedAt(arrivalTime);
 
-        // Create processing span (OTel agent provides parent context automatically)
+        // Extract parent trace context from event (propagated through Kafka headers)
+        io.opentelemetry.context.Context parentContext = io.opentelemetry.context.Context.current();
+        if (event.getTraceparent() != null) {
+            Map<String, String> headers = new HashMap<>();
+            headers.put("traceparent", event.getTraceparent());
+            if (event.getTracestate() != null) {
+                headers.put("tracestate", event.getTracestate());
+            }
+            parentContext = GlobalOpenTelemetry.getPropagators()
+                    .getTextMapPropagator()
+                    .extract(io.opentelemetry.context.Context.current(), headers, MAP_GETTER);
+        }
+
+        // Create processing span with parent context from Gateway
         Span span = tracer.spanBuilder("flink.process_counter")
+                .setParent(parentContext)
                 .setSpanKind(SpanKind.CONSUMER)
                 .setAttribute("session.id", sessionId)
                 .setAttribute("counter.action", event.getAction())
@@ -163,6 +203,8 @@ public class CounterProcessor extends KeyedProcessFunction<String, CounterEvent,
             lastCustomerId.update(event.getCustomerId());
             lastEventId.update(event.getEventId());
             lastTiming.update(timing);
+            lastTraceparent.update(event.getTraceparent());
+            lastTracestate.update(event.getTracestate());
             span.setAttribute("counter.new_value", currentValue);
 
             // Emit immediate result (without alert - alert will come later)
@@ -176,6 +218,15 @@ public class CounterProcessor extends KeyedProcessFunction<String, CounterEvent,
                     event.getEventId(),
                     timing
             );
+
+            // Inject current trace context for downstream propagation
+            Map<String, String> traceHeaders = new HashMap<>();
+            GlobalOpenTelemetry.getPropagators()
+                    .getTextMapPropagator()
+                    .inject(io.opentelemetry.context.Context.current(), traceHeaders, Map::put);
+            result.setTraceparent(traceHeaders.get("traceparent"));
+            result.setTracestate(traceHeaders.get("tracestate"));
+
             out.collect(result);
 
             LOG.info("Flink processed event: sessionId={}, action={}, newValue={}, requestId={}, customerId={}",
@@ -240,6 +291,8 @@ public class CounterProcessor extends KeyedProcessFunction<String, CounterEvent,
         String customerId = lastCustomerId.value();
         String eventId = lastEventId.value();
         EventTiming timing = lastTiming.value();
+        String traceparent = lastTraceparent.value();
+        String tracestate = lastTracestate.value();
 
         // Create snapshot for Drools evaluation (side output)
         PreDroolsResult snapshot = new PreDroolsResult(
@@ -249,7 +302,9 @@ public class CounterProcessor extends KeyedProcessFunction<String, CounterEvent,
                 customerId,
                 eventId,
                 timing,
-                System.currentTimeMillis()
+                System.currentTimeMillis(),
+                traceparent,
+                tracestate
         );
 
         // Emit to side output for async Drools evaluation

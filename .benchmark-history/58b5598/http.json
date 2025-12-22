@@ -1,0 +1,53 @@
+{
+  "component" : "http",
+  "name" : "HTTP Benchmark",
+  "description" : "Tests gateway HTTP endpoint latency",
+  "startTime" : "2025-12-21T13:35:47.675976406Z",
+  "endTime" : "2025-12-21T13:36:07.697850245Z",
+  "durationMs" : 20022,
+  "totalOperations" : 147153,
+  "successfulOperations" : 147153,
+  "failedOperations" : 0,
+  "peakThroughput" : 12990,
+  "avgThroughput" : 7349,
+  "throughputTimeline" : [ 0, 0, 0, 0, 5314, 8579, 10828, 11463, 12990, 12471, 12116, 12378, 12401, 12342, 12438, 9867, 5249, 4855, 3856, 6, 0 ],
+  "latency" : {
+    "min" : 0,
+    "max" : 66,
+    "avg" : 0,
+    "p50" : 0,
+    "p95" : 1,
+    "p99" : 3
+  },
+  "cpuTimeline" : [ 24.4140625, 66.50390625, 66.50390625, 66.50390625, 66.50390625, 66.50390625, 81.201171875, 81.201171875, 81.201171875, 81.201171875, 81.201171875, 74.69482421875, 74.69482421875, 74.69482421875, 74.69482421875, 74.69482421875, 76.7333984375, 76.7333984375, 76.7333984375, 76.7333984375, 76.7333984375 ],
+  "memoryTimeline" : [ 0.8320751632859801, 0.8320751632859801, 0.8320751632859801, 0.8320751632859801, 4.075706089300777, 1.062914774227816, 6.394082386005298, 6.058954879806934, 2.1777178998190747, 4.344930562193531, 1.8691316021439044, 6.481008981960692, 11.464357039281266, 2.1500107258047034, 6.848812776906218, 9.800118947726807, 5.1393934263350625, 20.21646778711036, 6.451038780173909, 6.772547701653751, 6.772547701653751 ],
+  "peakCpu" : 81.201171875,
+  "peakMemory" : 20.21646778711036,
+  "avgCpu" : 72.3847888764881,
+  "avgMemory" : 5.305144891202275,
+  "componentTiming" : null,
+  "sampleEvents" : [ {
+    "id" : "http-1766324164443",
+    "traceId" : null,
+    "otelTraceId" : null,
+    "timestamp" : 1766324164443,
+    "latencyMs" : 1,
+    "status" : "success",
+    "error" : null,
+    "componentTiming" : null,
+    "traceData" : null
+  }, {
+    "id" : "http-1766324165457",
+    "traceId" : null,
+    "otelTraceId" : null,
+    "timestamp" : 1766324165457,
+    "latencyMs" : 0,
+    "status" : "success",
+    "error" : null,
+    "componentTiming" : null,
+    "traceData" : null
+  } ],
+  "status" : "completed",
+  "errorMessage" : null,
+  "success" : true
+}

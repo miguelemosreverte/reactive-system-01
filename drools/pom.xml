@@ -103,7 +103,23 @@
             <artifactId>logstash-logback-encoder</artifactId>
             <version>7.4</version>
         </dependency>
+
     </dependencies>
+
+    <profiles>
+        <!-- Profile for running benchmarks outside Docker -->
+        <profile>
+            <id>benchmark</id>
+            <dependencies>
+                <dependency>
+                    <groupId>com.reactive</groupId>
+                    <artifactId>platform</artifactId>
+                    <version>1.0.0</version>
+                    <scope>test</scope>
+                </dependency>
+            </dependencies>
+        </profile>
+    </profiles>
 
     <build>
         <plugins>

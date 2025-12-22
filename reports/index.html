@@ -4,186 +4,101 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Benchmark Dashboard</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>" />
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1a1a2e; color: #eee; display: flex; height: 100vh; }
-        .sidebar { width: 380px; background: #16213e; padding: 20px; overflow-y: auto; border-right: 1px solid #2a2a4a; }
-        .sidebar h1 { color: #00d4ff; font-size: 18px; margin-bottom: 10px; }
-        .sidebar .subtitle { color: #666; font-size: 12px; margin-bottom: 20px; }
-
-         
-        .architecture { background: #1a1a2e; border-radius: 8px; padding: 15px; margin-bottom: 20px; }
-        .architecture h2 { color: #00d4ff; font-size: 12px; margin-bottom: 15px; text-transform: uppercase; }
-        .arch-flow { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; padding: 10px 0; }
-        .arch-node { background: #16213e; border: 2px solid #2a2a4a; border-radius: 8px; padding: 10px 14px; text-align: center; min-width: 70px; }
-        .arch-node.client { border-color: #00d4ff; }
-        .arch-node.gateway { border-color: #4ade80; }
-        .arch-node.kafka { border-color: #f59e0b; }
-        .arch-node.flink { border-color: #8b5cf6; }
-        .arch-node.drools { border-color: #f87171; }
-        .arch-node .icon { font-size: 20px; margin-bottom: 4px; }
-        .arch-node .label { font-size: 10px; color: #888; text-transform: uppercase; }
-        .arch-arrow { color: #4ade80; font-size: 18px; }
-        .arch-description { font-size: 11px; color: #666; margin-top: 12px; line-height: 1.5; }
-        .arch-description strong { color: #00d4ff; }
-
-        .bottleneck-section { background: #1a1a2e; border-radius: 8px; padding: 15px; margin-bottom: 20px; }
-        .bottleneck-section h2 { color: #f59e0b; font-size: 12px; margin-bottom: 10px; text-transform: uppercase; }
-        .bottleneck-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #2a2a4a; }
-        .bottleneck-item:last-child { border-bottom: none; }
-        .bottleneck-item .name { font-size: 13px; }
-        .bottleneck-item .throughput { font-weight: bold; font-size: 14px; }
-        .bottleneck-item .bar { height: 4px; background: #2a2a4a; border-radius: 2px; margin-top: 4px; }
-        .bottleneck-item .bar-fill { height: 100%; border-radius: 2px; }
-        .bottleneck-item.bottleneck .throughput { color: #f87171; }
-        .bottleneck-item.bottleneck .bar-fill { background: #f87171; }
-        .bottleneck-item.ok .throughput { color: #4ade80; }
-        .bottleneck-item.ok .bar-fill { background: #4ade80; }
-        .attention-badge { background: #f87171; color: #1a1a2e; font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-left: 8px; }
-
-        .component-list { list-style: none; }
-        .component-list li { padding: 12px 15px; margin-bottom: 8px; border-radius: 8px; cursor: pointer; transition: background 0.2s; }
-        .component-list li:hover { background: #2a2a4a; }
-        .component-list li.active { background: #00d4ff; color: #1a1a2e; }
-        .component-list li .name { display: block; font-weight: 500; }
-        .component-list li .stats { font-size: 12px; color: #888; display: flex; gap: 15px; margin-top: 4px; }
-        .component-list li.active .stats { color: #1a1a2e; }
-
-        main { flex: 1; display: flex; flex-direction: column; }
-        iframe { flex: 1; border: none; }
-        .footer { padding: 10px 20px; background: #16213e; font-size: 11px; color: #666; text-align: center; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        #root { min-height: 100vh; }
+        .loading { display: flex; justify-content: center; align-items: center; height: 100vh; font-size: 18px; color: #666; }
     </style>
 </head>
 <body>
-    <nav class="sidebar">
-        <h1>Benchmark Dashboard</h1>
-        <p class="subtitle">Generated: 2025-12-21 00:47:51</p>
-
-        <div class="architecture">
-            <h2>System Architecture</h2>
-            <div class="arch-flow">
-                <div class="arch-node client">
-                    <div class="icon">🌐</div>
-                    <div class="label">Client</div>
-                </div>
-                <span class="arch-arrow">→</span>
-                <div class="arch-node gateway">
-                    <div class="icon">⚡</div>
-                    <div class="label">Gateway</div>
-                </div>
-                <span class="arch-arrow">→</span>
-                <div class="arch-node kafka">
-                    <div class="icon">📨</div>
-                    <div class="label">Kafka</div>
-                </div>
-                <span class="arch-arrow">→</span>
-                <div class="arch-node flink">
-                    <div class="icon">🔄</div>
-                    <div class="label">Flink</div>
-                </div>
-                <span class="arch-arrow">→</span>
-                <div class="arch-node drools">
-                    <div class="icon">📋</div>
-                    <div class="label">Drools</div>
-                </div>
-            </div>
-            <div class="arch-description">
-                <strong>Full Pipeline:</strong> HTTP request → Gateway (Spring WebFlux) → Kafka (message queue with delivery guarantees) → Flink (stream processing) → Drools (rule evaluation) → Response with backpressure throughout.
-            </div>
-        </div>
-
-        <div class="bottleneck-section">
-            <h2>Throughput Ranking</h2>
-            
-            <div class="bottleneck-item ok">
-                <div>
-                    <span class="name">Full End-to-End Benchmark</span>
-                    <div class="bar"><div class="bar-fill" style="width: 66%"></div></div>
-                </div>
-                <span class="throughput">3620 ops/s</span>
-            </div>
-            
-            <div class="bottleneck-item ok">
-                <div>
-                    <span class="name">Gateway Benchmark</span>
-                    <div class="bar"><div class="bar-fill" style="width: 98%"></div></div>
-                </div>
-                <span class="throughput">5375 ops/s</span>
-            </div>
-            
-            <div class="bottleneck-item ok">
-                <div>
-                    <span class="name">HTTP Benchmark</span>
-                    <div class="bar"><div class="bar-fill" style="width: 99%"></div></div>
-                </div>
-                <span class="throughput">5467 ops/s</span>
-            </div>
-            
-            <div class="bottleneck-item ok">
-                <div>
-                    <span class="name">Drools Benchmark</span>
-                    <div class="bar"><div class="bar-fill" style="width: 100%"></div></div>
-                </div>
-                <span class="throughput">5481 ops/s</span>
-            </div>
-            
-        </div>
-
-        <h2 style="color: #00d4ff; font-size: 12px; text-transform: uppercase; margin-bottom: 10px;">Component Reports</h2>
-        <ul class="component-list">
-            
-            <li data-component="full" class="active">
-                <span class="name">Full End-to-End Benchmark</span>
-                <div class="stats">
-                    <span>3620 ops/s</span>
-                    <span>P99: 32ms</span>
-                </div>
-            </li>
-            
-            <li data-component="http" >
-                <span class="name">HTTP Benchmark</span>
-                <div class="stats">
-                    <span>5467 ops/s</span>
-                    <span>P99: 86ms</span>
-                </div>
-            </li>
-            
-            <li data-component="drools" >
-                <span class="name">Drools Benchmark</span>
-                <div class="stats">
-                    <span>5481 ops/s</span>
-                    <span>P99: 56ms</span>
-                </div>
-            </li>
-            
-            <li data-component="gateway" >
-                <span class="name">Gateway Benchmark</span>
-                <div class="stats">
-                    <span>5375 ops/s</span>
-                    <span>P99: 9ms</span>
-                </div>
-            </li>
-            
-        </ul>
-    </nav>
-    <main>
-        <iframe id="report-frame" src="full/index.html"></iframe>
-        <div class="footer">Go Benchmark Tool | Reactive System with Delivery Guarantees</div>
-    </main>
+    <div id="root"><div class="loading">Loading benchmark dashboard...</div></div>
     <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const items = document.querySelectorAll('.component-list li');
-        const frame = document.getElementById('report-frame');
-
-        items.forEach(item => {
-            item.addEventListener('click', function() {
-                items.forEach(i => i.classList.remove('active'));
-                this.classList.add('active');
-                const component = this.dataset.component;
-                frame.src = component + '/index.html';
-            });
-        });
-    });
+        window.__BENCHMARK_INDEX__ = {
+  "components": [
+    {
+      "id": "full",
+      "name": "Full End-to-End",
+      "peakThroughput": 4651,
+      "avgThroughput": 971,
+      "latencyP99": 25,
+      "status": "completed"
+    },
+    {
+      "id": "http",
+      "name": "HTTP Benchmark",
+      "peakThroughput": 12990,
+      "avgThroughput": 7349,
+      "latencyP99": 3,
+      "status": "completed"
+    },
+    {
+      "id": "kafka",
+      "name": "Kafka Benchmark",
+      "peakThroughput": 6060,
+      "avgThroughput": 3433,
+      "latencyP99": 26621,
+      "status": "completed"
+    },
+    {
+      "id": "drools",
+      "name": "Drools Benchmark",
+      "peakThroughput": 3482,
+      "avgThroughput": 1249,
+      "latencyP99": 78,
+      "status": "completed"
+    },
+    {
+      "id": "gateway",
+      "name": "Gateway Benchmark",
+      "peakThroughput": 14481,
+      "avgThroughput": 5840,
+      "latencyP99": 5,
+      "status": "completed"
+    }
+  ],
+  "rankings": [
+    {
+      "id": "drools",
+      "name": "Drools Benchmark",
+      "peakThroughput": 3482,
+      "barWidth": 24,
+      "isBottleneck": true
+    },
+    {
+      "id": "full",
+      "name": "Full End-to-End",
+      "peakThroughput": 4651,
+      "barWidth": 32,
+      "isBottleneck": false
+    },
+    {
+      "id": "kafka",
+      "name": "Kafka Benchmark",
+      "peakThroughput": 6060,
+      "barWidth": 41,
+      "isBottleneck": false
+    },
+    {
+      "id": "http",
+      "name": "HTTP Benchmark",
+      "peakThroughput": 12990,
+      "barWidth": 89,
+      "isBottleneck": false
+    },
+    {
+      "id": "gateway",
+      "name": "Gateway Benchmark",
+      "peakThroughput": 14481,
+      "barWidth": 100,
+      "isBottleneck": false
+    }
+  ],
+  "generatedAt": "2025-12-22 10:05:28"
+};
     </script>
+    <script src="assets/benchmark-index.js"></script>
+    <script src="assets/regression-overlay.js"></script>
 </body>
 </html>

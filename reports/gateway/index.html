@@ -4,480 +4,140 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gateway Benchmark Report</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>" />
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1a1a2e; color: #eee; padding: 20px; }
-        .container { max-width: 1400px; margin: 0 auto; }
-        h1 { color: #00d4ff; margin-bottom: 10px; }
-        .description { color: #888; margin-bottom: 30px; font-size: 14px; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 30px; }
-        .card { background: #16213e; border-radius: 12px; padding: 20px; }
-        .card h3 { color: #00d4ff; margin-bottom: 15px; font-size: 14px; text-transform: uppercase; }
-        .metric { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #2a2a4a; }
-        .metric:last-child { border-bottom: none; }
-        .metric-label { color: #888; }
-        .metric-value { font-weight: bold; color: #00d4ff; }
-        .metric-value.success { color: #4ade80; }
-        .metric-value.error { color: #f87171; }
-        .chart-container { height: 250px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #2a2a4a; }
-        th { color: #00d4ff; font-size: 12px; text-transform: uppercase; }
-        .status-success { color: #4ade80; }
-        .status-error { color: #f87171; }
-        .footer { margin-top: 30px; text-align: center; color: #666; font-size: 12px; }
-        code { background: #2a2a4a; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
-
-         
-        .btn { padding: 4px 10px; border-radius: 4px; border: none; cursor: pointer; font-size: 11px; margin-right: 4px; }
-        .btn-trace { background: #8b5cf6; color: white; }
-        .btn-logs { background: #f59e0b; color: #1a1a2e; }
-        .btn:hover { opacity: 0.8; }
-        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
-
-         
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; overflow-y: auto; }
-        .modal.active { display: flex; justify-content: center; align-items: flex-start; padding: 40px 20px; }
-        .modal-content { background: #16213e; border-radius: 12px; max-width: 1000px; width: 100%; max-height: 90vh; overflow-y: auto; }
-        .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; border-bottom: 1px solid #2a2a4a; position: sticky; top: 0; background: #16213e; z-index: 10; }
-        .modal-header h3 { color: #00d4ff; font-size: 14px; }
-        .modal-close { background: none; border: none; color: #888; font-size: 24px; cursor: pointer; }
-        .modal-close:hover { color: #fff; }
-        .modal-body { padding: 20px; }
-
-         
-        .trace-viewer { font-family: monospace; font-size: 12px; }
-        .span-row { display: flex; align-items: center; padding: 8px 0; border-bottom: 1px solid #2a2a4a; }
-        .span-service { width: 120px; padding: 4px 8px; border-radius: 4px; text-align: center; font-size: 11px; font-weight: 500; flex-shrink: 0; }
-        .span-service.gateway { background: #4ade80; color: #1a1a2e; }
-        .span-service.kafka { background: #f59e0b; color: #1a1a2e; }
-        .span-service.flink { background: #8b5cf6; color: white; }
-        .span-service.drools { background: #f87171; color: #1a1a2e; }
-        .span-service.unknown { background: #666; color: white; }
-        .span-info { flex: 1; margin-left: 15px; }
-        .span-operation { color: #eee; }
-        .span-duration { color: #00d4ff; margin-left: 10px; }
-        .span-bar-container { flex: 1; margin-left: 20px; height: 20px; background: #2a2a4a; border-radius: 4px; position: relative; min-width: 200px; }
-        .span-bar { position: absolute; height: 100%; border-radius: 4px; min-width: 2px; }
-        .span-bar.gateway { background: #4ade80; }
-        .span-bar.kafka { background: #f59e0b; }
-        .span-bar.flink { background: #8b5cf6; }
-        .span-bar.drools { background: #f87171; }
-        .span-bar.unknown { background: #666; }
-
-         
-        .log-viewer { font-family: monospace; font-size: 11px; }
-        .log-entry { padding: 8px 12px; border-bottom: 1px solid #2a2a4a; display: flex; gap: 10px; align-items: flex-start; }
-        .log-entry:hover { background: #1a1a2e; }
-        .log-time { color: #666; white-space: nowrap; flex-shrink: 0; font-size: 10px; }
-        .log-level { padding: 2px 6px; border-radius: 3px; font-size: 9px; font-weight: bold; flex-shrink: 0; min-width: 45px; text-align: center; }
-        .log-level.error { background: #f87171; color: #1a1a2e; }
-        .log-level.warn { background: #f59e0b; color: #1a1a2e; }
-        .log-level.info { background: #3b82f6; color: white; }
-        .log-level.debug { background: #6b7280; color: white; }
-        .log-service { padding: 2px 8px; border-radius: 4px; font-size: 10px; flex-shrink: 0; }
-        .log-service.gateway { background: #4ade80; color: #1a1a2e; }
-        .log-service.kafka { background: #f59e0b; color: #1a1a2e; }
-        .log-service.flink { background: #8b5cf6; color: white; }
-        .log-service.drools { background: #f87171; color: #1a1a2e; }
-        .log-logger { color: #666; font-size: 10px; flex-shrink: 0; }
-        .log-message { color: #eee; flex: 1; word-break: break-word; }
-
-        .no-data { color: #666; text-align: center; padding: 40px; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        #root { min-height: 100vh; }
+        .loading { display: flex; justify-content: center; align-items: center; height: 100vh; font-size: 18px; color: #666; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Gateway Benchmark</h1>
-        <p class="description">Gateway HTTP handling with delivery guarantees (waits for Kafka ack)</p>
-
-        <div class="grid">
-            <div class="card">
-                <h3>Throughput</h3>
-                <div class="metric">
-                    <span class="metric-label">Peak</span>
-                    <span class="metric-value">5375 ops/sec</span>
-                </div>
-                <div class="metric">
-                    <span class="metric-label">Average</span>
-                    <span class="metric-value">4275 ops/sec</span>
-                </div>
-            </div>
-
-            <div class="card">
-                <h3>Operations</h3>
-                <div class="metric">
-                    <span class="metric-label">Total</span>
-                    <span class="metric-value">47919</span>
-                </div>
-                <div class="metric">
-                    <span class="metric-label">Successful</span>
-                    <span class="metric-value success">47919</span>
-                </div>
-                <div class="metric">
-                    <span class="metric-label">Failed</span>
-                    <span class="metric-value error">0</span>
-                </div>
-                <div class="metric">
-                    <span class="metric-label">Success Rate</span>
-                    <span class="metric-value">100.0%</span>
-                </div>
-            </div>
-
-            <div class="card">
-                <h3>Latency (ms)</h3>
-                <div class="metric">
-                    <span class="metric-label">P50</span>
-                    <span class="metric-value">1</span>
-                </div>
-                <div class="metric">
-                    <span class="metric-label">P95</span>
-                    <span class="metric-value">5</span>
-                </div>
-                <div class="metric">
-                    <span class="metric-label">P99</span>
-                    <span class="metric-value">9</span>
-                </div>
-                <div class="metric">
-                    <span class="metric-label">Max</span>
-                    <span class="metric-value">54</span>
-                </div>
-            </div>
-
-            <div class="card">
-                <h3>Resources</h3>
-                <div class="metric">
-                    <span class="metric-label">Peak CPU</span>
-                    <span class="metric-value">99.5%</span>
-                </div>
-                <div class="metric">
-                    <span class="metric-label">Peak Memory</span>
-                    <span class="metric-value">93.8%</span>
-                </div>
-                <div class="metric">
-                    <span class="metric-label">Duration</span>
-                    <span class="metric-value">10s</span>
-                </div>
-            </div>
-        </div>
-
-        <div class="grid">
-            <div class="card">
-                <h3>Throughput Over Time</h3>
-                <div class="chart-container">
-                    <canvas id="throughputChart"></canvas>
-                </div>
-            </div>
-            <div class="card">
-                <h3>Resource Usage</h3>
-                <div class="chart-container">
-                    <canvas id="resourceChart"></canvas>
-                </div>
-            </div>
-        </div>
-
-        
-        <div class="card">
-            <h3>Sample Events</h3>
-            <table>
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Trace ID</th>
-                        <th>Latency</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="sample-events-table">
-                </tbody>
-            </table>
-        </div>
-        
-
-        <div class="footer">
-            Generated: 2025-12-21 00:47:51 | Commit: unknown | Go Benchmark Tool
-        </div>
-    </div>
-
-    
-    <div id="trace-modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Trace Viewer - <span id="trace-modal-id"></span></h3>
-                <button class="modal-close" onclick="closeModal('trace-modal')">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div id="trace-viewer" class="trace-viewer"></div>
-            </div>
-        </div>
-    </div>
-
-    
-    <div id="logs-modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Logs - <span id="logs-modal-id"></span></h3>
-                <button class="modal-close" onclick="closeModal('logs-modal')">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div id="logs-viewer" class="log-viewer"></div>
-            </div>
-        </div>
-    </div>
-
+    <div id="root"><div class="loading">Loading benchmark report...</div></div>
     <script>
-        const labels = ["1s","2s","3s","4s","5s","6s","7s","8s","9s"];
-        const throughputData = [0,4591,4457,4578,4466,4675,5375,5083,5257];
-        const cpuData = [73.69758576939662,98.72773536778844,98.49246231156515,99.49748743819278,99.49999999953434,98.99749373485868,98.74686716674981,98.49624060155861,98.48484848489304];
-        const memoryData = [86.36492268069192,88.55005714026531,90.453483682732,91.3407107874313,93.29126942103451,92.87940593844628,93.76628793369166,93.27864827529085,93.58495756632757];
-        const sampleEvents = [{"id":"gateway_4_1766275601274584304","traceId":"","otelTraceId":"","timestamp":1766275601274,"latencyMs":3,"status":"success","componentTiming":{"gatewayMs":3,"kafkaMs":0,"flinkMs":0,"droolsMs":0}},{"id":"gateway_1_1766275601274564680","traceId":"","otelTraceId":"","timestamp":1766275601274,"latencyMs":3,"status":"success","componentTiming":{"gatewayMs":3,"kafkaMs":0,"flinkMs":0,"droolsMs":0}}];
-
-        
-        new Chart(document.getElementById('throughputChart'), {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Throughput (ops/sec)',
-                    data: throughputData,
-                    borderColor: '#00d4ff',
-                    backgroundColor: 'rgba(0, 212, 255, 0.1)',
-                    fill: true,
-                    tension: 0.3
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                    y: { beginAtZero: true, grid: { color: '#2a2a4a' }, ticks: { color: '#888' } },
-                    x: { grid: { color: '#2a2a4a' }, ticks: { color: '#888' } }
-                }
-            }
-        });
-
-        new Chart(document.getElementById('resourceChart'), {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [
-                    {
-                        label: 'CPU %',
-                        data: cpuData,
-                        borderColor: '#f59e0b',
-                        tension: 0.3
-                    },
-                    {
-                        label: 'Memory %',
-                        data: memoryData,
-                        borderColor: '#8b5cf6',
-                        tension: 0.3
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { labels: { color: '#888' } } },
-                scales: {
-                    y: { beginAtZero: true, max: 100, grid: { color: '#2a2a4a' }, ticks: { color: '#888' } },
-                    x: { grid: { color: '#2a2a4a' }, ticks: { color: '#888' } }
-                }
-            }
-        });
-
-        
-        function renderSampleEventsTable() {
-            const tbody = document.getElementById('sample-events-table');
-            if (!tbody || !sampleEvents) return;
-
-            tbody.innerHTML = sampleEvents.map((event, idx) => {
-                const hasTrace = event.traceData && event.traceData.trace;
-                const hasLogs = event.traceData && event.traceData.logs && event.traceData.logs.length > 0;
-                return `
-                    <tr>
-                        <td><code>${event.id || '-'}</code></td>
-                        <td><code>${event.traceId || '-'}</code></td>
-                        <td>${event.latencyMs}ms</td>
-                        <td class="status-${event.status}">${event.status}</td>
-                        <td>
-                            <button class="btn btn-trace" onclick="showTrace(${idx})" ${hasTrace ? '' : 'disabled'}>
-                                Trace ${hasTrace ? '(' + event.traceData.trace.spans.length + ')' : ''}
-                            </button>
-                            <button class="btn btn-logs" onclick="showLogs(${idx})" ${hasLogs ? '' : 'disabled'}>
-                                Logs ${hasLogs ? '(' + event.traceData.logs.length + ')' : ''}
-                            </button>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
+        window.__BENCHMARK_DATA__ = {
+  "component" : "gateway",
+  "name" : "Gateway Benchmark",
+  "description" : "Tests HTTP + Kafka publish",
+  "startTime" : "2025-12-21T13:36:19.671668537Z",
+  "endTime" : "2025-12-21T13:36:39.680992682Z",
+  "durationMs" : 20009,
+  "totalOperations" : 116868,
+  "successfulOperations" : 116868,
+  "failedOperations" : 0,
+  "peakThroughput" : 14481,
+  "avgThroughput" : 5840,
+  "throughputTimeline" : [ 0, 0, 0, 0, 3149, 4921, 14481, 6411, 5762, 5789, 4381, 4364, 6553, 6554, 8765, 8773, 9219, 9208, 9681, 9673, 9085, 9089, 10230, 10237, 9510, 9516, 9641, 9652, 9610, 9602 ],
+  "latency" : {
+    "min" : 0,
+    "max" : 44,
+    "avg" : 0,
+    "p50" : 1,
+    "p95" : 3,
+    "p99" : 5
+  },
+  "cpuTimeline" : [ 67.73681640625, 67.73681640625, 67.73681640625, 67.73681640625, 80.33447265625, 80.33447265625, 80.33447265625, 80.33447265625, 80.33447265625, 93.93310546875, 93.93310546875, 93.93310546875, 93.93310546875, 93.93310546875, 106.43310546875, 106.43310546875, 106.43310546875, 106.43310546875 ],
+  "memoryTimeline" : [ 0.887165011839958, 0.887165011839958, 0.887165011839958, 0.9132081155940575, 0.7942292091223354, 1.3905572361950918, 2.7675736443666827, 1.3990500379883797, 3.8748855667807143, 3.380341823358468, 1.9806751208877946, 1.6184998328462017, 8.373117687483248, 4.017141825255424, 5.284428524321432, 10.394646252921804, 5.705601512243, 10.413795571274282 ],
+  "peakCpu" : 106.43310546875,
+  "peakMemory" : 10.413795571274282,
+  "avgCpu" : 87.11208767361111,
+  "avgMemory" : 3.6094026108977104,
+  "componentTiming" : null,
+  "sampleEvents" : [ {
+    "id" : "gateway_4_1766324197678",
+    "traceId" : "000e7ece652f11c20000000000000004",
+    "otelTraceId" : null,
+    "timestamp" : 1766324197680,
+    "latencyMs" : 2,
+    "status" : "success",
+    "error" : null,
+    "componentTiming" : {
+      "gatewayMs" : 2,
+      "kafkaMs" : 0,
+      "flinkMs" : 0,
+      "droolsMs" : 0
+    },
+    "traceData" : {
+      "trace" : null,
+      "logs" : [ {
+        "timestamp" : "1766324197679138545",
+        "line" : "{\"timestamp\":\"2025-12-21T13:36:37.679138545Z\",\"@version\":\"1\",\"message\":\"Publishing event: requestId=000e7ece652f11c20000000000000004, customerId=null, sessionId=gateway-bench-4, action=increment\",\"logger\":\"com.reactive.gateway.service.KafkaService\",\"thread\":\"reactor-http-nio-1\",\"level\":\"INFO\",\"level_value\":20000,\"serviceVersion\":\"1.0.0\",\"serviceName\":\"gateway\",\"traceId\":\"d97b59a2ee34a0c2598d704bbd13a90c\",\"spanId\":\"973cba91aba489a9\",\"service\":\"gateway\",\"version\":\"1.0.0\"}",
+        "labels" : {
+          "compose_service" : "gateway",
+          "container" : "reactive-application",
+          "container_id" : "c353013a1a15c2aa116aee85929f7dc3359d6741de313eedc5267b9acf0117b4",
+          "level" : "INFO",
+          "project" : "reactive-system-01",
+          "service" : "application"
+        },
+        "fields" : {
+          "timestamp" : "2025-12-21T13:36:37.679138545Z",
+          "@version" : "1",
+          "message" : "Publishing event: requestId=000e7ece652f11c20000000000000004, customerId=null, sessionId=gateway-bench-4, action=increment",
+          "logger" : "com.reactive.gateway.service.KafkaService",
+          "thread" : "reactor-http-nio-1",
+          "level" : "INFO",
+          "level_value" : 20000,
+          "serviceVersion" : "1.0.0",
+          "serviceName" : "gateway",
+          "traceId" : "d97b59a2ee34a0c2598d704bbd13a90c",
+          "spanId" : "973cba91aba489a9",
+          "service" : "gateway",
+          "version" : "1.0.0"
         }
-
-        
-        function getServiceClass(serviceName) {
-            const name = (serviceName || '').toLowerCase();
-            if (name.includes('gateway')) return 'gateway';
-            if (name.includes('kafka')) return 'kafka';
-            if (name.includes('flink')) return 'flink';
-            if (name.includes('drools')) return 'drools';
-            return 'unknown';
+      } ]
+    }
+  }, {
+    "id" : "gateway_2_1766324197678",
+    "traceId" : "000e7ece653011c20000000000000000",
+    "otelTraceId" : null,
+    "timestamp" : 1766324197680,
+    "latencyMs" : 2,
+    "status" : "success",
+    "error" : null,
+    "componentTiming" : {
+      "gatewayMs" : 2,
+      "kafkaMs" : 0,
+      "flinkMs" : 0,
+      "droolsMs" : 0
+    },
+    "traceData" : {
+      "trace" : null,
+      "logs" : [ {
+        "timestamp" : "1766324197680465495",
+        "line" : "{\"timestamp\":\"2025-12-21T13:36:37.680465495Z\",\"@version\":\"1\",\"message\":\"Publishing event: requestId=000e7ece653011c20000000000000000, customerId=null, sessionId=gateway-bench-2, action=increment\",\"logger\":\"com.reactive.gateway.service.KafkaService\",\"thread\":\"reactor-http-nio-2\",\"level\":\"INFO\",\"level_value\":20000,\"serviceVersion\":\"1.0.0\",\"serviceName\":\"gateway\",\"traceId\":\"8cd234978275fd6457f971d030864c7a\",\"spanId\":\"3b57d490eba6ae31\",\"service\":\"gateway\",\"version\":\"1.0.0\"}",
+        "labels" : {
+          "compose_service" : "gateway",
+          "container" : "reactive-application",
+          "container_id" : "c353013a1a15c2aa116aee85929f7dc3359d6741de313eedc5267b9acf0117b4",
+          "level" : "INFO",
+          "project" : "reactive-system-01",
+          "service" : "application"
+        },
+        "fields" : {
+          "timestamp" : "2025-12-21T13:36:37.680465495Z",
+          "@version" : "1",
+          "message" : "Publishing event: requestId=000e7ece653011c20000000000000000, customerId=null, sessionId=gateway-bench-2, action=increment",
+          "logger" : "com.reactive.gateway.service.KafkaService",
+          "thread" : "reactor-http-nio-2",
+          "level" : "INFO",
+          "level_value" : 20000,
+          "serviceVersion" : "1.0.0",
+          "serviceName" : "gateway",
+          "traceId" : "8cd234978275fd6457f971d030864c7a",
+          "spanId" : "3b57d490eba6ae31",
+          "service" : "gateway",
+          "version" : "1.0.0"
         }
-
-        
-        function showTrace(idx) {
-            const event = sampleEvents[idx];
-            if (!event || !event.traceData || !event.traceData.trace) return;
-
-            const trace = event.traceData.trace;
-            const viewer = document.getElementById('trace-viewer');
-            document.getElementById('trace-modal-id').textContent = event.traceId;
-
-            
-            const spans = [...trace.spans].sort((a, b) => a.startTime - b.startTime);
-            if (spans.length === 0) {
-                viewer.innerHTML = '<div class="no-data">No spans found</div>';
-                openModal('trace-modal');
-                return;
-            }
-
-            
-            const minTime = spans[0].startTime;
-            const maxTime = Math.max(...spans.map(s => s.startTime + s.duration));
-            const totalDuration = maxTime - minTime;
-
-            viewer.innerHTML = spans.map(span => {
-                const serviceName = trace.processes[span.processID]?.serviceName || 'unknown';
-                const serviceClass = getServiceClass(serviceName);
-                const durationMs = (span.duration / 1000).toFixed(2);
-                const offsetPct = ((span.startTime - minTime) / totalDuration * 100).toFixed(2);
-                const widthPct = Math.max((span.duration / totalDuration * 100), 0.5).toFixed(2);
-
-                return `
-                    <div class="span-row">
-                        <div class="span-service ${serviceClass}">${serviceName}</div>
-                        <div class="span-info">
-                            <span class="span-operation">${span.operationName}</span>
-                            <span class="span-duration">${durationMs}ms</span>
-                        </div>
-                        <div class="span-bar-container">
-                            <div class="span-bar ${serviceClass}" style="left: ${offsetPct}%; width: ${widthPct}%"></div>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-
-            openModal('trace-modal');
-        }
-
-        
-        function showLogs(idx) {
-            const event = sampleEvents[idx];
-            if (!event || !event.traceData || !event.traceData.logs) return;
-
-            const logs = event.traceData.logs;
-            const viewer = document.getElementById('logs-viewer');
-            document.getElementById('logs-modal-id').textContent = event.traceId;
-
-            if (logs.length === 0) {
-                viewer.innerHTML = '<div class="no-data">No logs found</div>';
-                openModal('logs-modal');
-                return;
-            }
-
-            viewer.innerHTML = logs.map(log => {
-                const service = log.labels?.service || log.labels?.container || 'unknown';
-                const serviceClass = getServiceClass(service);
-
-                
-                let parsed = null;
-                try {
-                    parsed = JSON.parse(log.line);
-                } catch (e) {}
-
-                
-                let time = '-';
-                let level = 'INFO';
-                let message = log.line;
-                let logger = '';
-
-                if (parsed) {
-                    
-                    if (parsed.timestamp) {
-                        time = parsed.timestamp.split('T')[1] || parsed.timestamp;
-                    }
-                    
-                    level = (parsed.level || 'INFO').trim().toUpperCase();
-                    
-                    message = parsed.message || parsed.msg || log.line;
-                    
-                    if (parsed.logger) {
-                        const parts = parsed.logger.split('.');
-                        logger = parts[parts.length - 1];
-                    }
-                } else if (log.timestamp) {
-                    try {
-                        const ts = parseInt(log.timestamp) / 1000000;
-                        time = new Date(ts).toISOString().split('T')[1].replace('Z', '');
-                    } catch (e) {}
-                }
-
-                
-                const levelClass = level === 'ERROR' ? 'error' : level === 'WARN' ? 'warn' : level === 'DEBUG' ? 'debug' : 'info';
-
-                return `
-                    <div class="log-entry">
-                        <span class="log-time">${time}</span>
-                        <span class="log-level ${levelClass}">${level}</span>
-                        <span class="log-service ${serviceClass}">${service}</span>
-                        ${logger ? `<span class="log-logger">${logger}</span>` : ''}
-                        <span class="log-message">${escapeHtml(message)}</span>
-                    </div>
-                `;
-            }).join('');
-
-            openModal('logs-modal');
-        }
-
-        
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
-        
-        function openModal(id) {
-            document.getElementById(id).classList.add('active');
-            document.body.style.overflow = 'hidden';
-        }
-
-        function closeModal(id) {
-            document.getElementById(id).classList.remove('active');
-            document.body.style.overflow = '';
-        }
-
-        
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                document.querySelectorAll('.modal.active').forEach(m => m.classList.remove('active'));
-                document.body.style.overflow = '';
-            }
-        });
-
-        document.querySelectorAll('.modal').forEach(modal => {
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) {
-                    modal.classList.remove('active');
-                    document.body.style.overflow = '';
-                }
-            });
-        });
-
-        
-        renderSampleEventsTable();
+      } ]
+    }
+  } ],
+  "status" : "completed",
+  "errorMessage" : null,
+  "success" : true
+};
+        window.__BENCHMARK_COMMIT__ = "58b5598";
     </script>
+    <script src="../assets/benchmark-report.js"></script>
 </body>
 </html>

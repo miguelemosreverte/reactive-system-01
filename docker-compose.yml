@@ -315,7 +315,7 @@ services:
       - |
         FLINK_PROPERTIES=
         jobmanager.rpc.address: flink-jobmanager
-        parallelism.default: 4
+        parallelism.default: 8
       # OpenTelemetry Configuration
       - OTEL_ENABLED=${OTEL_FEATURE_ENABLED:-true}
       - OTEL_SERVICE_NAME=flink-jobmanager
@@ -342,21 +342,20 @@ services:
     build:
       context: ./flink
       dockerfile: Dockerfile
-    container_name: reactive-flink-taskmanager
+    # No container_name to allow scaling with: docker compose up -d --scale flink-taskmanager=2
     depends_on:
       flink-jobmanager:
         condition: service_started
       otel-collector:
         condition: service_healthy
     command: taskmanager
-    ports:
-      - "9249:9249"  # Prometheus metrics
+    # Note: Prometheus metrics port removed to allow scaling (use port range if needed)
     environment:
       - |
         FLINK_PROPERTIES=
         jobmanager.rpc.address: flink-jobmanager
-        taskmanager.numberOfTaskSlots: 4
-        parallelism.default: 4
+        taskmanager.numberOfTaskSlots: 8
+        parallelism.default: 8
         metrics.reporter.prom.factory.class: org.apache.flink.metrics.prometheus.PrometheusReporterFactory
         metrics.reporter.prom.port: 9249
         taskmanager.network.memory.buffer-debloat.enabled: true
@@ -439,9 +438,9 @@ services:
       tail -f /dev/null
       "
     environment:
-      # Dev mode: reduced parallelism and async capacity for stability
-      - FLINK_PARALLELISM=4
-      - ASYNC_CAPACITY=200
+      # Parallelism matches taskmanager slots (8 slots, parallelism 4 = 8 total tasks)
+      - FLINK_PARALLELISM=8  # Increased: 2 taskmanagers × 8 slots = 16 slots, parallelism 8 uses 16 (2 operator chains)
+      - ASYNC_CAPACITY=500
       # Kafka consumer tuning for high throughput
       - KAFKA_FETCH_MAX_WAIT_MS=1
       - FLINK_BUFFER_TIMEOUT_MS=1
@@ -494,47 +493,6 @@ services:
       timeout: 5s
       retries: 10
       start_period: 30s
-    networks:
-      - reactive-network
-
-  # ============================================
-  # Benchmark Service (Go - CI-ready benchmark runner)
-  # ============================================
-
-  benchmark:
-    build:
-      context: ./benchmark
-      dockerfile: Dockerfile
-    container_name: reactive-benchmark
-    ports:
-      - "8090:8090"
-    environment:
-      - PORT=8090
-      - REPORT_DIR=/reports
-      - API_KEY=${ADMIN_API_KEY:-reactive-admin-key}
-      - JAEGER_QUERY_URL=http://reactive-jaeger:16686
-      - LOKI_URL=http://reactive-loki:3100
-    volumes:
-      - ./reports:/reports
-    deploy:
-      resources:
-        limits:
-          memory: 256M
-          cpus: '0.5'
-    depends_on:
-      kafka:
-        condition: service_healthy
-      gateway:
-        condition: service_healthy
-      jaeger:
-        condition: service_healthy
-      loki:
-        condition: service_started
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8090/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
     networks:
       - reactive-network
 

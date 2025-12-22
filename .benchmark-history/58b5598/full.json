@@ -1,0 +1,537 @@
+{
+  "component" : "full",
+  "name" : "Full End-to-End",
+  "description" : "Complete pipeline: HTTP → Kafka → Flink → Drools",
+  "startTime" : "2025-12-21T14:06:06.088522945Z",
+  "endTime" : "2025-12-21T14:06:31.099517159Z",
+  "durationMs" : 25011,
+  "totalOperations" : 12390,
+  "successfulOperations" : 12390,
+  "failedOperations" : 0,
+  "peakThroughput" : 931,
+  "avgThroughput" : 495,
+  "throughputTimeline" : [ 0, 0, 0, 0, 193, 397, 931, 347, 423, 420, 551, 556, 628, 627, 598, 601, 740, 738, 616, 615, 747, 748, 782, 780, 763, 765, 882, 885, 724, 718, 610, 608, 583, 588, 625, 627, 720, 720, 833, 830 ],
+  "latency" : {
+    "min" : 1,
+    "max" : 315,
+    "avg" : 12,
+    "p50" : 11,
+    "p95" : 25,
+    "p99" : 39
+  },
+  "cpuTimeline" : [ 37.97607421875, 37.97607421875, 37.97607421875, 38.9404296875, 38.9404296875, 38.9404296875, 38.9404296875, 38.9404296875, 71.86279296875, 71.86279296875, 71.86279296875, 71.86279296875, 71.86279296875, 102.1484375, 102.1484375, 102.1484375, 102.1484375, 102.1484375, 105.9814453125, 105.9814453125, 105.9814453125, 105.9814453125, 105.9814453125 ],
+  "memoryTimeline" : [ 1.3649633505750978, 1.3649633505750978, 1.3649633505750978, 0.7002625527944863, 1.2053554161526001, 1.741970535724844, 2.2867123847291637, 3.0327686267471696, 3.9796927381836924, 1.7767046823511208, 2.937223355536745, 1.0598033516245822, 2.4032223236669084, 0.7731217308313888, 2.6843358722151707, 1.2627117568861945, 3.6905502334733304, 2.3880921026050865, 0.7934574161841337, 2.522298618474473, 1.0388906500053214, 3.3435575175357517, 2.7269230601044163 ],
+  "peakCpu" : 105.9814453125,
+  "peakMemory" : 3.9796927381836924,
+  "avgCpu" : 74.2866847826087,
+  "avgMemory" : 2.0192410859805165,
+  "componentTiming" : null,
+  "sampleEvents" : [ {
+    "id" : "full_5_1766325984062",
+    "traceId" : "000e7ee9a74011310000000000000000",
+    "otelTraceId" : null,
+    "timestamp" : 1766325984086,
+    "latencyMs" : 24,
+    "status" : "success",
+    "error" : null,
+    "componentTiming" : {
+      "gatewayMs" : 11,
+      "kafkaMs" : 0,
+      "flinkMs" : 13,
+      "droolsMs" : 0
+    },
+    "traceData" : {
+      "trace" : {
+        "traceId" : "4f80cb026a991f3d23b5bc77e01eeff7",
+        "spans" : [ {
+          "traceID" : "4f80cb026a991f3d23b5bc77e01eeff7",
+          "spanID" : "48a156b5b1e773b4",
+          "processID" : "p1",
+          "operationName" : "counter-results publish",
+          "startTime" : 1766325984077550,
+          "duration" : 3577,
+          "tags" : [ {
+            "key" : "messaging.system",
+            "type" : "string",
+            "value" : "kafka"
+          }, {
+            "key" : "thread.id",
+            "type" : "int64",
+            "value" : 95
+          }, {
+            "key" : "messaging.kafka.destination.partition",
+            "type" : "int64",
+            "value" : 4
+          }, {
+            "key" : "messaging.kafka.message.offset",
+            "type" : "int64",
+            "value" : 46821
+          }, {
+            "key" : "messaging.client_id",
+            "type" : "string",
+            "value" : "producer-4"
+          }, {
+            "key" : "thread.name",
+            "type" : "string",
+            "value" : "KeyedProcess -> (Sink: Writer -> Sink: Committer, async wait operator -> Sink: Writer -> Sink: Committer) (4/4)#0"
+          }, {
+            "key" : "messaging.destination.name",
+            "type" : "string",
+            "value" : "counter-results"
+          }, {
+            "key" : "messaging.operation",
+            "type" : "string",
+            "value" : "publish"
+          }, {
+            "key" : "span.kind",
+            "type" : "string",
+            "value" : "producer"
+          }, {
+            "key" : "internal.span.format",
+            "type" : "string",
+            "value" : "otlp"
+          } ],
+          "references" : [ {
+            "refType" : "CHILD_OF",
+            "traceID" : "4f80cb026a991f3d23b5bc77e01eeff7",
+            "spanID" : "efc633fd73bf34ac"
+          } ]
+        }, {
+          "traceID" : "4f80cb026a991f3d23b5bc77e01eeff7",
+          "spanID" : "efc633fd73bf34ac",
+          "processID" : "p2",
+          "operationName" : "flink.process_counter",
+          "startTime" : 1766325984077495,
+          "duration" : 1160,
+          "tags" : [ {
+            "key" : "eventId",
+            "type" : "string",
+            "value" : "019b413b9b400001"
+          }, {
+            "key" : "thread.id",
+            "type" : "int64",
+            "value" : 95
+          }, {
+            "key" : "counter.previous_value",
+            "type" : "int64",
+            "value" : 9122
+          }, {
+            "key" : "requestId",
+            "type" : "string",
+            "value" : "000e7ee9a74011310000000000000000"
+          }, {
+            "key" : "customerId",
+            "type" : "string",
+            "value" : ""
+          }, {
+            "key" : "counter.action",
+            "type" : "string",
+            "value" : "increment"
+          }, {
+            "key" : "thread.name",
+            "type" : "string",
+            "value" : "KeyedProcess -> (Sink: Writer -> Sink: Committer, async wait operator -> Sink: Writer -> Sink: Committer) (4/4)#0"
+          }, {
+            "key" : "counter.new_value",
+            "type" : "int64",
+            "value" : 9123
+          }, {
+            "key" : "processing.latency_ms",
+            "type" : "int64",
+            "value" : 0
+          }, {
+            "key" : "session.id",
+            "type" : "string",
+            "value" : "full-bench-5"
+          }, {
+            "key" : "span.kind",
+            "type" : "string",
+            "value" : "consumer"
+          }, {
+            "key" : "otel.status_code",
+            "type" : "string",
+            "value" : "OK"
+          }, {
+            "key" : "internal.span.format",
+            "type" : "string",
+            "value" : "otlp"
+          } ],
+          "references" : [ ]
+        }, {
+          "traceID" : "4f80cb026a991f3d23b5bc77e01eeff7",
+          "spanID" : "6f6304e89dc2f92a",
+          "processID" : "p3",
+          "operationName" : "counter-results process",
+          "startTime" : 1766325984084931,
+          "duration" : 521,
+          "tags" : [ {
+            "key" : "messaging.kafka.message.offset",
+            "type" : "int64",
+            "value" : 46821
+          }, {
+            "key" : "messaging.kafka.consumer.group",
+            "type" : "string",
+            "value" : "gateway-java"
+          }, {
+            "key" : "messaging.system",
+            "type" : "string",
+            "value" : "kafka"
+          }, {
+            "key" : "messaging.destination.name",
+            "type" : "string",
+            "value" : "counter-results"
+          }, {
+            "key" : "messaging.operation",
+            "type" : "string",
+            "value" : "process"
+          }, {
+            "key" : "thread.id",
+            "type" : "int64",
+            "value" : 35
+          }, {
+            "key" : "messaging.message.payload_size_bytes",
+            "type" : "int64",
+            "value" : 408
+          }, {
+            "key" : "messaging.client_id",
+            "type" : "string",
+            "value" : "consumer-gateway-java-1"
+          }, {
+            "key" : "thread.name",
+            "type" : "string",
+            "value" : "org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1"
+          }, {
+            "key" : "messaging.kafka.destination.partition",
+            "type" : "int64",
+            "value" : 4
+          }, {
+            "key" : "span.kind",
+            "type" : "string",
+            "value" : "consumer"
+          }, {
+            "key" : "internal.span.format",
+            "type" : "string",
+            "value" : "otlp"
+          } ],
+          "references" : [ {
+            "refType" : "CHILD_OF",
+            "traceID" : "4f80cb026a991f3d23b5bc77e01eeff7",
+            "spanID" : "48a156b5b1e773b4"
+          } ]
+        } ],
+        "processes" : {
+          "p1" : {
+            "serviceName" : "flink-taskmanager"
+          },
+          "p2" : {
+            "serviceName" : "flink-taskmanager"
+          },
+          "p3" : {
+            "serviceName" : "counter-application"
+          }
+        }
+      },
+      "logs" : [ {
+        "timestamp" : "1766325984077711407",
+        "line" : "{\"timestamp\":\"2025-12-21T14:06:24,077\",\"level\":\"INFO \",\"service\":\"flink\",\"logger\":\"com.reactive.flink.processor.CounterProcessor\",\"thread\":\"KeyedProcess -> (Sink: Writer -> Sink: Committer, async wait operator -> Sink: Writer -> Sink: Committer) (4/4)#0\",\"traceId\":\"4f80cb026a991f3d23b5bc77e01eeff7\",\"spanId\":\"efc633fd73bf34ac\",\"message\":\"Flink processed event: sessionId=full-bench-5, action=increment, newValue=9123, requestId=000e7ee9a74011310000000000000000, customerId=null\"}",
+        "labels" : {
+          "compose_service" : "flink-taskmanager",
+          "container" : "reactive-flink-taskmanager",
+          "container_id" : "8190fec4e2f8e1f1232b4ee25882ade1247d23da0732d3b5779d74b959979cbf",
+          "level" : "INFO",
+          "project" : "reactive-system-01",
+          "service" : "flink-taskmanager"
+        },
+        "fields" : {
+          "timestamp" : "2025-12-21T14:06:24,077",
+          "level" : "INFO ",
+          "service" : "flink",
+          "logger" : "com.reactive.flink.processor.CounterProcessor",
+          "thread" : "KeyedProcess -> (Sink: Writer -> Sink: Committer, async wait operator -> Sink: Writer -> Sink: Committer) (4/4)#0",
+          "traceId" : "4f80cb026a991f3d23b5bc77e01eeff7",
+          "spanId" : "efc633fd73bf34ac",
+          "message" : "Flink processed event: sessionId=full-bench-5, action=increment, newValue=9123, requestId=000e7ee9a74011310000000000000000, customerId=null"
+        }
+      }, {
+        "timestamp" : "1766325984082796908",
+        "line" : "{\"timestamp\":\"2025-12-21T14:06:24.082796908Z\",\"@version\":\"1\",\"message\":\"Drools evaluated: inputValue=9123, rulesFired=1, alert=CRITICAL, requestId=000e7ee9a74011310000000000000000, customerId=\",\"logger\":\"com.reactive.drools.service.RuleService\",\"thread\":\"http-nio-8080-exec-422\",\"level\":\"INFO\",\"level_value\":20000,\"serviceVersion\":\"1.0.0\",\"serviceName\":\"drools\",\"service\":\"drools\",\"version\":\"1.0.0\"}",
+        "labels" : {
+          "compose_service" : "drools",
+          "container" : "reactive-drools",
+          "container_id" : "10cf30d12f243e156be5a5b4c9452e1d909b267f8fbbbb0cc52b257b6edb1968",
+          "level" : "INFO",
+          "project" : "reactive-system-01",
+          "service" : "drools"
+        },
+        "fields" : {
+          "timestamp" : "2025-12-21T14:06:24.082796908Z",
+          "@version" : "1",
+          "message" : "Drools evaluated: inputValue=9123, rulesFired=1, alert=CRITICAL, requestId=000e7ee9a74011310000000000000000, customerId=",
+          "logger" : "com.reactive.drools.service.RuleService",
+          "thread" : "http-nio-8080-exec-422",
+          "level" : "INFO",
+          "level_value" : 20000,
+          "serviceVersion" : "1.0.0",
+          "serviceName" : "drools",
+          "service" : "drools",
+          "version" : "1.0.0"
+        }
+      } ]
+    }
+  }, {
+    "id" : "full_6_1766325984067",
+    "traceId" : "000e7ee9a74f11310000000000000000",
+    "otelTraceId" : null,
+    "timestamp" : 1766325984090,
+    "latencyMs" : 23,
+    "status" : "success",
+    "error" : null,
+    "componentTiming" : {
+      "gatewayMs" : 15,
+      "kafkaMs" : 0,
+      "flinkMs" : 8,
+      "droolsMs" : 0
+    },
+    "traceData" : {
+      "trace" : {
+        "traceId" : "445f4691a1f08fcb7ef91def53b661d0",
+        "spans" : [ {
+          "traceID" : "445f4691a1f08fcb7ef91def53b661d0",
+          "spanID" : "c37c6d2814da85b7",
+          "processID" : "p1",
+          "operationName" : "counter-results publish",
+          "startTime" : 1766325984087452,
+          "duration" : 684,
+          "tags" : [ {
+            "key" : "messaging.system",
+            "type" : "string",
+            "value" : "kafka"
+          }, {
+            "key" : "thread.id",
+            "type" : "int64",
+            "value" : 93
+          }, {
+            "key" : "messaging.kafka.destination.partition",
+            "type" : "int64",
+            "value" : 2
+          }, {
+            "key" : "messaging.kafka.message.offset",
+            "type" : "int64",
+            "value" : 47453
+          }, {
+            "key" : "messaging.client_id",
+            "type" : "string",
+            "value" : "producer-1"
+          }, {
+            "key" : "thread.name",
+            "type" : "string",
+            "value" : "KeyedProcess -> (Sink: Writer -> Sink: Committer, async wait operator -> Sink: Writer -> Sink: Committer) (2/4)#0"
+          }, {
+            "key" : "messaging.destination.name",
+            "type" : "string",
+            "value" : "counter-results"
+          }, {
+            "key" : "messaging.operation",
+            "type" : "string",
+            "value" : "publish"
+          }, {
+            "key" : "span.kind",
+            "type" : "string",
+            "value" : "producer"
+          }, {
+            "key" : "internal.span.format",
+            "type" : "string",
+            "value" : "otlp"
+          } ],
+          "references" : [ {
+            "refType" : "CHILD_OF",
+            "traceID" : "445f4691a1f08fcb7ef91def53b661d0",
+            "spanID" : "e547b1312454d552"
+          } ]
+        }, {
+          "traceID" : "445f4691a1f08fcb7ef91def53b661d0",
+          "spanID" : "e547b1312454d552",
+          "processID" : "p2",
+          "operationName" : "flink.process_counter",
+          "startTime" : 1766325984087426,
+          "duration" : 234,
+          "tags" : [ {
+            "key" : "eventId",
+            "type" : "string",
+            "value" : "019b413b9b4f0001"
+          }, {
+            "key" : "thread.id",
+            "type" : "int64",
+            "value" : 93
+          }, {
+            "key" : "counter.previous_value",
+            "type" : "int64",
+            "value" : 9234
+          }, {
+            "key" : "requestId",
+            "type" : "string",
+            "value" : "000e7ee9a74f11310000000000000000"
+          }, {
+            "key" : "customerId",
+            "type" : "string",
+            "value" : ""
+          }, {
+            "key" : "counter.action",
+            "type" : "string",
+            "value" : "increment"
+          }, {
+            "key" : "thread.name",
+            "type" : "string",
+            "value" : "KeyedProcess -> (Sink: Writer -> Sink: Committer, async wait operator -> Sink: Writer -> Sink: Committer) (2/4)#0"
+          }, {
+            "key" : "counter.new_value",
+            "type" : "int64",
+            "value" : 9235
+          }, {
+            "key" : "processing.latency_ms",
+            "type" : "int64",
+            "value" : 0
+          }, {
+            "key" : "session.id",
+            "type" : "string",
+            "value" : "full-bench-6"
+          }, {
+            "key" : "span.kind",
+            "type" : "string",
+            "value" : "consumer"
+          }, {
+            "key" : "otel.status_code",
+            "type" : "string",
+            "value" : "OK"
+          }, {
+            "key" : "internal.span.format",
+            "type" : "string",
+            "value" : "otlp"
+          } ],
+          "references" : [ ]
+        }, {
+          "traceID" : "445f4691a1f08fcb7ef91def53b661d0",
+          "spanID" : "393312763b11d803",
+          "processID" : "p3",
+          "operationName" : "counter-results process",
+          "startTime" : 1766325984088654,
+          "duration" : 794,
+          "tags" : [ {
+            "key" : "messaging.kafka.message.offset",
+            "type" : "int64",
+            "value" : 47453
+          }, {
+            "key" : "messaging.kafka.consumer.group",
+            "type" : "string",
+            "value" : "gateway-java"
+          }, {
+            "key" : "messaging.system",
+            "type" : "string",
+            "value" : "kafka"
+          }, {
+            "key" : "messaging.destination.name",
+            "type" : "string",
+            "value" : "counter-results"
+          }, {
+            "key" : "messaging.operation",
+            "type" : "string",
+            "value" : "process"
+          }, {
+            "key" : "thread.id",
+            "type" : "int64",
+            "value" : 35
+          }, {
+            "key" : "messaging.message.payload_size_bytes",
+            "type" : "int64",
+            "value" : 408
+          }, {
+            "key" : "messaging.client_id",
+            "type" : "string",
+            "value" : "consumer-gateway-java-1"
+          }, {
+            "key" : "thread.name",
+            "type" : "string",
+            "value" : "org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1"
+          }, {
+            "key" : "messaging.kafka.destination.partition",
+            "type" : "int64",
+            "value" : 2
+          }, {
+            "key" : "span.kind",
+            "type" : "string",
+            "value" : "consumer"
+          }, {
+            "key" : "internal.span.format",
+            "type" : "string",
+            "value" : "otlp"
+          } ],
+          "references" : [ {
+            "refType" : "CHILD_OF",
+            "traceID" : "445f4691a1f08fcb7ef91def53b661d0",
+            "spanID" : "c37c6d2814da85b7"
+          } ]
+        } ],
+        "processes" : {
+          "p1" : {
+            "serviceName" : "flink-taskmanager"
+          },
+          "p2" : {
+            "serviceName" : "flink-taskmanager"
+          },
+          "p3" : {
+            "serviceName" : "counter-application"
+          }
+        }
+      },
+      "logs" : [ {
+        "timestamp" : "1766325984087588788",
+        "line" : "{\"timestamp\":\"2025-12-21T14:06:24,087\",\"level\":\"INFO \",\"service\":\"flink\",\"logger\":\"com.reactive.flink.processor.CounterProcessor\",\"thread\":\"KeyedProcess -> (Sink: Writer -> Sink: Committer, async wait operator -> Sink: Writer -> Sink: Committer) (2/4)#0\",\"traceId\":\"445f4691a1f08fcb7ef91def53b661d0\",\"spanId\":\"e547b1312454d552\",\"message\":\"Flink processed event: sessionId=full-bench-6, action=increment, newValue=9235, requestId=000e7ee9a74f11310000000000000000, customerId=null\"}",
+        "labels" : {
+          "compose_service" : "flink-taskmanager",
+          "container" : "reactive-flink-taskmanager",
+          "container_id" : "8190fec4e2f8e1f1232b4ee25882ade1247d23da0732d3b5779d74b959979cbf",
+          "level" : "INFO",
+          "project" : "reactive-system-01",
+          "service" : "flink-taskmanager"
+        },
+        "fields" : {
+          "timestamp" : "2025-12-21T14:06:24,087",
+          "level" : "INFO ",
+          "service" : "flink",
+          "logger" : "com.reactive.flink.processor.CounterProcessor",
+          "thread" : "KeyedProcess -> (Sink: Writer -> Sink: Committer, async wait operator -> Sink: Writer -> Sink: Committer) (2/4)#0",
+          "traceId" : "445f4691a1f08fcb7ef91def53b661d0",
+          "spanId" : "e547b1312454d552",
+          "message" : "Flink processed event: sessionId=full-bench-6, action=increment, newValue=9235, requestId=000e7ee9a74f11310000000000000000, customerId=null"
+        }
+      }, {
+        "timestamp" : "1766325984091084690",
+        "line" : "{\"timestamp\":\"2025-12-21T14:06:24.09108469Z\",\"@version\":\"1\",\"message\":\"Drools evaluated: inputValue=9235, rulesFired=1, alert=CRITICAL, requestId=000e7ee9a74f11310000000000000000, customerId=\",\"logger\":\"com.reactive.drools.service.RuleService\",\"thread\":\"http-nio-8080-exec-363\",\"level\":\"INFO\",\"level_value\":20000,\"serviceVersion\":\"1.0.0\",\"serviceName\":\"drools\",\"service\":\"drools\",\"version\":\"1.0.0\"}",
+        "labels" : {
+          "compose_service" : "drools",
+          "container" : "reactive-drools",
+          "container_id" : "10cf30d12f243e156be5a5b4c9452e1d909b267f8fbbbb0cc52b257b6edb1968",
+          "level" : "INFO",
+          "project" : "reactive-system-01",
+          "service" : "drools"
+        },
+        "fields" : {
+          "timestamp" : "2025-12-21T14:06:24.09108469Z",
+          "@version" : "1",
+          "message" : "Drools evaluated: inputValue=9235, rulesFired=1, alert=CRITICAL, requestId=000e7ee9a74f11310000000000000000, customerId=",
+          "logger" : "com.reactive.drools.service.RuleService",
+          "thread" : "http-nio-8080-exec-363",
+          "level" : "INFO",
+          "level_value" : 20000,
+          "serviceVersion" : "1.0.0",
+          "serviceName" : "drools",
+          "service" : "drools",
+          "version" : "1.0.0"
+        }
+      } ]
+    }
+  } ],
+  "status" : "completed",
+  "errorMessage" : null,
+  "success" : true
+}

@@ -1,0 +1,103 @@
+# UI Service - React Frontend with Nginx
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ui
+  namespace: reactive-app
+  labels:
+    app: ui
+spec:
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+  selector:
+    app: ui
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ui-web
+  namespace: reactive-app
+  labels:
+    app: ui
+spec:
+  type: NodePort
+  ports:
+    - name: http
+      port: 80
+      nodePort: 30000
+  selector:
+    app: ui
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ui
+  namespace: reactive-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ui
+  template:
+    metadata:
+      labels:
+        app: ui
+    spec:
+      containers:
+        - name: ui
+          image: reactive-system-01-ui:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+              name: http
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "128Mi"
+              cpu: "250m"
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          volumeMounts:
+            - name: docs-volume
+              mountPath: /usr/share/nginx/docs
+              readOnly: true
+            - name: nginx-config
+              mountPath: /etc/nginx/conf.d/default.conf
+              subPath: default.conf
+              readOnly: true
+      volumes:
+        - name: docs-volume
+          configMap:
+            name: documentation-config
+            optional: true
+        - name: nginx-config
+          configMap:
+            name: ui-nginx-config
+---
+# ConfigMap for documentation (optional - can be created separately)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: documentation-config
+  namespace: reactive-app
+data:
+  DOCUMENTATION.md: |
+    # Reactive System Documentation
+
+    This is the main documentation for the reactive system.
+    For full documentation, please refer to the repository.

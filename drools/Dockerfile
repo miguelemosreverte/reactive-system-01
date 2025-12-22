@@ -19,9 +19,9 @@ RUN --mount=type=cache,target=/root/.m2/repository \
 # Copy source code
 COPY src ./src
 
-# Build the application (deps already cached)
+# Build the application (skip test compilation - benchmarks run outside Docker)
 RUN --mount=type=cache,target=/root/.m2/repository \
-    mvn package -DskipTests -B
+    mvn package -DskipTests -Dmaven.test.skip=true -B
 
 # Stage 2: Runtime (minimal)
 FROM eclipse-temurin:17-jre AS runtime

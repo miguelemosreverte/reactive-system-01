@@ -7,7 +7,7 @@ RUN mvn dependency:go-offline -B
 
 # Copy source and build
 COPY src ./src
-RUN mvn package -DskipTests -B
+RUN mvn package -DskipTests -Dmaven.test.skip=true -B
 
 # Runtime stage
 FROM eclipse-temurin:21-jre-alpine

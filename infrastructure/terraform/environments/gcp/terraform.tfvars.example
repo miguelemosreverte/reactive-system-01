@@ -1,0 +1,28 @@
+# GCP GKE Terraform Variables Example
+# Copy this file to terraform.tfvars and customize
+
+project_id   = "your-gcp-project-id"
+cluster_name = "reactive-system"
+region       = "us-central1"
+
+zones = ["us-central1-a", "us-central1-b", "us-central1-c"]
+
+network_name  = "reactive-system-vpc"
+subnet_cidr   = "10.0.0.0/20"
+pods_cidr     = "10.1.0.0/16"
+services_cidr = "10.2.0.0/20"
+
+kubernetes_version = "1.28"
+
+# For production, use larger instances
+# node_machine_type = "n2-standard-8"
+node_machine_type = "e2-standard-4"
+
+node_count     = 1
+node_min_count = 1
+node_max_count = 5
+
+environment = "production"
+
+enable_horizontal_pod_autoscaler = true
+enable_network_policy            = true

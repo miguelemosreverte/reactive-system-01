@@ -3,481 +3,802 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Full End-to-End Benchmark Report</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <title>Full End-to-End Report</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>" />
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1a1a2e; color: #eee; padding: 20px; }
-        .container { max-width: 1400px; margin: 0 auto; }
-        h1 { color: #00d4ff; margin-bottom: 10px; }
-        .description { color: #888; margin-bottom: 30px; font-size: 14px; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 30px; }
-        .card { background: #16213e; border-radius: 12px; padding: 20px; }
-        .card h3 { color: #00d4ff; margin-bottom: 15px; font-size: 14px; text-transform: uppercase; }
-        .metric { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #2a2a4a; }
-        .metric:last-child { border-bottom: none; }
-        .metric-label { color: #888; }
-        .metric-value { font-weight: bold; color: #00d4ff; }
-        .metric-value.success { color: #4ade80; }
-        .metric-value.error { color: #f87171; }
-        .chart-container { height: 250px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #2a2a4a; }
-        th { color: #00d4ff; font-size: 12px; text-transform: uppercase; }
-        .status-success { color: #4ade80; }
-        .status-error { color: #f87171; }
-        .footer { margin-top: 30px; text-align: center; color: #666; font-size: 12px; }
-        code { background: #2a2a4a; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
-
-         
-        .btn { padding: 4px 10px; border-radius: 4px; border: none; cursor: pointer; font-size: 11px; margin-right: 4px; }
-        .btn-trace { background: #8b5cf6; color: white; }
-        .btn-logs { background: #f59e0b; color: #1a1a2e; }
-        .btn:hover { opacity: 0.8; }
-        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
-
-         
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; overflow-y: auto; }
-        .modal.active { display: flex; justify-content: center; align-items: flex-start; padding: 40px 20px; }
-        .modal-content { background: #16213e; border-radius: 12px; max-width: 1000px; width: 100%; max-height: 90vh; overflow-y: auto; }
-        .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; border-bottom: 1px solid #2a2a4a; position: sticky; top: 0; background: #16213e; z-index: 10; }
-        .modal-header h3 { color: #00d4ff; font-size: 14px; }
-        .modal-close { background: none; border: none; color: #888; font-size: 24px; cursor: pointer; }
-        .modal-close:hover { color: #fff; }
-        .modal-body { padding: 20px; }
-
-         
-        .trace-viewer { font-family: monospace; font-size: 12px; }
-        .span-row { display: flex; align-items: center; padding: 8px 0; border-bottom: 1px solid #2a2a4a; }
-        .span-service { width: 120px; padding: 4px 8px; border-radius: 4px; text-align: center; font-size: 11px; font-weight: 500; flex-shrink: 0; }
-        .span-service.gateway { background: #4ade80; color: #1a1a2e; }
-        .span-service.kafka { background: #f59e0b; color: #1a1a2e; }
-        .span-service.flink { background: #8b5cf6; color: white; }
-        .span-service.drools { background: #f87171; color: #1a1a2e; }
-        .span-service.unknown { background: #666; color: white; }
-        .span-info { flex: 1; margin-left: 15px; }
-        .span-operation { color: #eee; }
-        .span-duration { color: #00d4ff; margin-left: 10px; }
-        .span-bar-container { flex: 1; margin-left: 20px; height: 20px; background: #2a2a4a; border-radius: 4px; position: relative; min-width: 200px; }
-        .span-bar { position: absolute; height: 100%; border-radius: 4px; min-width: 2px; }
-        .span-bar.gateway { background: #4ade80; }
-        .span-bar.kafka { background: #f59e0b; }
-        .span-bar.flink { background: #8b5cf6; }
-        .span-bar.drools { background: #f87171; }
-        .span-bar.unknown { background: #666; }
-
-         
-        .log-viewer { font-family: monospace; font-size: 11px; }
-        .log-entry { padding: 8px 12px; border-bottom: 1px solid #2a2a4a; display: flex; gap: 10px; align-items: flex-start; }
-        .log-entry:hover { background: #1a1a2e; }
-        .log-time { color: #666; white-space: nowrap; flex-shrink: 0; font-size: 10px; }
-        .log-level { padding: 2px 6px; border-radius: 3px; font-size: 9px; font-weight: bold; flex-shrink: 0; min-width: 45px; text-align: center; }
-        .log-level.error { background: #f87171; color: #1a1a2e; }
-        .log-level.warn { background: #f59e0b; color: #1a1a2e; }
-        .log-level.info { background: #3b82f6; color: white; }
-        .log-level.debug { background: #6b7280; color: white; }
-        .log-service { padding: 2px 8px; border-radius: 4px; font-size: 10px; flex-shrink: 0; }
-        .log-service.gateway { background: #4ade80; color: #1a1a2e; }
-        .log-service.kafka { background: #f59e0b; color: #1a1a2e; }
-        .log-service.flink { background: #8b5cf6; color: white; }
-        .log-service.drools { background: #f87171; color: #1a1a2e; }
-        .log-logger { color: #666; font-size: 10px; flex-shrink: 0; }
-        .log-message { color: #eee; flex: 1; word-break: break-word; }
-
-        .no-data { color: #666; text-align: center; padding: 40px; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        #root { min-height: 100vh; }
+        .loading { display: flex; justify-content: center; align-items: center; height: 100vh; font-size: 18px; color: #666; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Full End-to-End Benchmark</h1>
-        <p class="description">Complete pipeline: HTTP → Kafka → Flink → Drools</p>
-
-        <div class="grid">
-            <div class="card">
-                <h3>Throughput</h3>
-                <div class="metric">
-                    <span class="metric-label">Peak</span>
-                    <span class="metric-value">3620 ops/sec</span>
-                </div>
-                <div class="metric">
-                    <span class="metric-label">Average</span>
-                    <span class="metric-value">1799 ops/sec</span>
-                </div>
-            </div>
-
-            <div class="card">
-                <h3>Operations</h3>
-                <div class="metric">
-                    <span class="metric-label">Total</span>
-                    <span class="metric-value">55199</span>
-                </div>
-                <div class="metric">
-                    <span class="metric-label">Successful</span>
-                    <span class="metric-value success">55199</span>
-                </div>
-                <div class="metric">
-                    <span class="metric-label">Failed</span>
-                    <span class="metric-value error">0</span>
-                </div>
-                <div class="metric">
-                    <span class="metric-label">Success Rate</span>
-                    <span class="metric-value">100.0%</span>
-                </div>
-            </div>
-
-            <div class="card">
-                <h3>Latency (ms)</h3>
-                <div class="metric">
-                    <span class="metric-label">P50</span>
-                    <span class="metric-value">3</span>
-                </div>
-                <div class="metric">
-                    <span class="metric-label">P95</span>
-                    <span class="metric-value">16</span>
-                </div>
-                <div class="metric">
-                    <span class="metric-label">P99</span>
-                    <span class="metric-value">32</span>
-                </div>
-                <div class="metric">
-                    <span class="metric-label">Max</span>
-                    <span class="metric-value">282</span>
-                </div>
-            </div>
-
-            <div class="card">
-                <h3>Resources</h3>
-                <div class="metric">
-                    <span class="metric-label">Peak CPU</span>
-                    <span class="metric-value">100.0%</span>
-                </div>
-                <div class="metric">
-                    <span class="metric-label">Peak Memory</span>
-                    <span class="metric-value">85.6%</span>
-                </div>
-                <div class="metric">
-                    <span class="metric-label">Duration</span>
-                    <span class="metric-value">30s</span>
-                </div>
-            </div>
-        </div>
-
-        <div class="grid">
-            <div class="card">
-                <h3>Throughput Over Time</h3>
-                <div class="chart-container">
-                    <canvas id="throughputChart"></canvas>
-                </div>
-            </div>
-            <div class="card">
-                <h3>Resource Usage</h3>
-                <div class="chart-container">
-                    <canvas id="resourceChart"></canvas>
-                </div>
-            </div>
-        </div>
-
-        
-        <div class="card">
-            <h3>Sample Events</h3>
-            <table>
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Trace ID</th>
-                        <th>Latency</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="sample-events-table">
-                </tbody>
-            </table>
-        </div>
-        
-
-        <div class="footer">
-            Generated: 2025-12-21 00:46:21 | Commit: unknown | Go Benchmark Tool
-        </div>
-    </div>
-
-    
-    <div id="trace-modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Trace Viewer - <span id="trace-modal-id"></span></h3>
-                <button class="modal-close" onclick="closeModal('trace-modal')">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div id="trace-viewer" class="trace-viewer"></div>
-            </div>
-        </div>
-    </div>
-
-    
-    <div id="logs-modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Logs - <span id="logs-modal-id"></span></h3>
-                <button class="modal-close" onclick="closeModal('logs-modal')">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div id="logs-viewer" class="log-viewer"></div>
-            </div>
-        </div>
-    </div>
-
+    <div id="root"><div class="loading">Loading benchmark report...</div></div>
     <script>
-        const labels = ["1s","2s","3s","4s","5s","6s","7s","8s","9s","10s","11s","12s","13s","14s","15s","16s","17s","18s","19s","20s","21s","22s","23s","24s","25s","26s","27s","28s","29s"];
-        const throughputData = [0,410,605,689,1255,1438,1693,1316,1756,2561,1634,1801,1243,1886,2130,1713,243,776,1349,1682,2083,3036,2159,2283,2979,3593,3620,3267,2976];
-        const cpuData = [10.807313795735972,98.75311720727575,98.23232323218218,99.7493734348015,97.49373433503156,96.96202531653778,97.98994974832482,98.49246231160923,97.99498746971736,97.22921914244303,98.48484848493757,98.24561403495974,98.47328244278201,98.49624060155861,97.73299748191342,100,99.71264367788216,99.74937343335726,99.00000000052387,98.74371859325144,97.7386934666826,98.24120603001847,98.48866498745356,98.75000000029104,98.99749373482943,98.9974937334291,97.23618090486067,96.97732997490711,97.98994974838361];
-        const memoryData = [78.73637680430618,79.69864056455962,80.88561988067102,81.14790306565658,81.3844509456492,82.95834726096487,83.92593556707892,84.78979383161223,84.22973048923701,84.31650086622473,85.0120443199421,84.38867804344632,82.97249674857594,82.72658161197668,82.94109178826845,84.38069122465541,84.33567909159304,85.23680917715059,84.56478246765093,84.62532452614006,84.93049988611388,85.42760540382244,85.60380843072815,84.92808411993639,84.64405903935332,84.95480545194056,84.85891432509902,84.95870025863489,85.05592252194157];
-        const sampleEvents = [{"id":"full_2_1766277884764469465","traceId":"000e7c0bb76251d80000000000000000","otelTraceId":"84aca23b3f9734cbae2445f7b1b9abc1","timestamp":1766277884764,"latencyMs":7,"status":"success","componentTiming":{"gatewayMs":7,"kafkaMs":0,"flinkMs":0,"droolsMs":0},"traceData":{"logs":[{"timestamp":"1766277884770734762","line":"{\"timestamp\":\"2025-12-21T00:44:44.770734762Z\",\"@version\":\"1\",\"message\":\"Counter event published: action=INCREMENT, value=1, sessionId=full-bench-2, customerId=null\",\"logger\":\"com.reactive.counter.api.CounterController\",\"thread\":\"reactor-http-nio-2\",\"level\":\"INFO\",\"level_value\":20000,\"serviceVersion\":\"1.0.0\",\"serviceName\":\"counter-application\",\"traceId\":\"84aca23b3f9734cbae2445f7b1b9abc1\",\"spanId\":\"18d7b76e459fbc25\",\"requestId\":\"000e7c0bb76251d80000000000000000\",\"service\":\"counter-application\",\"version\":\"1.0.0\"}","labels":{"compose_service":"gateway","container":"reactive-application","container_id":"2142fb0267b7b9f292b624728326eaa0952e995ee4d09c7238a3490ddc41a447","level":"INFO","project":"reactive-system-01","service":"application"},"fields":{"@version":"1","level":"INFO","level_value":20000,"logger":"com.reactive.counter.api.CounterController","message":"Counter event published: action=INCREMENT, value=1, sessionId=full-bench-2, customerId=null","requestId":"000e7c0bb76251d80000000000000000","service":"counter-application","serviceName":"counter-application","serviceVersion":"1.0.0","spanId":"18d7b76e459fbc25","thread":"reactor-http-nio-2","timestamp":"2025-12-21T00:44:44.770734762Z","traceId":"84aca23b3f9734cbae2445f7b1b9abc1","version":"1.0.0"}},{"timestamp":"1766277884781791832","line":"{\"timestamp\":\"2025-12-21T00:44:44,781\",\"level\":\"INFO \",\"service\":\"flink\",\"logger\":\"com.reactive.flink.processor.CounterProcessor\",\"thread\":\"KeyedProcess -\u003e (Sink: Writer -\u003e Sink: Committer, async wait operator -\u003e Sink: Writer -\u003e Sink: Committer) (1/4)#0\",\"traceId\":\"979d6f21fd4dc397c8024a10087d5f7b\",\"spanId\":\"4a147e4d02a8f344\",\"message\":\"Flink processed event: sessionId=full-bench-2, action=INCREMENT, newValue=0, requestId=000e7c0bb76251d80000000000000000, customerId=null\"}","labels":{"compose_service":"flink-taskmanager","container":"reactive-flink-taskmanager","container_id":"3ddf14786feb59fbd56a00ca2b017aa683d486e1ff56493e9d93c37ccc637587","level":"INFO","project":"reactive-system-01","service":"flink-taskmanager"},"fields":{"level":"INFO ","logger":"com.reactive.flink.processor.CounterProcessor","message":"Flink processed event: sessionId=full-bench-2, action=INCREMENT, newValue=0, requestId=000e7c0bb76251d80000000000000000, customerId=null","service":"flink","spanId":"4a147e4d02a8f344","thread":"KeyedProcess -\u003e (Sink: Writer -\u003e Sink: Committer, async wait operator -\u003e Sink: Writer -\u003e Sink: Committer) (1/4)#0","timestamp":"2025-12-21T00:44:44,781","traceId":"979d6f21fd4dc397c8024a10087d5f7b"}}]}},{"id":"full_5_1766277884764550673","traceId":"000e7c0bb76351d80000000000000002","otelTraceId":"4c917728833d515d31c58a95615f8bae","timestamp":1766277884764,"latencyMs":7,"status":"success","componentTiming":{"gatewayMs":7,"kafkaMs":0,"flinkMs":0,"droolsMs":0},"traceData":{"logs":[{"timestamp":"1766277884771395795","line":"{\"timestamp\":\"2025-12-21T00:44:44.771395795Z\",\"@version\":\"1\",\"message\":\"Counter event published: action=INCREMENT, value=1, sessionId=full-bench-5, customerId=null\",\"logger\":\"com.reactive.counter.api.CounterController\",\"thread\":\"reactor-http-nio-2\",\"level\":\"INFO\",\"level_value\":20000,\"serviceVersion\":\"1.0.0\",\"serviceName\":\"counter-application\",\"traceId\":\"4c917728833d515d31c58a95615f8bae\",\"spanId\":\"9e72962c94f70bdd\",\"requestId\":\"000e7c0bb76351d80000000000000002\",\"service\":\"counter-application\",\"version\":\"1.0.0\"}","labels":{"compose_service":"gateway","container":"reactive-application","container_id":"2142fb0267b7b9f292b624728326eaa0952e995ee4d09c7238a3490ddc41a447","level":"INFO","project":"reactive-system-01","service":"application"},"fields":{"@version":"1","level":"INFO","level_value":20000,"logger":"com.reactive.counter.api.CounterController","message":"Counter event published: action=INCREMENT, value=1, sessionId=full-bench-5, customerId=null","requestId":"000e7c0bb76351d80000000000000002","service":"counter-application","serviceName":"counter-application","serviceVersion":"1.0.0","spanId":"9e72962c94f70bdd","thread":"reactor-http-nio-2","timestamp":"2025-12-21T00:44:44.771395795Z","traceId":"4c917728833d515d31c58a95615f8bae","version":"1.0.0"}},{"timestamp":"1766277884781812415","line":"{\"timestamp\":\"2025-12-21T00:44:44,781\",\"level\":\"INFO \",\"service\":\"flink\",\"logger\":\"com.reactive.flink.processor.CounterProcessor\",\"thread\":\"KeyedProcess -\u003e (Sink: Writer -\u003e Sink: Committer, async wait operator -\u003e Sink: Writer -\u003e Sink: Committer) (4/4)#0\",\"traceId\":\"0e251f6a922b6f8d70e9dd0a5afad5a0\",\"spanId\":\"ae600c31e773d535\",\"message\":\"Flink processed event: sessionId=full-bench-5, action=INCREMENT, newValue=0, requestId=000e7c0bb76351d80000000000000002, customerId=null\"}","labels":{"compose_service":"flink-taskmanager","container":"reactive-flink-taskmanager","container_id":"3ddf14786feb59fbd56a00ca2b017aa683d486e1ff56493e9d93c37ccc637587","level":"INFO","project":"reactive-system-01","service":"flink-taskmanager"},"fields":{"level":"INFO ","logger":"com.reactive.flink.processor.CounterProcessor","message":"Flink processed event: sessionId=full-bench-5, action=INCREMENT, newValue=0, requestId=000e7c0bb76351d80000000000000002, customerId=null","service":"flink","spanId":"ae600c31e773d535","thread":"KeyedProcess -\u003e (Sink: Writer -\u003e Sink: Committer, async wait operator -\u003e Sink: Writer -\u003e Sink: Committer) (4/4)#0","timestamp":"2025-12-21T00:44:44,781","traceId":"0e251f6a922b6f8d70e9dd0a5afad5a0"}}]}}];
-
-        
-        new Chart(document.getElementById('throughputChart'), {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Throughput (ops/sec)',
-                    data: throughputData,
-                    borderColor: '#00d4ff',
-                    backgroundColor: 'rgba(0, 212, 255, 0.1)',
-                    fill: true,
-                    tension: 0.3
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                    y: { beginAtZero: true, grid: { color: '#2a2a4a' }, ticks: { color: '#888' } },
-                    x: { grid: { color: '#2a2a4a' }, ticks: { color: '#888' } }
-                }
-            }
-        });
-
-        new Chart(document.getElementById('resourceChart'), {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [
-                    {
-                        label: 'CPU %',
-                        data: cpuData,
-                        borderColor: '#f59e0b',
-                        tension: 0.3
-                    },
-                    {
-                        label: 'Memory %',
-                        data: memoryData,
-                        borderColor: '#8b5cf6',
-                        tension: 0.3
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { labels: { color: '#888' } } },
-                scales: {
-                    y: { beginAtZero: true, max: 100, grid: { color: '#2a2a4a' }, ticks: { color: '#888' } },
-                    x: { grid: { color: '#2a2a4a' }, ticks: { color: '#888' } }
-                }
-            }
-        });
-
-        
-        function renderSampleEventsTable() {
-            const tbody = document.getElementById('sample-events-table');
-            if (!tbody || !sampleEvents) return;
-
-            tbody.innerHTML = sampleEvents.map((event, idx) => {
-                const hasTrace = event.traceData && event.traceData.trace;
-                const hasLogs = event.traceData && event.traceData.logs && event.traceData.logs.length > 0;
-                return `
-                    <tr>
-                        <td><code>${event.id || '-'}</code></td>
-                        <td><code>${event.traceId || '-'}</code></td>
-                        <td>${event.latencyMs}ms</td>
-                        <td class="status-${event.status}">${event.status}</td>
-                        <td>
-                            <button class="btn btn-trace" onclick="showTrace(${idx})" ${hasTrace ? '' : 'disabled'}>
-                                Trace ${hasTrace ? '(' + event.traceData.trace.spans.length + ')' : ''}
-                            </button>
-                            <button class="btn btn-logs" onclick="showLogs(${idx})" ${hasLogs ? '' : 'disabled'}>
-                                Logs ${hasLogs ? '(' + event.traceData.logs.length + ')' : ''}
-                            </button>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
+        window.__BENCHMARK_DATA__ = {
+  "component" : "full",
+  "name" : "Full End-to-End",
+  "description" : "Complete pipeline: HTTP → Kafka → Flink → Drools",
+  "startTime" : "2025-12-22T13:01:38.759691040Z",
+  "endTime" : "2025-12-22T13:01:53.788624813Z",
+  "durationMs" : 15029,
+  "totalOperations" : 14607,
+  "successfulOperations" : 14607,
+  "failedOperations" : 0,
+  "peakThroughput" : 4651,
+  "avgThroughput" : 971,
+  "throughputTimeline" : [ 0, 0, 0, 0, 529, 1281, 4651, 2841, 1781, 1795, 1923, 1947, 1645, 1628, 1752, 1740, 1110, 1123, 861, 847, 878 ],
+  "latency" : {
+    "min" : 0,
+    "max" : 217,
+    "avg" : 5,
+    "p50" : 4,
+    "p95" : 14,
+    "p99" : 25
+  },
+  "throughputStability" : 0.7834072952474236,
+  "cpuTimeline" : [ 445.9716796875, 445.9716796875, 410.25390625, 410.25390625, 410.25390625, 410.25390625, 410.25390625, 399.4140625, 399.4140625, 399.4140625, 399.4140625, 399.4140625, 423.486328125 ],
+  "memoryTimeline" : [ 1.3670339112806271, 1.3670339112806271, 1.3670339112806271, 0.6499085488882363, 1.5937501077815572, 3.333679722729172, 1.4972521245900605, 2.220652683231111, 3.8160757147580173, 1.6233900360815698, 3.6552359911074674, 4.06808824279354, 3.722912415967339 ],
+  "peakCpu" : 445.9716796875,
+  "peakMemory" : 4.06808824279354,
+  "avgCpu" : 412.59765625,
+  "avgMemory" : 2.3293882555207657,
+  "componentTiming" : null,
+  "sampleEvents" : [ {
+    "id" : "full_4_1766408506766",
+    "traceId" : "000e83d4d99084010000000000000000",
+    "otelTraceId" : "a0fed5fdd47f6e9731b174f3fdbad4ac",
+    "timestamp" : 1766408506769,
+    "latencyMs" : 3,
+    "status" : "success",
+    "error" : null,
+    "componentTiming" : {
+      "gatewayMs" : 3,
+      "kafkaMs" : 0,
+      "flinkMs" : 0,
+      "droolsMs" : 0
+    },
+    "traceData" : {
+      "trace" : {
+        "traceId" : "a0fed5fdd47f6e9731b174f3fdbad4ac",
+        "spans" : [ {
+          "traceID" : "a0fed5fdd47f6e9731b174f3fdbad4ac",
+          "spanID" : "81397bba513d96d5",
+          "processID" : "p1",
+          "operationName" : "RuleController.evaluate",
+          "startTime" : 1766408517267450,
+          "duration" : 5818,
+          "tags" : [ {
+            "key" : "thread.name",
+            "type" : "string",
+            "value" : "http-nio-8080-exec-351"
+          }, {
+            "key" : "thread.id",
+            "type" : "int64",
+            "value" : 407
+          }, {
+            "key" : "span.kind",
+            "type" : "string",
+            "value" : "internal"
+          }, {
+            "key" : "internal.span.format",
+            "type" : "string",
+            "value" : "otlp"
+          } ],
+          "references" : [ {
+            "refType" : "CHILD_OF",
+            "traceID" : "a0fed5fdd47f6e9731b174f3fdbad4ac",
+            "spanID" : "7575fa664fb9980f"
+          } ]
+        }, {
+          "traceID" : "a0fed5fdd47f6e9731b174f3fdbad4ac",
+          "spanID" : "7575fa664fb9980f",
+          "processID" : "p2",
+          "operationName" : "POST /api/evaluate",
+          "startTime" : 1766408517267427,
+          "duration" : 5894,
+          "tags" : [ {
+            "key" : "http.target",
+            "type" : "string",
+            "value" : "/api/evaluate"
+          }, {
+            "key" : "net.sock.peer.addr",
+            "type" : "string",
+            "value" : "172.19.0.17"
+          }, {
+            "key" : "http.status_code",
+            "type" : "int64",
+            "value" : 200
+          }, {
+            "key" : "net.host.port",
+            "type" : "int64",
+            "value" : 8080
+          }, {
+            "key" : "net.host.name",
+            "type" : "string",
+            "value" : "drools"
+          }, {
+            "key" : "user_agent.original",
+            "type" : "string",
+            "value" : "Java-http-client/17.0.14"
+          }, {
+            "key" : "thread.name",
+            "type" : "string",
+            "value" : "http-nio-8080-exec-351"
+          }, {
+            "key" : "thread.id",
+            "type" : "int64",
+            "value" : 407
+          }, {
+            "key" : "net.sock.host.port",
+            "type" : "int64",
+            "value" : 8080
+          }, {
+            "key" : "net.sock.peer.port",
+            "type" : "int64",
+            "value" : 45756
+          }, {
+            "key" : "http.route",
+            "type" : "string",
+            "value" : "/api/evaluate"
+          }, {
+            "key" : "net.sock.host.addr",
+            "type" : "string",
+            "value" : "172.19.0.12"
+          }, {
+            "key" : "net.protocol.version",
+            "type" : "string",
+            "value" : "1.1"
+          }, {
+            "key" : "http.scheme",
+            "type" : "string",
+            "value" : "http"
+          }, {
+            "key" : "http.method",
+            "type" : "string",
+            "value" : "POST"
+          }, {
+            "key" : "http.request_content_length",
+            "type" : "int64",
+            "value" : 133
+          }, {
+            "key" : "net.protocol.name",
+            "type" : "string",
+            "value" : "http"
+          }, {
+            "key" : "span.kind",
+            "type" : "string",
+            "value" : "server"
+          }, {
+            "key" : "internal.span.format",
+            "type" : "string",
+            "value" : "otlp"
+          } ],
+          "references" : [ {
+            "refType" : "CHILD_OF",
+            "traceID" : "a0fed5fdd47f6e9731b174f3fdbad4ac",
+            "spanID" : "911ef44c80a4282d"
+          } ]
+        }, {
+          "traceID" : "a0fed5fdd47f6e9731b174f3fdbad4ac",
+          "spanID" : "41328aff15b3df4f",
+          "processID" : "p3",
+          "operationName" : "drools.evaluate",
+          "startTime" : 1766408517270848,
+          "duration" : 2317,
+          "tags" : [ {
+            "key" : "code.function",
+            "type" : "string",
+            "value" : "evaluate"
+          }, {
+            "key" : "drools.result_value",
+            "type" : "int64",
+            "value" : 1034
+          }, {
+            "key" : "eventId",
+            "type" : "string",
+            "value" : "019b4626cd900001"
+          }, {
+            "key" : "thread.name",
+            "type" : "string",
+            "value" : "http-nio-8080-exec-351"
+          }, {
+            "key" : "thread.id",
+            "type" : "int64",
+            "value" : 407
+          }, {
+            "key" : "drools.rules_fired",
+            "type" : "int64",
+            "value" : 1
+          }, {
+            "key" : "requestId",
+            "type" : "string",
+            "value" : "000e83d4d99084010000000000000000"
+          }, {
+            "key" : "code.namespace",
+            "type" : "string",
+            "value" : "com.reactive.drools.service.RuleService"
+          }, {
+            "key" : "session.id",
+            "type" : "string",
+            "value" : "full-bench-4"
+          }, {
+            "key" : "drools.alert_level",
+            "type" : "string",
+            "value" : "CRITICAL"
+          }, {
+            "key" : "counter.input_value",
+            "type" : "string",
+            "value" : "com.reactive.drools.model.EvaluationRequest@7c36af9b"
+          }, {
+            "key" : "drools.input_value",
+            "type" : "int64",
+            "value" : 1034
+          }, {
+            "key" : "customerId",
+            "type" : "string",
+            "value" : ""
+          }, {
+            "key" : "span.kind",
+            "type" : "string",
+            "value" : "internal"
+          }, {
+            "key" : "internal.span.format",
+            "type" : "string",
+            "value" : "otlp"
+          } ],
+          "references" : [ {
+            "refType" : "CHILD_OF",
+            "traceID" : "a0fed5fdd47f6e9731b174f3fdbad4ac",
+            "spanID" : "81397bba513d96d5"
+          } ]
+        }, {
+          "traceID" : "a0fed5fdd47f6e9731b174f3fdbad4ac",
+          "spanID" : "5b9b190eb8f8658f",
+          "processID" : "p4",
+          "operationName" : "kafka.consume",
+          "startTime" : 1766408517183414,
+          "duration" : 41,
+          "tags" : [ {
+            "key" : "messaging.system",
+            "type" : "string",
+            "value" : "kafka"
+          }, {
+            "key" : "thread.id",
+            "type" : "int64",
+            "value" : 110
+          }, {
+            "key" : "messaging.kafka.partition",
+            "type" : "int64",
+            "value" : 1
+          }, {
+            "key" : "requestId",
+            "type" : "string",
+            "value" : "000e83d4d99084010000000000000000"
+          }, {
+            "key" : "customerId",
+            "type" : "string",
+            "value" : ""
+          }, {
+            "key" : "messaging.destination",
+            "type" : "string",
+            "value" : "counter-events"
+          }, {
+            "key" : "messaging.kafka.offset",
+            "type" : "int64",
+            "value" : 1675003
+          }, {
+            "key" : "thread.name",
+            "type" : "string",
+            "value" : "Source: Kafka Counter Events (8/8)#1"
+          }, {
+            "key" : "kafka.transit_time_ms",
+            "type" : "int64",
+            "value" : 10415
+          }, {
+            "key" : "session.id",
+            "type" : "string",
+            "value" : "full-bench-4"
+          }, {
+            "key" : "span.kind",
+            "type" : "string",
+            "value" : "consumer"
+          }, {
+            "key" : "internal.span.format",
+            "type" : "string",
+            "value" : "otlp"
+          } ],
+          "references" : [ {
+            "refType" : "CHILD_OF",
+            "traceID" : "a0fed5fdd47f6e9731b174f3fdbad4ac",
+            "spanID" : "6faaca1b4a1447b5"
+          } ]
+        }, {
+          "traceID" : "a0fed5fdd47f6e9731b174f3fdbad4ac",
+          "spanID" : "02d9ed971aae39a1",
+          "processID" : "p5",
+          "operationName" : "counter-events process",
+          "startTime" : 1766408517183352,
+          "duration" : 111,
+          "tags" : [ {
+            "key" : "messaging.system",
+            "type" : "string",
+            "value" : "kafka"
+          }, {
+            "key" : "messaging.message.payload_size_bytes",
+            "type" : "int64",
+            "value" : 250
+          }, {
+            "key" : "thread.id",
+            "type" : "int64",
+            "value" : 110
+          }, {
+            "key" : "messaging.kafka.consumer.group",
+            "type" : "string",
+            "value" : "flink-counter-group-v3"
+          }, {
+            "key" : "messaging.kafka.destination.partition",
+            "type" : "int64",
+            "value" : 1
+          }, {
+            "key" : "messaging.kafka.message.offset",
+            "type" : "int64",
+            "value" : 1675003
+          }, {
+            "key" : "messaging.client_id",
+            "type" : "string",
+            "value" : "flink-counter-group-v3-7"
+          }, {
+            "key" : "thread.name",
+            "type" : "string",
+            "value" : "Source: Kafka Counter Events (8/8)#1"
+          }, {
+            "key" : "messaging.destination.name",
+            "type" : "string",
+            "value" : "counter-events"
+          }, {
+            "key" : "messaging.operation",
+            "type" : "string",
+            "value" : "process"
+          }, {
+            "key" : "span.kind",
+            "type" : "string",
+            "value" : "consumer"
+          }, {
+            "key" : "internal.span.format",
+            "type" : "string",
+            "value" : "otlp"
+          } ],
+          "references" : [ {
+            "refType" : "CHILD_OF",
+            "traceID" : "a0fed5fdd47f6e9731b174f3fdbad4ac",
+            "spanID" : "6faaca1b4a1447b5"
+          } ]
+        }, {
+          "traceID" : "a0fed5fdd47f6e9731b174f3fdbad4ac",
+          "spanID" : "911ef44c80a4282d",
+          "processID" : "p6",
+          "operationName" : "POST",
+          "startTime" : 1766408517255331,
+          "duration" : 19013,
+          "tags" : [ {
+            "key" : "net.peer.name",
+            "type" : "string",
+            "value" : "drools"
+          }, {
+            "key" : "thread.id",
+            "type" : "int64",
+            "value" : 111
+          }, {
+            "key" : "http.url",
+            "type" : "string",
+            "value" : "http://drools:8080/api/evaluate"
+          }, {
+            "key" : "net.peer.port",
+            "type" : "int64",
+            "value" : 8080
+          }, {
+            "key" : "net.protocol.name",
+            "type" : "string",
+            "value" : "http"
+          }, {
+            "key" : "http.method",
+            "type" : "string",
+            "value" : "POST"
+          }, {
+            "key" : "http.status_code",
+            "type" : "int64",
+            "value" : 200
+          }, {
+            "key" : "thread.name",
+            "type" : "string",
+            "value" : "KeyedProcess -> (Sink: Writer -> Sink: Committer, async wait operator -> Sink: Writer -> Sink: Committer) (1/8)#1"
+          }, {
+            "key" : "net.protocol.version",
+            "type" : "string",
+            "value" : "1.1"
+          }, {
+            "key" : "span.kind",
+            "type" : "string",
+            "value" : "client"
+          }, {
+            "key" : "internal.span.format",
+            "type" : "string",
+            "value" : "otlp"
+          } ],
+          "references" : [ {
+            "refType" : "CHILD_OF",
+            "traceID" : "a0fed5fdd47f6e9731b174f3fdbad4ac",
+            "spanID" : "f50416c5ef9780ae"
+          } ]
+        }, {
+          "traceID" : "a0fed5fdd47f6e9731b174f3fdbad4ac",
+          "spanID" : "a97238404ac27cba",
+          "processID" : "p5",
+          "operationName" : "counter-results publish",
+          "startTime" : 1766408517255156,
+          "duration" : 3527,
+          "tags" : [ {
+            "key" : "messaging.system",
+            "type" : "string",
+            "value" : "kafka"
+          }, {
+            "key" : "thread.id",
+            "type" : "int64",
+            "value" : 111
+          }, {
+            "key" : "messaging.kafka.destination.partition",
+            "type" : "int64",
+            "value" : 1
+          }, {
+            "key" : "messaging.kafka.message.offset",
+            "type" : "int64",
+            "value" : 68906
+          }, {
+            "key" : "messaging.client_id",
+            "type" : "string",
+            "value" : "producer-5"
+          }, {
+            "key" : "thread.name",
+            "type" : "string",
+            "value" : "KeyedProcess -> (Sink: Writer -> Sink: Committer, async wait operator -> Sink: Writer -> Sink: Committer) (1/8)#1"
+          }, {
+            "key" : "messaging.destination.name",
+            "type" : "string",
+            "value" : "counter-results"
+          }, {
+            "key" : "messaging.operation",
+            "type" : "string",
+            "value" : "publish"
+          }, {
+            "key" : "span.kind",
+            "type" : "string",
+            "value" : "producer"
+          }, {
+            "key" : "internal.span.format",
+            "type" : "string",
+            "value" : "otlp"
+          } ],
+          "references" : [ {
+            "refType" : "CHILD_OF",
+            "traceID" : "a0fed5fdd47f6e9731b174f3fdbad4ac",
+            "spanID" : "8cff39217ff048bb"
+          } ]
+        }, {
+          "traceID" : "a0fed5fdd47f6e9731b174f3fdbad4ac",
+          "spanID" : "8cff39217ff048bb",
+          "processID" : "p7",
+          "operationName" : "flink.process_counter",
+          "startTime" : 1766408517255138,
+          "duration" : 133,
+          "tags" : [ {
+            "key" : "eventId",
+            "type" : "string",
+            "value" : "019b4626cd900001"
+          }, {
+            "key" : "thread.id",
+            "type" : "int64",
+            "value" : 111
+          }, {
+            "key" : "counter.previous_value",
+            "type" : "int64",
+            "value" : 1033
+          }, {
+            "key" : "requestId",
+            "type" : "string",
+            "value" : "000e83d4d99084010000000000000000"
+          }, {
+            "key" : "customerId",
+            "type" : "string",
+            "value" : ""
+          }, {
+            "key" : "counter.action",
+            "type" : "string",
+            "value" : "increment"
+          }, {
+            "key" : "thread.name",
+            "type" : "string",
+            "value" : "KeyedProcess -> (Sink: Writer -> Sink: Committer, async wait operator -> Sink: Writer -> Sink: Committer) (1/8)#1"
+          }, {
+            "key" : "counter.new_value",
+            "type" : "int64",
+            "value" : 1034
+          }, {
+            "key" : "processing.latency_ms",
+            "type" : "int64",
+            "value" : 0
+          }, {
+            "key" : "session.id",
+            "type" : "string",
+            "value" : "full-bench-4"
+          }, {
+            "key" : "span.kind",
+            "type" : "string",
+            "value" : "consumer"
+          }, {
+            "key" : "otel.status_code",
+            "type" : "string",
+            "value" : "OK"
+          }, {
+            "key" : "internal.span.format",
+            "type" : "string",
+            "value" : "otlp"
+          } ],
+          "references" : [ {
+            "refType" : "CHILD_OF",
+            "traceID" : "a0fed5fdd47f6e9731b174f3fdbad4ac",
+            "spanID" : "6faaca1b4a1447b5"
+          } ]
+        }, {
+          "traceID" : "a0fed5fdd47f6e9731b174f3fdbad4ac",
+          "spanID" : "f50416c5ef9780ae",
+          "processID" : "p8",
+          "operationName" : "async.drools.enrich",
+          "startTime" : 1766408517255285,
+          "duration" : 19108,
+          "tags" : [ {
+            "key" : "eventId",
+            "type" : "string",
+            "value" : "019b4626cd900001"
+          }, {
+            "key" : "counter.value",
+            "type" : "int64",
+            "value" : 1034
+          }, {
+            "key" : "thread.id",
+            "type" : "int64",
+            "value" : 111
+          }, {
+            "key" : "peer.service",
+            "type" : "string",
+            "value" : "drools"
+          }, {
+            "key" : "requestId",
+            "type" : "string",
+            "value" : "000e83d4d99084010000000000000000"
+          }, {
+            "key" : "http.url",
+            "type" : "string",
+            "value" : "http://drools:8080/api/evaluate"
+          }, {
+            "key" : "customerId",
+            "type" : "string",
+            "value" : ""
+          }, {
+            "key" : "http.method",
+            "type" : "string",
+            "value" : "POST"
+          }, {
+            "key" : "http.status_code",
+            "type" : "int64",
+            "value" : 200
+          }, {
+            "key" : "drools.latency_ms",
+            "type" : "int64",
+            "value" : 19
+          }, {
+            "key" : "thread.name",
+            "type" : "string",
+            "value" : "KeyedProcess -> (Sink: Writer -> Sink: Committer, async wait operator -> Sink: Writer -> Sink: Committer) (1/8)#1"
+          }, {
+            "key" : "total.latency_ms",
+            "type" : "int64",
+            "value" : 19
+          }, {
+            "key" : "span.kind",
+            "type" : "string",
+            "value" : "client"
+          }, {
+            "key" : "otel.status_code",
+            "type" : "string",
+            "value" : "OK"
+          }, {
+            "key" : "internal.span.format",
+            "type" : "string",
+            "value" : "otlp"
+          } ],
+          "references" : [ {
+            "refType" : "CHILD_OF",
+            "traceID" : "a0fed5fdd47f6e9731b174f3fdbad4ac",
+            "spanID" : "6faaca1b4a1447b5"
+          } ]
+        } ],
+        "processes" : {
+          "p1" : {
+            "serviceName" : "drools"
+          },
+          "p2" : {
+            "serviceName" : "drools"
+          },
+          "p3" : {
+            "serviceName" : "drools"
+          },
+          "p4" : {
+            "serviceName" : "flink-taskmanager"
+          },
+          "p5" : {
+            "serviceName" : "flink-taskmanager"
+          },
+          "p6" : {
+            "serviceName" : "flink-taskmanager"
+          },
+          "p7" : {
+            "serviceName" : "flink-taskmanager"
+          },
+          "p8" : {
+            "serviceName" : "flink-taskmanager"
+          }
         }
-
-        
-        function getServiceClass(serviceName) {
-            const name = (serviceName || '').toLowerCase();
-            if (name.includes('gateway')) return 'gateway';
-            if (name.includes('kafka')) return 'kafka';
-            if (name.includes('flink')) return 'flink';
-            if (name.includes('drools')) return 'drools';
-            return 'unknown';
+      },
+      "logs" : [ {
+        "timestamp" : "1766408506768192710",
+        "line" : "{\"timestamp\":\"2025-12-22T13:01:46.76819271Z\",\"@version\":\"1\",\"message\":\"Event published (fire-and-forget): action=increment, value=1, session=full-bench-4\",\"logger\":\"com.reactive.counter.api.CounterController\",\"thread\":\"reactor-http-nio-1\",\"level\":\"INFO\",\"level_value\":20000,\"serviceVersion\":\"1.0.0\",\"serviceName\":\"counter-application\",\"traceId\":\"a0fed5fdd47f6e9731b174f3fdbad4ac\",\"spanId\":\"49d85dfe10ca74bf\",\"requestId\":\"000e83d4d99084010000000000000000\",\"service\":\"counter-application\",\"version\":\"1.0.0\"}",
+        "labels" : {
+          "compose_service" : "gateway",
+          "container" : "reactive-application",
+          "container_id" : "1cde6c0e497a9cb0f198792faf77904a0c14e45ef97dc2d16e0c22333a7803e2",
+          "level" : "INFO",
+          "project" : "reactive-system-01",
+          "service" : "application"
+        },
+        "fields" : {
+          "timestamp" : "2025-12-22T13:01:46.76819271Z",
+          "@version" : "1",
+          "message" : "Event published (fire-and-forget): action=increment, value=1, session=full-bench-4",
+          "logger" : "com.reactive.counter.api.CounterController",
+          "thread" : "reactor-http-nio-1",
+          "level" : "INFO",
+          "level_value" : 20000,
+          "serviceVersion" : "1.0.0",
+          "serviceName" : "counter-application",
+          "traceId" : "a0fed5fdd47f6e9731b174f3fdbad4ac",
+          "spanId" : "49d85dfe10ca74bf",
+          "requestId" : "000e83d4d99084010000000000000000",
+          "service" : "counter-application",
+          "version" : "1.0.0"
         }
-
-        
-        function showTrace(idx) {
-            const event = sampleEvents[idx];
-            if (!event || !event.traceData || !event.traceData.trace) return;
-
-            const trace = event.traceData.trace;
-            const viewer = document.getElementById('trace-viewer');
-            document.getElementById('trace-modal-id').textContent = event.traceId;
-
-            
-            const spans = [...trace.spans].sort((a, b) => a.startTime - b.startTime);
-            if (spans.length === 0) {
-                viewer.innerHTML = '<div class="no-data">No spans found</div>';
-                openModal('trace-modal');
-                return;
-            }
-
-            
-            const minTime = spans[0].startTime;
-            const maxTime = Math.max(...spans.map(s => s.startTime + s.duration));
-            const totalDuration = maxTime - minTime;
-
-            viewer.innerHTML = spans.map(span => {
-                const serviceName = trace.processes[span.processID]?.serviceName || 'unknown';
-                const serviceClass = getServiceClass(serviceName);
-                const durationMs = (span.duration / 1000).toFixed(2);
-                const offsetPct = ((span.startTime - minTime) / totalDuration * 100).toFixed(2);
-                const widthPct = Math.max((span.duration / totalDuration * 100), 0.5).toFixed(2);
-
-                return `
-                    <div class="span-row">
-                        <div class="span-service ${serviceClass}">${serviceName}</div>
-                        <div class="span-info">
-                            <span class="span-operation">${span.operationName}</span>
-                            <span class="span-duration">${durationMs}ms</span>
-                        </div>
-                        <div class="span-bar-container">
-                            <div class="span-bar ${serviceClass}" style="left: ${offsetPct}%; width: ${widthPct}%"></div>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-
-            openModal('trace-modal');
+      }, {
+        "timestamp" : "1766408517260807909",
+        "line" : "{\"timestamp\":\"2025-12-22T13:01:57,255\",\"level\":\"INFO \",\"service\":\"flink\",\"logger\":\"com.reactive.flink.processor.CounterProcessor\",\"thread\":\"KeyedProcess -> (Sink: Writer -> Sink: Committer, async wait operator -> Sink: Writer -> Sink: Committer) (1/8)#1\",\"traceId\":\"a0fed5fdd47f6e9731b174f3fdbad4ac\",\"spanId\":\"8cff39217ff048bb\",\"message\":\"Flink processed event: sessionId=full-bench-4, action=increment, newValue=1034, requestId=000e83d4d99084010000000000000000, customerId=null\"}",
+        "labels" : {
+          "compose_service" : "flink-taskmanager",
+          "container" : "reactive-system-01-flink-taskmanager-2",
+          "container_id" : "ab9e1eea5cd4ec2f23eb98b6a872790f48d6595c716f712bbc5bb68a2c3be4d2",
+          "level" : "INFO",
+          "project" : "reactive-system-01",
+          "service" : "system-01-flink-taskmanager-2"
+        },
+        "fields" : {
+          "timestamp" : "2025-12-22T13:01:57,255",
+          "level" : "INFO ",
+          "service" : "flink",
+          "logger" : "com.reactive.flink.processor.CounterProcessor",
+          "thread" : "KeyedProcess -> (Sink: Writer -> Sink: Committer, async wait operator -> Sink: Writer -> Sink: Committer) (1/8)#1",
+          "traceId" : "a0fed5fdd47f6e9731b174f3fdbad4ac",
+          "spanId" : "8cff39217ff048bb",
+          "message" : "Flink processed event: sessionId=full-bench-4, action=increment, newValue=1034, requestId=000e83d4d99084010000000000000000, customerId=null"
         }
-
-        
-        function showLogs(idx) {
-            const event = sampleEvents[idx];
-            if (!event || !event.traceData || !event.traceData.logs) return;
-
-            const logs = event.traceData.logs;
-            const viewer = document.getElementById('logs-viewer');
-            document.getElementById('logs-modal-id').textContent = event.traceId;
-
-            if (logs.length === 0) {
-                viewer.innerHTML = '<div class="no-data">No logs found</div>';
-                openModal('logs-modal');
-                return;
-            }
-
-            viewer.innerHTML = logs.map(log => {
-                const service = log.labels?.service || log.labels?.container || 'unknown';
-                const serviceClass = getServiceClass(service);
-
-                
-                let parsed = null;
-                try {
-                    parsed = JSON.parse(log.line);
-                } catch (e) {}
-
-                
-                let time = '-';
-                let level = 'INFO';
-                let message = log.line;
-                let logger = '';
-
-                if (parsed) {
-                    
-                    if (parsed.timestamp) {
-                        time = parsed.timestamp.split('T')[1] || parsed.timestamp;
-                    }
-                    
-                    level = (parsed.level || 'INFO').trim().toUpperCase();
-                    
-                    message = parsed.message || parsed.msg || log.line;
-                    
-                    if (parsed.logger) {
-                        const parts = parsed.logger.split('.');
-                        logger = parts[parts.length - 1];
-                    }
-                } else if (log.timestamp) {
-                    try {
-                        const ts = parseInt(log.timestamp) / 1000000;
-                        time = new Date(ts).toISOString().split('T')[1].replace('Z', '');
-                    } catch (e) {}
-                }
-
-                
-                const levelClass = level === 'ERROR' ? 'error' : level === 'WARN' ? 'warn' : level === 'DEBUG' ? 'debug' : 'info';
-
-                return `
-                    <div class="log-entry">
-                        <span class="log-time">${time}</span>
-                        <span class="log-level ${levelClass}">${level}</span>
-                        <span class="log-service ${serviceClass}">${service}</span>
-                        ${logger ? `<span class="log-logger">${logger}</span>` : ''}
-                        <span class="log-message">${escapeHtml(message)}</span>
-                    </div>
-                `;
-            }).join('');
-
-            openModal('logs-modal');
+      }, {
+        "timestamp" : "1766408517260809200",
+        "line" : "{\"timestamp\":\"2025-12-22T13:01:57,255\",\"level\":\"INFO \",\"service\":\"flink\",\"logger\":\"com.reactive.flink.async.AsyncDroolsEnricher\",\"thread\":\"KeyedProcess -> (Sink: Writer -> Sink: Committer, async wait operator -> Sink: Writer -> Sink: Committer) (1/8)#1\",\"traceId\":\"a0fed5fdd47f6e9731b174f3fdbad4ac\",\"spanId\":\"f50416c5ef9780ae\",\"message\":\"Calling Drools for evaluation: sessionId=full-bench-4, value=1034, customerId=null\"}",
+        "labels" : {
+          "compose_service" : "flink-taskmanager",
+          "container" : "reactive-system-01-flink-taskmanager-2",
+          "container_id" : "ab9e1eea5cd4ec2f23eb98b6a872790f48d6595c716f712bbc5bb68a2c3be4d2",
+          "level" : "INFO",
+          "project" : "reactive-system-01",
+          "service" : "system-01-flink-taskmanager-2"
+        },
+        "fields" : {
+          "timestamp" : "2025-12-22T13:01:57,255",
+          "level" : "INFO ",
+          "service" : "flink",
+          "logger" : "com.reactive.flink.async.AsyncDroolsEnricher",
+          "thread" : "KeyedProcess -> (Sink: Writer -> Sink: Committer, async wait operator -> Sink: Writer -> Sink: Committer) (1/8)#1",
+          "traceId" : "a0fed5fdd47f6e9731b174f3fdbad4ac",
+          "spanId" : "f50416c5ef9780ae",
+          "message" : "Calling Drools for evaluation: sessionId=full-bench-4, value=1034, customerId=null"
         }
-
-        
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
+      }, {
+        "timestamp" : "1766408517564230257",
+        "line" : "{\"timestamp\":\"2025-12-22T13:01:57.564230257Z\",\"@version\":\"1\",\"message\":\"Received result from Flink: eventId=019b4626cd900001, sessionId=full-bench-4, value=1034, alert=PENDING\",\"logger\":\"com.reactive.counter.service.ResultConsumerService\",\"thread\":\"org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1\",\"level\":\"INFO\",\"level_value\":20000,\"serviceVersion\":\"1.0.0\",\"serviceName\":\"counter-application\",\"traceId\":\"a0fed5fdd47f6e9731b174f3fdbad4ac\",\"requestId\":\"000e83d4d99084010000000000000000\",\"service\":\"counter-application\",\"version\":\"1.0.0\"}",
+        "labels" : {
+          "compose_service" : "gateway",
+          "container" : "reactive-application",
+          "container_id" : "1cde6c0e497a9cb0f198792faf77904a0c14e45ef97dc2d16e0c22333a7803e2",
+          "level" : "INFO",
+          "project" : "reactive-system-01",
+          "service" : "application"
+        },
+        "fields" : {
+          "timestamp" : "2025-12-22T13:01:57.564230257Z",
+          "@version" : "1",
+          "message" : "Received result from Flink: eventId=019b4626cd900001, sessionId=full-bench-4, value=1034, alert=PENDING",
+          "logger" : "com.reactive.counter.service.ResultConsumerService",
+          "thread" : "org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1",
+          "level" : "INFO",
+          "level_value" : 20000,
+          "serviceVersion" : "1.0.0",
+          "serviceName" : "counter-application",
+          "traceId" : "a0fed5fdd47f6e9731b174f3fdbad4ac",
+          "requestId" : "000e83d4d99084010000000000000000",
+          "service" : "counter-application",
+          "version" : "1.0.0"
         }
-
-        
-        function openModal(id) {
-            document.getElementById(id).classList.add('active');
-            document.body.style.overflow = 'hidden';
+      } ]
+    }
+  }, {
+    "id" : "full_2_1766408506766",
+    "traceId" : "000e83d4d99084010000000000000004",
+    "otelTraceId" : "4b8249105250f28626c04c1e54e92824",
+    "timestamp" : 1766408506769,
+    "latencyMs" : 3,
+    "status" : "success",
+    "error" : null,
+    "componentTiming" : {
+      "gatewayMs" : 3,
+      "kafkaMs" : 0,
+      "flinkMs" : 0,
+      "droolsMs" : 0
+    },
+    "traceData" : {
+      "trace" : null,
+      "logs" : [ {
+        "timestamp" : "1766408506768734916",
+        "line" : "{\"timestamp\":\"2025-12-22T13:01:46.768734916Z\",\"@version\":\"1\",\"message\":\"Event published (fire-and-forget): action=increment, value=1, session=full-bench-2\",\"logger\":\"com.reactive.counter.api.CounterController\",\"thread\":\"reactor-http-nio-2\",\"level\":\"INFO\",\"level_value\":20000,\"serviceVersion\":\"1.0.0\",\"serviceName\":\"counter-application\",\"traceId\":\"4b8249105250f28626c04c1e54e92824\",\"spanId\":\"8cbcb8e6701aa667\",\"requestId\":\"000e83d4d99084010000000000000004\",\"service\":\"counter-application\",\"version\":\"1.0.0\"}",
+        "labels" : {
+          "compose_service" : "gateway",
+          "container" : "reactive-application",
+          "container_id" : "1cde6c0e497a9cb0f198792faf77904a0c14e45ef97dc2d16e0c22333a7803e2",
+          "level" : "INFO",
+          "project" : "reactive-system-01",
+          "service" : "application"
+        },
+        "fields" : {
+          "timestamp" : "2025-12-22T13:01:46.768734916Z",
+          "@version" : "1",
+          "message" : "Event published (fire-and-forget): action=increment, value=1, session=full-bench-2",
+          "logger" : "com.reactive.counter.api.CounterController",
+          "thread" : "reactor-http-nio-2",
+          "level" : "INFO",
+          "level_value" : 20000,
+          "serviceVersion" : "1.0.0",
+          "serviceName" : "counter-application",
+          "traceId" : "4b8249105250f28626c04c1e54e92824",
+          "spanId" : "8cbcb8e6701aa667",
+          "requestId" : "000e83d4d99084010000000000000004",
+          "service" : "counter-application",
+          "version" : "1.0.0"
         }
-
-        function closeModal(id) {
-            document.getElementById(id).classList.remove('active');
-            document.body.style.overflow = '';
-        }
-
-        
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                document.querySelectorAll('.modal.active').forEach(m => m.classList.remove('active'));
-                document.body.style.overflow = '';
-            }
-        });
-
-        document.querySelectorAll('.modal').forEach(modal => {
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) {
-                    modal.classList.remove('active');
-                    document.body.style.overflow = '';
-                }
-            });
-        });
-
-        
-        renderSampleEventsTable();
+      } ]
+    }
+  } ],
+  "status" : "completed",
+  "errorMessage" : null,
+  "success" : true
+};
+        window.__BENCHMARK_COMMIT__ = "5adc54b";
     </script>
+    <script src="../assets/benchmark-report.js"></script>
 </body>
 </html>

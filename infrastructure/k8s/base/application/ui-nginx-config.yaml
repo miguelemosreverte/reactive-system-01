@@ -1,0 +1,146 @@
+# UI Nginx configuration for Kubernetes with cross-namespace FQDNs
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ui-nginx-config
+  namespace: reactive-app
+data:
+  default.conf: |
+    server {
+        listen 80;
+        server_name localhost;
+        root /usr/share/nginx/html;
+        index index.html;
+
+        # Gzip compression
+        gzip on;
+        gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript text/markdown;
+
+        # SPA routing - serve index.html for all routes
+        location / {
+            try_files $uri $uri/ /index.html;
+        }
+
+        # Serve documentation files
+        location /docs/ {
+            alias /usr/share/nginx/docs/;
+            default_type text/markdown;
+            add_header Content-Type "text/plain; charset=utf-8";
+        }
+
+        # Proxy Gateway health check
+        location = /api/health {
+            proxy_pass http://gateway.reactive-app.svc.cluster.local:3000/actuator/health;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+        }
+
+        # Proxy API requests to gateway
+        location /api/ {
+            proxy_pass http://gateway.reactive-app.svc.cluster.local:3000/api/;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        }
+
+        # Health check proxy to Drools
+        location /api/drools-health {
+            proxy_pass http://drools.reactive-app.svc.cluster.local:8080/health;
+            proxy_http_version 1.1;
+            proxy_connect_timeout 5s;
+            proxy_read_timeout 5s;
+        }
+
+        # Health check proxy to Flink
+        location /api/flink-health {
+            proxy_pass http://flink-jobmanager.reactive-app.svc.cluster.local:8081/overview;
+            proxy_http_version 1.1;
+            proxy_connect_timeout 5s;
+            proxy_read_timeout 5s;
+        }
+
+        # Flink jobs API proxy
+        location /api/flink-jobs {
+            proxy_pass http://flink-jobmanager.reactive-app.svc.cluster.local:8081/jobs/overview;
+            proxy_http_version 1.1;
+            proxy_connect_timeout 5s;
+            proxy_read_timeout 5s;
+        }
+
+        # Health check proxy to Jaeger
+        location /api/jaeger-health {
+            proxy_pass http://jaeger.reactive-observability.svc.cluster.local:16686/;
+            proxy_http_version 1.1;
+            proxy_connect_timeout 5s;
+            proxy_read_timeout 5s;
+        }
+
+        # Health check proxy to OTEL Collector
+        location /api/otel-health {
+            proxy_pass http://otel-collector.reactive-observability.svc.cluster.local:13133/;
+            proxy_http_version 1.1;
+            proxy_connect_timeout 5s;
+            proxy_read_timeout 5s;
+        }
+
+        # Health check proxy to Grafana
+        location /api/grafana-health {
+            proxy_pass http://grafana.reactive-observability.svc.cluster.local:3000/api/health;
+            proxy_http_version 1.1;
+            proxy_connect_timeout 5s;
+            proxy_read_timeout 5s;
+        }
+
+        # Health check proxy to Loki
+        location /api/loki-health {
+            proxy_pass http://loki.reactive-observability.svc.cluster.local:3100/ready;
+            proxy_http_version 1.1;
+            proxy_connect_timeout 5s;
+            proxy_read_timeout 5s;
+        }
+
+        # Health check proxy to Prometheus
+        location /api/prometheus-health {
+            proxy_pass http://prometheus.reactive-observability.svc.cluster.local:9090/-/ready;
+            proxy_http_version 1.1;
+            proxy_connect_timeout 5s;
+            proxy_read_timeout 5s;
+        }
+
+        # Jaeger trace data API proxy
+        location /api/jaeger/ {
+            proxy_pass http://jaeger.reactive-observability.svc.cluster.local:16686/api/;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_connect_timeout 10s;
+            proxy_read_timeout 30s;
+        }
+
+        # Loki logs API proxy
+        location /api/loki/ {
+            proxy_pass http://loki.reactive-observability.svc.cluster.local:3100/;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_connect_timeout 10s;
+            proxy_read_timeout 30s;
+        }
+
+        # WebSocket proxy to gateway
+        location /ws {
+            proxy_pass http://gateway.reactive-app.svc.cluster.local:3000/ws;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+            proxy_set_header Host $host;
+            proxy_read_timeout 86400;
+        }
+
+        # Static assets caching
+        location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+            expires 1y;
+            add_header Cache-Control "public, immutable";
+        }
+    }

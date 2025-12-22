@@ -12,6 +12,7 @@ import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
+import io.opentelemetry.context.propagation.TextMapGetter;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.async.ResultFuture;
 import org.apache.flink.streaming.api.functions.async.RichAsyncFunction;
@@ -25,6 +26,8 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -57,6 +60,19 @@ public class AsyncDroolsEnricher extends RichAsyncFunction<PreDroolsResult, Coun
     private transient ObjectMapper objectMapper;
     private transient Tracer tracer;
     private transient ExecutorService executor;
+
+    // TextMapGetter for extracting trace context from a Map
+    private static final TextMapGetter<Map<String, String>> MAP_GETTER = new TextMapGetter<>() {
+        @Override
+        public Iterable<String> keys(Map<String, String> carrier) {
+            return carrier.keySet();
+        }
+
+        @Override
+        public String get(Map<String, String> carrier, String key) {
+            return carrier != null ? carrier.get(key) : null;
+        }
+    };
 
     public AsyncDroolsEnricher(String droolsUrl) {
         this.droolsUrl = droolsUrl;
@@ -92,8 +108,22 @@ public class AsyncDroolsEnricher extends RichAsyncFunction<PreDroolsResult, Coun
         // Track Drools start time
         final long droolsStartAt = System.currentTimeMillis();
 
-        // Create tracing span (OTel agent provides parent context automatically)
+        // Extract parent trace context from PreDroolsResult (propagated through Flink)
+        Context parentContext = Context.current();
+        if (input.getTraceparent() != null) {
+            Map<String, String> headers = new HashMap<>();
+            headers.put("traceparent", input.getTraceparent());
+            if (input.getTracestate() != null) {
+                headers.put("tracestate", input.getTracestate());
+            }
+            parentContext = GlobalOpenTelemetry.getPropagators()
+                    .getTextMapPropagator()
+                    .extract(Context.current(), headers, MAP_GETTER);
+        }
+
+        // Create tracing span with parent context from Gateway/Flink
         Span span = tracer.spanBuilder("async.drools.enrich")
+                .setParent(parentContext)
                 .setSpanKind(SpanKind.CLIENT)
                 .setAttribute("http.method", "POST")
                 .setAttribute("http.url", droolsUrl + "/api/evaluate")

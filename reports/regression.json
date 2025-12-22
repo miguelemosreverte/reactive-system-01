@@ -1,0 +1,185 @@
+{
+  "generatedAt": "2025-12-22T11:11:57.209259Z",
+  "currentCommit": "58b5598",
+  "currentResults": {
+    "http": {
+      "peakThroughput": 12990,
+      "avgThroughput": 7349,
+      "latencyP50": 0,
+      "latencyP99": 3,
+      "totalOperations": 147153,
+      "successfulOperations": 147153
+    },
+    "kafka": {
+      "peakThroughput": 6060,
+      "avgThroughput": 3433,
+      "latencyP50": 9032,
+      "latencyP99": 26621,
+      "totalOperations": 113754,
+      "successfulOperations": 57778
+    },
+    "drools": {
+      "peakThroughput": 3482,
+      "avgThroughput": 1249,
+      "latencyP50": 1,
+      "latencyP99": 78,
+      "totalOperations": 43732,
+      "successfulOperations": 43732
+    },
+    "gateway": {
+      "peakThroughput": 14481,
+      "avgThroughput": 5840,
+      "latencyP50": 1,
+      "latencyP99": 5,
+      "totalOperations": 116868,
+      "successfulOperations": 116868
+    },
+    "full": {
+      "peakThroughput": 931,
+      "avgThroughput": 495,
+      "latencyP50": 11,
+      "latencyP99": 39,
+      "totalOperations": 12390,
+      "successfulOperations": 12390
+    }
+  },
+  "baselineCommit": "58b5598",
+  "deltas": {
+    "http": {
+      "peakThroughput": {
+        "current": 12990,
+        "baseline": 12990,
+        "delta": 0.0
+      },
+      "avgThroughput": {
+        "current": 7349,
+        "baseline": 7349,
+        "delta": 0.0
+      },
+      "latencyP99": {
+        "current": 3,
+        "baseline": 3,
+        "delta": 0.0
+      }
+    },
+    "kafka": {
+      "peakThroughput": {
+        "current": 6060,
+        "baseline": 6060,
+        "delta": 0.0
+      },
+      "avgThroughput": {
+        "current": 3433,
+        "baseline": 3433,
+        "delta": 0.0
+      },
+      "latencyP99": {
+        "current": 26621,
+        "baseline": 26621,
+        "delta": 0.0
+      }
+    },
+    "drools": {
+      "peakThroughput": {
+        "current": 3482,
+        "baseline": 3482,
+        "delta": 0.0
+      },
+      "avgThroughput": {
+        "current": 1249,
+        "baseline": 1249,
+        "delta": 0.0
+      },
+      "latencyP99": {
+        "current": 78,
+        "baseline": 78,
+        "delta": 0.0
+      }
+    },
+    "gateway": {
+      "peakThroughput": {
+        "current": 14481,
+        "baseline": 14481,
+        "delta": 0.0
+      },
+      "avgThroughput": {
+        "current": 5840,
+        "baseline": 5840,
+        "delta": 0.0
+      },
+      "latencyP99": {
+        "current": 5,
+        "baseline": 5,
+        "delta": 0.0
+      }
+    },
+    "full": {
+      "peakThroughput": {
+        "current": 931,
+        "baseline": 931,
+        "delta": 0.0
+      },
+      "avgThroughput": {
+        "current": 495,
+        "baseline": 495,
+        "delta": 0.0
+      },
+      "latencyP99": {
+        "current": 39,
+        "baseline": 39,
+        "delta": 0.0
+      }
+    }
+  },
+  "history": [
+    {
+      "commit": "58b5598",
+      "fullCommit": "58b5598705a7ce416861e41cba63b42882841ff4",
+      "message": "Lambda config pattern for Scala-like named parameters",
+      "date": "2025-12-20",
+      "timestamp": "2025-12-22T11:08:28Z",
+      "components": {
+        "http": {
+          "peakThroughput": 12990,
+          "avgThroughput": 7349,
+          "latencyP50": 0,
+          "latencyP99": 3,
+          "totalOperations": 147153,
+          "successRate": 100.0
+        },
+        "kafka": {
+          "peakThroughput": 6060,
+          "avgThroughput": 3433,
+          "latencyP50": 9032,
+          "latencyP99": 26621,
+          "totalOperations": 113754,
+          "successRate": 50.79206005942648
+        },
+        "drools": {
+          "peakThroughput": 3482,
+          "avgThroughput": 1249,
+          "latencyP50": 1,
+          "latencyP99": 78,
+          "totalOperations": 43732,
+          "successRate": 100.0
+        },
+        "gateway": {
+          "peakThroughput": 14481,
+          "avgThroughput": 5840,
+          "latencyP50": 1,
+          "latencyP99": 5,
+          "totalOperations": 116868,
+          "successRate": 100.0
+        },
+        "full": {
+          "peakThroughput": 931,
+          "avgThroughput": 495,
+          "latencyP50": 11,
+          "latencyP99": 39,
+          "totalOperations": 12390,
+          "successRate": 100.0
+        }
+      }
+    }
+  ]
+}

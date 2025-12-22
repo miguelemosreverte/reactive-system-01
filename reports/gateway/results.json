@@ -1,0 +1,121 @@
+{
+  "component" : "gateway",
+  "name" : "Gateway Benchmark",
+  "description" : "Tests HTTP + Kafka publish",
+  "startTime" : "2025-12-21T13:36:19.671668537Z",
+  "endTime" : "2025-12-21T13:36:39.680992682Z",
+  "durationMs" : 20009,
+  "totalOperations" : 116868,
+  "successfulOperations" : 116868,
+  "failedOperations" : 0,
+  "peakThroughput" : 14481,
+  "avgThroughput" : 5840,
+  "throughputTimeline" : [ 0, 0, 0, 0, 3149, 4921, 14481, 6411, 5762, 5789, 4381, 4364, 6553, 6554, 8765, 8773, 9219, 9208, 9681, 9673, 9085, 9089, 10230, 10237, 9510, 9516, 9641, 9652, 9610, 9602 ],
+  "latency" : {
+    "min" : 0,
+    "max" : 44,
+    "avg" : 0,
+    "p50" : 1,
+    "p95" : 3,
+    "p99" : 5
+  },
+  "cpuTimeline" : [ 67.73681640625, 67.73681640625, 67.73681640625, 67.73681640625, 80.33447265625, 80.33447265625, 80.33447265625, 80.33447265625, 80.33447265625, 93.93310546875, 93.93310546875, 93.93310546875, 93.93310546875, 93.93310546875, 106.43310546875, 106.43310546875, 106.43310546875, 106.43310546875 ],
+  "memoryTimeline" : [ 0.887165011839958, 0.887165011839958, 0.887165011839958, 0.9132081155940575, 0.7942292091223354, 1.3905572361950918, 2.7675736443666827, 1.3990500379883797, 3.8748855667807143, 3.380341823358468, 1.9806751208877946, 1.6184998328462017, 8.373117687483248, 4.017141825255424, 5.284428524321432, 10.394646252921804, 5.705601512243, 10.413795571274282 ],
+  "peakCpu" : 106.43310546875,
+  "peakMemory" : 10.413795571274282,
+  "avgCpu" : 87.11208767361111,
+  "avgMemory" : 3.6094026108977104,
+  "componentTiming" : null,
+  "sampleEvents" : [ {
+    "id" : "gateway_4_1766324197678",
+    "traceId" : "000e7ece652f11c20000000000000004",
+    "otelTraceId" : null,
+    "timestamp" : 1766324197680,
+    "latencyMs" : 2,
+    "status" : "success",
+    "error" : null,
+    "componentTiming" : {
+      "gatewayMs" : 2,
+      "kafkaMs" : 0,
+      "flinkMs" : 0,
+      "droolsMs" : 0
+    },
+    "traceData" : {
+      "trace" : null,
+      "logs" : [ {
+        "timestamp" : "1766324197679138545",
+        "line" : "{\"timestamp\":\"2025-12-21T13:36:37.679138545Z\",\"@version\":\"1\",\"message\":\"Publishing event: requestId=000e7ece652f11c20000000000000004, customerId=null, sessionId=gateway-bench-4, action=increment\",\"logger\":\"com.reactive.gateway.service.KafkaService\",\"thread\":\"reactor-http-nio-1\",\"level\":\"INFO\",\"level_value\":20000,\"serviceVersion\":\"1.0.0\",\"serviceName\":\"gateway\",\"traceId\":\"d97b59a2ee34a0c2598d704bbd13a90c\",\"spanId\":\"973cba91aba489a9\",\"service\":\"gateway\",\"version\":\"1.0.0\"}",
+        "labels" : {
+          "compose_service" : "gateway",
+          "container" : "reactive-application",
+          "container_id" : "c353013a1a15c2aa116aee85929f7dc3359d6741de313eedc5267b9acf0117b4",
+          "level" : "INFO",
+          "project" : "reactive-system-01",
+          "service" : "application"
+        },
+        "fields" : {
+          "timestamp" : "2025-12-21T13:36:37.679138545Z",
+          "@version" : "1",
+          "message" : "Publishing event: requestId=000e7ece652f11c20000000000000004, customerId=null, sessionId=gateway-bench-4, action=increment",
+          "logger" : "com.reactive.gateway.service.KafkaService",
+          "thread" : "reactor-http-nio-1",
+          "level" : "INFO",
+          "level_value" : 20000,
+          "serviceVersion" : "1.0.0",
+          "serviceName" : "gateway",
+          "traceId" : "d97b59a2ee34a0c2598d704bbd13a90c",
+          "spanId" : "973cba91aba489a9",
+          "service" : "gateway",
+          "version" : "1.0.0"
+        }
+      } ]
+    }
+  }, {
+    "id" : "gateway_2_1766324197678",
+    "traceId" : "000e7ece653011c20000000000000000",
+    "otelTraceId" : null,
+    "timestamp" : 1766324197680,
+    "latencyMs" : 2,
+    "status" : "success",
+    "error" : null,
+    "componentTiming" : {
+      "gatewayMs" : 2,
+      "kafkaMs" : 0,
+      "flinkMs" : 0,
+      "droolsMs" : 0
+    },
+    "traceData" : {
+      "trace" : null,
+      "logs" : [ {
+        "timestamp" : "1766324197680465495",
+        "line" : "{\"timestamp\":\"2025-12-21T13:36:37.680465495Z\",\"@version\":\"1\",\"message\":\"Publishing event: requestId=000e7ece653011c20000000000000000, customerId=null, sessionId=gateway-bench-2, action=increment\",\"logger\":\"com.reactive.gateway.service.KafkaService\",\"thread\":\"reactor-http-nio-2\",\"level\":\"INFO\",\"level_value\":20000,\"serviceVersion\":\"1.0.0\",\"serviceName\":\"gateway\",\"traceId\":\"8cd234978275fd6457f971d030864c7a\",\"spanId\":\"3b57d490eba6ae31\",\"service\":\"gateway\",\"version\":\"1.0.0\"}",
+        "labels" : {
+          "compose_service" : "gateway",
+          "container" : "reactive-application",
+          "container_id" : "c353013a1a15c2aa116aee85929f7dc3359d6741de313eedc5267b9acf0117b4",
+          "level" : "INFO",
+          "project" : "reactive-system-01",
+          "service" : "application"
+        },
+        "fields" : {
+          "timestamp" : "2025-12-21T13:36:37.680465495Z",
+          "@version" : "1",
+          "message" : "Publishing event: requestId=000e7ece653011c20000000000000000, customerId=null, sessionId=gateway-bench-2, action=increment",
+          "logger" : "com.reactive.gateway.service.KafkaService",
+          "thread" : "reactor-http-nio-2",
+          "level" : "INFO",
+          "level_value" : 20000,
+          "serviceVersion" : "1.0.0",
+          "serviceName" : "gateway",
+          "traceId" : "8cd234978275fd6457f971d030864c7a",
+          "spanId" : "3b57d490eba6ae31",
+          "service" : "gateway",
+          "version" : "1.0.0"
+        }
+      } ]
+    }
+  } ],
+  "status" : "completed",
+  "errorMessage" : null,
+  "success" : true
+}

@@ -1,0 +1,49 @@
+{
+  "commit": "58b5598705a7ce416861e41cba63b42882841ff4",
+  "shortCommit": "58b5598",
+  "message": "Lambda config pattern for Scala-like named parameters",
+  "date": "2025-12-20",
+  "timestamp": "2025-12-22T11:08:28Z",
+  "components": {
+    "http": {
+      "peakThroughput": 12990,
+      "avgThroughput": 7349,
+      "latencyP50": 0,
+      "latencyP99": 3,
+      "totalOperations": 147153,
+      "successRate": 100.0
+    },
+    "kafka": {
+      "peakThroughput": 6060,
+      "avgThroughput": 3433,
+      "latencyP50": 9032,
+      "latencyP99": 26621,
+      "totalOperations": 113754,
+      "successRate": 50.79206005942648
+    },
+    "drools": {
+      "peakThroughput": 3482,
+      "avgThroughput": 1249,
+      "latencyP50": 1,
+      "latencyP99": 78,
+      "totalOperations": 43732,
+      "successRate": 100.0
+    },
+    "gateway": {
+      "peakThroughput": 14481,
+      "avgThroughput": 5840,
+      "latencyP50": 1,
+      "latencyP99": 5,
+      "totalOperations": 116868,
+      "successRate": 100.0
+    },
+    "full": {
+      "peakThroughput": 931,
+      "avgThroughput": 495,
+      "latencyP50": 11,
+      "latencyP99": 39,
+      "totalOperations": 12390,
+      "successRate": 100.0
+    }
+  }
+}

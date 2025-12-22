@@ -5,6 +5,7 @@ public class EvaluationResponse {
     private String alert;
     private String message;
     private long timestamp;
+    private String traceId;
 
     public EvaluationResponse() {
         this.timestamp = System.currentTimeMillis();
@@ -46,5 +47,13 @@ public class EvaluationResponse {
 
     public void setTimestamp(long timestamp) {
         this.timestamp = timestamp;
+    }
+
+    public String getTraceId() {
+        return traceId;
+    }
+
+    public void setTraceId(String traceId) {
+        this.traceId = traceId;
     }
 }

@@ -26,6 +26,10 @@ public class PreDroolsResult implements Serializable {
     private EventTiming timing;
     private long arrivalTime;
 
+    // Trace context propagation - stores W3C traceparent header value
+    private String traceparent;
+    private String tracestate;
+
     public PreDroolsResult() {}
 
     public PreDroolsResult(String sessionId, int counterValue, String requestId, String customerId,
@@ -37,6 +41,14 @@ public class PreDroolsResult implements Serializable {
         this.eventId = eventId;
         this.timing = timing;
         this.arrivalTime = arrivalTime;
+    }
+
+    public PreDroolsResult(String sessionId, int counterValue, String requestId, String customerId,
+                           String eventId, EventTiming timing, long arrivalTime,
+                           String traceparent, String tracestate) {
+        this(sessionId, counterValue, requestId, customerId, eventId, timing, arrivalTime);
+        this.traceparent = traceparent;
+        this.tracestate = tracestate;
     }
 
     public String getRequestId() {
@@ -93,6 +105,22 @@ public class PreDroolsResult implements Serializable {
 
     public void setArrivalTime(long arrivalTime) {
         this.arrivalTime = arrivalTime;
+    }
+
+    public String getTraceparent() {
+        return traceparent;
+    }
+
+    public void setTraceparent(String traceparent) {
+        this.traceparent = traceparent;
+    }
+
+    public String getTracestate() {
+        return tracestate;
+    }
+
+    public void setTracestate(String tracestate) {
+        this.tracestate = tracestate;
     }
 
     @Override

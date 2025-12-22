@@ -24,6 +24,10 @@ public class CounterResult implements Serializable {
     private long timestamp;
     private EventTiming timing;
 
+    // Trace context propagation - W3C traceparent/tracestate headers
+    private String traceparent;
+    private String tracestate;
+
     public CounterResult() {
     }
 
@@ -119,6 +123,22 @@ public class CounterResult implements Serializable {
 
     public void setTiming(EventTiming timing) {
         this.timing = timing;
+    }
+
+    public String getTraceparent() {
+        return traceparent;
+    }
+
+    public void setTraceparent(String traceparent) {
+        this.traceparent = traceparent;
+    }
+
+    public String getTracestate() {
+        return tracestate;
+    }
+
+    public void setTracestate(String tracestate) {
+        this.tracestate = tracestate;
     }
 
     @Override

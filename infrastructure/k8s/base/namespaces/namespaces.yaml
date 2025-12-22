@@ -1,0 +1,26 @@
+# Kubernetes Namespaces for Reactive System
+# Organized by concern: infrastructure, observability, application
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: reactive-infra
+  labels:
+    app.kubernetes.io/part-of: reactive-system
+    purpose: infrastructure
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: reactive-observability
+  labels:
+    app.kubernetes.io/part-of: reactive-system
+    purpose: observability
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: reactive-app
+  labels:
+    app.kubernetes.io/part-of: reactive-system
+    purpose: application

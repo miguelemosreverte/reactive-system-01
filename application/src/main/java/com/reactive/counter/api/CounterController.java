@@ -2,6 +2,7 @@ package com.reactive.counter.api;
 
 import com.reactive.counter.domain.CounterEvent;
 import com.reactive.counter.domain.CounterState;
+import com.reactive.counter.service.ResultConsumerService;
 import com.reactive.platform.id.IdGenerator;
 import com.reactive.platform.kafka.KafkaPublisher;
 import com.reactive.platform.serialization.JsonCodec;
@@ -12,11 +13,13 @@ import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
+import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -44,6 +47,15 @@ public class CounterController {
 
     @Value("${app.kafka.topics.events:counter-events}")
     private String eventsTopic;
+
+    @Value("${app.delivery-mode:fire-and-forget}")
+    private String deliveryMode;
+
+    @Value("${app.result-timeout-ms:5000}")
+    private long resultTimeoutMs;
+
+    @Autowired(required = false)
+    private ResultConsumerService resultConsumerService;
 
     private final Tracing tracing = Tracing.create("counter-api");
     private final IdGenerator idGenerator = IdGenerator.getInstance();
@@ -99,12 +111,15 @@ public class CounterController {
     }
 
     private Mono<ResponseEntity<ActionResponse>> processAction(ActionRequest request, String customerId) {
+        boolean waitForResult = "wait-for-result".equals(deliveryMode) && resultConsumerService != null;
+
         return Mono.fromCallable(() -> tracing.span("counter.submit", span -> {
             String sessionId = request.sessionIdOrDefault();
             String requestId = idGenerator.generateRequestId();
             String eventId = idGenerator.generateEventId();
             String otelTraceId = span.getSpanContext().getTraceId();
 
+            span.setAttribute("delivery.mode", deliveryMode);
             setSpanAttributes(span, requestId, customerId, eventId, sessionId, request);
 
             try {
@@ -114,20 +129,53 @@ public class CounterController {
                 CounterEvent event = CounterEvent.create(
                         requestId, customerId, eventId, sessionId, request.action(), request.value()
                 );
-                publisher.publishFireAndForget(event);
 
-                log.info("Event published: action={}, value={}, session={}",
-                        request.action(), request.value(), sessionId);
+                if (waitForResult) {
+                    // Register pending transaction before publishing
+                    var resultFuture = resultConsumerService.registerPendingTransaction(eventId);
+                    publisher.publishFireAndForget(event);
 
-                return ResponseEntity.ok(new ActionResponse(
-                        true, requestId, customerId != null ? customerId : "",
-                        eventId, otelTraceId, "accepted"
-                ));
+                    log.info("Event published (wait-for-result): action={}, value={}, session={}",
+                            request.action(), request.value(), sessionId);
+
+                    // Return a placeholder - actual waiting is done in flatMap below
+                    return new ActionResponse(
+                            true, requestId, customerId != null ? customerId : "",
+                            eventId, otelTraceId, "pending"
+                    );
+                } else {
+                    publisher.publishFireAndForget(event);
+
+                    log.info("Event published (fire-and-forget): action={}, value={}, session={}",
+                            request.action(), request.value(), sessionId);
+
+                    return new ActionResponse(
+                            true, requestId, customerId != null ? customerId : "",
+                            eventId, otelTraceId, "accepted"
+                    );
+                }
             } finally {
                 MDC.remove("requestId");
                 MDC.remove("customerId");
             }
-        }));
+        })).flatMap(response -> {
+            if (waitForResult && "pending".equals(response.status())) {
+                // Wait for result from Kafka
+                return Mono.fromFuture(resultConsumerService.registerPendingTransaction(response.eventId()))
+                        .timeout(Duration.ofMillis(resultTimeoutMs))
+                        .map(result -> ResponseEntity.ok(new ActionResponse(
+                                true, response.requestId(), response.customerId(),
+                                response.eventId(), response.otelTraceId(),
+                                "completed"
+                        )))
+                        .onErrorReturn(ResponseEntity.ok(new ActionResponse(
+                                true, response.requestId(), response.customerId(),
+                                response.eventId(), response.otelTraceId(),
+                                "timeout"
+                        )));
+            }
+            return Mono.just(ResponseEntity.ok(response));
+        });
     }
 
     private void setSpanAttributes(Span span, String requestId, String customerId,

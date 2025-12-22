@@ -1,0 +1,94 @@
+# Jaeger - Distributed Tracing
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jaeger
+  namespace: reactive-observability
+  labels:
+    app: jaeger
+spec:
+  ports:
+    - name: ui
+      port: 16686
+      targetPort: 16686
+    - name: grpc
+      port: 14250
+      targetPort: 14250
+    - name: otlp-grpc
+      port: 4317
+      targetPort: 4317
+  selector:
+    app: jaeger
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jaeger-web
+  namespace: reactive-observability
+  labels:
+    app: jaeger
+spec:
+  type: NodePort
+  ports:
+    - name: ui
+      port: 16686
+      nodePort: 30686
+  selector:
+    app: jaeger
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jaeger
+  namespace: reactive-observability
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: jaeger
+  template:
+    metadata:
+      labels:
+        app: jaeger
+    spec:
+      containers:
+        - name: jaeger
+          image: jaegertracing/all-in-one:1.53
+          ports:
+            - containerPort: 16686
+              name: ui
+            - containerPort: 14250
+              name: grpc
+            - containerPort: 4317
+              name: otlp-grpc
+          env:
+            - name: COLLECTOR_OTLP_ENABLED
+              value: "true"
+            - name: SPAN_STORAGE_TYPE
+              value: "memory"
+            - name: MEMORY_MAX_TRACES
+              value: "20000"
+            - name: GOMAXPROCS
+              value: "2"
+            - name: GOMEMLIMIT
+              value: "3500MiB"
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "500m"
+            limits:
+              memory: "4Gi"
+              cpu: "1500m"
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 16686
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 16686
+            initialDelaySeconds: 10
+            periodSeconds: 20

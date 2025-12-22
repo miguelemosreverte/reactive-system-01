@@ -1,0 +1,102 @@
+# Benchmark Service - Go-based CI-ready benchmark runner
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: benchmark
+  namespace: reactive-app
+  labels:
+    app: benchmark
+spec:
+  ports:
+    - name: http
+      port: 8090
+      targetPort: 8090
+  selector:
+    app: benchmark
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: benchmark-reports
+  namespace: reactive-app
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: benchmark
+  namespace: reactive-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: benchmark
+  template:
+    metadata:
+      labels:
+        app: benchmark
+    spec:
+      containers:
+        - name: benchmark
+          image: reactive-system-01-benchmark:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8090
+              name: http
+          env:
+            - name: PORT
+              value: "8090"
+            - name: REPORT_DIR
+              value: "/reports"
+            - name: API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: benchmark-secrets
+                  key: api-key
+                  optional: true
+            - name: JAEGER_QUERY_URL
+              value: "http://jaeger.reactive-observability.svc.cluster.local:16686"
+            - name: LOKI_URL
+              value: "http://loki.reactive-observability.svc.cluster.local:3100"
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8090
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8090
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          volumeMounts:
+            - name: reports
+              mountPath: /reports
+      volumes:
+        - name: reports
+          persistentVolumeClaim:
+            claimName: benchmark-reports
+---
+# Optional secret for API key (create with: kubectl create secret generic benchmark-secrets --from-literal=api-key=your-key)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: benchmark-secrets
+  namespace: reactive-app
+type: Opaque
+stringData:
+  api-key: "reactive-admin-key"

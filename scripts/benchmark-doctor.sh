@@ -1,6 +1,11 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Benchmark Doctor - Validates observability chain for benchmarks
 # Checks: services health, trace propagation, log correlation, component coverage
+#
+# Usage:
+#   ./benchmark-doctor.sh           # Interactive mode with colored output
+#   ./benchmark-doctor.sh --json    # JSON output for programmatic use
+#   ./benchmark-doctor.sh --api     # Use the new diagnostic API endpoint
 
 # Don't exit on error - we want to collect all diagnostics
 # set -e
@@ -13,6 +18,30 @@ BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
+# Parse arguments
+JSON_OUTPUT=false
+USE_API=false
+for arg in "$@"; do
+    case $arg in
+        --json)
+            JSON_OUTPUT=true
+            ;;
+        --api)
+            USE_API=true
+            ;;
+    esac
+done
+
+# Disable colors for JSON output
+if $JSON_OUTPUT; then
+    RED=''
+    GREEN=''
+    YELLOW=''
+    BLUE=''
+    CYAN=''
+    NC=''
+fi
+
 # Expected services in traces
 EXPECTED_TRACE_SERVICES=("counter-application" "flink-taskmanager" "drools")
 
@@ -21,34 +50,107 @@ PASS=0
 FAIL=0
 WARN=0
 
+# JSON result storage (use indexed array for bash 3.x compatibility)
+JSON_CHECKS=()
+TRACE_VALIDATION_RESULT=""
+
 print_header() {
-    echo -e "\n${BLUE}╔════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${BLUE}║${NC}  ${CYAN}Benchmark Doctor${NC}"
-    echo -e "${BLUE}╚════════════════════════════════════════════════════════════╝${NC}\n"
+    if ! $JSON_OUTPUT; then
+        echo -e "\n${BLUE}╔════════════════════════════════════════════════════════════╗${NC}"
+        echo -e "${BLUE}║${NC}  ${CYAN}Benchmark Doctor${NC}"
+        echo -e "${BLUE}╚════════════════════════════════════════════════════════════╝${NC}\n"
+    fi
+}
+
+add_json_check() {
+    local category="$1"
+    local name="$2"
+    local status="$3"
+    local message="$4"
+    JSON_CHECKS+=("{\"category\":\"$category\",\"name\":\"$name\",\"status\":\"$status\",\"message\":\"$message\"}")
 }
 
 check_pass() {
-    echo -e "  ${GREEN}✓${NC} $1"
+    if ! $JSON_OUTPUT; then
+        echo -e "  ${GREEN}✓${NC} $1"
+    fi
+    add_json_check "${CURRENT_CATEGORY:-general}" "$1" "pass" "$1"
     ((PASS++))
 }
 
 check_fail() {
-    echo -e "  ${RED}✗${NC} $1"
+    if ! $JSON_OUTPUT; then
+        echo -e "  ${RED}✗${NC} $1"
+    fi
+    add_json_check "${CURRENT_CATEGORY:-general}" "$1" "fail" "$1"
     ((FAIL++))
 }
 
 check_warn() {
-    echo -e "  ${YELLOW}⚠${NC} $1"
+    if ! $JSON_OUTPUT; then
+        echo -e "  ${YELLOW}⚠${NC} $1"
+    fi
+    add_json_check "${CURRENT_CATEGORY:-general}" "$1" "warn" "$1"
     ((WARN++))
 }
 
 check_info() {
-    echo -e "  ${BLUE}→${NC} $1"
+    if ! $JSON_OUTPUT; then
+        echo -e "  ${BLUE}→${NC} $1"
+    fi
+}
+
+# Run diagnostic via API endpoint
+run_api_diagnostic() {
+    CURRENT_CATEGORY="api_diagnostic"
+    if ! $JSON_OUTPUT; then
+        echo -e "\n${CYAN}API Diagnostic Test${NC}"
+    fi
+
+    check_info "Running E2E diagnostic via API..."
+
+    result=$(curl -sf --max-time 120 -X POST "http://localhost:8080/api/diagnostic/run" 2>/dev/null)
+
+    if [ -z "$result" ]; then
+        check_fail "Diagnostic API not responding"
+        return
+    fi
+
+    # Parse result
+    success=$(echo "$result" | python3 -c "import json,sys; print(json.load(sys.stdin).get('success', False))" 2>/dev/null)
+    trace_id=$(echo "$result" | python3 -c "import json,sys; print(json.load(sys.stdin).get('actualTraceId', ''))" 2>/dev/null)
+    span_count=$(echo "$result" | python3 -c "import json,sys; print(json.load(sys.stdin).get('validation',{}).get('spanCount', 0))" 2>/dev/null)
+    is_complete=$(echo "$result" | python3 -c "import json,sys; print(json.load(sys.stdin).get('validation',{}).get('isComplete', False))" 2>/dev/null)
+    present_services=$(echo "$result" | python3 -c "import json,sys; print(','.join(json.load(sys.stdin).get('validation',{}).get('presentServices', [])))" 2>/dev/null)
+    missing_services=$(echo "$result" | python3 -c "import json,sys; print(','.join(json.load(sys.stdin).get('validation',{}).get('missingServices', [])))" 2>/dev/null)
+    log_count=$(echo "$result" | python3 -c "import json,sys; print(json.load(sys.stdin).get('logCount', 0))" 2>/dev/null)
+
+    check_info "Trace ID: ${trace_id:0:16}..."
+    check_info "Span count: $span_count"
+    check_info "Services: $present_services"
+
+    if [ "$is_complete" = "True" ]; then
+        check_pass "E2E trace complete - all services present"
+    else
+        check_fail "E2E trace incomplete - missing: $missing_services"
+    fi
+
+    if [ "$log_count" -gt 0 ] 2>/dev/null; then
+        check_pass "Found $log_count correlated logs"
+    else
+        check_warn "No correlated logs found"
+    fi
+
+    # Store for JSON output
+    TRACE_VALIDATION_RESULT="$result"
 }
 
 # 1. Check service health
 check_services() {
-    echo -e "${CYAN}1. Service Health${NC}"
+    CURRENT_CATEGORY="services"
+    if ! $JSON_OUTPUT; then
+        echo -e "${CYAN}1. Service Health${NC}"
+    fi
 
     services=("gateway:8080/actuator/health" "drools:8180/health" "jaeger:16686" "loki:3100/ready" "otel-collector:13133")
 
@@ -73,7 +175,10 @@ check_services() {
 
 # 2. Check trace propagation
 check_trace_propagation() {
-    echo -e "\n${CYAN}2. Trace Propagation${NC}"
+    CURRENT_CATEGORY="trace_propagation"
+    if ! $JSON_OUTPUT; then
+        echo -e "\n${CYAN}2. Trace Propagation${NC}"
+    fi
 
     # Send test request
     check_info "Sending test request..."
@@ -159,16 +264,21 @@ print(f'OPS:{\"|\".join(operations[:15])}')
     done
 
     # Show operations
-    ops=$(echo "$analysis" | grep "OPS:" | cut -d: -f2 | tr '|' '\n')
-    echo -e "  ${BLUE}→${NC} Operations in trace:"
-    echo "$ops" | head -12 | while read op; do
-        echo -e "      $op"
-    done
+    if ! $JSON_OUTPUT; then
+        ops=$(echo "$analysis" | grep "OPS:" | cut -d: -f2 | tr '|' '\n')
+        echo -e "  ${BLUE}→${NC} Operations in trace:"
+        echo "$ops" | head -12 | while read op; do
+            echo -e "      $op"
+        done
+    fi
 }
 
 # 3. Check Jaeger services
 check_jaeger_services() {
-    echo -e "\n${CYAN}3. Jaeger Service Registry${NC}"
+    CURRENT_CATEGORY="jaeger_services"
+    if ! $JSON_OUTPUT; then
+        echo -e "\n${CYAN}3. Jaeger Service Registry${NC}"
+    fi
 
     services=$(curl -sf --max-time 5 "http://localhost:16686/api/services" 2>/dev/null | python3 -c "import json,sys; print('\n'.join(json.load(sys.stdin).get('data',[])))" 2>/dev/null)
 
@@ -188,7 +298,10 @@ check_jaeger_services() {
 
 # 4. Check log correlation
 check_log_correlation() {
-    echo -e "\n${CYAN}4. Log Correlation (Loki)${NC}"
+    CURRENT_CATEGORY="log_correlation"
+    if ! $JSON_OUTPUT; then
+        echo -e "\n${CYAN}4. Log Correlation (Loki)${NC}"
+    fi
 
     # Check if Loki is ready
     if ! curl -sf --max-time 5 "http://localhost:3100/ready" > /dev/null 2>&1; then
@@ -233,7 +346,10 @@ check_log_correlation() {
 
 # 5. Check OTEL Collector health
 check_otel_collector() {
-    echo -e "\n${CYAN}5. OTEL Collector Status${NC}"
+    CURRENT_CATEGORY="otel_collector"
+    if ! $JSON_OUTPUT; then
+        echo -e "\n${CYAN}5. OTEL Collector Status${NC}"
+    fi
 
     # Check health
     if curl -sf --max-time 5 "http://localhost:13133/" > /dev/null 2>&1; then
@@ -265,7 +381,10 @@ check_otel_collector() {
 
 # 6. Check latest benchmark report
 check_benchmark_report() {
-    echo -e "\n${CYAN}6. Benchmark Report Quality${NC}"
+    CURRENT_CATEGORY="benchmark_report"
+    if ! $JSON_OUTPUT; then
+        echo -e "\n${CYAN}6. Benchmark Report Quality${NC}"
+    fi
 
     report_file="reports/full/index.html"
 
@@ -381,8 +500,51 @@ print(f'HAS_DROOLS:{has_drools}')
     fi
 }
 
+# Print JSON output
+print_json() {
+    local status="pass"
+    if [ $FAIL -gt 0 ]; then
+        status="fail"
+    elif [ $WARN -gt 0 ]; then
+        status="warn"
+    fi
+
+    # Build checks array
+    local checks_json=""
+    for check in "${JSON_CHECKS[@]}"; do
+        if [ -n "$checks_json" ]; then
+            checks_json="$checks_json,$check"
+        else
+            checks_json="$check"
+        fi
+    done
+
+    cat <<EOF
+{
+  "status": "$status",
+  "summary": {
+    "passed": $PASS,
+    "failed": $FAIL,
+    "warnings": $WARN
+  },
+  "checks": [$checks_json],
+  "traceValidation": ${TRACE_VALIDATION_RESULT:-null},
+  "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+}
+EOF
+}
+
 # Summary
 print_summary() {
+    if $JSON_OUTPUT; then
+        print_json
+        if [ $FAIL -gt 0 ]; then
+            exit 1
+        else
+            exit 0
+        fi
+    fi
+
     echo -e "\n${BLUE}════════════════════════════════════════════════════════════${NC}"
     echo -e "${CYAN}Summary${NC}"
     echo -e "${BLUE}════════════════════════════════════════════════════════════${NC}"
@@ -406,7 +568,15 @@ print_summary() {
 print_header
 check_services
 check_jaeger_services
-check_trace_propagation
+
+if $USE_API; then
+    # Use the diagnostic API for trace validation
+    run_api_diagnostic
+else
+    # Use manual trace propagation check
+    check_trace_propagation
+fi
+
 check_log_correlation
 check_otel_collector
 check_benchmark_report

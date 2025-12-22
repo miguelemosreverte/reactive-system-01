@@ -18,6 +18,12 @@ spring:
       auto-offset-reset: latest
 
 app:
+  # Delivery mode: "fire-and-forget" (fast, no wait) or "wait-for-result" (slower, guaranteed)
+  delivery-mode: ${DELIVERY_MODE:fire-and-forget}
+  # Timeout for wait-for-result mode (ms)
+  result-timeout-ms: ${RESULT_TIMEOUT_MS:5000}
+  # Enable WebSocket for real-time UI updates
+  websocket-enabled: ${WEBSOCKET_ENABLED:true}
   kafka:
     topics:
       events: counter-events

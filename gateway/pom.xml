@@ -131,4 +131,19 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <!-- Profile for running benchmarks outside Docker -->
+        <profile>
+            <id>benchmark</id>
+            <dependencies>
+                <dependency>
+                    <groupId>com.reactive</groupId>
+                    <artifactId>platform</artifactId>
+                    <version>1.0.0</version>
+                    <scope>test</scope>
+                </dependency>
+            </dependencies>
+        </profile>
+    </profiles>
 </project>

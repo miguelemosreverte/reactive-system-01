@@ -27,6 +27,10 @@ public class CounterEvent implements Serializable {
     private EventTiming timing;
     private long deserializedAt;
 
+    // Trace context propagation - stores W3C traceparent header value
+    private String traceparent;
+    private String tracestate;
+
     public CounterEvent() {
     }
 
@@ -107,6 +111,22 @@ public class CounterEvent implements Serializable {
 
     public void setDeserializedAt(long deserializedAt) {
         this.deserializedAt = deserializedAt;
+    }
+
+    public String getTraceparent() {
+        return traceparent;
+    }
+
+    public void setTraceparent(String traceparent) {
+        this.traceparent = traceparent;
+    }
+
+    public String getTracestate() {
+        return tracestate;
+    }
+
+    public void setTracestate(String tracestate) {
+        this.tracestate = tracestate;
     }
 
     @Override

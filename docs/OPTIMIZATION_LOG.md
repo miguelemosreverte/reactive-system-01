@@ -352,3 +352,56 @@ The analyzer provides targeted recommendations based on the bottleneck:
 - `BenchmarkResult.analyzeBottlenecks()`: Convenience method
 - CLI and script updated to display bottleneck analysis
 
+---
+
+## Optimization 1 SUCCESS: Scaled Flink to 2 Taskmanagers (2025-12-22)
+
+### Problem Identified
+
+The diagnostic report showed:
+```
+🟡 WARNING: Flink at 55% - optimization recommended
+NEXT STEP: docker compose up -d --scale flink-taskmanager=2
+```
+
+### Changes Applied
+
+1. **Removed `container_name`** from flink-taskmanager service (enables scaling)
+2. **Increased `FLINK_PARALLELISM`** from 4 to 8
+3. **Scaled to 2 taskmanagers**: `docker compose up -d --scale flink-taskmanager=2`
+
+**Final Configuration:**
+- 2 taskmanagers × 8 slots = 16 total slots
+- Parallelism 8 × 2 operator chains = 16 tasks
+- Full utilization of all 8 Kafka partitions
+
+### Results
+
+| Metric | Before (1 TM) | After (2 TM) | Improvement |
+|--------|---------------|--------------|-------------|
+| Peak throughput | 1,998 ops/sec | **4,651 ops/sec** | **+133%** |
+| Avg throughput | 472 ops/sec | **971 ops/sec** | **+106%** |
+| P99 Latency | 53ms | **25ms** | **-53%** |
+| Flink % of trace | 55% (CRITICAL) | **21% (WARNING)** | **-62%** |
+| Status | 🟡 WARNING | **🟢 HEALTHY** | ✓ |
+
+### Diagnostic Output After Optimization
+
+```
+🟢 HEALTHY: System balanced, Flink leads at 21%
+
+╔══════════════════════════════════════════════════════════════╗
+║ COMPONENT BREAKDOWN                                           ║
+╠══════════════════════════════════════════════════════════════╣
+║ ⚠ flink-taskmanager      21.0% ████            ║
+║ ✓ drools                  6.5% █               ║
+╠══════════════════════════════════════════════════════════════╣
+║ NEXT STEP                                                     ║
+║ ▶ System is balanced - scale horizontally for more throughput  ║
+╚══════════════════════════════════════════════════════════════╝
+```
+
+### Key Takeaway
+
+The automated diagnostic report correctly identified the bottleneck and provided the exact command to run. Following its advice resulted in **2x throughput improvement**.
+

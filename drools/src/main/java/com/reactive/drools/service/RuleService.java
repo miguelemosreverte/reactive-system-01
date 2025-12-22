@@ -74,6 +74,12 @@ public class RuleService {
         response.setAlert(counter.getAlert() != null ? counter.getAlert() : "NONE");
         response.setMessage(generateMessage(counter));
 
+        // Include the OpenTelemetry trace ID in response for observability
+        String traceId = currentSpan.getSpanContext().getTraceId();
+        if (traceId != null && !traceId.equals("00000000000000000000000000000000")) {
+            response.setTraceId(traceId);
+        }
+
         // Add result attributes
         currentSpan.setAttribute("drools.result_value", response.getValue());
         currentSpan.setAttribute("drools.alert_level", response.getAlert());

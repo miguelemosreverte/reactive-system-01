@@ -85,7 +85,11 @@ public class KafkaPublisher<A> implements AutoCloseable {
      * Returns the trace ID on success.
      */
     public CompletableFuture<Result<String>> publish(A message) {
+        // Capture current context to ensure parent span is preserved
+        Context parentContext = Context.current();
+
         Span span = tracer.spanBuilder("kafka.publish")
+                .setParent(parentContext)  // Explicitly set parent
                 .setSpanKind(SpanKind.PRODUCER)
                 .setAttribute("messaging.system", "kafka")
                 .setAttribute("messaging.destination", topic)
@@ -147,7 +151,11 @@ public class KafkaPublisher<A> implements AutoCloseable {
      * Returns trace ID immediately without waiting for ack.
      */
     public String publishFireAndForget(A message) {
+        // Capture current context to ensure parent span is preserved
+        Context parentContext = Context.current();
+
         Span span = tracer.spanBuilder("kafka.publish.fast")
+                .setParent(parentContext)  // Explicitly set parent
                 .setSpanKind(SpanKind.PRODUCER)
                 .setAttribute("messaging.system", "kafka")
                 .setAttribute("messaging.destination", topic)

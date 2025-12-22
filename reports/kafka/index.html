@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kafka Benchmark Report</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        #root { min-height: 100vh; }
+        .loading { display: flex; justify-content: center; align-items: center; height: 100vh; font-size: 18px; color: #666; }
+    </style>
+</head>
+<body>
+    <div id="root"><div class="loading">Loading benchmark report...</div></div>
+    <script>
+        window.__BENCHMARK_DATA__ = {
+  "component" : "kafka",
+  "name" : "Kafka Benchmark",
+  "description" : "Tests Kafka produce/consume round-trip",
+  "startTime" : "2025-12-21T13:44:03.682717813Z",
+  "endTime" : "2025-12-21T13:44:36.815075542Z",
+  "durationMs" : 33133,
+  "totalOperations" : 113754,
+  "successfulOperations" : 57778,
+  "failedOperations" : 55976,
+  "peakThroughput" : 6060,
+  "avgThroughput" : 3433,
+  "throughputTimeline" : [ 0, 0, 0, 0, 0, 0, 0, 0, 469, 649, 1448, 2071, 2327, 1891, 2275, 2487, 3154, 3475, 3814, 3612, 4693, 4718, 4019, 4778, 5740, 4922, 2687, 2373, 4508, 6060, 4973, 4187, 5458, 5042, 4229, 4223, 3284, 3481, 3992, 3410, 231, 540 ],
+  "latency" : {
+    "min" : 2,
+    "max" : 27437,
+    "avg" : 9849,
+    "p50" : 9032,
+    "p95" : 20684,
+    "p99" : 26621
+  },
+  "cpuTimeline" : [ 68.51806640625, 68.51806640625, 68.51806640625, 68.51806640625, 68.51806640625, 105.078125, 105.078125, 105.078125, 105.078125, 105.078125, 150.72021484375, 150.72021484375, 150.72021484375, 150.72021484375, 150.72021484375, 174.69482421875, 174.69482421875, 174.69482421875, 174.69482421875, 174.69482421875, 212.7685546875, 212.7685546875, 212.7685546875, 212.7685546875 ],
+  "memoryTimeline" : [ 0.8201876273670062, 0.8201876273670062, 0.8201876273670062, 0.8554814682237797, 2.6637565235557514, 3.859170630769701, 1.7554178247538392, 3.2494249545962495, 2.1372628620967618, 2.1529054304906268, 3.1378606494091352, 2.628255973069146, 5.211742181710591, 1.9976153022465866, 7.171316753121847, 4.382216437192545, 10.861866986595176, 7.367478417820935, 6.9957494495133945, 11.495039754149651, 17.693033228007142, 16.527852617527476, 10.755015814941899, 17.87409623624338 ],
+  "peakCpu" : 212.7685546875,
+  "peakMemory" : 17.87409623624338,
+  "avgCpu" : 139.4220987955729,
+  "avgMemory" : 5.968046765755694,
+  "componentTiming" : null,
+  "sampleEvents" : [ {
+    "id" : "kafka_kafka_3_6353",
+    "traceId" : "kafka_req_3_1766324655384",
+    "otelTraceId" : null,
+    "timestamp" : 1766324670803,
+    "latencyMs" : 15419,
+    "status" : "success",
+    "error" : null,
+    "componentTiming" : {
+      "gatewayMs" : 0,
+      "kafkaMs" : 15419,
+      "flinkMs" : 0,
+      "droolsMs" : 0
+    },
+    "traceData" : {
+      "trace" : null,
+      "logs" : [ {
+        "timestamp" : "1766324666327975727",
+        "line" : "{\"timestamp\":\"2025-12-21T13:44:26,327\",\"level\":\"INFO \",\"service\":\"flink\",\"logger\":\"com.reactive.flink.processor.CounterProcessor\",\"thread\":\"KeyedProcess -> (Sink: Writer -> Sink: Committer, async wait operator -> Sink: Writer -> Sink: Committer) (2/4)#0\",\"traceId\":\"761c7a88d50715120f491ecc820f7afd\",\"spanId\":\"f47290ad5e11353e\",\"message\":\"Flink processed event: sessionId=kafka-bench-3, action=increment, newValue=6354, requestId=kafka_req_3_1766324655384, customerId=null\"}",
+        "labels" : {
+          "compose_service" : "flink-taskmanager",
+          "container" : "reactive-flink-taskmanager",
+          "container_id" : "8190fec4e2f8e1f1232b4ee25882ade1247d23da0732d3b5779d74b959979cbf",
+          "level" : "INFO",
+          "project" : "reactive-system-01",
+          "service" : "flink-taskmanager"
+        },
+        "fields" : {
+          "timestamp" : "2025-12-21T13:44:26,327",
+          "level" : "INFO ",
+          "service" : "flink",
+          "logger" : "com.reactive.flink.processor.CounterProcessor",
+          "thread" : "KeyedProcess -> (Sink: Writer -> Sink: Committer, async wait operator -> Sink: Writer -> Sink: Committer) (2/4)#0",
+          "traceId" : "761c7a88d50715120f491ecc820f7afd",
+          "spanId" : "f47290ad5e11353e",
+          "message" : "Flink processed event: sessionId=kafka-bench-3, action=increment, newValue=6354, requestId=kafka_req_3_1766324655384, customerId=null"
+        }
+      } ]
+    }
+  }, {
+    "id" : "kafka_kafka_1_8162",
+    "traceId" : "kafka_req_1_1766324658024",
+    "otelTraceId" : null,
+    "timestamp" : 1766324670803,
+    "latencyMs" : 12779,
+    "status" : "success",
+    "error" : null,
+    "componentTiming" : {
+      "gatewayMs" : 0,
+      "kafkaMs" : 12779,
+      "flinkMs" : 0,
+      "droolsMs" : 0
+    },
+    "traceData" : {
+      "trace" : null,
+      "logs" : [ {
+        "timestamp" : "1766324666472354181",
+        "line" : "{\"timestamp\":\"2025-12-21T13:44:26,460\",\"level\":\"INFO \",\"service\":\"flink\",\"logger\":\"com.reactive.flink.processor.CounterProcessor\",\"thread\":\"KeyedProcess -> (Sink: Writer -> Sink: Committer, async wait operator -> Sink: Writer -> Sink: Committer) (4/4)#0\",\"traceId\":\"5604e948a266013a16a701a6c3166145\",\"spanId\":\"6583cf732f5eeefe\",\"message\":\"Flink processed event: sessionId=kafka-bench-1, action=increment, newValue=8163, requestId=kafka_req_1_1766324658024, customerId=null\"}",
+        "labels" : {
+          "compose_service" : "flink-taskmanager",
+          "container" : "reactive-flink-taskmanager",
+          "container_id" : "8190fec4e2f8e1f1232b4ee25882ade1247d23da0732d3b5779d74b959979cbf",
+          "level" : "INFO",
+          "project" : "reactive-system-01",
+          "service" : "flink-taskmanager"
+        },
+        "fields" : {
+          "timestamp" : "2025-12-21T13:44:26,460",
+          "level" : "INFO ",
+          "service" : "flink",
+          "logger" : "com.reactive.flink.processor.CounterProcessor",
+          "thread" : "KeyedProcess -> (Sink: Writer -> Sink: Committer, async wait operator -> Sink: Writer -> Sink: Committer) (4/4)#0",
+          "traceId" : "5604e948a266013a16a701a6c3166145",
+          "spanId" : "6583cf732f5eeefe",
+          "message" : "Flink processed event: sessionId=kafka-bench-1, action=increment, newValue=8163, requestId=kafka_req_1_1766324658024, customerId=null"
+        }
+      } ]
+    }
+  } ],
+  "status" : "completed",
+  "errorMessage" : null,
+  "success" : false
+};
+        window.__BENCHMARK_COMMIT__ = "58b5598";
+    </script>
+    <script src="../assets/benchmark-report.js"></script>
+</body>
+</html>
