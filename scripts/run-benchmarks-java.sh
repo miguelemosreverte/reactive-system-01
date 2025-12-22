@@ -473,6 +473,20 @@ public class BenchmarkRunner {
         System.out.printf("Stability: %.2f (CV - lower is more stable)%n", result.throughputStability());
         System.out.println("Latency P50: " + result.latency().p50() + "ms");
         System.out.println("Latency P99: " + result.latency().p99() + "ms");
+
+        // Bottleneck analysis (only if trace data available)
+        var analysis = result.analyzeBottlenecks();
+        if (analysis != null && analysis.traceCount() > 0) {
+            System.out.println();
+            System.out.println("=== Bottleneck Analysis ===");
+            System.out.println("Traces analyzed: " + analysis.traceCount());
+            System.out.printf("Primary bottleneck: %s (%.1f%% confidence)%n",
+                    analysis.primaryBottleneck(), analysis.bottleneckConfidence());
+            for (String rec : analysis.recommendations()) {
+                System.out.println("  " + rec);
+            }
+        }
+
         System.out.println();
         System.out.println("JSON output: " + outputPath);
     }

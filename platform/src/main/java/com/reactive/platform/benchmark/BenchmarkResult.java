@@ -185,6 +185,16 @@ public record BenchmarkResult(
         return "completed".equals(status) && failedOperations == 0;
     }
 
+    /** Analyze sample events to detect bottlenecks. Returns null if no trace data available. */
+    public BottleneckAnalyzer.AggregateAnalysis analyzeBottlenecks() {
+        if (sampleEvents == null || sampleEvents.isEmpty()) {
+            return null;
+        }
+
+        BottleneckAnalyzer analyzer = new BottleneckAnalyzer();
+        return analyzer.analyzeSampleEvents(sampleEvents);
+    }
+
     public BenchmarkResult withComponentTiming(ComponentTiming timing) {
         return new BenchmarkResult(
                 component, name, description, startTime, endTime, durationMs,
