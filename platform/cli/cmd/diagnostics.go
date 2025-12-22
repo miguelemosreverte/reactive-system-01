@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -37,27 +36,10 @@ Examples:
 	Run: runStats,
 }
 
-var diagnoseCmd = &cobra.Command{
-	Use:   "diagnose [subcmd]",
-	Short: "Memory and performance diagnostics",
-	Long: `Full diagnostic suite including:
-  - pressure: Visual pressure bars per component
-  - risk: Risk assessment with recommendations
-  - crashes: Crash history tracking
-  - kpis: Benchmark stability KPIs
-  - verdict: Actionable conclusions
-
-Examples:
-  reactive diagnose           # Full report
-  reactive diagnose pressure  # Just pressure view
-  reactive diagnose verdict   # Just conclusions`,
-	Run: runDiagnose,
-}
 
 func init() {
 	rootCmd.AddCommand(doctorCmd)
 	rootCmd.AddCommand(statsCmd)
-	rootCmd.AddCommand(diagnoseCmd)
 }
 
 type HealthCheck struct {
@@ -191,38 +173,3 @@ func runStats(cmd *cobra.Command, args []string) {
 	fmt.Println()
 }
 
-func runDiagnose(cmd *cobra.Command, args []string) {
-	subcmd := "diagnose"
-	if len(args) > 0 {
-		subcmd = args[0]
-	}
-
-	// Call the bash script for now (can be ported to Go later)
-	scriptPath := getScriptPath("memory-diagnostics.sh")
-	if _, err := os.Stat(scriptPath); os.IsNotExist(err) {
-		printError("Memory diagnostics script not found")
-		printInfo("Expected: scripts/memory-diagnostics.sh")
-		return
-	}
-
-	c := exec.Command("bash", scriptPath, subcmd)
-	c.Stdout = os.Stdout
-	c.Stderr = os.Stderr
-	c.Run()
-}
-
-func getScriptPath(name string) string {
-	// Find project root by looking for docker-compose.yml
-	dir, _ := os.Getwd()
-	for {
-		if _, err := os.Stat(dir + "/docker-compose.yml"); err == nil {
-			return dir + "/scripts/" + name
-		}
-		parent := dir[:strings.LastIndex(dir, "/")]
-		if parent == dir {
-			break
-		}
-		dir = parent
-	}
-	return "scripts/" + name
-}
