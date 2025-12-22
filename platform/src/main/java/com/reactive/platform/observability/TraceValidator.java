@@ -60,7 +60,7 @@ public class TraceValidator {
     ) {
         public static ValidationResult failure(String reason) {
             return new ValidationResult(
-                    false, false, null, 0,
+                    false, false, "", 0,
                     List.of(), List.of(),
                     List.of(), Map.of(),
                     List.of(reason), 0, 0

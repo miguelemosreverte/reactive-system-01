@@ -231,6 +231,14 @@ public final class BenchmarkTypes {
         public static Trace empty(String traceId) {
             return new Trace(traceId, List.of(), Map.of());
         }
+
+        public boolean isEmpty() {
+            return spans.isEmpty();
+        }
+
+        public boolean hasSpans() {
+            return !spans.isEmpty();
+        }
     }
 
     // ========================================================================
@@ -253,7 +261,7 @@ public final class BenchmarkTypes {
             List<LogEntry> logs
     ) {
         public static TraceData empty() {
-            return new TraceData(null, List.of());
+            return new TraceData(Trace.empty(), List.of());
         }
 
         public static TraceData withTrace(Trace trace) {
@@ -261,7 +269,19 @@ public final class BenchmarkTypes {
         }
 
         public static TraceData withLogs(List<LogEntry> logs) {
-            return new TraceData(null, logs);
+            return new TraceData(Trace.empty(), logs);
+        }
+
+        public boolean hasTrace() {
+            return trace.hasSpans();
+        }
+
+        public boolean hasLogs() {
+            return !logs.isEmpty();
+        }
+
+        public boolean isEmpty() {
+            return trace.isEmpty() && logs.isEmpty();
         }
     }
 
@@ -294,17 +314,17 @@ public final class BenchmarkTypes {
     ) {
         public static SampleEvent success(String id, String traceId, String otelTraceId, long latencyMs) {
             return new SampleEvent(id, traceId, otelTraceId, System.currentTimeMillis(), latencyMs,
-                    EventStatus.SUCCESS, null, null, null);
+                    EventStatus.SUCCESS, "", ComponentTiming.empty(), TraceData.empty());
         }
 
         public static SampleEvent error(String id, String traceId, String otelTraceId, long latencyMs, String error) {
             return new SampleEvent(id, traceId, otelTraceId, System.currentTimeMillis(), latencyMs,
-                    EventStatus.ERROR, error, null, null);
+                    EventStatus.ERROR, error, ComponentTiming.empty(), TraceData.empty());
         }
 
         public static SampleEvent timeout(String id, String traceId, String otelTraceId, long latencyMs) {
             return new SampleEvent(id, traceId, otelTraceId, System.currentTimeMillis(), latencyMs,
-                    EventStatus.TIMEOUT, "Request timed out", null, null);
+                    EventStatus.TIMEOUT, "Request timed out", ComponentTiming.empty(), TraceData.empty());
         }
 
         public SampleEvent withTiming(ComponentTiming timing) {

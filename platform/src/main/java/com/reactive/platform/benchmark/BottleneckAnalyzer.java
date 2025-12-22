@@ -362,7 +362,7 @@ public class BottleneckAnalyzer {
     /** Analyze sample events and their traces. */
     public AggregateAnalysis analyzeSampleEvents(List<SampleEvent> events) {
         List<Trace> traces = events.stream()
-                .filter(e -> e.traceData() != null && e.traceData().trace() != null)
+                .filter(e -> e.traceData().hasTrace())
                 .map(e -> e.traceData().trace())
                 .collect(Collectors.toList());
 
@@ -372,7 +372,7 @@ public class BottleneckAnalyzer {
     /** Generate a comprehensive diagnostic report from sample events. */
     public DiagnosticReport generateDiagnosticReport(List<SampleEvent> events) {
         List<Trace> traces = events.stream()
-                .filter(e -> e.traceData() != null && e.traceData().trace() != null)
+                .filter(e -> e.traceData().hasTrace())
                 .map(e -> e.traceData().trace())
                 .collect(Collectors.toList());
 
@@ -713,7 +713,7 @@ public class BottleneckAnalyzer {
 
     /** Extract all operation timings from a trace. */
     public List<OperationTiming> extractOperationTimings(Trace trace) {
-        if (trace == null || trace.spans() == null) {
+        if (trace.isEmpty()) {
             return List.of();
         }
 
@@ -725,23 +725,20 @@ public class BottleneckAnalyzer {
 
             // Extract relevant tags from Map<String, Object>
             Map<String, String> tags = new HashMap<>();
-            if (span.tags() != null) {
-                for (var tag : span.tags()) {
-                    // Only include relevant tags
-                    String key = String.valueOf(tag.get("key"));
-                    if (key.startsWith("http.") || key.startsWith("db.") ||
-                        key.startsWith("messaging.") || key.equals("error")) {
-                        tags.put(key, String.valueOf(tag.get("value")));
-                    }
+            for (var tag : span.tags()) {
+                // Only include relevant tags
+                String key = String.valueOf(tag.get("key"));
+                if (key.startsWith("http.") || key.startsWith("db.") ||
+                    key.startsWith("messaging.") || key.equals("error")) {
+                    tags.put(key, String.valueOf(tag.get("value")));
                 }
             }
 
             // Find parent span ID from references (each reference is a Map)
-            String parentSpanId = Optional.ofNullable(span.references())
-                    .flatMap(refs -> refs.stream()
-                            .filter(ref -> "CHILD_OF".equals(String.valueOf(ref.get("refType"))))
-                            .map(ref -> String.valueOf(ref.get("spanID")))
-                            .findFirst())
+            String parentSpanId = span.references().stream()
+                    .filter(ref -> "CHILD_OF".equals(String.valueOf(ref.get("refType"))))
+                    .map(ref -> String.valueOf(ref.get("spanID")))
+                    .findFirst()
                     .orElse("");
 
             timings.add(new OperationTiming(

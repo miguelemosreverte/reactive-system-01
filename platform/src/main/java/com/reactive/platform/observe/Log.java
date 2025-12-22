@@ -1,5 +1,7 @@
 package com.reactive.platform.observe;
 
+import com.reactive.platform.serialization.Unit;
+
 import java.util.function.Supplier;
 
 /**

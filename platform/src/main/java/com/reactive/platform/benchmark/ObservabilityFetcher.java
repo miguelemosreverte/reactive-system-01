@@ -386,7 +386,7 @@ public class ObservabilityFetcher {
         List<SampleEvent> enriched = new ArrayList<>();
 
         for (SampleEvent event : events) {
-            if (event.otelTraceId() != null || event.traceId() != null) {
+            if (!event.otelTraceId().isEmpty() || !event.traceId().isEmpty()) {
                 TraceData data = fetchTraceData(event.otelTraceId(), event.traceId(), start, end);
                 enriched.add(event.withTraceData(data));
             } else {

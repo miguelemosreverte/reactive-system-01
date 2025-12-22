@@ -115,7 +115,7 @@ public class BenchmarkCli {
                 benchmarkDuration / 1000.0,
                 (double) benchmarkDuration / result.durationMs());
 
-        Path reportPath = reporter.generate(result);
+        Path reportPath = reporter.generate(result).getOrThrow();
         System.out.printf("Report generated: %s%n", reportPath);
     }
 
@@ -131,7 +131,7 @@ public class BenchmarkCli {
             printResult(result);
         }
 
-        reporter.generateAll(results);
+        reporter.generateAll(results).getOrThrow();
         System.out.printf("%nAll reports generated%n");
     }
 

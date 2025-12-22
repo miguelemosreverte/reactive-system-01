@@ -292,10 +292,10 @@ public abstract class BaseBenchmark implements Benchmark {
             List<SampleEvent> enriched = fetcher.enrichSampleEvents(events, start, end);
 
             long tracesFound = enriched.stream()
-                    .filter(e -> e.traceData() != null && e.traceData().trace() != null)
+                    .filter(e -> e.traceData().hasTrace())
                     .count();
             long logsFound = enriched.stream()
-                    .filter(e -> e.traceData() != null && !e.traceData().logs().isEmpty())
+                    .filter(e -> e.traceData().hasLogs())
                     .count();
 
             info("Enrichment complete: {} traces, {} logs found", tracesFound, logsFound);

@@ -3,8 +3,8 @@ package com.reactive.platform.benchmark;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-
-import java.io.IOException;
+import com.reactive.platform.serialization.Unit;
+import com.reactive.platform.serialization.Result;
 
 import static com.reactive.platform.observe.Log.*;
 import java.nio.file.Files;
@@ -58,64 +58,72 @@ public class BenchmarkReportGenerator {
      * Generate report for a single benchmark result.
      * Enriches sample events with trace/log data before saving.
      */
-    public Path generate(BenchmarkResult result) throws IOException {
-        // Enrich sample events with observability data
-        BenchmarkResult enrichedResult = enrichWithObservability(result);
+    public Result<Path> generate(BenchmarkResult result) {
+        return Result.of(() -> {
+            // Enrich sample events with observability data
+            BenchmarkResult enrichedResult = enrichWithObservability(result);
 
-        // Create output directory
-        Path componentDir = outputDir.resolve(result.component().id());
-        Files.createDirectories(componentDir);
+            // Create output directory
+            Path componentDir = outputDir.resolve(result.component().id());
+            Files.createDirectories(componentDir);
 
-        // Write JSON
-        Path jsonPath = componentDir.resolve("benchmark-result.json");
-        mapper.writeValue(jsonPath.toFile(), enrichedResult);
+            // Write JSON
+            Path jsonPath = componentDir.resolve("benchmark-result.json");
+            mapper.writeValue(jsonPath.toFile(), enrichedResult);
 
-        info("Generated report: {}", jsonPath);
-        return jsonPath;
+            info("Generated report: {}", jsonPath);
+            return jsonPath;
+        });
     }
 
     /**
      * Generate reports for multiple benchmark results.
      */
-    public void generateAll(List<BenchmarkResult> results) throws IOException {
-        for (BenchmarkResult result : results) {
-            generate(result);
-        }
+    public Result<Unit> generateAll(List<BenchmarkResult> results) {
+        return Result.of(() -> {
+            for (BenchmarkResult result : results) {
+                generate(result).getOrThrow();
+            }
 
-        // Generate index
-        generateIndex(results);
+            // Generate index
+            generateIndex(results).getOrThrow();
+            return Unit.VALUE;
+        });
     }
 
     /**
      * Generate index.json listing all component results.
      */
-    public void generateIndex(List<BenchmarkResult> results) throws IOException {
-        Files.createDirectories(outputDir);
-        Path indexPath = outputDir.resolve("index.json");
+    public Result<Path> generateIndex(List<BenchmarkResult> results) {
+        return Result.of(() -> {
+            Files.createDirectories(outputDir);
+            Path indexPath = outputDir.resolve("index.json");
 
-        var summary = results.stream()
-                .map(r -> new ComponentSummary(
-                        r.component().id(),
-                        r.component().displayName(),
-                        r.status(),
-                        r.totalOperations(),
-                        r.successfulOperations(),
-                        r.failedOperations(),
-                        r.avgThroughput(),
-                        r.latency().p50(),
-                        r.latency().p99(),
-                        r.durationMs()
-                ))
-                .toList();
+            var summary = results.stream()
+                    .map(r -> new ComponentSummary(
+                            r.component().id(),
+                            r.component().displayName(),
+                            r.status(),
+                            r.totalOperations(),
+                            r.successfulOperations(),
+                            r.failedOperations(),
+                            r.avgThroughput(),
+                            r.latency().p50(),
+                            r.latency().p99(),
+                            r.durationMs()
+                    ))
+                    .toList();
 
-        var index = new IndexData(
-                Instant.now(),
-                results.size(),
-                summary
-        );
+            var index = new IndexData(
+                    Instant.now(),
+                    results.size(),
+                    summary
+            );
 
-        mapper.writeValue(indexPath.toFile(), index);
-        info("Generated index: {}", indexPath);
+            mapper.writeValue(indexPath.toFile(), index);
+            info("Generated index: {}", indexPath);
+            return indexPath;
+        });
     }
 
     // ========================================================================
