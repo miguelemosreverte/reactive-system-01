@@ -16,14 +16,14 @@ RUN --mount=type=cache,target=/root/.m2/repository \
     mvn -f platform/pom.xml install -DskipTests -q
 
 # Copy only pom.xml first for dependency caching
-COPY flink/pom.xml .
+COPY platform/deployment/docker/flink/pom.xml .
 
 # Use BuildKit cache mount for Maven repository
 RUN --mount=type=cache,target=/root/.m2/repository \
     mvn dependency:go-offline -B
 
 # Copy source code
-COPY flink/src ./src
+COPY platform/deployment/docker/flink/src ./src
 
 # Build the fat jar (deps already cached)
 RUN --mount=type=cache,target=/root/.m2/repository \
@@ -40,7 +40,7 @@ RUN mkdir -p /opt/flink/jobs
 COPY --from=build /app/target/flink-counter-job-1.0.0.jar /opt/flink/jobs/counter-job.jar
 
 # Copy structured logging configuration for Flink runtime
-COPY flink/src/main/resources/log4j2.properties /opt/flink/conf/log4j-console.properties
+COPY platform/deployment/docker/flink/src/main/resources/log4j2.properties /opt/flink/conf/log4j-console.properties
 
 # Install curl for health checks
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*

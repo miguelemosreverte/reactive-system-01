@@ -21,12 +21,12 @@ services:
 
   otel-collector:
     build:
-      context: ./observability/otel-collector
+      context: ./platform/deployment/docker/observability/otel-collector
       dockerfile: Dockerfile
     container_name: reactive-otel-collector
     command: ["--config=/etc/otel-collector-config.yaml"]
     volumes:
-      - ./observability/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+      - ./platform/deployment/docker/observability/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
     ports:
       - "4317:4317"   # OTLP gRPC
       - "4318:4318"   # OTLP HTTP
@@ -86,7 +86,7 @@ services:
     ports:
       - "3100:3100"
     volumes:
-      - ./observability/loki/loki-config.yaml:/etc/loki/loki-config.yaml:ro
+      - ./platform/deployment/docker/observability/loki/loki-config.yaml:/etc/loki/loki-config.yaml:ro
       - loki-data:/loki
     command: -config.file=/etc/loki/loki-config.yaml
     deploy:
@@ -106,7 +106,7 @@ services:
     image: grafana/promtail:2.9.3
     container_name: reactive-promtail
     volumes:
-      - ./observability/promtail/promtail-config.yaml:/etc/promtail/config.yaml:ro
+      - ./platform/deployment/docker/observability/promtail/promtail-config.yaml:/etc/promtail/config.yaml:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
     command: -config.file=/etc/promtail/config.yaml
     deploy:
@@ -126,7 +126,7 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./platform/deployment/docker/observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
@@ -171,7 +171,7 @@ services:
           memory: 256M
           cpus: '0.25'
     volumes:
-      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./platform/deployment/docker/observability/grafana/provisioning:/etc/grafana/provisioning:ro
       - grafana-data:/var/lib/grafana
     depends_on:
       - prometheus
@@ -265,7 +265,7 @@ services:
   drools:
     build:
       context: .
-      dockerfile: drools/Dockerfile
+      dockerfile: platform/deployment/docker/drools/Dockerfile
       args:
         SERVICE_VERSION: *version
     container_name: reactive-drools
@@ -305,8 +305,8 @@ services:
 
   flink-jobmanager:
     build:
-      context: ./flink
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: platform/deployment/docker/flink/Dockerfile
     container_name: reactive-flink-jobmanager
     ports:
       - "8081:8081"
@@ -340,8 +340,8 @@ services:
 
   flink-taskmanager:
     build:
-      context: ./flink
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: platform/deployment/docker/flink/Dockerfile
     # No container_name to allow scaling with: docker compose up -d --scale flink-taskmanager=2
     depends_on:
       flink-jobmanager:
@@ -396,7 +396,7 @@ services:
   flink-job-submitter:
     build:
       context: .
-      dockerfile: flink/Dockerfile
+      dockerfile: platform/deployment/docker/flink/Dockerfile
     container_name: reactive-flink-job-submitter
     depends_on:
       flink-jobmanager:
@@ -505,7 +505,7 @@ services:
 
   ui:
     build:
-      context: ./ui
+      context: ./application/ui
       dockerfile: Dockerfile
     container_name: reactive-ui
     ports:
@@ -519,10 +519,10 @@ services:
           cpus: '0.25'
     volumes:
       - ./DOCUMENTATION.md:/usr/share/nginx/docs/DOCUMENTATION.md:ro
-      - ./ui/DOCUMENTATION.md:/usr/share/nginx/docs/ui/DOCUMENTATION.md:ro
-      - ./gateway/DOCUMENTATION.md:/usr/share/nginx/docs/gateway/DOCUMENTATION.md:ro
-      - ./flink/DOCUMENTATION.md:/usr/share/nginx/docs/flink/DOCUMENTATION.md:ro
-      - ./drools/DOCUMENTATION.md:/usr/share/nginx/docs/drools/DOCUMENTATION.md:ro
+      - ./application/ui/DOCUMENTATION.md:/usr/share/nginx/docs/ui/DOCUMENTATION.md:ro
+      - ./platform/deployment/docker/gateway/DOCUMENTATION.md:/usr/share/nginx/docs/gateway/DOCUMENTATION.md:ro
+      - ./platform/deployment/docker/flink/DOCUMENTATION.md:/usr/share/nginx/docs/flink/DOCUMENTATION.md:ro
+      - ./platform/deployment/docker/drools/DOCUMENTATION.md:/usr/share/nginx/docs/drools/DOCUMENTATION.md:ro
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:80"]
       interval: 10s

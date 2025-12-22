@@ -16,7 +16,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-REPORTS_DIR="$PROJECT_DIR/reports"
+REPORTS_DIR="$PROJECT_DIR/application/reports"
 
 # Colors
 RED='\033[0;31m'
@@ -349,7 +349,7 @@ run_benchmark() {
     case "$component" in
         http)
             test_class="com.reactive.gateway.benchmark.HttpBenchmark"
-            module="gateway"
+            module="platform/deployment/docker/gateway"
             ;;
         kafka)
             test_class="com.reactive.counter.benchmark.KafkaBenchmark"
@@ -361,11 +361,11 @@ run_benchmark() {
             ;;
         drools)
             test_class="com.reactive.drools.benchmark.DroolsBenchmark"
-            module="drools"
+            module="platform/deployment/docker/drools"
             ;;
         gateway)
             test_class="com.reactive.gateway.benchmark.GatewayBenchmark"
-            module="gateway"
+            module="platform/deployment/docker/gateway"
             ;;
         full)
             test_class="com.reactive.counter.benchmark.FullBenchmark"
@@ -518,7 +518,7 @@ JAVA_EOF
     # Run benchmark
     print_info "Starting benchmark..."
     docker_maven java -cp ".:platform/target/classes:$module/target/classes:$module/target/test-classes:$classpath" \
-        BenchmarkRunner "$component" "$DURATION" "$CONCURRENCY" "$GATEWAY_URL" "$DROOLS_URL" "/app/reports" "$QUICK_MODE" "$SKIP_ENRICHMENT" || {
+        BenchmarkRunner "$component" "$DURATION" "$CONCURRENCY" "$GATEWAY_URL" "$DROOLS_URL" "/app/application/reports" "$QUICK_MODE" "$SKIP_ENRICHMENT" || {
         print_error "Benchmark failed"
         rm -f "$runner_java" "$PROJECT_DIR/BenchmarkRunner.class"
         exit 1

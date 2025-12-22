@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Full End-to-End Report</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        #root { min-height: 100vh; }
+        .loading { display: flex; justify-content: center; align-items: center; height: 100vh; font-size: 18px; color: #666; }
+    </style>
+</head>
+<body>
+    <div id="root"><div class="loading">Loading benchmark report...</div></div>
+    <script>
+        window.__BENCHMARK_DATA__ = {
+  "component" : "full",
+  "name" : "Full End-to-End",
+  "description" : "Complete pipeline: HTTP → Kafka → Flink → Drools",
+  "startTime" : "2025-12-22T19:48:30.417683110Z",
+  "endTime" : "2025-12-22T19:49:18.113092223Z",
+  "durationMs" : 47696,
+  "totalOperations" : 9286,
+  "successfulOperations" : 9286,
+  "failedOperations" : 0,
+  "peakThroughput" : 969,
+  "avgThroughput" : 194,
+  "throughputTimeline" : [ 0, 0, 0, 0, 219, 351, 969, 403, 360, 357, 376, 377, 431, 431, 319, 321, 501, 500, 463, 464, 512, 511, 518, 518, 438, 436, 649, 648, 604, 604, 619, 619, 475, 478, 272, 269, 220, 220, 277, 279, 94, 93, 180, 186, 97, 92, 151, 150, 39, 42, 44, 42, 120, 118, 211, 216, 131, 148, 169, 160, 32 ],
+  "latency" : {
+    "min" : 0,
+    "max" : 699,
+    "avg" : 25,
+    "p50" : 16,
+    "p95" : 71,
+    "p99" : 211
+  },
+  "throughputStability" : 0.6921492584979245,
+  "cpuTimeline" : [ 115.75927734375, 115.75927734375, 115.75927734375, 115.75927734375, 115.75927734375, 174.560546875, 174.560546875, 174.560546875, 174.560546875, 174.560546875, 222.64404296875, 222.64404296875, 222.64404296875, 222.64404296875, 222.64404296875, 256.87255859375, 256.87255859375, 256.87255859375, 256.87255859375, 256.87255859375, 324.3896484375, 324.3896484375, 324.3896484375, 324.3896484375, 324.3896484375, 380.50537109375, 380.50537109375, 380.50537109375, 380.50537109375, 380.50537109375, 448.13232421875, 448.13232421875, 448.13232421875 ],
+  "memoryTimeline" : [ 1.365513036518116, 1.365513036518116, 1.365513036518116, 1.3934881246895892, 1.205319232344026, 1.6381091474885294, 2.197444619372201, 2.7848698897992086, 3.344444405779949, 3.9990349085371864, 1.1553809573022438, 1.9842230587987195, 2.827557160563233, 3.7669823701398526, 1.4133407177044572, 2.313253593252357, 3.6996620093537143, 1.6573727912787353, 3.153291888963563, 0.9566698738352201, 1.650116397923105, 2.224978188092244, 2.9555693163520513, 3.22499972900637, 3.726458044273461, 3.990994404351074, 0.9856742758803845, 1.0852140085969033, 1.212786954539094, 1.5286150180728115, 2.121779656434276, 2.4901111960771947, 2.959314725473598 ],
+  "peakCpu" : 448.13232421875,
+  "peakMemory" : 3.9990349085371864,
+  "avgCpu" : 264.1834605823864,
+  "avgMemory" : 2.2346544173887786,
+  "componentTiming" : null,
+  "sampleEvents" : [ {
+    "id" : "full_1_1766432937944",
+    "traceId" : "000e8549a4f3ce670000000000000002",
+    "otelTraceId" : "b8d14ef5f6918233dc6f7a5f0aae165d",
+    "timestamp" : 1766432938279,
+    "latencyMs" : 335,
+    "status" : "success",
+    "error" : null,
+    "componentTiming" : {
+      "gatewayMs" : 335,
+      "kafkaMs" : 0,
+      "flinkMs" : 0,
+      "droolsMs" : 0
+    },
+    "traceData" : null
+  }, {
+    "id" : "full_6_1766432938269",
+    "traceId" : "000e8549a53dce670000000000000000",
+    "otelTraceId" : "10a207f23b1d0f31274c23970a3a2262",
+    "timestamp" : 1766432938308,
+    "latencyMs" : 39,
+    "status" : "success",
+    "error" : null,
+    "componentTiming" : {
+      "gatewayMs" : 39,
+      "kafkaMs" : 0,
+      "flinkMs" : 0,
+      "droolsMs" : 0
+    },
+    "traceData" : null
+  } ],
+  "status" : "completed",
+  "errorMessage" : null,
+  "success" : true
+};
+        window.__BENCHMARK_COMMIT__ = "ef893eb";
+    </script>
+    <script src="../assets/benchmark-report.js"></script>
+</body>
+</html>

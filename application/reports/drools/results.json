@@ -1,0 +1,64 @@
+{
+  "component" : "drools",
+  "name" : "Drools Benchmark",
+  "description" : "Tests Drools rule evaluation",
+  "startTime" : "2025-12-22T19:19:33.565593382Z",
+  "endTime" : "2025-12-22T19:19:53.576603384Z",
+  "durationMs" : 20011,
+  "totalOperations" : 135360,
+  "successfulOperations" : 135360,
+  "failedOperations" : 0,
+  "peakThroughput" : 14036,
+  "avgThroughput" : 6764,
+  "throughputTimeline" : [ 0, 0, 0, 0, 3080, 4232, 12813, 5507, 5365, 5374, 5293, 5305, 10881, 10900, 9604, 9560, 8308, 8373, 12636, 12642, 14003, 13995, 14036, 13996, 12030, 12042, 13516, 13515, 12750, 12732 ],
+  "latency" : {
+    "min" : 0,
+    "max" : 99,
+    "avg" : 1,
+    "p50" : 1,
+    "p95" : 5,
+    "p99" : 9
+  },
+  "throughputStability" : 0.5453663173434627,
+  "cpuTimeline" : [ 775.3173828125, 775.3173828125, 713.22021484375, 713.22021484375, 713.22021484375, 713.22021484375, 713.22021484375, 678.125, 678.125, 678.125, 678.125, 678.125, 669.86083984375, 669.86083984375, 669.86083984375, 669.86083984375, 669.86083984375, 644.23828125 ],
+  "memoryTimeline" : [ 0.7956696326508892, 0.7956696326508892, 0.7956696326508892, 0.8965778062129478, 2.8472746416971493, 1.7640345753382, 2.227969126311609, 5.531444222366534, 2.565365434294392, 8.268573041159497, 7.270065446193476, 9.48076180805472, 6.690984392984123, 0.7803715803067451, 5.666742411439282, 14.879987314418635, 3.1081125546175343, 14.004556634712412 ],
+  "peakCpu" : 775.3173828125,
+  "peakMemory" : 14.879987314418635,
+  "avgCpu" : 694.49462890625,
+  "avgMemory" : 4.909434993781107,
+  "componentTiming" : null,
+  "sampleEvents" : [ {
+    "id" : "drools_2_1766431191571",
+    "traceId" : null,
+    "otelTraceId" : "738c2f69cab756b6f4ee47a67984e770",
+    "timestamp" : 1766431191575,
+    "latencyMs" : 2,
+    "status" : "success",
+    "error" : null,
+    "componentTiming" : {
+      "gatewayMs" : 0,
+      "kafkaMs" : 0,
+      "flinkMs" : 0,
+      "droolsMs" : 2
+    },
+    "traceData" : null
+  }, {
+    "id" : "drools_14_1766431191572",
+    "traceId" : null,
+    "otelTraceId" : "9bda7a35c2ad6f5437787fd1502ab36c",
+    "timestamp" : 1766431191575,
+    "latencyMs" : 1,
+    "status" : "success",
+    "error" : null,
+    "componentTiming" : {
+      "gatewayMs" : 0,
+      "kafkaMs" : 0,
+      "flinkMs" : 0,
+      "droolsMs" : 1
+    },
+    "traceData" : null
+  } ],
+  "status" : "completed",
+  "errorMessage" : null,
+  "success" : true
+}

@@ -4,10 +4,13 @@ import com.reactive.flink.model.CounterEvent;
 import com.reactive.flink.model.CounterResult;
 import com.reactive.flink.model.EventTiming;
 import com.reactive.flink.model.PreDroolsResult;
-import com.reactive.platform.tracing.Tracing;
 import io.opentelemetry.api.GlobalOpenTelemetry;
+import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanKind;
+import io.opentelemetry.api.trace.StatusCode;
+import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Context;
+import io.opentelemetry.context.Scope;
 import io.opentelemetry.context.propagation.TextMapGetter;
 
 import java.util.HashMap;
@@ -63,7 +66,7 @@ public class CounterProcessor extends KeyedProcessFunction<String, CounterEvent,
     private transient ValueState<EventTiming> lastTiming;
     private transient ValueState<String> lastTraceparent;
     private transient ValueState<String> lastTracestate;
-    private transient Tracing tracing;
+    private transient Tracer tracer;
 
     public CounterProcessor(long minLatencyMs, long maxLatencyMs) {
         this.minLatencyMs = minLatencyMs;
@@ -104,7 +107,7 @@ public class CounterProcessor extends KeyedProcessFunction<String, CounterEvent,
         lastTracestate = getRuntimeContext().getState(
                 new ValueStateDescriptor<>("lastTracestate", Types.STRING));
 
-        tracing = Tracing.create("flink-counter-processor");
+        tracer = GlobalOpenTelemetry.get().getTracer("flink-counter-processor");
 
         LOG.info("CounterProcessor initialized - CQRS mode (minLatency={}ms, maxLatency={}ms)",
                 minLatencyMs, maxLatencyMs);
@@ -145,102 +148,107 @@ public class CounterProcessor extends KeyedProcessFunction<String, CounterEvent,
                     .extract(io.opentelemetry.context.Context.current(), headers, MAP_GETTER);
         }
 
-        // Use unified tracing pattern from platform
-        final io.opentelemetry.context.Context finalParentContext = parentContext;
-        tracing.span("flink.process_counter", SpanKind.CONSUMER, finalParentContext, span -> {
-            try {
-                // Set span attributes
-                span.setAttribute("session.id", sessionId);
-                span.setAttribute("counter.action", event.getAction());
-                span.setAttribute("requestId", event.getRequestId() != null ? event.getRequestId() : "");
-                span.setAttribute("customerId", event.getCustomerId() != null ? event.getCustomerId() : "");
-                span.setAttribute("eventId", event.getEventId() != null ? event.getEventId() : "");
+        // Create span with parent context for distributed tracing
+        Span span = tracer.spanBuilder("flink.process_counter")
+                .setParent(parentContext)
+                .setSpanKind(SpanKind.CONSUMER)
+                .startSpan();
 
-                // Set MDC for log correlation with business IDs
-                if (event.getRequestId() != null) {
-                    MDC.put("requestId", event.getRequestId());
-                }
-                if (event.getCustomerId() != null) {
-                    MDC.put("customerId", event.getCustomerId());
-                }
+        try (Scope scope = span.makeCurrent()) {
+            // Set span attributes
+            span.setAttribute("session.id", sessionId);
+            span.setAttribute("counter.action", event.getAction());
+            span.setAttribute("requestId", event.getRequestId() != null ? event.getRequestId() : "");
+            span.setAttribute("customerId", event.getCustomerId() != null ? event.getCustomerId() : "");
+            span.setAttribute("eventId", event.getEventId() != null ? event.getEventId() : "");
 
-                // ============================================
-                // WRITE SIDE: Immediate state update
-                // ============================================
-                Integer currentValue = counterState.value();
-                if (currentValue == null) {
-                    currentValue = 0;
-                }
-                span.setAttribute("counter.previous_value", currentValue);
-
-                // Process the action
-                switch (event.getAction()) {
-                    case "increment":
-                        currentValue += event.getValue();
-                        break;
-                    case "decrement":
-                        currentValue -= event.getValue();
-                        break;
-                    case "set":
-                        currentValue = event.getValue();
-                        break;
-                    default:
-                        LOG.warn("Unknown action: {}", event.getAction());
-                        throw new IllegalArgumentException("Unknown action: " + event.getAction());
-                }
-
-                // Mark processing complete time
-                long processedAt = System.currentTimeMillis();
-                timing.setFlinkProcessedAt(processedAt);
-
-                // Update state
-                counterState.update(currentValue);
-                lastRequestId.update(event.getRequestId());
-                lastCustomerId.update(event.getCustomerId());
-                lastEventId.update(event.getEventId());
-                lastTiming.update(timing);
-                lastTraceparent.update(event.getTraceparent());
-                lastTracestate.update(event.getTracestate());
-                span.setAttribute("counter.new_value", currentValue);
-
-                // Emit immediate result (without alert - alert will come later)
-                CounterResult result = new CounterResult(
-                        sessionId,
-                        currentValue,
-                        "PENDING",  // Alert is pending (will be evaluated via timer)
-                        "Alert evaluation pending",
-                        event.getRequestId(),
-                        event.getCustomerId(),
-                        event.getEventId(),
-                        timing
-                );
-
-                // Inject current trace context for downstream propagation
-                Map<String, String> traceHeaders = new HashMap<>();
-                GlobalOpenTelemetry.getPropagators()
-                        .getTextMapPropagator()
-                        .inject(io.opentelemetry.context.Context.current(), traceHeaders, Map::put);
-                result.setTraceparent(traceHeaders.get("traceparent"));
-                result.setTracestate(traceHeaders.get("tracestate"));
-
-                out.collect(result);
-
-                LOG.info("Flink processed event: sessionId={}, action={}, newValue={}, requestId={}, customerId={}",
-                        sessionId, event.getAction(), currentValue, event.getRequestId(), event.getCustomerId());
-
-                // ============================================
-                // READ SIDE: Schedule snapshot evaluation
-                // ============================================
-                scheduleSnapshotEvaluation(ctx, arrivalTime);
-
-                span.setAttribute("processing.latency_ms", processedAt - arrivalTime);
-                return null;
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            } finally {
-                MDC.clear();
+            // Set MDC for log correlation with business IDs
+            if (event.getRequestId() != null) {
+                MDC.put("requestId", event.getRequestId());
             }
-        });
+            if (event.getCustomerId() != null) {
+                MDC.put("customerId", event.getCustomerId());
+            }
+
+            // ============================================
+            // WRITE SIDE: Immediate state update
+            // ============================================
+            Integer currentValue = counterState.value();
+            if (currentValue == null) {
+                currentValue = 0;
+            }
+            span.setAttribute("counter.previous_value", currentValue);
+
+            // Process the action
+            switch (event.getAction()) {
+                case "increment":
+                    currentValue += event.getValue();
+                    break;
+                case "decrement":
+                    currentValue -= event.getValue();
+                    break;
+                case "set":
+                    currentValue = event.getValue();
+                    break;
+                default:
+                    LOG.warn("Unknown action: {}", event.getAction());
+                    throw new IllegalArgumentException("Unknown action: " + event.getAction());
+            }
+
+            // Mark processing complete time
+            long processedAt = System.currentTimeMillis();
+            timing.setFlinkProcessedAt(processedAt);
+
+            // Update state
+            counterState.update(currentValue);
+            lastRequestId.update(event.getRequestId());
+            lastCustomerId.update(event.getCustomerId());
+            lastEventId.update(event.getEventId());
+            lastTiming.update(timing);
+            lastTraceparent.update(event.getTraceparent());
+            lastTracestate.update(event.getTracestate());
+            span.setAttribute("counter.new_value", currentValue);
+
+            // Emit immediate result (without alert - alert will come later)
+            CounterResult result = new CounterResult(
+                    sessionId,
+                    currentValue,
+                    "PENDING",  // Alert is pending (will be evaluated via timer)
+                    "Alert evaluation pending",
+                    event.getRequestId(),
+                    event.getCustomerId(),
+                    event.getEventId(),
+                    timing
+            );
+
+            // Inject current trace context for downstream propagation
+            Map<String, String> traceHeaders = new HashMap<>();
+            GlobalOpenTelemetry.getPropagators()
+                    .getTextMapPropagator()
+                    .inject(io.opentelemetry.context.Context.current(), traceHeaders, Map::put);
+            result.setTraceparent(traceHeaders.get("traceparent"));
+            result.setTracestate(traceHeaders.get("tracestate"));
+
+            out.collect(result);
+
+            LOG.info("Flink processed event: sessionId={}, action={}, newValue={}, requestId={}, customerId={}",
+                    sessionId, event.getAction(), currentValue, event.getRequestId(), event.getCustomerId());
+
+            // ============================================
+            // READ SIDE: Schedule snapshot evaluation
+            // ============================================
+            scheduleSnapshotEvaluation(ctx, arrivalTime);
+
+            span.setAttribute("processing.latency_ms", processedAt - arrivalTime);
+            span.setStatus(StatusCode.OK);
+        } catch (Exception e) {
+            span.setStatus(StatusCode.ERROR, e.getMessage());
+            span.recordException(e);
+            throw e;
+        } finally {
+            span.end();
+            MDC.clear();
+        }
     }
 
     /**

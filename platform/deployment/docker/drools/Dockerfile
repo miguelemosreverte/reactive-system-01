@@ -16,14 +16,14 @@ RUN --mount=type=cache,target=/root/.m2/repository \
     mvn -f platform/pom.xml install -DskipTests -q
 
 # Copy only pom.xml first for dependency caching
-COPY drools/pom.xml .
+COPY platform/deployment/docker/drools/pom.xml .
 
 # Use BuildKit cache mount for Maven repository
 RUN --mount=type=cache,target=/root/.m2/repository \
     mvn dependency:go-offline -B
 
 # Copy source code
-COPY drools/src ./src
+COPY platform/deployment/docker/drools/src ./src
 
 # Build the application (skip test compilation - benchmarks run outside Docker)
 RUN --mount=type=cache,target=/root/.m2/repository \
@@ -48,7 +48,7 @@ RUN curl -L -o /app/opentelemetry-javaagent.jar \
 COPY --from=build /app/target/*.jar app.jar
 
 # Copy rules for hot reload
-COPY drools/src/main/resources/rules /app/rules
+COPY platform/deployment/docker/drools/src/main/resources/rules /app/rules
 
 # Create compile script for hot reload
 RUN echo '#!/bin/sh' > /app/compile-rules.sh && \
