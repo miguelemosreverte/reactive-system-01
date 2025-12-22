@@ -13,8 +13,8 @@
     <description>Business Rules Engine for Reactive System</description>
 
     <properties>
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <drools.version>8.44.0.Final</drools.version>
         <spring.boot.version>3.2.0</spring.boot.version>
@@ -102,6 +102,13 @@
             <groupId>net.logstash.logback</groupId>
             <artifactId>logstash-logback-encoder</artifactId>
             <version>7.4</version>
+        </dependency>
+
+        <!-- Platform (shared infrastructure) -->
+        <dependency>
+            <groupId>com.reactive</groupId>
+            <artifactId>platform</artifactId>
+            <version>1.0.0</version>
         </dependency>
 
     </dependencies>

@@ -264,8 +264,8 @@ services:
 
   drools:
     build:
-      context: ./drools
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: drools/Dockerfile
       args:
         SERVICE_VERSION: *version
     container_name: reactive-drools
@@ -395,8 +395,8 @@ services:
 
   flink-job-submitter:
     build:
-      context: ./flink
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: flink/Dockerfile
     container_name: reactive-flink-job-submitter
     depends_on:
       flink-jobmanager:

@@ -87,7 +87,16 @@ public final class Tracing {
      * Execute a function within a span with specified kind.
      */
     public <T> T span(String name, SpanKind kind, Function<Span, T> operation) {
+        return span(name, kind, Context.current(), operation);
+    }
+
+    /**
+     * Execute a function within a span with specified kind and parent context.
+     * Use this when you need to propagate trace context from external sources (e.g., Kafka headers).
+     */
+    public <T> T span(String name, SpanKind kind, Context parentContext, Function<Span, T> operation) {
         Span span = tracer.spanBuilder(name)
+                .setParent(parentContext)
                 .setSpanKind(kind)
                 .startSpan();
 

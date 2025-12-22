@@ -5,26 +5,32 @@ ARG SERVICE_VERSION=1.0.0
 ARG OTEL_AGENT_VERSION=1.32.0
 
 # Stage 1: Build with Maven (cached dependencies)
-FROM maven:3.9-eclipse-temurin-17 AS build
+FROM maven:3.9-eclipse-temurin-21 AS build
 
 WORKDIR /app
 
+# Copy and build platform module first (shared infrastructure)
+COPY platform/pom.xml platform/pom.xml
+COPY platform/src platform/src
+RUN --mount=type=cache,target=/root/.m2/repository \
+    mvn -f platform/pom.xml install -DskipTests -q
+
 # Copy only pom.xml first for dependency caching
-COPY pom.xml .
+COPY drools/pom.xml .
 
 # Use BuildKit cache mount for Maven repository
 RUN --mount=type=cache,target=/root/.m2/repository \
     mvn dependency:go-offline -B
 
 # Copy source code
-COPY src ./src
+COPY drools/src ./src
 
 # Build the application (skip test compilation - benchmarks run outside Docker)
 RUN --mount=type=cache,target=/root/.m2/repository \
     mvn package -DskipTests -Dmaven.test.skip=true -B
 
 # Stage 2: Runtime (minimal)
-FROM eclipse-temurin:17-jre AS runtime
+FROM eclipse-temurin:21-jre AS runtime
 
 ARG SERVICE_VERSION
 ARG OTEL_AGENT_VERSION
@@ -42,7 +48,7 @@ RUN curl -L -o /app/opentelemetry-javaagent.jar \
 COPY --from=build /app/target/*.jar app.jar
 
 # Copy rules for hot reload
-COPY src/main/resources/rules /app/rules
+COPY drools/src/main/resources/rules /app/rules
 
 # Create compile script for hot reload
 RUN echo '#!/bin/sh' > /app/compile-rules.sh && \

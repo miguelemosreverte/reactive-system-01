@@ -3,9 +3,7 @@ package com.reactive.drools.service;
 import com.reactive.drools.model.Counter;
 import com.reactive.drools.model.EvaluationRequest;
 import com.reactive.drools.model.EvaluationResponse;
-import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.instrumentation.annotations.SpanAttribute;
-import io.opentelemetry.instrumentation.annotations.WithSpan;
+import com.reactive.platform.tracing.Tracing;
 import org.kie.api.runtime.KieContainer;
 import org.kie.api.runtime.StatelessKieSession;
 import org.slf4j.Logger;
@@ -28,6 +26,7 @@ import org.springframework.stereotype.Service;
 public class RuleService {
 
     private static final Logger log = LoggerFactory.getLogger(RuleService.class);
+    private final Tracing tracing = Tracing.create("drools-service");
     private final StatelessKieSession statelessSession;
 
     public RuleService(KieContainer kieContainer) {
@@ -35,57 +34,58 @@ public class RuleService {
         this.statelessSession = kieContainer.newStatelessKieSession();
     }
 
-    @WithSpan("drools.evaluate")
-    public EvaluationResponse evaluate(@SpanAttribute("counter.input_value") EvaluationRequest request) {
-        Counter counter = new Counter(request.getValue());
+    public EvaluationResponse evaluate(EvaluationRequest request) {
+        return tracing.span("drools.evaluate", span -> {
+            Counter counter = new Counter(request.getValue());
 
-        // Add custom span attributes with business IDs
-        Span currentSpan = Span.current();
-        currentSpan.setAttribute("drools.input_value", request.getValue());
+            // Add span attributes
+            span.setAttribute("drools.input_value", request.getValue());
 
-        // Set business IDs as span attributes for Jaeger visibility
-        if (request.getRequestId() != null) {
-            currentSpan.setAttribute("requestId", request.getRequestId());
-            MDC.put("requestId", request.getRequestId());
-        }
-        if (request.getCustomerId() != null) {
-            currentSpan.setAttribute("customerId", request.getCustomerId());
-            MDC.put("customerId", request.getCustomerId());
-        }
-        if (request.getEventId() != null) {
-            currentSpan.setAttribute("eventId", request.getEventId());
-        }
-        if (request.getSessionId() != null) {
-            currentSpan.setAttribute("session.id", request.getSessionId());
-        }
+            // Set business IDs as span attributes for Jaeger visibility
+            if (request.getRequestId() != null) {
+                span.setAttribute("requestId", request.getRequestId());
+                MDC.put("requestId", request.getRequestId());
+            }
+            if (request.getCustomerId() != null) {
+                span.setAttribute("customerId", request.getCustomerId());
+                MDC.put("customerId", request.getCustomerId());
+            }
+            if (request.getEventId() != null) {
+                span.setAttribute("eventId", request.getEventId());
+            }
+            if (request.getSessionId() != null) {
+                span.setAttribute("session.id", request.getSessionId());
+            }
 
-        // Execute rules using stateless session (thread-safe, no dispose needed)
-        statelessSession.execute(counter);
-        currentSpan.setAttribute("drools.rules_fired", 1);  // Stateless doesn't return count
-        log.info("Drools evaluated: inputValue={}, alert={}, requestId={}, customerId={}",
-                request.getValue(), counter.getAlert(),
-                request.getRequestId(), request.getCustomerId());
+            try {
+                // Execute rules using stateless session (thread-safe, no dispose needed)
+                statelessSession.execute(counter);
+                span.setAttribute("drools.rules_fired", 1);
+                log.info("Drools evaluated: inputValue={}, alert={}, requestId={}, customerId={}",
+                        request.getValue(), counter.getAlert(),
+                        request.getRequestId(), request.getCustomerId());
 
-        EvaluationResponse response = new EvaluationResponse();
-        response.setValue(counter.getValue());
-        response.setAlert(counter.getAlert() != null ? counter.getAlert() : "NONE");
-        response.setMessage(generateMessage(counter));
+                EvaluationResponse response = new EvaluationResponse();
+                response.setValue(counter.getValue());
+                response.setAlert(counter.getAlert() != null ? counter.getAlert() : "NONE");
+                response.setMessage(generateMessage(counter));
 
-        // Include the OpenTelemetry trace ID in response for observability
-        String traceId = currentSpan.getSpanContext().getTraceId();
-        if (traceId != null && !traceId.equals("00000000000000000000000000000000")) {
-            response.setTraceId(traceId);
-        }
+                // Include the OpenTelemetry trace ID in response for observability
+                String traceId = span.getSpanContext().getTraceId();
+                if (traceId != null && !traceId.equals("00000000000000000000000000000000")) {
+                    response.setTraceId(traceId);
+                }
 
-        // Add result attributes
-        currentSpan.setAttribute("drools.result_value", response.getValue());
-        currentSpan.setAttribute("drools.alert_level", response.getAlert());
+                // Add result attributes
+                span.setAttribute("drools.result_value", response.getValue());
+                span.setAttribute("drools.alert_level", response.getAlert());
 
-        // Cleanup MDC
-        MDC.remove("requestId");
-        MDC.remove("customerId");
-
-        return response;
+                return response;
+            } finally {
+                MDC.remove("requestId");
+                MDC.remove("customerId");
+            }
+        });
     }
 
     private String generateMessage(Counter counter) {
