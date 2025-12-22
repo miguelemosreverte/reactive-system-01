@@ -1246,228 +1246,95 @@ cmd_replay() {
     fi
 }
 
-# Benchmark control - Go benchmark service
+# Benchmark control - Java benchmark runner
 cmd_benchmark() {
     local subcmd="${1:-help}"
     shift 2>/dev/null || true
 
-    # Parse options
-    local duration=30
-    local concurrency=10
-
+    # Collect remaining args for the Java script
+    local args=""
     while [[ $# -gt 0 ]]; do
-        case "$1" in
-            --duration|-d)
-                duration="$2"
-                shift 2
-                ;;
-            --concurrency|-c)
-                concurrency="$2"
-                shift 2
-                ;;
-            *)
-                shift
-                ;;
-        esac
+        args="$args $1"
+        shift
     done
 
-    local API_KEY="${ADMIN_API_KEY:-reactive-admin-key}"
-    local BENCHMARK_URL="http://localhost:8090"
-
     case "$subcmd" in
-        run)
-            # Run all benchmarks via Go service
-            run_go_benchmark "all" "$duration" "$concurrency" "$API_KEY" "$BENCHMARK_URL"
+        run|all)
+            # Run all benchmarks via Java script
+            "$SCRIPT_DIR/scripts/run-benchmarks-java.sh" all $args
             ;;
-        http|kafka|drools|gateway|full)
+        http|kafka|flink|drools|gateway|full)
             # Run specific component benchmark
-            run_go_benchmark "$subcmd" "$duration" "$concurrency" "$API_KEY" "$BENCHMARK_URL"
-            ;;
-        status)
-            # Check benchmark status
-            print_info "Checking benchmark status..."
-            curl -s "$BENCHMARK_URL/api/benchmark/status" -H "X-API-Key: $API_KEY" | python3 -m json.tool 2>/dev/null || \
-                curl -s "$BENCHMARK_URL/api/benchmark/status" -H "X-API-Key: $API_KEY"
-            ;;
-        stop)
-            # Stop running benchmark
-            print_info "Stopping benchmarks..."
-            curl -s -X POST "$BENCHMARK_URL/api/benchmark/stop" -H "X-API-Key: $API_KEY"
-            print_success "Benchmarks stopped"
+            "$SCRIPT_DIR/scripts/run-benchmarks-java.sh" "$subcmd" $args
             ;;
         report)
-            # Generate and open reports
-            generate_and_open_reports "$API_KEY" "$BENCHMARK_URL"
-            ;;
-        results)
-            # Show results summary
-            show_benchmark_results "$API_KEY" "$BENCHMARK_URL"
+            # Open reports
+            open_benchmark_reports
             ;;
         doctor)
             # Run benchmark observability diagnostics
             "$SCRIPT_DIR/scripts/benchmark-doctor.sh"
             ;;
+        history)
+            # Benchmark history management
+            local history_cmd="${1:-list}"
+            shift 2>/dev/null || true
+            "$SCRIPT_DIR/scripts/benchmark-history.sh" "$history_cmd" "$@"
+            ;;
+        compare)
+            # Compare current results with baseline
+            "$SCRIPT_DIR/scripts/benchmark-history.sh" compare "$1"
+            ;;
+        save)
+            # Save current results to history
+            "$SCRIPT_DIR/scripts/benchmark-history.sh" save
+            ;;
         help|*)
             echo ""
             print_header "Benchmark System"
             echo ""
-            echo "Run benchmarks via Go benchmark service:"
+            echo "Run benchmarks via Java benchmark runner:"
             echo ""
             echo "  Component benchmarks:"
             echo "    ./cli.sh benchmark http      # HTTP endpoint latency"
-            echo "    ./cli.sh benchmark kafka     # Kafka round-trip"
+            echo "    ./cli.sh benchmark kafka     # Kafka produce/consume"
+            echo "    ./cli.sh benchmark flink     # Flink stream processing"
             echo "    ./cli.sh benchmark drools    # Drools rule evaluation"
-            echo "    ./cli.sh benchmark gateway   # Gateway + Kafka publish"
+            echo "    ./cli.sh benchmark gateway   # Gateway (HTTP + Kafka)"
             echo "    ./cli.sh benchmark full      # Full E2E pipeline"
             echo ""
             echo "  Run all:"
-            echo "    ./cli.sh benchmark run       # Run all component benchmarks"
+            echo "    ./cli.sh benchmark all       # Run all component benchmarks"
             echo ""
             echo "  Reports:"
-            echo "    ./cli.sh benchmark report    # Generate & open HTML reports"
-            echo "    ./cli.sh benchmark results   # Show results summary"
+            echo "    ./cli.sh benchmark report    # Open HTML reports"
+            echo ""
+            echo "  History & Regression:"
+            echo "    ./cli.sh benchmark history   # List benchmark history"
+            echo "    ./cli.sh benchmark save      # Save current results"
+            echo "    ./cli.sh benchmark compare   # Compare with baseline"
+            echo "    ./cli.sh benchmark compare <sha>  # Compare with commit"
             echo ""
             echo "  Diagnostics:"
             echo "    ./cli.sh benchmark doctor    # Check observability health"
             echo ""
-            echo "  Control:"
-            echo "    ./cli.sh benchmark status    # Check if benchmark is running"
-            echo "    ./cli.sh benchmark stop      # Stop running benchmark"
-            echo ""
             echo "Options:"
-            echo "  --duration, -d <sec>    Benchmark duration (default: 30)"
-            echo "  --concurrency, -c <n>   Concurrent workers (default: 10)"
+            echo "  --duration, -d <sec>    Benchmark duration (default: 60)"
+            echo "  --concurrency, -c <n>   Concurrent workers (default: 8)"
+            echo "  --quick, -q             Quick mode: 5s, skip enrichment"
+            echo "  --skip-enrichment       Skip trace/log fetching"
             echo ""
             echo "Examples:"
-            echo "  ./cli.sh benchmark run                    # Run all benchmarks"
-            echo "  ./cli.sh benchmark full -d 60             # 60-second full E2E"
+            echo "  ./cli.sh benchmark full --quick           # Fast feedback (~8s)"
+            echo "  ./cli.sh benchmark all -d 60              # Run all benchmarks"
+            echo "  ./cli.sh benchmark drools -d 30           # 30-second drools"
+            echo "  ./cli.sh benchmark history                # View history"
+            echo "  ./cli.sh benchmark compare                # Compare with baseline"
             echo "  ./cli.sh benchmark doctor                 # Validate observability"
             echo "  ./cli.sh benchmark report                 # View reports"
             echo ""
             ;;
     esac
-}
-
-# Run benchmark via Go service
-run_go_benchmark() {
-    local component="$1"
-    local duration="$2"
-    local concurrency="$3"
-    local api_key="$4"
-    local base_url="$5"
-
-    start_timer
-
-    # Check if benchmark service is running
-    if ! curl -sf "$base_url/health" >/dev/null 2>&1; then
-        print_error "Benchmark service not running"
-        print_info "Start the system first: ./cli.sh start"
-        return 1
-    fi
-
-    # Check if system is healthy
-    if ! curl -sf "http://localhost:8080/actuator/health" >/dev/null 2>&1; then
-        print_error "Gateway not responding"
-        print_info "Start the system first: ./cli.sh start"
-        return 1
-    fi
-
-    local duration_ms=$((duration * 1000))
-    local endpoint="$base_url/api/benchmark/$component"
-
-    print_header "Running Benchmark: $component"
-    echo ""
-    print_info "Duration: ${duration}s | Concurrency: $concurrency"
-    echo ""
-
-    # Start benchmark
-    local response=$(curl -s -X POST "$endpoint" \
-        -H "X-API-Key: $api_key" \
-        -H "Content-Type: application/json" \
-        -d "{\"durationMs\": $duration_ms, \"concurrency\": $concurrency}")
-
-    echo "$response" | grep -q "started" || {
-        print_error "Failed to start benchmark"
-        echo "$response"
-        return 1
-    }
-
-    print_success "Benchmark started"
-    echo ""
-
-    # Monitor progress
-    local running=true
-    while $running; do
-        sleep 2
-        local status=$(curl -s "$base_url/api/benchmark/status" -H "X-API-Key: $api_key")
-        if echo "$status" | grep -q '"running":false'; then
-            running=false
-        else
-            # Show progress from logs
-            docker logs reactive-benchmark --tail 1 2>&1 | grep -E "Progress:|Duration" || true
-        fi
-    done
-
-    echo ""
-    print_success "Benchmark completed"
-    echo ""
-
-    # Generate reports
-    print_info "Generating reports..."
-    curl -s -X POST "$base_url/api/report/all" -H "X-API-Key: $api_key" >/dev/null
-
-    # Show summary
-    show_benchmark_results "$api_key" "$base_url"
-
-    end_timer "benchmark" "$component" "success"
-}
-
-# Generate and open benchmark reports
-generate_and_open_reports() {
-    local api_key="$1"
-    local base_url="$2"
-
-    print_info "Generating reports..."
-    curl -s -X POST "$base_url/api/report/all" -H "X-API-Key: $api_key" >/dev/null
-
-    local report_file="$SCRIPT_DIR/reports/index.html"
-    if [[ -f "$report_file" ]]; then
-        print_success "Reports generated"
-        print_info "Opening: $report_file"
-
-        if command -v open &>/dev/null; then
-            open "$report_file"
-        elif command -v xdg-open &>/dev/null; then
-            xdg-open "$report_file"
-        fi
-    else
-        print_error "Reports not found"
-        print_info "Run benchmarks first: ./cli.sh benchmark run"
-    fi
-}
-
-# Show benchmark results summary
-show_benchmark_results() {
-    local api_key="$1"
-    local base_url="$2"
-
-    local results=$(curl -s "$base_url/api/benchmark/results" -H "X-API-Key: $api_key")
-
-    echo ""
-    print_header "Benchmark Results"
-    echo ""
-    printf "%-12s %15s %15s %10s %10s\n" "Component" "Peak (ops/s)" "Avg (ops/s)" "P99 (ms)" "Errors"
-    echo "--------------------------------------------------------------"
-
-    for comp in drools gateway full http; do
-        local peak=$(echo "$results" | python3 -c "import sys,json; d=json.load(sys.stdin).get('$comp',{}); print(d.get('peakThroughput',0))" 2>/dev/null || echo "0")
-        local avg=$(echo "$results" | python3 -c "import sys,json; d=json.load(sys.stdin).get('$comp',{}); print(d.get('avgThroughput',0))" 2>/dev/null || echo "0")
-        local p99=$(echo "$results" | python3 -c "import sys,json; d=json.load(sys.stdin).get('$comp',{}); print(d.get('latency',{}).get('p99',0))" 2>/dev/null || echo "0")
-        local errors=$(echo "$results" | python3 -c "import sys,json; d=json.load(sys.stdin).get('$comp',{}); print(d.get('failedOperations',0))" 2>/dev/null || echo "0")
-
-        printf "%-12s %15.0f %15.0f %10.0f %10.0f\n" "$comp" "$peak" "$avg" "$p99" "$errors"
-    done
-    echo ""
 }
 
 # Get Maven command (use docker if mvn not available)
