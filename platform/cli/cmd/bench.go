@@ -4,36 +4,46 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"strings"
+	"path/filepath"
 	"time"
 
 	"github.com/spf13/cobra"
 )
 
 var (
-	benchDuration    int
-	benchConcurrency int
+	benchDuration       int
+	benchConcurrency    int
+	benchQuick          bool
+	benchSkipEnrichment bool
 )
 
 var benchCmd = &cobra.Command{
 	Use:   "bench <target>",
 	Short: "Run performance benchmark",
 	Long: `Run benchmark against:
-  - drools: Direct Drools API
-  - full: Complete pipeline (Gateway → Kafka → Flink → Drools)
-  - gateway: Gateway HTTP endpoint
+  - http:    HTTP endpoint latency (health check)
+  - kafka:   Kafka produce/consume round-trip
+  - flink:   Flink stream processing throughput
+  - drools:  Direct Drools rule evaluation
+  - gateway: HTTP + Kafka publish (fire-and-forget)
+  - full:    Complete E2E pipeline (HTTP → Kafka → Flink → Drools)
+  - all:     Run all benchmarks sequentially
 
 Examples:
-  reactive bench drools            # 30s benchmark
-  reactive bench full -d 60        # 60s benchmark
-  reactive bench drools -d 30 -c 100  # 30s, 100 concurrent`,
+  reactive bench drools              # 60s benchmark
+  reactive bench full -d 30          # 30s benchmark
+  reactive bench full --quick        # 5s quick benchmark
+  reactive bench all                 # Run all components
+  reactive bench drools -c 16        # 16 concurrent workers`,
 	Args: cobra.ExactArgs(1),
 	Run:  runBench,
 }
 
 func init() {
-	benchCmd.Flags().IntVarP(&benchDuration, "duration", "d", 30, "Duration in seconds")
-	benchCmd.Flags().IntVarP(&benchConcurrency, "concurrency", "c", 50, "Concurrent requests")
+	benchCmd.Flags().IntVarP(&benchDuration, "duration", "d", 60, "Duration in seconds")
+	benchCmd.Flags().IntVarP(&benchConcurrency, "concurrency", "c", 8, "Concurrent workers")
+	benchCmd.Flags().BoolVarP(&benchQuick, "quick", "q", false, "Quick mode: 5s duration, skip enrichment")
+	benchCmd.Flags().BoolVar(&benchSkipEnrichment, "skip-enrichment", false, "Skip trace/log fetching (faster)")
 	rootCmd.AddCommand(benchCmd)
 }
 
@@ -41,7 +51,7 @@ func runBench(cmd *cobra.Command, args []string) {
 	target := args[0]
 
 	// Validate target
-	validTargets := []string{"drools", "full", "gateway"}
+	validTargets := []string{"http", "kafka", "flink", "drools", "gateway", "full", "all"}
 	valid := false
 	for _, t := range validTargets {
 		if t == target {
@@ -51,23 +61,11 @@ func runBench(cmd *cobra.Command, args []string) {
 	}
 	if !valid {
 		printError(fmt.Sprintf("Invalid target: %s", target))
-		printInfo("Valid targets: drools, full, gateway")
+		printInfo("Valid targets: http, kafka, flink, drools, gateway, full, all")
 		return
 	}
 
 	start := time.Now()
-
-	printHeader(fmt.Sprintf("Benchmark: %s", target))
-	printInfo(fmt.Sprintf("Duration: %ds | Concurrency: %d", benchDuration, benchConcurrency))
-	fmt.Println()
-
-	// Find Docker network
-	network := findDockerNetwork()
-	if network == "" {
-		printError("Docker network not found. Is the system running?")
-		printInfo("Start with: reactive start")
-		return
-	}
 
 	// Find project root
 	projectRoot := findProjectRoot()
@@ -76,23 +74,34 @@ func runBench(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	// Run benchmark in Docker
-	dockerArgs := []string{
-		"run", "--rm",
-		"--network", network,
-		"-e", "DROOLS_HOST=reactive-drools:8080",
-		"-e", "GATEWAY_HOST=reactive-application:3000",
-		"-v", fmt.Sprintf("%s/scripts:/scripts:ro", projectRoot),
-		"eclipse-temurin:17-jdk",
-		"java", "/scripts/Benchmark.java",
-		target,
-		fmt.Sprintf("%d", benchDuration),
-		fmt.Sprintf("%d", benchConcurrency),
+	// Build arguments for the bash script
+	scriptPath := projectRoot + "/scripts/run-benchmarks-java.sh"
+	scriptArgs := []string{target}
+
+	// Add flags
+	if benchQuick {
+		scriptArgs = append(scriptArgs, "--quick")
+	} else {
+		scriptArgs = append(scriptArgs, "--duration", fmt.Sprintf("%d", benchDuration))
+		scriptArgs = append(scriptArgs, "--concurrency", fmt.Sprintf("%d", benchConcurrency))
+		if benchSkipEnrichment {
+			scriptArgs = append(scriptArgs, "--skip-enrichment")
+		}
 	}
 
-	c := exec.Command("docker", dockerArgs...)
+	printHeader(fmt.Sprintf("Benchmark: %s", target))
+	if benchQuick {
+		printInfo("Mode: quick (5s, skip enrichment)")
+	} else {
+		printInfo(fmt.Sprintf("Duration: %ds | Concurrency: %d", benchDuration, benchConcurrency))
+	}
+	fmt.Println()
+
+	// Run the benchmark script
+	c := exec.Command(scriptPath, scriptArgs...)
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr
+	c.Dir = projectRoot
 	err := c.Run()
 
 	fmt.Println()
@@ -100,36 +109,21 @@ func runBench(cmd *cobra.Command, args []string) {
 		printError("Benchmark failed")
 	} else {
 		printSuccess("Benchmark completed")
+		printInfo(fmt.Sprintf("Reports: %s/reports/%s/index.html", projectRoot, target))
 	}
-	printInfo(fmt.Sprintf("Duration: %.2fs", time.Since(start).Seconds()))
-}
-
-func findDockerNetwork() string {
-	c := exec.Command("docker", "network", "ls", "--format", "{{.Name}}")
-	output, err := c.Output()
-	if err != nil {
-		return ""
-	}
-
-	lines := strings.Split(string(output), "\n")
-	for _, line := range lines {
-		if strings.Contains(line, "reactive") && strings.Contains(line, "network") {
-			return strings.TrimSpace(line)
-		}
-	}
-	return ""
+	printInfo(fmt.Sprintf("Total time: %.2fs", time.Since(start).Seconds()))
 }
 
 func findProjectRoot() string {
 	dir, _ := os.Getwd()
 	for {
-		if _, err := os.Stat(dir + "/docker-compose.yml"); err == nil {
+		if _, err := os.Stat(filepath.Join(dir, "docker-compose.yml")); err == nil {
 			return dir
 		}
-		if _, err := os.Stat(dir + "/scripts/Benchmark.java"); err == nil {
+		if _, err := os.Stat(filepath.Join(dir, "scripts", "run-benchmarks-java.sh")); err == nil {
 			return dir
 		}
-		parent := dir[:strings.LastIndex(dir, "/")]
+		parent := filepath.Dir(dir)
 		if parent == dir {
 			break
 		}
