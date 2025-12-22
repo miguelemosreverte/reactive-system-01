@@ -3,6 +3,7 @@ package com.reactive.platform.replay;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  * Represents an event stored in the event store.
@@ -43,11 +44,11 @@ public record StoredEvent(
         return new StoredEvent(
                 aggregateId,
                 eventId,
-                null,
+                "",
                 payload,
                 Instant.now(),
                 -1,
-                null,
+                "",
                 Map.of()
         );
     }
@@ -79,7 +80,8 @@ public record StoredEvent(
     /**
      * Get a header value.
      */
-    public String getHeader(String key) {
-        return headers != null ? headers.get(key) : null;
+    public Optional<String> getHeader(String key) {
+        return Optional.ofNullable(headers)
+                .map(h -> h.get(key));
     }
 }

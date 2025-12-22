@@ -4,6 +4,7 @@ import com.reactive.platform.benchmark.BenchmarkTypes.*;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Benchmark result - immutable record with static factories.
@@ -185,24 +186,24 @@ public record BenchmarkResult(
         return "completed".equals(status) && failedOperations == 0;
     }
 
-    /** Analyze sample events to detect bottlenecks. Returns null if no trace data available. */
-    public BottleneckAnalyzer.AggregateAnalysis analyzeBottlenecks() {
+    /** Analyze sample events to detect bottlenecks. */
+    public Optional<BottleneckAnalyzer.AggregateAnalysis> analyzeBottlenecks() {
         if (sampleEvents == null || sampleEvents.isEmpty()) {
-            return null;
+            return Optional.empty();
         }
 
         BottleneckAnalyzer analyzer = new BottleneckAnalyzer();
-        return analyzer.analyzeSampleEvents(sampleEvents);
+        return Optional.of(analyzer.analyzeSampleEvents(sampleEvents));
     }
 
     /** Generate a comprehensive diagnostic report with component health and recommendations. */
-    public BottleneckAnalyzer.DiagnosticReport generateDiagnosticReport() {
+    public Optional<BottleneckAnalyzer.DiagnosticReport> generateDiagnosticReport() {
         if (sampleEvents == null || sampleEvents.isEmpty()) {
-            return null;
+            return Optional.empty();
         }
 
         BottleneckAnalyzer analyzer = new BottleneckAnalyzer();
-        return analyzer.generateDiagnosticReport(sampleEvents);
+        return Optional.of(analyzer.generateDiagnosticReport(sampleEvents));
     }
 
     public BenchmarkResult withComponentTiming(ComponentTiming timing) {

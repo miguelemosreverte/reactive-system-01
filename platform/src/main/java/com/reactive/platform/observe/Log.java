@@ -104,7 +104,7 @@ public final class Log {
      * Execute void work with debug logging and tracing span.
      */
     public static void traced(String operation, Runnable work) {
-        impl.traced(operation, () -> { work.run(); return null; });
+        impl.traced(operation, () -> { work.run(); return Unit.VALUE; });
     }
 
     // ========================================================================

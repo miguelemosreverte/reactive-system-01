@@ -112,7 +112,7 @@ public class KafkaEventStore implements EventStore {
     public Result<Optional<StoredEvent>> getEventById(String eventId) {
         return scanTopic(record ->
             parsePayload(record.value())
-                .map(p -> eventId.equals(extractField(p, eventIdField)))
+                .map(p -> extractField(p, eventIdField).map(eventId::equals).orElse(false))
                 .getOrElse(false)
         ).map(events -> events.stream().findFirst());
     }
@@ -225,16 +225,18 @@ public class KafkaEventStore implements EventStore {
 
     private StoredEvent buildStoredEvent(ConsumerRecord<String, byte[]> record, Map<String, Object> payload) {
         var headers = extractHeaders(record);
-        var aggregateId = Optional.ofNullable(extractAggregateId(record)).orElse(record.key());
-        var eventId = Optional.ofNullable(extractField(payload, eventIdField))
+        var aggregateId = extractAggregateId(record)
+                .or(() -> Optional.ofNullable(record.key()))
+                .orElse("");
+        var eventId = extractField(payload, eventIdField)
                 .orElse(String.valueOf(record.offset()));
         var traceId = headers.getOrDefault("traceparent",
-                headers.getOrDefault("traceId", extractField(payload, "traceId")));
+                headers.getOrDefault("traceId", extractField(payload, "traceId").orElse("")));
 
         return new StoredEvent(
                 aggregateId,
                 eventId,
-                extractField(payload, eventTypeField),
+                extractField(payload, eventTypeField).orElse(""),
                 payload,
                 Instant.ofEpochMilli(record.timestamp()),
                 record.offset(),
@@ -251,31 +253,30 @@ public class KafkaEventStore implements EventStore {
         return headers;
     }
 
-    private String extractAggregateId(ConsumerRecord<String, byte[]> record) {
-        if (record.key() != null && !record.key().isEmpty()) {
-            return record.key();
-        }
-        return parsePayload(record.value())
-                .map(p -> extractField(p, aggregateIdField))
-                .getOrElse((String) null);
+    private Optional<String> extractAggregateId(ConsumerRecord<String, byte[]> record) {
+        return Optional.ofNullable(record.key())
+                .filter(k -> !k.isEmpty())
+                .or(() -> parsePayload(record.value())
+                        .map(p -> extractField(p, aggregateIdField))
+                        .getOrElse(Optional.empty()));
     }
 
     private Result<Map<String, Object>> parsePayload(byte[] value) {
         return Result.of(() -> mapper.readValue(value, MAP_TYPE));
     }
 
-    private String extractField(Map<String, Object> payload, String field) {
-        if (field == null || payload == null) return null;
+    private Optional<String> extractField(Map<String, Object> payload, String field) {
+        if (field == null || payload == null) return Optional.empty();
 
         Object current = payload;
         for (String part : field.split("\\.")) {
             if (current instanceof Map<?, ?> map) {
                 current = map.get(part);
             } else {
-                return null;
+                return Optional.empty();
             }
         }
-        return current != null ? current.toString() : null;
+        return Optional.ofNullable(current).map(Object::toString);
     }
 
     // ========================================================================

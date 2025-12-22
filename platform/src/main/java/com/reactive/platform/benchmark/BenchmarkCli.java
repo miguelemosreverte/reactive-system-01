@@ -164,18 +164,19 @@ public class BenchmarkCli {
             }
 
             // Bottleneck analysis (only if trace data available)
-            var analysis = result.analyzeBottlenecks();
-            if (analysis != null && analysis.traceCount() > 0) {
-                System.out.println();
-                System.out.println("Bottleneck Analysis");
-                System.out.println("-".repeat(30));
-                System.out.printf("Traces analyzed: %d%n", analysis.traceCount());
-                System.out.printf("Primary bottleneck: %s (%.1f%% confidence)%n",
-                        analysis.primaryBottleneck(), analysis.bottleneckConfidence());
-                for (String rec : analysis.recommendations()) {
-                    System.out.println("  " + rec);
-                }
-            }
+            result.analyzeBottlenecks()
+                    .filter(analysis -> analysis.traceCount() > 0)
+                    .ifPresent(analysis -> {
+                        System.out.println();
+                        System.out.println("Bottleneck Analysis");
+                        System.out.println("-".repeat(30));
+                        System.out.printf("Traces analyzed: %d%n", analysis.traceCount());
+                        System.out.printf("Primary bottleneck: %s (%.1f%% confidence)%n",
+                                analysis.primaryBottleneck(), analysis.bottleneckConfidence());
+                        for (String rec : analysis.recommendations()) {
+                            System.out.println("  " + rec);
+                        }
+                    });
         }
     }
 

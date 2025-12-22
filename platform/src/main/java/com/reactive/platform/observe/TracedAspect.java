@@ -48,7 +48,7 @@ public class TracedAspect {
             } catch (Throwable t) {
                 error[0] = t;
             }
-            return null;
+            return Unit.VALUE;
         });
 
         if (error[0] != null) {
