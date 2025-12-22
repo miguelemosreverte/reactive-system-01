@@ -19,744 +19,41 @@
   "component" : "full",
   "name" : "Full End-to-End",
   "description" : "Complete pipeline: HTTP → Kafka → Flink → Drools",
-  "startTime" : "2025-12-22T13:01:38.759691040Z",
-  "endTime" : "2025-12-22T13:01:53.788624813Z",
-  "durationMs" : 15029,
-  "totalOperations" : 14607,
-  "successfulOperations" : 14607,
+  "startTime" : "2025-12-22T13:17:59.421458476Z",
+  "endTime" : "2025-12-22T13:18:19.471687052Z",
+  "durationMs" : 20050,
+  "totalOperations" : 26619,
+  "successfulOperations" : 26619,
   "failedOperations" : 0,
-  "peakThroughput" : 4651,
-  "avgThroughput" : 971,
-  "throughputTimeline" : [ 0, 0, 0, 0, 529, 1281, 4651, 2841, 1781, 1795, 1923, 1947, 1645, 1628, 1752, 1740, 1110, 1123, 861, 847, 878 ],
+  "peakThroughput" : 3931,
+  "avgThroughput" : 1327,
+  "throughputTimeline" : [ 0, 0, 0, 0, 1003, 1275, 3931, 1655, 1557, 1590, 1473, 1472, 2070, 2085, 1829, 1823, 1872, 1834, 2034, 2048, 2052, 2056, 1495, 1491, 1797, 1799, 2440, 2439, 1958, 1961 ],
   "latency" : {
     "min" : 0,
-    "max" : 217,
-    "avg" : 5,
-    "p50" : 4,
-    "p95" : 14,
-    "p99" : 25
+    "max" : 102,
+    "avg" : 4,
+    "p50" : 3,
+    "p95" : 11,
+    "p99" : 20
   },
-  "throughputStability" : 0.7834072952474236,
-  "cpuTimeline" : [ 445.9716796875, 445.9716796875, 410.25390625, 410.25390625, 410.25390625, 410.25390625, 410.25390625, 399.4140625, 399.4140625, 399.4140625, 399.4140625, 399.4140625, 423.486328125 ],
-  "memoryTimeline" : [ 1.3670339112806271, 1.3670339112806271, 1.3670339112806271, 0.6499085488882363, 1.5937501077815572, 3.333679722729172, 1.4972521245900605, 2.220652683231111, 3.8160757147580173, 1.6233900360815698, 3.6552359911074674, 4.06808824279354, 3.722912415967339 ],
-  "peakCpu" : 445.9716796875,
-  "peakMemory" : 4.06808824279354,
-  "avgCpu" : 412.59765625,
-  "avgMemory" : 2.3293882555207657,
+  "throughputStability" : 0.4918822720441927,
+  "cpuTimeline" : [ 2243.05419921875, 2243.05419921875, 2063.427734375, 2063.427734375, 2063.427734375, 2063.427734375, 2063.427734375, 1938.22021484375, 1938.22021484375, 1938.22021484375, 1938.22021484375, 1938.22021484375, 1839.0625, 1839.0625, 1839.0625, 1839.0625, 1839.0625, 1785.87646484375 ],
+  "memoryTimeline" : [ 1.3735342939975403, 1.3735342939975403, 1.3735342939975403, 0.6765309785136542, 2.222027283022791, 4.047616675691576, 3.491095842194004, 3.467157558283339, 3.5741172813623394, 2.4272206573024406, 1.2215850091004588, 3.209791366315393, 2.3114667290034134, 1.4489267235687595, 2.8522445262982075, 0.9444509096270733, 1.542490353858555, 5.820733002047727 ],
+  "peakCpu" : 2243.05419921875,
+  "peakMemory" : 5.820733002047727,
+  "avgCpu" : 1970.8631727430557,
+  "avgMemory" : 2.4098920987879087,
   "componentTiming" : null,
   "sampleEvents" : [ {
-    "id" : "full_4_1766408506766",
-    "traceId" : "000e83d4d99084010000000000000000",
-    "otelTraceId" : "a0fed5fdd47f6e9731b174f3fdbad4ac",
-    "timestamp" : 1766408506769,
-    "latencyMs" : 3,
+    "id" : "full_2_1766409492427",
+    "traceId" : "000e83e3e3cc84010000000000000002",
+    "otelTraceId" : "2fe09de195dc2098be04970d0acb8ae2",
+    "timestamp" : 1766409492432,
+    "latencyMs" : 5,
     "status" : "success",
     "error" : null,
     "componentTiming" : {
-      "gatewayMs" : 3,
-      "kafkaMs" : 0,
-      "flinkMs" : 0,
-      "droolsMs" : 0
-    },
-    "traceData" : {
-      "trace" : {
-        "traceId" : "a0fed5fdd47f6e9731b174f3fdbad4ac",
-        "spans" : [ {
-          "traceID" : "a0fed5fdd47f6e9731b174f3fdbad4ac",
-          "spanID" : "81397bba513d96d5",
-          "processID" : "p1",
-          "operationName" : "RuleController.evaluate",
-          "startTime" : 1766408517267450,
-          "duration" : 5818,
-          "tags" : [ {
-            "key" : "thread.name",
-            "type" : "string",
-            "value" : "http-nio-8080-exec-351"
-          }, {
-            "key" : "thread.id",
-            "type" : "int64",
-            "value" : 407
-          }, {
-            "key" : "span.kind",
-            "type" : "string",
-            "value" : "internal"
-          }, {
-            "key" : "internal.span.format",
-            "type" : "string",
-            "value" : "otlp"
-          } ],
-          "references" : [ {
-            "refType" : "CHILD_OF",
-            "traceID" : "a0fed5fdd47f6e9731b174f3fdbad4ac",
-            "spanID" : "7575fa664fb9980f"
-          } ]
-        }, {
-          "traceID" : "a0fed5fdd47f6e9731b174f3fdbad4ac",
-          "spanID" : "7575fa664fb9980f",
-          "processID" : "p2",
-          "operationName" : "POST /api/evaluate",
-          "startTime" : 1766408517267427,
-          "duration" : 5894,
-          "tags" : [ {
-            "key" : "http.target",
-            "type" : "string",
-            "value" : "/api/evaluate"
-          }, {
-            "key" : "net.sock.peer.addr",
-            "type" : "string",
-            "value" : "172.19.0.17"
-          }, {
-            "key" : "http.status_code",
-            "type" : "int64",
-            "value" : 200
-          }, {
-            "key" : "net.host.port",
-            "type" : "int64",
-            "value" : 8080
-          }, {
-            "key" : "net.host.name",
-            "type" : "string",
-            "value" : "drools"
-          }, {
-            "key" : "user_agent.original",
-            "type" : "string",
-            "value" : "Java-http-client/17.0.14"
-          }, {
-            "key" : "thread.name",
-            "type" : "string",
-            "value" : "http-nio-8080-exec-351"
-          }, {
-            "key" : "thread.id",
-            "type" : "int64",
-            "value" : 407
-          }, {
-            "key" : "net.sock.host.port",
-            "type" : "int64",
-            "value" : 8080
-          }, {
-            "key" : "net.sock.peer.port",
-            "type" : "int64",
-            "value" : 45756
-          }, {
-            "key" : "http.route",
-            "type" : "string",
-            "value" : "/api/evaluate"
-          }, {
-            "key" : "net.sock.host.addr",
-            "type" : "string",
-            "value" : "172.19.0.12"
-          }, {
-            "key" : "net.protocol.version",
-            "type" : "string",
-            "value" : "1.1"
-          }, {
-            "key" : "http.scheme",
-            "type" : "string",
-            "value" : "http"
-          }, {
-            "key" : "http.method",
-            "type" : "string",
-            "value" : "POST"
-          }, {
-            "key" : "http.request_content_length",
-            "type" : "int64",
-            "value" : 133
-          }, {
-            "key" : "net.protocol.name",
-            "type" : "string",
-            "value" : "http"
-          }, {
-            "key" : "span.kind",
-            "type" : "string",
-            "value" : "server"
-          }, {
-            "key" : "internal.span.format",
-            "type" : "string",
-            "value" : "otlp"
-          } ],
-          "references" : [ {
-            "refType" : "CHILD_OF",
-            "traceID" : "a0fed5fdd47f6e9731b174f3fdbad4ac",
-            "spanID" : "911ef44c80a4282d"
-          } ]
-        }, {
-          "traceID" : "a0fed5fdd47f6e9731b174f3fdbad4ac",
-          "spanID" : "41328aff15b3df4f",
-          "processID" : "p3",
-          "operationName" : "drools.evaluate",
-          "startTime" : 1766408517270848,
-          "duration" : 2317,
-          "tags" : [ {
-            "key" : "code.function",
-            "type" : "string",
-            "value" : "evaluate"
-          }, {
-            "key" : "drools.result_value",
-            "type" : "int64",
-            "value" : 1034
-          }, {
-            "key" : "eventId",
-            "type" : "string",
-            "value" : "019b4626cd900001"
-          }, {
-            "key" : "thread.name",
-            "type" : "string",
-            "value" : "http-nio-8080-exec-351"
-          }, {
-            "key" : "thread.id",
-            "type" : "int64",
-            "value" : 407
-          }, {
-            "key" : "drools.rules_fired",
-            "type" : "int64",
-            "value" : 1
-          }, {
-            "key" : "requestId",
-            "type" : "string",
-            "value" : "000e83d4d99084010000000000000000"
-          }, {
-            "key" : "code.namespace",
-            "type" : "string",
-            "value" : "com.reactive.drools.service.RuleService"
-          }, {
-            "key" : "session.id",
-            "type" : "string",
-            "value" : "full-bench-4"
-          }, {
-            "key" : "drools.alert_level",
-            "type" : "string",
-            "value" : "CRITICAL"
-          }, {
-            "key" : "counter.input_value",
-            "type" : "string",
-            "value" : "com.reactive.drools.model.EvaluationRequest@7c36af9b"
-          }, {
-            "key" : "drools.input_value",
-            "type" : "int64",
-            "value" : 1034
-          }, {
-            "key" : "customerId",
-            "type" : "string",
-            "value" : ""
-          }, {
-            "key" : "span.kind",
-            "type" : "string",
-            "value" : "internal"
-          }, {
-            "key" : "internal.span.format",
-            "type" : "string",
-            "value" : "otlp"
-          } ],
-          "references" : [ {
-            "refType" : "CHILD_OF",
-            "traceID" : "a0fed5fdd47f6e9731b174f3fdbad4ac",
-            "spanID" : "81397bba513d96d5"
-          } ]
-        }, {
-          "traceID" : "a0fed5fdd47f6e9731b174f3fdbad4ac",
-          "spanID" : "5b9b190eb8f8658f",
-          "processID" : "p4",
-          "operationName" : "kafka.consume",
-          "startTime" : 1766408517183414,
-          "duration" : 41,
-          "tags" : [ {
-            "key" : "messaging.system",
-            "type" : "string",
-            "value" : "kafka"
-          }, {
-            "key" : "thread.id",
-            "type" : "int64",
-            "value" : 110
-          }, {
-            "key" : "messaging.kafka.partition",
-            "type" : "int64",
-            "value" : 1
-          }, {
-            "key" : "requestId",
-            "type" : "string",
-            "value" : "000e83d4d99084010000000000000000"
-          }, {
-            "key" : "customerId",
-            "type" : "string",
-            "value" : ""
-          }, {
-            "key" : "messaging.destination",
-            "type" : "string",
-            "value" : "counter-events"
-          }, {
-            "key" : "messaging.kafka.offset",
-            "type" : "int64",
-            "value" : 1675003
-          }, {
-            "key" : "thread.name",
-            "type" : "string",
-            "value" : "Source: Kafka Counter Events (8/8)#1"
-          }, {
-            "key" : "kafka.transit_time_ms",
-            "type" : "int64",
-            "value" : 10415
-          }, {
-            "key" : "session.id",
-            "type" : "string",
-            "value" : "full-bench-4"
-          }, {
-            "key" : "span.kind",
-            "type" : "string",
-            "value" : "consumer"
-          }, {
-            "key" : "internal.span.format",
-            "type" : "string",
-            "value" : "otlp"
-          } ],
-          "references" : [ {
-            "refType" : "CHILD_OF",
-            "traceID" : "a0fed5fdd47f6e9731b174f3fdbad4ac",
-            "spanID" : "6faaca1b4a1447b5"
-          } ]
-        }, {
-          "traceID" : "a0fed5fdd47f6e9731b174f3fdbad4ac",
-          "spanID" : "02d9ed971aae39a1",
-          "processID" : "p5",
-          "operationName" : "counter-events process",
-          "startTime" : 1766408517183352,
-          "duration" : 111,
-          "tags" : [ {
-            "key" : "messaging.system",
-            "type" : "string",
-            "value" : "kafka"
-          }, {
-            "key" : "messaging.message.payload_size_bytes",
-            "type" : "int64",
-            "value" : 250
-          }, {
-            "key" : "thread.id",
-            "type" : "int64",
-            "value" : 110
-          }, {
-            "key" : "messaging.kafka.consumer.group",
-            "type" : "string",
-            "value" : "flink-counter-group-v3"
-          }, {
-            "key" : "messaging.kafka.destination.partition",
-            "type" : "int64",
-            "value" : 1
-          }, {
-            "key" : "messaging.kafka.message.offset",
-            "type" : "int64",
-            "value" : 1675003
-          }, {
-            "key" : "messaging.client_id",
-            "type" : "string",
-            "value" : "flink-counter-group-v3-7"
-          }, {
-            "key" : "thread.name",
-            "type" : "string",
-            "value" : "Source: Kafka Counter Events (8/8)#1"
-          }, {
-            "key" : "messaging.destination.name",
-            "type" : "string",
-            "value" : "counter-events"
-          }, {
-            "key" : "messaging.operation",
-            "type" : "string",
-            "value" : "process"
-          }, {
-            "key" : "span.kind",
-            "type" : "string",
-            "value" : "consumer"
-          }, {
-            "key" : "internal.span.format",
-            "type" : "string",
-            "value" : "otlp"
-          } ],
-          "references" : [ {
-            "refType" : "CHILD_OF",
-            "traceID" : "a0fed5fdd47f6e9731b174f3fdbad4ac",
-            "spanID" : "6faaca1b4a1447b5"
-          } ]
-        }, {
-          "traceID" : "a0fed5fdd47f6e9731b174f3fdbad4ac",
-          "spanID" : "911ef44c80a4282d",
-          "processID" : "p6",
-          "operationName" : "POST",
-          "startTime" : 1766408517255331,
-          "duration" : 19013,
-          "tags" : [ {
-            "key" : "net.peer.name",
-            "type" : "string",
-            "value" : "drools"
-          }, {
-            "key" : "thread.id",
-            "type" : "int64",
-            "value" : 111
-          }, {
-            "key" : "http.url",
-            "type" : "string",
-            "value" : "http://drools:8080/api/evaluate"
-          }, {
-            "key" : "net.peer.port",
-            "type" : "int64",
-            "value" : 8080
-          }, {
-            "key" : "net.protocol.name",
-            "type" : "string",
-            "value" : "http"
-          }, {
-            "key" : "http.method",
-            "type" : "string",
-            "value" : "POST"
-          }, {
-            "key" : "http.status_code",
-            "type" : "int64",
-            "value" : 200
-          }, {
-            "key" : "thread.name",
-            "type" : "string",
-            "value" : "KeyedProcess -> (Sink: Writer -> Sink: Committer, async wait operator -> Sink: Writer -> Sink: Committer) (1/8)#1"
-          }, {
-            "key" : "net.protocol.version",
-            "type" : "string",
-            "value" : "1.1"
-          }, {
-            "key" : "span.kind",
-            "type" : "string",
-            "value" : "client"
-          }, {
-            "key" : "internal.span.format",
-            "type" : "string",
-            "value" : "otlp"
-          } ],
-          "references" : [ {
-            "refType" : "CHILD_OF",
-            "traceID" : "a0fed5fdd47f6e9731b174f3fdbad4ac",
-            "spanID" : "f50416c5ef9780ae"
-          } ]
-        }, {
-          "traceID" : "a0fed5fdd47f6e9731b174f3fdbad4ac",
-          "spanID" : "a97238404ac27cba",
-          "processID" : "p5",
-          "operationName" : "counter-results publish",
-          "startTime" : 1766408517255156,
-          "duration" : 3527,
-          "tags" : [ {
-            "key" : "messaging.system",
-            "type" : "string",
-            "value" : "kafka"
-          }, {
-            "key" : "thread.id",
-            "type" : "int64",
-            "value" : 111
-          }, {
-            "key" : "messaging.kafka.destination.partition",
-            "type" : "int64",
-            "value" : 1
-          }, {
-            "key" : "messaging.kafka.message.offset",
-            "type" : "int64",
-            "value" : 68906
-          }, {
-            "key" : "messaging.client_id",
-            "type" : "string",
-            "value" : "producer-5"
-          }, {
-            "key" : "thread.name",
-            "type" : "string",
-            "value" : "KeyedProcess -> (Sink: Writer -> Sink: Committer, async wait operator -> Sink: Writer -> Sink: Committer) (1/8)#1"
-          }, {
-            "key" : "messaging.destination.name",
-            "type" : "string",
-            "value" : "counter-results"
-          }, {
-            "key" : "messaging.operation",
-            "type" : "string",
-            "value" : "publish"
-          }, {
-            "key" : "span.kind",
-            "type" : "string",
-            "value" : "producer"
-          }, {
-            "key" : "internal.span.format",
-            "type" : "string",
-            "value" : "otlp"
-          } ],
-          "references" : [ {
-            "refType" : "CHILD_OF",
-            "traceID" : "a0fed5fdd47f6e9731b174f3fdbad4ac",
-            "spanID" : "8cff39217ff048bb"
-          } ]
-        }, {
-          "traceID" : "a0fed5fdd47f6e9731b174f3fdbad4ac",
-          "spanID" : "8cff39217ff048bb",
-          "processID" : "p7",
-          "operationName" : "flink.process_counter",
-          "startTime" : 1766408517255138,
-          "duration" : 133,
-          "tags" : [ {
-            "key" : "eventId",
-            "type" : "string",
-            "value" : "019b4626cd900001"
-          }, {
-            "key" : "thread.id",
-            "type" : "int64",
-            "value" : 111
-          }, {
-            "key" : "counter.previous_value",
-            "type" : "int64",
-            "value" : 1033
-          }, {
-            "key" : "requestId",
-            "type" : "string",
-            "value" : "000e83d4d99084010000000000000000"
-          }, {
-            "key" : "customerId",
-            "type" : "string",
-            "value" : ""
-          }, {
-            "key" : "counter.action",
-            "type" : "string",
-            "value" : "increment"
-          }, {
-            "key" : "thread.name",
-            "type" : "string",
-            "value" : "KeyedProcess -> (Sink: Writer -> Sink: Committer, async wait operator -> Sink: Writer -> Sink: Committer) (1/8)#1"
-          }, {
-            "key" : "counter.new_value",
-            "type" : "int64",
-            "value" : 1034
-          }, {
-            "key" : "processing.latency_ms",
-            "type" : "int64",
-            "value" : 0
-          }, {
-            "key" : "session.id",
-            "type" : "string",
-            "value" : "full-bench-4"
-          }, {
-            "key" : "span.kind",
-            "type" : "string",
-            "value" : "consumer"
-          }, {
-            "key" : "otel.status_code",
-            "type" : "string",
-            "value" : "OK"
-          }, {
-            "key" : "internal.span.format",
-            "type" : "string",
-            "value" : "otlp"
-          } ],
-          "references" : [ {
-            "refType" : "CHILD_OF",
-            "traceID" : "a0fed5fdd47f6e9731b174f3fdbad4ac",
-            "spanID" : "6faaca1b4a1447b5"
-          } ]
-        }, {
-          "traceID" : "a0fed5fdd47f6e9731b174f3fdbad4ac",
-          "spanID" : "f50416c5ef9780ae",
-          "processID" : "p8",
-          "operationName" : "async.drools.enrich",
-          "startTime" : 1766408517255285,
-          "duration" : 19108,
-          "tags" : [ {
-            "key" : "eventId",
-            "type" : "string",
-            "value" : "019b4626cd900001"
-          }, {
-            "key" : "counter.value",
-            "type" : "int64",
-            "value" : 1034
-          }, {
-            "key" : "thread.id",
-            "type" : "int64",
-            "value" : 111
-          }, {
-            "key" : "peer.service",
-            "type" : "string",
-            "value" : "drools"
-          }, {
-            "key" : "requestId",
-            "type" : "string",
-            "value" : "000e83d4d99084010000000000000000"
-          }, {
-            "key" : "http.url",
-            "type" : "string",
-            "value" : "http://drools:8080/api/evaluate"
-          }, {
-            "key" : "customerId",
-            "type" : "string",
-            "value" : ""
-          }, {
-            "key" : "http.method",
-            "type" : "string",
-            "value" : "POST"
-          }, {
-            "key" : "http.status_code",
-            "type" : "int64",
-            "value" : 200
-          }, {
-            "key" : "drools.latency_ms",
-            "type" : "int64",
-            "value" : 19
-          }, {
-            "key" : "thread.name",
-            "type" : "string",
-            "value" : "KeyedProcess -> (Sink: Writer -> Sink: Committer, async wait operator -> Sink: Writer -> Sink: Committer) (1/8)#1"
-          }, {
-            "key" : "total.latency_ms",
-            "type" : "int64",
-            "value" : 19
-          }, {
-            "key" : "span.kind",
-            "type" : "string",
-            "value" : "client"
-          }, {
-            "key" : "otel.status_code",
-            "type" : "string",
-            "value" : "OK"
-          }, {
-            "key" : "internal.span.format",
-            "type" : "string",
-            "value" : "otlp"
-          } ],
-          "references" : [ {
-            "refType" : "CHILD_OF",
-            "traceID" : "a0fed5fdd47f6e9731b174f3fdbad4ac",
-            "spanID" : "6faaca1b4a1447b5"
-          } ]
-        } ],
-        "processes" : {
-          "p1" : {
-            "serviceName" : "drools"
-          },
-          "p2" : {
-            "serviceName" : "drools"
-          },
-          "p3" : {
-            "serviceName" : "drools"
-          },
-          "p4" : {
-            "serviceName" : "flink-taskmanager"
-          },
-          "p5" : {
-            "serviceName" : "flink-taskmanager"
-          },
-          "p6" : {
-            "serviceName" : "flink-taskmanager"
-          },
-          "p7" : {
-            "serviceName" : "flink-taskmanager"
-          },
-          "p8" : {
-            "serviceName" : "flink-taskmanager"
-          }
-        }
-      },
-      "logs" : [ {
-        "timestamp" : "1766408506768192710",
-        "line" : "{\"timestamp\":\"2025-12-22T13:01:46.76819271Z\",\"@version\":\"1\",\"message\":\"Event published (fire-and-forget): action=increment, value=1, session=full-bench-4\",\"logger\":\"com.reactive.counter.api.CounterController\",\"thread\":\"reactor-http-nio-1\",\"level\":\"INFO\",\"level_value\":20000,\"serviceVersion\":\"1.0.0\",\"serviceName\":\"counter-application\",\"traceId\":\"a0fed5fdd47f6e9731b174f3fdbad4ac\",\"spanId\":\"49d85dfe10ca74bf\",\"requestId\":\"000e83d4d99084010000000000000000\",\"service\":\"counter-application\",\"version\":\"1.0.0\"}",
-        "labels" : {
-          "compose_service" : "gateway",
-          "container" : "reactive-application",
-          "container_id" : "1cde6c0e497a9cb0f198792faf77904a0c14e45ef97dc2d16e0c22333a7803e2",
-          "level" : "INFO",
-          "project" : "reactive-system-01",
-          "service" : "application"
-        },
-        "fields" : {
-          "timestamp" : "2025-12-22T13:01:46.76819271Z",
-          "@version" : "1",
-          "message" : "Event published (fire-and-forget): action=increment, value=1, session=full-bench-4",
-          "logger" : "com.reactive.counter.api.CounterController",
-          "thread" : "reactor-http-nio-1",
-          "level" : "INFO",
-          "level_value" : 20000,
-          "serviceVersion" : "1.0.0",
-          "serviceName" : "counter-application",
-          "traceId" : "a0fed5fdd47f6e9731b174f3fdbad4ac",
-          "spanId" : "49d85dfe10ca74bf",
-          "requestId" : "000e83d4d99084010000000000000000",
-          "service" : "counter-application",
-          "version" : "1.0.0"
-        }
-      }, {
-        "timestamp" : "1766408517260807909",
-        "line" : "{\"timestamp\":\"2025-12-22T13:01:57,255\",\"level\":\"INFO \",\"service\":\"flink\",\"logger\":\"com.reactive.flink.processor.CounterProcessor\",\"thread\":\"KeyedProcess -> (Sink: Writer -> Sink: Committer, async wait operator -> Sink: Writer -> Sink: Committer) (1/8)#1\",\"traceId\":\"a0fed5fdd47f6e9731b174f3fdbad4ac\",\"spanId\":\"8cff39217ff048bb\",\"message\":\"Flink processed event: sessionId=full-bench-4, action=increment, newValue=1034, requestId=000e83d4d99084010000000000000000, customerId=null\"}",
-        "labels" : {
-          "compose_service" : "flink-taskmanager",
-          "container" : "reactive-system-01-flink-taskmanager-2",
-          "container_id" : "ab9e1eea5cd4ec2f23eb98b6a872790f48d6595c716f712bbc5bb68a2c3be4d2",
-          "level" : "INFO",
-          "project" : "reactive-system-01",
-          "service" : "system-01-flink-taskmanager-2"
-        },
-        "fields" : {
-          "timestamp" : "2025-12-22T13:01:57,255",
-          "level" : "INFO ",
-          "service" : "flink",
-          "logger" : "com.reactive.flink.processor.CounterProcessor",
-          "thread" : "KeyedProcess -> (Sink: Writer -> Sink: Committer, async wait operator -> Sink: Writer -> Sink: Committer) (1/8)#1",
-          "traceId" : "a0fed5fdd47f6e9731b174f3fdbad4ac",
-          "spanId" : "8cff39217ff048bb",
-          "message" : "Flink processed event: sessionId=full-bench-4, action=increment, newValue=1034, requestId=000e83d4d99084010000000000000000, customerId=null"
-        }
-      }, {
-        "timestamp" : "1766408517260809200",
-        "line" : "{\"timestamp\":\"2025-12-22T13:01:57,255\",\"level\":\"INFO \",\"service\":\"flink\",\"logger\":\"com.reactive.flink.async.AsyncDroolsEnricher\",\"thread\":\"KeyedProcess -> (Sink: Writer -> Sink: Committer, async wait operator -> Sink: Writer -> Sink: Committer) (1/8)#1\",\"traceId\":\"a0fed5fdd47f6e9731b174f3fdbad4ac\",\"spanId\":\"f50416c5ef9780ae\",\"message\":\"Calling Drools for evaluation: sessionId=full-bench-4, value=1034, customerId=null\"}",
-        "labels" : {
-          "compose_service" : "flink-taskmanager",
-          "container" : "reactive-system-01-flink-taskmanager-2",
-          "container_id" : "ab9e1eea5cd4ec2f23eb98b6a872790f48d6595c716f712bbc5bb68a2c3be4d2",
-          "level" : "INFO",
-          "project" : "reactive-system-01",
-          "service" : "system-01-flink-taskmanager-2"
-        },
-        "fields" : {
-          "timestamp" : "2025-12-22T13:01:57,255",
-          "level" : "INFO ",
-          "service" : "flink",
-          "logger" : "com.reactive.flink.async.AsyncDroolsEnricher",
-          "thread" : "KeyedProcess -> (Sink: Writer -> Sink: Committer, async wait operator -> Sink: Writer -> Sink: Committer) (1/8)#1",
-          "traceId" : "a0fed5fdd47f6e9731b174f3fdbad4ac",
-          "spanId" : "f50416c5ef9780ae",
-          "message" : "Calling Drools for evaluation: sessionId=full-bench-4, value=1034, customerId=null"
-        }
-      }, {
-        "timestamp" : "1766408517564230257",
-        "line" : "{\"timestamp\":\"2025-12-22T13:01:57.564230257Z\",\"@version\":\"1\",\"message\":\"Received result from Flink: eventId=019b4626cd900001, sessionId=full-bench-4, value=1034, alert=PENDING\",\"logger\":\"com.reactive.counter.service.ResultConsumerService\",\"thread\":\"org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1\",\"level\":\"INFO\",\"level_value\":20000,\"serviceVersion\":\"1.0.0\",\"serviceName\":\"counter-application\",\"traceId\":\"a0fed5fdd47f6e9731b174f3fdbad4ac\",\"requestId\":\"000e83d4d99084010000000000000000\",\"service\":\"counter-application\",\"version\":\"1.0.0\"}",
-        "labels" : {
-          "compose_service" : "gateway",
-          "container" : "reactive-application",
-          "container_id" : "1cde6c0e497a9cb0f198792faf77904a0c14e45ef97dc2d16e0c22333a7803e2",
-          "level" : "INFO",
-          "project" : "reactive-system-01",
-          "service" : "application"
-        },
-        "fields" : {
-          "timestamp" : "2025-12-22T13:01:57.564230257Z",
-          "@version" : "1",
-          "message" : "Received result from Flink: eventId=019b4626cd900001, sessionId=full-bench-4, value=1034, alert=PENDING",
-          "logger" : "com.reactive.counter.service.ResultConsumerService",
-          "thread" : "org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1",
-          "level" : "INFO",
-          "level_value" : 20000,
-          "serviceVersion" : "1.0.0",
-          "serviceName" : "counter-application",
-          "traceId" : "a0fed5fdd47f6e9731b174f3fdbad4ac",
-          "requestId" : "000e83d4d99084010000000000000000",
-          "service" : "counter-application",
-          "version" : "1.0.0"
-        }
-      } ]
-    }
-  }, {
-    "id" : "full_2_1766408506766",
-    "traceId" : "000e83d4d99084010000000000000004",
-    "otelTraceId" : "4b8249105250f28626c04c1e54e92824",
-    "timestamp" : 1766408506769,
-    "latencyMs" : 3,
-    "status" : "success",
-    "error" : null,
-    "componentTiming" : {
-      "gatewayMs" : 3,
+      "gatewayMs" : 5,
       "kafkaMs" : 0,
       "flinkMs" : 0,
       "droolsMs" : 0
@@ -764,8 +61,8 @@
     "traceData" : {
       "trace" : null,
       "logs" : [ {
-        "timestamp" : "1766408506768734916",
-        "line" : "{\"timestamp\":\"2025-12-22T13:01:46.768734916Z\",\"@version\":\"1\",\"message\":\"Event published (fire-and-forget): action=increment, value=1, session=full-bench-2\",\"logger\":\"com.reactive.counter.api.CounterController\",\"thread\":\"reactor-http-nio-2\",\"level\":\"INFO\",\"level_value\":20000,\"serviceVersion\":\"1.0.0\",\"serviceName\":\"counter-application\",\"traceId\":\"4b8249105250f28626c04c1e54e92824\",\"spanId\":\"8cbcb8e6701aa667\",\"requestId\":\"000e83d4d99084010000000000000004\",\"service\":\"counter-application\",\"version\":\"1.0.0\"}",
+        "timestamp" : "1766409492428415235",
+        "line" : "{\"timestamp\":\"2025-12-22T13:18:12.428415235Z\",\"@version\":\"1\",\"message\":\"Event published (fire-and-forget): action=increment, value=1, session=full-bench-2\",\"logger\":\"com.reactive.counter.api.CounterController\",\"thread\":\"reactor-http-nio-2\",\"level\":\"INFO\",\"level_value\":20000,\"serviceVersion\":\"1.0.0\",\"serviceName\":\"counter-application\",\"traceId\":\"2fe09de195dc2098be04970d0acb8ae2\",\"spanId\":\"5a7a11cb25cf2c81\",\"requestId\":\"000e83e3e3cc84010000000000000002\",\"service\":\"counter-application\",\"version\":\"1.0.0\"}",
         "labels" : {
           "compose_service" : "gateway",
           "container" : "reactive-application",
@@ -775,7 +72,7 @@
           "service" : "application"
         },
         "fields" : {
-          "timestamp" : "2025-12-22T13:01:46.768734916Z",
+          "timestamp" : "2025-12-22T13:18:12.428415235Z",
           "@version" : "1",
           "message" : "Event published (fire-and-forget): action=increment, value=1, session=full-bench-2",
           "logger" : "com.reactive.counter.api.CounterController",
@@ -784,9 +81,54 @@
           "level_value" : 20000,
           "serviceVersion" : "1.0.0",
           "serviceName" : "counter-application",
-          "traceId" : "4b8249105250f28626c04c1e54e92824",
-          "spanId" : "8cbcb8e6701aa667",
-          "requestId" : "000e83d4d99084010000000000000004",
+          "traceId" : "2fe09de195dc2098be04970d0acb8ae2",
+          "spanId" : "5a7a11cb25cf2c81",
+          "requestId" : "000e83e3e3cc84010000000000000002",
+          "service" : "counter-application",
+          "version" : "1.0.0"
+        }
+      } ]
+    }
+  }, {
+    "id" : "full_5_1766409492428",
+    "traceId" : "000e83e3e3ce84010000000000000000",
+    "otelTraceId" : "2e2cabfb8749cff9556a02cc431e7c1f",
+    "timestamp" : 1766409492432,
+    "latencyMs" : 4,
+    "status" : "success",
+    "error" : null,
+    "componentTiming" : {
+      "gatewayMs" : 4,
+      "kafkaMs" : 0,
+      "flinkMs" : 0,
+      "droolsMs" : 0
+    },
+    "traceData" : {
+      "trace" : null,
+      "logs" : [ {
+        "timestamp" : "1766409492430414489",
+        "line" : "{\"timestamp\":\"2025-12-22T13:18:12.430414489Z\",\"@version\":\"1\",\"message\":\"Event published (fire-and-forget): action=increment, value=1, session=full-bench-5\",\"logger\":\"com.reactive.counter.api.CounterController\",\"thread\":\"reactor-http-nio-3\",\"level\":\"INFO\",\"level_value\":20000,\"serviceVersion\":\"1.0.0\",\"serviceName\":\"counter-application\",\"traceId\":\"2e2cabfb8749cff9556a02cc431e7c1f\",\"spanId\":\"9c6ae41b77eb2439\",\"requestId\":\"000e83e3e3ce84010000000000000000\",\"service\":\"counter-application\",\"version\":\"1.0.0\"}",
+        "labels" : {
+          "compose_service" : "gateway",
+          "container" : "reactive-application",
+          "container_id" : "1cde6c0e497a9cb0f198792faf77904a0c14e45ef97dc2d16e0c22333a7803e2",
+          "level" : "INFO",
+          "project" : "reactive-system-01",
+          "service" : "application"
+        },
+        "fields" : {
+          "timestamp" : "2025-12-22T13:18:12.430414489Z",
+          "@version" : "1",
+          "message" : "Event published (fire-and-forget): action=increment, value=1, session=full-bench-5",
+          "logger" : "com.reactive.counter.api.CounterController",
+          "thread" : "reactor-http-nio-3",
+          "level" : "INFO",
+          "level_value" : 20000,
+          "serviceVersion" : "1.0.0",
+          "serviceName" : "counter-application",
+          "traceId" : "2e2cabfb8749cff9556a02cc431e7c1f",
+          "spanId" : "9c6ae41b77eb2439",
+          "requestId" : "000e83e3e3ce84010000000000000000",
           "service" : "counter-application",
           "version" : "1.0.0"
         }
@@ -797,7 +139,7 @@
   "errorMessage" : null,
   "success" : true
 };
-        window.__BENCHMARK_COMMIT__ = "5adc54b";
+        window.__BENCHMARK_COMMIT__ = "a910712";
     </script>
     <script src="../assets/benchmark-report.js"></script>
 </body>

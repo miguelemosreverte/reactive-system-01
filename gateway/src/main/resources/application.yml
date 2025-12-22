@@ -11,9 +11,10 @@ spring:
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
       acks: 1
       retries: 0
-      batch-size: 16384
-      linger-ms: 0
-      buffer-memory: 33554432
+      batch-size: 32768         # 32KB - optimized for throughput
+      linger-ms: 1              # 1ms latency for minimal batching
+      buffer-memory: 67108864   # 64MB buffer
+      compression-type: lz4     # Fast compression
     consumer:
       group-id: gateway-java
       auto-offset-reset: latest

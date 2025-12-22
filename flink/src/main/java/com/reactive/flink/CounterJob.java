@@ -120,10 +120,14 @@ public class CounterJob {
                 .setProperties(kafkaProps)
                 .build();
 
-        // Kafka producer properties
+        // Kafka producer properties - balanced for latency + throughput
         Properties producerProps = new Properties();
-        producerProps.setProperty("linger.ms", "0");
-        producerProps.setProperty("acks", "1");
+        producerProps.setProperty("linger.ms", "1");           // Small delay to enable minimal batching
+        producerProps.setProperty("batch.size", "32768");      // 32KB batch size (filled quickly)
+        producerProps.setProperty("acks", "1");                // Leader acknowledgment only
+        producerProps.setProperty("compression.type", "lz4"); // Fast compression
+        producerProps.setProperty("buffer.memory", "67108864"); // 64MB buffer
+        LOG.info("Producer config: linger.ms=1, batch.size=32KB, compression=lz4");
 
         // Sink for immediate results (counter-results topic) - with trace context propagation
         KafkaSink<CounterResult> resultsSink = KafkaSink.<CounterResult>builder()

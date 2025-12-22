@@ -405,3 +405,38 @@ NEXT STEP: docker compose up -d --scale flink-taskmanager=2
 
 The automated diagnostic report correctly identified the bottleneck and provided the exact command to run. Following its advice resulted in **2x throughput improvement**.
 
+---
+
+## Optimization 2: Kafka Producer Tuning (2025-12-22)
+
+### Changes Applied
+
+Tuned Kafka producer settings across all services for better throughput:
+
+| Setting | Before | After | Purpose |
+|---------|--------|-------|---------|
+| linger.ms | 0 | 1 | Small delay enables batching |
+| batch.size | 16KB | 32KB | Larger batches = fewer network calls |
+| compression.type | none | lz4 | Fast compression reduces network I/O |
+| buffer.memory | 32MB | 64MB | More headroom for bursts |
+
+**Files Modified:**
+- `flink/src/main/java/com/reactive/flink/CounterJob.java` - Producer properties
+- `gateway/src/main/resources/application.yml` - Spring Kafka config
+- `application/src/main/resources/application.yml` - Spring Kafka config
+
+### Results (Combined with Optimization 1)
+
+| Metric | Baseline | After Opt 1+2 | Total Improvement |
+|--------|----------|---------------|-------------------|
+| Peak throughput | 1,998 ops/sec | **3,931 ops/sec** | **+97%** |
+| Avg throughput | 472 ops/sec | **1,327 ops/sec** | **+181%** |
+| P99 latency | 53ms | **20ms** | **-62%** |
+| Flink % of trace | 55% | **15%** | **-73%** |
+
+### Notes
+
+- Initially tried `linger.ms=5` but caused Drools timeouts due to increased latency
+- `linger.ms=1` provides a good balance between batching and latency
+- LZ4 compression adds minimal CPU overhead but reduces network I/O significantly
+
