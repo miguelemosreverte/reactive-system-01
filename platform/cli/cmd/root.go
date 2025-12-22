@@ -22,17 +22,20 @@ LIFECYCLE
 DIAGNOSTICS
   doctor              Comprehensive health check
   stats               Container resource usage
-  diagnose [subcmd]   Memory/performance diagnostics
+  memory [subcmd]     Memory diagnostics (overview, jvm, pressure, risk, verdict)
 
 BENCHMARKING
-  bench <target>      Run benchmark (drools, full, gateway)
+  bench <target>      Run benchmark (http, kafka, flink, drools, gateway, full, all)
+    bench doctor      Validate observability chain
+    bench history     Manage benchmark history (save, list, show, compare)
+
+TESTING
+  e2e                 Run end-to-end tests
+  send                Send test event
 
 OBSERVABILITY
   trace [id]          Inspect distributed traces
   search [traceId]    Search logs in Loki
-
-TESTING
-  send                Send test event
 
 DEVELOPMENT
   shell <service>     Enter container shell
@@ -57,8 +60,9 @@ func init() {
 
 	// Note: Other commands are added via init() in their respective files:
 	// - lifecycle.go: start, stop, restart, rebuild, down, clean, logs, dev, shell
-	// - diagnostics.go: doctor, stats, diagnose
-	// - bench.go: bench
+	// - diagnostics.go: doctor, stats
+	// - diagnose.go: memory
+	// - bench.go: bench (with subcommands: doctor, history)
+	// - e2e.go: e2e
 	// - status.go: status
-	// - benchmark.go: benchmark (old, to be deprecated)
 }
