@@ -2,15 +2,13 @@ package com.reactive.platform.replay;
 
 import com.reactive.platform.replay.ReplayResult.StateSnapshot;
 import com.reactive.platform.serialization.Result;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import static com.reactive.platform.tracing.Tracing.*;
+import static com.reactive.platform.observe.Log.*;
 
 /**
  * Service for replaying events through an FSM with full tracing.
@@ -23,8 +21,6 @@ import static com.reactive.platform.tracing.Tracing.*;
  * @param <S> The state type
  */
 public class ReplayService<S> {
-
-    private static final Logger log = LoggerFactory.getLogger(ReplayService.class);
 
     /** Create replay service. */
     public static <S> ReplayService<S> create(EventStore eventStore, FSMAdapter<S> fsm) {
@@ -65,7 +61,7 @@ public class ReplayService<S> {
 
             String currentTraceId = traceId();
 
-            log.info("Replaying aggregate: {}, upTo: {}", aggregateId,
+            info("Replaying aggregate: {}, upTo: {}", aggregateId,
                     upToEventId.isEmpty() ? "latest" : upToEventId);
 
             var eventsResult = upToEventId.isEmpty()
@@ -76,19 +72,19 @@ public class ReplayService<S> {
                 long durationMs = System.currentTimeMillis() - startTime;
 
                 if (events.isEmpty()) {
-                    log.warn("No events for aggregate: {}", aggregateId);
+                    warn("No events for aggregate: {}", aggregateId);
                     attr("replay.eventsFound", 0);
                     return Result.success(ReplayResult.empty(
                             aggregateId, fsm.initialState(), currentTraceId, durationMs));
                 }
 
                 attr("replay.eventsFound", events.size());
-                log.info("Replaying {} events", events.size());
+                info("Replaying {} events", events.size());
 
                 var result = replayEvents(aggregateId, events, upToEventId, currentTraceId, durationMs);
 
                 attr("replay.durationMs", result.replayDurationMs());
-                log.info("Replay completed: {} events in {}ms", events.size(), durationMs);
+                info("Replay completed: {} events in {}ms", events.size(), durationMs);
 
                 return Result.success(result);
             });
@@ -135,7 +131,6 @@ public class ReplayService<S> {
             attr("event.type", event.eventType() != null ? event.eventType() : "unknown");
 
             Map<String, Object> stateMap = fsm.stateToMap(currentState);
-            log.debug("Before event {}: {}", event.eventId(), stateMap);
 
             S newState = traced("fsm.apply", () -> {
                 attr("fsm.payload", event.payload().toString());
@@ -143,7 +138,6 @@ public class ReplayService<S> {
             });
 
             Map<String, Object> newStateMap = fsm.stateToMap(newState);
-            log.debug("After event {}: {}", event.eventId(), newStateMap);
 
             attr("state.before", stateMap.toString());
             attr("state.after", newStateMap.toString());
