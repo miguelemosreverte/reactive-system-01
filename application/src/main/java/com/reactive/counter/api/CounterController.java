@@ -6,13 +6,11 @@ import com.reactive.counter.service.ResultConsumerService;
 import com.reactive.platform.id.IdGenerator;
 import com.reactive.platform.kafka.KafkaPublisher;
 import com.reactive.platform.serialization.JsonCodec;
-import com.reactive.platform.tracing.Tracing;
 import io.opentelemetry.api.trace.Span;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
@@ -26,15 +24,9 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Counter REST API.
  *
- * Thin adapter layer - delegates to domain logic (CounterFSM)
- * and platform infrastructure (KafkaPublisher).
- *
- * Business IDs:
- * - requestId: Correlation ID for request tracking
- * - customerId: Customer/tenant ID for multi-tenancy
- * - eventId: Unique event ID
- *
- * Note: OpenTelemetry trace propagation is handled automatically by the OTel agent.
+ * Clean controller - business logic only.
+ * Tracing is handled automatically by OTel agent (HTTP instrumentation).
+ * KafkaPublisher handles its own tracing internally.
  */
 @RestController
 @RequestMapping("/api")
@@ -57,10 +49,8 @@ public class CounterController {
     @Autowired(required = false)
     private ResultConsumerService resultConsumerService;
 
-    private final Tracing tracing = Tracing.create("counter-api");
     private final IdGenerator idGenerator = IdGenerator.getInstance();
     private final Map<String, CounterState> stateStore = new ConcurrentHashMap<>();
-
     private KafkaPublisher<CounterEvent> publisher;
 
     @PostConstruct
@@ -69,8 +59,8 @@ public class CounterController {
                 .bootstrapServers(kafkaBootstrap)
                 .topic(eventsTopic)
                 .codec(JsonCodec.forClass(CounterEvent.class))
-                .keyExtractor(e -> buildKafkaKey(e.customerId(), e.sessionId()))
-                .tracer(tracing.tracer()));
+                .keyExtractor(e -> kafkaKey(e.customerId(), e.sessionId())));
+        // Note: No tracer passed - KafkaPublisher gets its own from GlobalOpenTelemetry
     }
 
     @PreDestroy
@@ -80,106 +70,111 @@ public class CounterController {
         }
     }
 
-    /**
-     * Build Kafka key for partitioning: customerId:sessionId
-     */
-    private String buildKafkaKey(String customerId, String sessionId) {
-        if (customerId != null && !customerId.isEmpty()) {
-            return customerId + ":" + sessionId;
-        }
-        return sessionId;
-    }
+    // ========================================================================
+    // Endpoints
+    // ========================================================================
 
-    /**
-     * Submit a counter action with customer context.
-     * POST /api/customers/{customerId}/counter
-     */
     @PostMapping("/customers/{customerId}/counter")
-    public Mono<ResponseEntity<ActionResponse>> submitActionWithCustomer(
+    public Mono<ResponseEntity<ActionResponse>> submitWithCustomer(
             @PathVariable String customerId,
             @RequestBody ActionRequest request) {
-        return processAction(request, customerId);
+        return submit(request, customerId);
     }
 
-    /**
-     * Submit a counter action (backwards compatible).
-     * POST /api/counter
-     */
     @PostMapping("/counter")
-    public Mono<ResponseEntity<ActionResponse>> submitAction(@RequestBody ActionRequest request) {
-        return processAction(request, null);
+    public Mono<ResponseEntity<ActionResponse>> submit(@RequestBody ActionRequest request) {
+        return submit(request, null);
     }
 
-    private Mono<ResponseEntity<ActionResponse>> processAction(ActionRequest request, String customerId) {
+    @PostMapping("/customers/{customerId}/counter/fast")
+    public ResponseEntity<ActionResponse> submitFastWithCustomer(
+            @PathVariable String customerId,
+            @RequestBody ActionRequest request) {
+        return submitFast(request, customerId);
+    }
+
+    @PostMapping("/counter/fast")
+    public ResponseEntity<ActionResponse> submitFast(@RequestBody ActionRequest request) {
+        return submitFast(request, null);
+    }
+
+    @GetMapping("/counter/status")
+    public ResponseEntity<StatusResponse> getStatus(
+            @RequestParam(defaultValue = "default") String sessionId) {
+        CounterState state = stateStore.getOrDefault(sessionId, CounterState.initial());
+        return ResponseEntity.ok(new StatusResponse(
+                sessionId, state.value(), state.alert().name(), state.message()));
+    }
+
+    // ========================================================================
+    // Core Logic (pure business operations)
+    // ========================================================================
+
+    private Mono<ResponseEntity<ActionResponse>> submit(ActionRequest request, String customerId) {
         boolean waitForResult = "wait-for-result".equals(deliveryMode) && resultConsumerService != null;
 
-        return Mono.fromCallable(() -> tracing.span("counter.submit", span -> {
-            String sessionId = request.sessionIdOrDefault();
-            String requestId = idGenerator.generateRequestId();
-            String eventId = idGenerator.generateEventId();
-            String otelTraceId = span.getSpanContext().getTraceId();
+        String sessionId = request.sessionIdOrDefault();
+        String requestId = idGenerator.generateRequestId();
+        String eventId = idGenerator.generateEventId();
 
-            span.setAttribute("delivery.mode", deliveryMode);
-            setSpanAttributes(span, requestId, customerId, eventId, sessionId, request);
+        // Add business context to current span (created by OTel HTTP instrumentation)
+        addSpanAttributes(requestId, customerId, eventId, sessionId, request);
 
-            try {
-                MDC.put("requestId", requestId);
-                if (customerId != null) MDC.put("customerId", customerId);
+        CounterEvent event = CounterEvent.create(
+                requestId, customerId, eventId, sessionId, request.action(), request.value());
 
-                CounterEvent event = CounterEvent.create(
-                        requestId, customerId, eventId, sessionId, request.action(), request.value()
-                );
+        log.info("Publishing event: action={}, value={}, session={}",
+                request.action(), request.value(), sessionId);
 
-                if (waitForResult) {
-                    // Register pending transaction before publishing
-                    var resultFuture = resultConsumerService.registerPendingTransaction(eventId);
-                    publisher.publishFireAndForget(event);
+        publisher.publishFireAndForget(event);
 
-                    log.info("Event published (wait-for-result): action={}, value={}, session={}",
-                            request.action(), request.value(), sessionId);
+        ActionResponse response = new ActionResponse(
+                true, requestId, customerId != null ? customerId : "",
+                eventId, traceId(), waitForResult ? "pending" : "accepted");
 
-                    // Return a placeholder - actual waiting is done in flatMap below
-                    return new ActionResponse(
-                            true, requestId, customerId != null ? customerId : "",
-                            eventId, otelTraceId, "pending"
-                    );
-                } else {
-                    publisher.publishFireAndForget(event);
+        if (waitForResult) {
+            return Mono.fromFuture(resultConsumerService.registerPendingTransaction(eventId))
+                    .timeout(Duration.ofMillis(resultTimeoutMs))
+                    .map(result -> ResponseEntity.ok(response.withStatus("completed")))
+                    .onErrorReturn(ResponseEntity.ok(response.withStatus("timeout")));
+        }
 
-                    log.info("Event published (fire-and-forget): action={}, value={}, session={}",
-                            request.action(), request.value(), sessionId);
-
-                    return new ActionResponse(
-                            true, requestId, customerId != null ? customerId : "",
-                            eventId, otelTraceId, "accepted"
-                    );
-                }
-            } finally {
-                MDC.remove("requestId");
-                MDC.remove("customerId");
-            }
-        })).flatMap(response -> {
-            if (waitForResult && "pending".equals(response.status())) {
-                // Wait for result from Kafka
-                return Mono.fromFuture(resultConsumerService.registerPendingTransaction(response.eventId()))
-                        .timeout(Duration.ofMillis(resultTimeoutMs))
-                        .map(result -> ResponseEntity.ok(new ActionResponse(
-                                true, response.requestId(), response.customerId(),
-                                response.eventId(), response.otelTraceId(),
-                                "completed"
-                        )))
-                        .onErrorReturn(ResponseEntity.ok(new ActionResponse(
-                                true, response.requestId(), response.customerId(),
-                                response.eventId(), response.otelTraceId(),
-                                "timeout"
-                        )));
-            }
-            return Mono.just(ResponseEntity.ok(response));
-        });
+        return Mono.just(ResponseEntity.ok(response));
     }
 
-    private void setSpanAttributes(Span span, String requestId, String customerId,
-                                   String eventId, String sessionId, ActionRequest request) {
+    private ResponseEntity<ActionResponse> submitFast(ActionRequest request, String customerId) {
+        String sessionId = request.sessionIdOrDefault();
+        String requestId = idGenerator.generateRequestId();
+        String eventId = idGenerator.generateEventId();
+
+        addSpanAttributes(requestId, customerId, eventId, sessionId, request);
+
+        CounterEvent event = CounterEvent.create(
+                requestId, customerId, eventId, sessionId, request.action(), request.value());
+
+        log.info("Publishing event (fast): action={}, value={}, session={}",
+                request.action(), request.value(), sessionId);
+
+        publisher.publishFireAndForget(event);
+
+        return ResponseEntity.ok(new ActionResponse(
+                true, requestId, customerId != null ? customerId : "",
+                eventId, traceId(), "accepted"));
+    }
+
+    // ========================================================================
+    // Helpers
+    // ========================================================================
+
+    private String kafkaKey(String customerId, String sessionId) {
+        return (customerId != null && !customerId.isEmpty())
+                ? customerId + ":" + sessionId
+                : sessionId;
+    }
+
+    private void addSpanAttributes(String requestId, String customerId, String eventId,
+                                   String sessionId, ActionRequest request) {
+        Span span = Span.current();
         span.setAttribute("requestId", requestId);
         span.setAttribute("customerId", customerId != null ? customerId : "");
         span.setAttribute("eventId", eventId);
@@ -188,85 +183,14 @@ public class CounterController {
         span.setAttribute("counter.value", request.value());
     }
 
-    /**
-     * Fast path for benchmarks with customer context.
-     * POST /api/customers/{customerId}/counter/fast
-     */
-    @PostMapping("/customers/{customerId}/counter/fast")
-    public ResponseEntity<ActionResponse> submitFastWithCustomer(
-            @PathVariable String customerId,
-            @RequestBody ActionRequest request) {
-        return processActionFast(request, customerId);
+    private String traceId() {
+        return Span.current().getSpanContext().getTraceId();
     }
 
-    /**
-     * Fast path for benchmarks (backwards compatible).
-     * POST /api/counter/fast
-     */
-    @PostMapping("/counter/fast")
-    public ResponseEntity<ActionResponse> submitFast(@RequestBody ActionRequest request) {
-        return processActionFast(request, null);
-    }
-
-    private ResponseEntity<ActionResponse> processActionFast(ActionRequest request, String customerId) {
-        String sessionId = request.sessionIdOrDefault();
-        String requestId = idGenerator.generateRequestId();
-        String eventId = idGenerator.generateEventId();
-        String otelTraceId = Span.current().getSpanContext().getTraceId();
-
-        Span span = Span.current();
-        span.setAttribute("requestId", requestId);
-        span.setAttribute("customerId", customerId != null ? customerId : "");
-        span.setAttribute("eventId", eventId);
-
-        try {
-            MDC.put("requestId", requestId);
-            if (customerId != null) MDC.put("customerId", customerId);
-
-            CounterEvent event = CounterEvent.create(
-                    requestId, customerId, eventId, sessionId, request.action(), request.value()
-            );
-            publisher.publishFireAndForget(event);
-
-            log.info("Event published (fast): action={}, value={}, session={}",
-                    request.action(), request.value(), sessionId);
-
-            return ResponseEntity.ok(new ActionResponse(
-                    true, requestId, customerId != null ? customerId : "",
-                    eventId, otelTraceId, "accepted"
-            ));
-        } finally {
-            MDC.remove("requestId");
-            MDC.remove("customerId");
-        }
-    }
-
-    /**
-     * Get current counter status.
-     */
-    @GetMapping("/counter/status")
-    public ResponseEntity<StatusResponse> getStatus(
-            @RequestParam(defaultValue = "default") String sessionId
-    ) {
-        CounterState state = stateStore.getOrDefault(sessionId, CounterState.initial());
-
-        return ResponseEntity.ok(new StatusResponse(
-                sessionId,
-                state.value(),
-                state.alert().name(),
-                state.message()
-        ));
-    }
-
-    /**
-     * Update state (called by result consumer).
-     */
+    /** Called by ResultConsumerService to update local state cache. */
     public void updateState(String sessionId, int value, String alert, String message) {
         stateStore.put(sessionId, new CounterState(
-                value,
-                CounterState.AlertLevel.fromString(alert),
-                message
-        ));
+                value, CounterState.AlertLevel.fromString(alert), message));
     }
 
     // ========================================================================
@@ -280,12 +204,11 @@ public class CounterController {
             String eventId,
             String otelTraceId,
             String status
-    ) {}
+    ) {
+        public ActionResponse withStatus(String newStatus) {
+            return new ActionResponse(success, requestId, customerId, eventId, otelTraceId, newStatus);
+        }
+    }
 
-    public record StatusResponse(
-            String sessionId,
-            int value,
-            String alert,
-            String message
-    ) {}
+    public record StatusResponse(String sessionId, int value, String alert, String message) {}
 }

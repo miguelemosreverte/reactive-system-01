@@ -7,9 +7,7 @@ import com.reactive.flink.model.PreDroolsResult;
 import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanKind;
-import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.api.trace.Tracer;
-import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
 import io.opentelemetry.context.propagation.TextMapGetter;
 
@@ -24,35 +22,20 @@ import org.apache.flink.util.Collector;
 import org.apache.flink.util.OutputTag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
 
 /**
  * CQRS-based Counter Processor with timer-based snapshot evaluation.
  *
- * Architecture:
- * - WRITE SIDE (immediate): Every event updates state and emits CounterResult
- *   with alert="PENDING" immediately. This provides fast feedback to clients.
- *
- * - READ SIDE (bounded): Timer-based snapshot evaluation triggers Drools
- *   calls at bounded intervals (MIN/MAX latency). This ensures Drools load
- *   is bounded regardless of input throughput.
- *
- * Business IDs:
- * - requestId: Correlation ID for request tracking
- * - customerId: Customer/tenant ID for multi-tenancy
- * - eventId: Unique event ID
- *
- * Note: OpenTelemetry trace propagation is handled automatically by the OTel agent.
+ * Clean processor - business logic separated from tracing infrastructure.
+ * Manual span creation required since Flink has no OTel auto-instrumentation.
  */
 public class CounterProcessor extends KeyedProcessFunction<String, CounterEvent, CounterResult> {
     private static final long serialVersionUID = 2L;
-    private static final Logger LOG = LoggerFactory.getLogger(CounterProcessor.class);
+    private static final Logger log = LoggerFactory.getLogger(CounterProcessor.class);
 
-    // Output tag for snapshot evaluation (side output)
     public static final OutputTag<PreDroolsResult> SNAPSHOT_OUTPUT =
             new OutputTag<PreDroolsResult>("snapshot-output") {};
 
-    // System-wide latency bounds
     private final long minLatencyMs;
     private final long maxLatencyMs;
 
@@ -60,13 +43,20 @@ public class CounterProcessor extends KeyedProcessFunction<String, CounterEvent,
     private transient ValueState<Integer> counterState;
     private transient ValueState<Long> lastEvaluationTime;
     private transient ValueState<Long> pendingTimerTime;
-    private transient ValueState<String> lastRequestId;      // Correlation ID
-    private transient ValueState<String> lastCustomerId;     // Customer/tenant ID
+    private transient ValueState<String> lastRequestId;
+    private transient ValueState<String> lastCustomerId;
     private transient ValueState<String> lastEventId;
     private transient ValueState<EventTiming> lastTiming;
     private transient ValueState<String> lastTraceparent;
     private transient ValueState<String> lastTracestate;
     private transient Tracer tracer;
+
+    private static final TextMapGetter<Map<String, String>> MAP_GETTER = new TextMapGetter<>() {
+        @Override public Iterable<String> keys(Map<String, String> carrier) { return carrier.keySet(); }
+        @Override public String get(Map<String, String> carrier, String key) {
+            return carrier != null ? carrier.get(key) : null;
+        }
+    };
 
     public CounterProcessor(long minLatencyMs, long maxLatencyMs) {
         this.minLatencyMs = minLatencyMs;
@@ -75,208 +65,130 @@ public class CounterProcessor extends KeyedProcessFunction<String, CounterEvent,
 
     @Override
     public void open(Configuration parameters) {
-        // Counter value state
-        counterState = getRuntimeContext().getState(
-                new ValueStateDescriptor<>("counterValue", Types.INT));
-
-        // Last evaluation timestamp (for MIN latency enforcement)
-        lastEvaluationTime = getRuntimeContext().getState(
-                new ValueStateDescriptor<>("lastEvaluationTime", Types.LONG));
-
-        // Pending timer timestamp (to avoid duplicate timers)
-        pendingTimerTime = getRuntimeContext().getState(
-                new ValueStateDescriptor<>("pendingTimerTime", Types.LONG));
-
-        // Business ID states
-        lastRequestId = getRuntimeContext().getState(
-                new ValueStateDescriptor<>("lastRequestId", Types.STRING));
-
-        lastCustomerId = getRuntimeContext().getState(
-                new ValueStateDescriptor<>("lastCustomerId", Types.STRING));
-
-        lastEventId = getRuntimeContext().getState(
-                new ValueStateDescriptor<>("lastEventId", Types.STRING));
-
-        // Last timing for per-component latency tracking
-        lastTiming = getRuntimeContext().getState(
-                new ValueStateDescriptor<>("lastTiming", EventTiming.class));
-
-        // Trace context state for propagation to Drools
-        lastTraceparent = getRuntimeContext().getState(
-                new ValueStateDescriptor<>("lastTraceparent", Types.STRING));
-        lastTracestate = getRuntimeContext().getState(
-                new ValueStateDescriptor<>("lastTracestate", Types.STRING));
-
+        counterState = getRuntimeContext().getState(new ValueStateDescriptor<>("counterValue", Types.INT));
+        lastEvaluationTime = getRuntimeContext().getState(new ValueStateDescriptor<>("lastEvaluationTime", Types.LONG));
+        pendingTimerTime = getRuntimeContext().getState(new ValueStateDescriptor<>("pendingTimerTime", Types.LONG));
+        lastRequestId = getRuntimeContext().getState(new ValueStateDescriptor<>("lastRequestId", Types.STRING));
+        lastCustomerId = getRuntimeContext().getState(new ValueStateDescriptor<>("lastCustomerId", Types.STRING));
+        lastEventId = getRuntimeContext().getState(new ValueStateDescriptor<>("lastEventId", Types.STRING));
+        lastTiming = getRuntimeContext().getState(new ValueStateDescriptor<>("lastTiming", EventTiming.class));
+        lastTraceparent = getRuntimeContext().getState(new ValueStateDescriptor<>("lastTraceparent", Types.STRING));
+        lastTracestate = getRuntimeContext().getState(new ValueStateDescriptor<>("lastTracestate", Types.STRING));
         tracer = GlobalOpenTelemetry.get().getTracer("flink-counter-processor");
 
-        LOG.info("CounterProcessor initialized - CQRS mode (minLatency={}ms, maxLatency={}ms)",
-                minLatencyMs, maxLatencyMs);
+        log.info("CounterProcessor initialized (minLatency={}ms, maxLatency={}ms)", minLatencyMs, maxLatencyMs);
     }
-
-    // TextMapGetter for extracting trace context from a Map
-    private static final TextMapGetter<Map<String, String>> MAP_GETTER = new TextMapGetter<>() {
-        @Override
-        public Iterable<String> keys(Map<String, String> carrier) {
-            return carrier.keySet();
-        }
-
-        @Override
-        public String get(Map<String, String> carrier, String key) {
-            return carrier != null ? carrier.get(key) : null;
-        }
-    };
 
     @Override
     public void processElement(CounterEvent event, Context ctx, Collector<CounterResult> out) throws Exception {
         long arrivalTime = System.currentTimeMillis();
-        String sessionId = event.getSessionId();
 
-        // Copy and update timing from event
-        EventTiming timing = EventTiming.copyFrom(event.getTiming());
-        timing.setFlinkReceivedAt(arrivalTime);
+        // Extract parent trace context (OTel context, not Flink context)
+        io.opentelemetry.context.Context parentContext = extractTraceContext(event);
 
-        // Extract parent trace context from event (propagated through Kafka headers)
-        io.opentelemetry.context.Context parentContext = io.opentelemetry.context.Context.current();
-        if (event.getTraceparent() != null) {
-            Map<String, String> headers = new HashMap<>();
-            headers.put("traceparent", event.getTraceparent());
-            if (event.getTracestate() != null) {
-                headers.put("tracestate", event.getTracestate());
-            }
-            parentContext = GlobalOpenTelemetry.getPropagators()
-                    .getTextMapPropagator()
-                    .extract(io.opentelemetry.context.Context.current(), headers, MAP_GETTER);
-        }
-
-        // Create span with parent context for distributed tracing
+        // Create processing span
         Span span = tracer.spanBuilder("flink.process_counter")
                 .setParent(parentContext)
                 .setSpanKind(SpanKind.CONSUMER)
                 .startSpan();
 
         try (Scope scope = span.makeCurrent()) {
-            // Set span attributes
-            span.setAttribute("session.id", sessionId);
-            span.setAttribute("counter.action", event.getAction());
-            span.setAttribute("requestId", event.getRequestId() != null ? event.getRequestId() : "");
-            span.setAttribute("customerId", event.getCustomerId() != null ? event.getCustomerId() : "");
-            span.setAttribute("eventId", event.getEventId() != null ? event.getEventId() : "");
-
-            // Set MDC for log correlation with business IDs
-            if (event.getRequestId() != null) {
-                MDC.put("requestId", event.getRequestId());
-            }
-            if (event.getCustomerId() != null) {
-                MDC.put("customerId", event.getCustomerId());
-            }
-
-            // ============================================
-            // WRITE SIDE: Immediate state update
-            // ============================================
-            Integer currentValue = counterState.value();
-            if (currentValue == null) {
-                currentValue = 0;
-            }
-            span.setAttribute("counter.previous_value", currentValue);
-
-            // Process the action
-            switch (event.getAction()) {
-                case "increment":
-                    currentValue += event.getValue();
-                    break;
-                case "decrement":
-                    currentValue -= event.getValue();
-                    break;
-                case "set":
-                    currentValue = event.getValue();
-                    break;
-                default:
-                    LOG.warn("Unknown action: {}", event.getAction());
-                    throw new IllegalArgumentException("Unknown action: " + event.getAction());
-            }
-
-            // Mark processing complete time
-            long processedAt = System.currentTimeMillis();
-            timing.setFlinkProcessedAt(processedAt);
-
-            // Update state
-            counterState.update(currentValue);
-            lastRequestId.update(event.getRequestId());
-            lastCustomerId.update(event.getCustomerId());
-            lastEventId.update(event.getEventId());
-            lastTiming.update(timing);
-            lastTraceparent.update(event.getTraceparent());
-            lastTracestate.update(event.getTracestate());
-            span.setAttribute("counter.new_value", currentValue);
-
-            // Emit immediate result (without alert - alert will come later)
-            CounterResult result = new CounterResult(
-                    sessionId,
-                    currentValue,
-                    "PENDING",  // Alert is pending (will be evaluated via timer)
-                    "Alert evaluation pending",
-                    event.getRequestId(),
-                    event.getCustomerId(),
-                    event.getEventId(),
-                    timing
-            );
-
-            // Inject current trace context for downstream propagation
-            Map<String, String> traceHeaders = new HashMap<>();
-            GlobalOpenTelemetry.getPropagators()
-                    .getTextMapPropagator()
-                    .inject(io.opentelemetry.context.Context.current(), traceHeaders, Map::put);
-            result.setTraceparent(traceHeaders.get("traceparent"));
-            result.setTracestate(traceHeaders.get("tracestate"));
-
+            CounterResult result = processEvent(event, ctx, arrivalTime, span);
             out.collect(result);
-
-            LOG.info("Flink processed event: sessionId={}, action={}, newValue={}, requestId={}, customerId={}",
-                    sessionId, event.getAction(), currentValue, event.getRequestId(), event.getCustomerId());
-
-            // ============================================
-            // READ SIDE: Schedule snapshot evaluation
-            // ============================================
-            scheduleSnapshotEvaluation(ctx, arrivalTime);
-
-            span.setAttribute("processing.latency_ms", processedAt - arrivalTime);
-            span.setStatus(StatusCode.OK);
-        } catch (Exception e) {
-            span.setStatus(StatusCode.ERROR, e.getMessage());
-            span.recordException(e);
-            throw e;
         } finally {
             span.end();
-            MDC.clear();
         }
     }
 
     /**
-     * Schedule a timer for snapshot evaluation based on latency bounds.
+     * Core business logic - separated from tracing ceremony.
      */
+    private CounterResult processEvent(CounterEvent event, Context ctx, long arrivalTime, Span span) throws Exception {
+        String sessionId = event.getSessionId();
+        EventTiming timing = EventTiming.copyFrom(event.getTiming());
+        timing.setFlinkReceivedAt(arrivalTime);
+
+        // Add span attributes
+        span.setAttribute("session.id", sessionId);
+        span.setAttribute("counter.action", event.getAction());
+        span.setAttribute("requestId", nullSafe(event.getRequestId()));
+        span.setAttribute("customerId", nullSafe(event.getCustomerId()));
+        span.setAttribute("eventId", nullSafe(event.getEventId()));
+
+        // Get current value
+        Integer currentValue = counterState.value();
+        if (currentValue == null) currentValue = 0;
+        span.setAttribute("counter.previous_value", currentValue);
+
+        // Apply action
+        currentValue = applyAction(event.getAction(), currentValue, event.getValue());
+        timing.setFlinkProcessedAt(System.currentTimeMillis());
+
+        // Update state
+        counterState.update(currentValue);
+        lastRequestId.update(event.getRequestId());
+        lastCustomerId.update(event.getCustomerId());
+        lastEventId.update(event.getEventId());
+        lastTiming.update(timing);
+        lastTraceparent.update(event.getTraceparent());
+        lastTracestate.update(event.getTracestate());
+
+        span.setAttribute("counter.new_value", currentValue);
+
+        log.info("Processed: session={}, action={}, value={}", sessionId, event.getAction(), currentValue);
+
+        // Schedule Drools evaluation
+        scheduleSnapshotEvaluation(ctx, arrivalTime);
+
+        // Build result with trace context
+        CounterResult result = new CounterResult(
+                sessionId, currentValue, "PENDING", "Alert evaluation pending",
+                event.getRequestId(), event.getCustomerId(), event.getEventId(), timing);
+        injectTraceContext(result);
+
+        return result;
+    }
+
+    private int applyAction(String action, int currentValue, int delta) {
+        return switch (action) {
+            case "increment" -> currentValue + delta;
+            case "decrement" -> currentValue - delta;
+            case "set" -> delta;
+            default -> throw new IllegalArgumentException("Unknown action: " + action);
+        };
+    }
+
+    private io.opentelemetry.context.Context extractTraceContext(CounterEvent event) {
+        if (event.getTraceparent() == null) return io.opentelemetry.context.Context.current();
+
+        Map<String, String> headers = new HashMap<>();
+        headers.put("traceparent", event.getTraceparent());
+        if (event.getTracestate() != null) headers.put("tracestate", event.getTracestate());
+
+        return GlobalOpenTelemetry.getPropagators()
+                .getTextMapPropagator()
+                .extract(io.opentelemetry.context.Context.current(), headers, MAP_GETTER);
+    }
+
+    private void injectTraceContext(CounterResult result) {
+        Map<String, String> headers = new HashMap<>();
+        GlobalOpenTelemetry.getPropagators()
+                .getTextMapPropagator()
+                .inject(io.opentelemetry.context.Context.current(), headers, Map::put);
+        result.setTraceparent(headers.get("traceparent"));
+        result.setTracestate(headers.get("tracestate"));
+    }
+
     private void scheduleSnapshotEvaluation(Context ctx, long now) throws Exception {
         Long pendingTimer = pendingTimerTime.value();
         Long lastEval = lastEvaluationTime.value();
 
-        // If timer already pending, no need to schedule another
-        if (pendingTimer != null && pendingTimer > now) {
-            return;
-        }
+        if (pendingTimer != null && pendingTimer > now) return;
 
-        // Calculate next evaluation time
-        long nextEvalTime;
-        if (lastEval == null) {
-            // First event: evaluate after minLatency
-            nextEvalTime = now + minLatencyMs;
-        } else {
-            // Subsequent events: respect both min and max latency
-            long minAllowed = lastEval + minLatencyMs;
-            long maxAllowed = now + maxLatencyMs;
-            nextEvalTime = Math.max(minAllowed, now + 1);
-            nextEvalTime = Math.min(nextEvalTime, maxAllowed);
-        }
+        long nextEvalTime = (lastEval == null)
+                ? now + minLatencyMs
+                : Math.min(Math.max(lastEval + minLatencyMs, now + 1), now + maxLatencyMs);
 
-        // Register timer
         ctx.timerService().registerProcessingTimeTimer(nextEvalTime);
         pendingTimerTime.update(nextEvalTime);
     }
@@ -284,39 +196,24 @@ public class CounterProcessor extends KeyedProcessFunction<String, CounterEvent,
     @Override
     public void onTimer(long timestamp, OnTimerContext ctx, Collector<CounterResult> out) throws Exception {
         String sessionId = (String) ctx.getCurrentKey();
-
-        // Get current state snapshot
         Integer currentValue = counterState.value();
         if (currentValue == null) {
             pendingTimerTime.clear();
             return;
         }
 
-        String requestId = lastRequestId.value();
-        String customerId = lastCustomerId.value();
-        String eventId = lastEventId.value();
-        EventTiming timing = lastTiming.value();
-        String traceparent = lastTraceparent.value();
-        String tracestate = lastTracestate.value();
-
-        // Create snapshot for Drools evaluation (side output)
         PreDroolsResult snapshot = new PreDroolsResult(
-                sessionId,
-                currentValue,
-                requestId,
-                customerId,
-                eventId,
-                timing,
-                System.currentTimeMillis(),
-                traceparent,
-                tracestate
-        );
+                sessionId, currentValue,
+                lastRequestId.value(), lastCustomerId.value(), lastEventId.value(),
+                lastTiming.value(), System.currentTimeMillis(),
+                lastTraceparent.value(), lastTracestate.value());
 
-        // Emit to side output for async Drools evaluation
         ctx.output(SNAPSHOT_OUTPUT, snapshot);
-
-        // Update evaluation time and clear pending timer
         lastEvaluationTime.update(timestamp);
         pendingTimerTime.clear();
+    }
+
+    private String nullSafe(String value) {
+        return value != null ? value : "";
     }
 }

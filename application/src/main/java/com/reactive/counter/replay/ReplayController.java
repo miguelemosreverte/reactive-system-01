@@ -2,13 +2,11 @@ package com.reactive.counter.replay;
 
 import com.reactive.counter.domain.CounterState;
 import com.reactive.platform.replay.*;
-import com.reactive.platform.tracing.Tracing;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -40,13 +38,13 @@ public class ReplayController {
                 .aggregateIdField(fsm.aggregateIdField())
                 .eventIdField(fsm.eventIdField()));
 
-        replay = ReplayService.withSnapshots(store, fsm, Tracing.create("replay"));
+        replay = ReplayService.withSnapshots(store, fsm);
     }
 
     @PostMapping("/session/{sessionId}")
     public ResponseEntity<?> replaySession(
             @PathVariable String sessionId,
-            @RequestParam(required = false) String upToEvent) {
+            @RequestParam(required = false, defaultValue = "") String upToEvent) {
 
         return replay.replay(sessionId, upToEvent).fold(
                 e -> ResponseEntity.internalServerError().body(Map.of("error", e.getMessage())),

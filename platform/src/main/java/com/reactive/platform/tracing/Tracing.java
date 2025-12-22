@@ -1,108 +1,106 @@
 package com.reactive.platform.tracing;
 
-import io.opentelemetry.api.GlobalOpenTelemetry;
-import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.api.trace.SpanKind;
-import io.opentelemetry.api.trace.StatusCode;
-import io.opentelemetry.api.trace.Tracer;
-import io.opentelemetry.context.Context;
-import io.opentelemetry.context.Scope;
-
-import java.util.function.Function;
+import java.util.Map;
+import java.util.function.Supplier;
 
 /**
- * Pure functional tracing utilities.
+ * Tracing API for the entire project.
  *
- * All methods are static - no instance required.
- * Uses bracket pattern for safe span lifecycle management.
+ * NO third-party types in this interface.
+ * All OpenTelemetry details are hidden in the implementation.
  *
  * Usage:
  *   import static com.reactive.platform.tracing.Tracing.*;
  *
- *   String result = span("my-service", "operation", span -> {
- *       span.setAttribute("key", "value");
- *       return doWork();
+ *   traced("process-order", () -> {
+ *       attr("orderId", orderId);
+ *       return processOrder();
  *   });
+ *
+ *   // With parent context (distributed tracing)
+ *   traced("process", parentContext, () -> doWork());
  */
 public final class Tracing {
 
-    private Tracing() {} // Prevent instantiation
+    private static TracingImpl impl = new TracingImpl();
 
-    /**
-     * Execute operation within a span (bracket pattern).
-     * Automatically handles span lifecycle and error recording.
-     */
-    public static <T> T span(String serviceName, String spanName, Function<Span, T> operation) {
-        return span(serviceName, spanName, SpanKind.INTERNAL, Context.current(), operation);
+    private Tracing() {}
+
+    /** Configure the tracing implementation (called once at startup). */
+    public static void configure(String serviceName) {
+        impl = new TracingImpl(serviceName);
     }
 
-    /**
-     * Execute operation within a span with specified kind.
-     */
-    public static <T> T span(String serviceName, String spanName, SpanKind kind, Function<Span, T> operation) {
-        return span(serviceName, spanName, kind, Context.current(), operation);
+    // ========================================================================
+    // Traced Execution
+    // ========================================================================
+
+    /** Execute operation within a traced span. */
+    public static <T> T traced(String operation, Supplier<T> work) {
+        return impl.traced(operation, null, work);
     }
 
-    /**
-     * Execute operation within a span with parent context (for distributed tracing).
-     */
-    public static <T> T span(String serviceName, String spanName, SpanKind kind, Context parentContext, Function<Span, T> operation) {
-        Tracer tracer = GlobalOpenTelemetry.get().getTracer(serviceName);
-        Span span = tracer.spanBuilder(spanName)
-                .setParent(parentContext)
-                .setSpanKind(kind)
-                .startSpan();
+    /** Execute operation within a traced span with parent context. */
+    public static <T> T traced(String operation, TraceContext parent, Supplier<T> work) {
+        return impl.traced(operation, parent, work);
+    }
 
-        try (Scope scope = span.makeCurrent()) {
-            T result = operation.apply(span);
-            span.setStatus(StatusCode.OK);
-            return result;
-        } catch (Exception e) {
-            span.setStatus(StatusCode.ERROR, e.getMessage());
-            span.recordException(e);
-            throw e;
-        } finally {
-            span.end();
+    /** Execute void operation within a traced span. */
+    public static void traced(String operation, Runnable work) {
+        impl.traced(operation, null, () -> { work.run(); return null; });
+    }
+
+    // ========================================================================
+    // Attributes (add to current span)
+    // ========================================================================
+
+    public static void attr(String key, String value) {
+        impl.attr(key, value);
+    }
+
+    public static void attr(String key, long value) {
+        impl.attr(key, value);
+    }
+
+    public static void attrs(Map<String, String> attributes) {
+        attributes.forEach(Tracing::attr);
+    }
+
+    // ========================================================================
+    // Context Propagation
+    // ========================================================================
+
+    /** Get current trace context (for passing to downstream services). */
+    public static TraceContext context() {
+        return impl.currentContext();
+    }
+
+    /** Extract trace context from W3C headers. */
+    public static TraceContext contextFrom(String traceparent, String tracestate) {
+        return new TraceContext(traceparent, tracestate);
+    }
+
+    /** Current trace ID (for logging/response). */
+    public static String traceId() {
+        return impl.traceId();
+    }
+
+    // ========================================================================
+    // Types
+    // ========================================================================
+
+    /** Trace context for distributed tracing propagation. */
+    public record TraceContext(String traceparent, String tracestate) {
+        public static final TraceContext EMPTY = new TraceContext("", "");
+
+        /** Canonical constructor ensures no nulls. */
+        public TraceContext {
+            traceparent = traceparent != null ? traceparent : "";
+            tracestate = tracestate != null ? tracestate : "";
         }
-    }
 
-    /**
-     * Execute a void operation within a span.
-     */
-    public static void span(String serviceName, String spanName, Runnable operation) {
-        span(serviceName, spanName, span -> {
-            operation.run();
-            return null;
-        });
-    }
-
-    /**
-     * Get current trace ID.
-     */
-    public static String currentTraceId() {
-        return Span.current().getSpanContext().getTraceId();
-    }
-
-    /**
-     * Get current span ID.
-     */
-    public static String currentSpanId() {
-        return Span.current().getSpanContext().getSpanId();
-    }
-
-    /**
-     * Get current span.
-     */
-    public static Span currentSpan() {
-        return Span.current();
-    }
-
-    /**
-     * Measure execution time in milliseconds.
-     */
-    public static long measureMs(Runnable operation) {
-        long start = System.nanoTime();
-        operation.run();
-        return (System.nanoTime() - start) / 1_000_000;
+        public boolean isValid() {
+            return !traceparent.isEmpty() && !traceparent.startsWith("00-00000000");
+        }
     }
 }

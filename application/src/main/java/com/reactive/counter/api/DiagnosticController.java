@@ -2,13 +2,9 @@ package com.reactive.counter.api;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.reactive.platform.id.IdGenerator;
-import com.reactive.platform.tracing.Tracing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -23,6 +19,8 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
+
+import static com.reactive.platform.tracing.Tracing.*;
 
 /**
  * Diagnostic controller for E2E trace validation.
@@ -54,7 +52,6 @@ public class DiagnosticController {
     @Value("${loki.url:http://loki:3100}")
     private String lokiUrl;
 
-    private final Tracing tracing = Tracing.create("diagnostic-api");
     private final IdGenerator idGenerator = IdGenerator.getInstance();
 
     private final HttpClient httpClient = HttpClient.newBuilder()
@@ -139,12 +136,12 @@ public class DiagnosticController {
     public Mono<ResponseEntity<Map<String, Object>>> runDiagnostic() {
         String sessionId = "diag-" + System.currentTimeMillis();
 
-        return Mono.fromCallable(() -> tracing.span("diagnostic.run", span -> {
+        return Mono.fromCallable(() -> traced("diagnostic.run", () -> {
             String requestId = idGenerator.generateRequestId();
-            String otelTraceId = span.getSpanContext().getTraceId();
+            String otelTraceId = traceId();
 
-            span.setAttribute("requestId", requestId);
-            span.setAttribute("session.id", sessionId);
+            attr("requestId", requestId);
+            attr("session.id", sessionId);
 
             log.info("Running E2E diagnostic: requestId={}, traceId={}", requestId, otelTraceId);
 
@@ -155,8 +152,6 @@ public class DiagnosticController {
             result.put("timestamp", Instant.now().toString());
 
             try {
-                MDC.put("requestId", requestId);
-
                 // Step 1: Send test request through internal API (port 3000 inside container)
                 String testUrl = "http://localhost:3000/api/counter";
                 String body = String.format(
@@ -255,8 +250,6 @@ public class DiagnosticController {
                 result.put("success", false);
                 result.put("error", e.getMessage());
                 return result;
-            } finally {
-                MDC.remove("requestId");
             }
         })).map(ResponseEntity::ok);
     }

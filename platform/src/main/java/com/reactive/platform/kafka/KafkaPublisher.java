@@ -2,6 +2,7 @@ package com.reactive.platform.kafka;
 
 import com.reactive.platform.serialization.Codec;
 import com.reactive.platform.serialization.Result;
+import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.StatusCode;
@@ -305,8 +306,13 @@ public class KafkaPublisher<A> implements AutoCloseable {
             props.put(ProducerConfig.LINGER_MS_CONFIG, 0);
             props.put(ProducerConfig.BATCH_SIZE_CONFIG, 16384);
 
+            // Default to GlobalOpenTelemetry if no tracer provided (no abstraction leak)
+            Tracer effectiveTracer = tracer != null
+                    ? tracer
+                    : GlobalOpenTelemetry.get().getTracer("kafka-publisher");
+
             KafkaProducer<String, byte[]> producer = new KafkaProducer<>(props);
-            return new KafkaPublisher<>(producer, topic, codec, keyExtractor, tracer);
+            return new KafkaPublisher<>(producer, topic, codec, keyExtractor, effectiveTracer);
         }
     }
 }

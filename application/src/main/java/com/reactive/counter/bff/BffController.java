@@ -9,12 +9,10 @@ import com.reactive.platform.observability.ObservabilityClient.LogEntry;
 import com.reactive.platform.observability.ObservabilityClient.TraceData;
 import com.reactive.platform.serialization.JsonCodec;
 import com.reactive.platform.serialization.Result;
-import com.reactive.platform.tracing.Tracing;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -25,6 +23,8 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+
+import static com.reactive.platform.tracing.Tracing.*;
 
 /**
  * Backend-for-Frontend (BFF) API.
@@ -57,7 +57,6 @@ public class BffController {
     @Value("${loki.url:http://loki:3100}")
     private String lokiUrl;
 
-    private final Tracing tracing = Tracing.create("bff-api");
     private final IdGenerator idGenerator = IdGenerator.getInstance();
 
     private KafkaPublisher<CounterEvent> publisher;
@@ -69,8 +68,7 @@ public class BffController {
                 .bootstrapServers(kafkaBootstrap)
                 .topic(eventsTopic)
                 .codec(JsonCodec.forClass(CounterEvent.class))
-                .keyExtractor(e -> buildKafkaKey(e.customerId(), e.sessionId()))
-                .tracer(tracing.tracer()));
+                .keyExtractor(e -> buildKafkaKey(e.customerId(), e.sessionId())));
         observability = ObservabilityClient.create(jaegerUrl, lokiUrl);
         log.info("BFF initialized with Jaeger={}, Loki={}", jaegerUrl, lokiUrl);
     }
@@ -122,7 +120,7 @@ public class BffController {
             @RequestHeader(value = "X-Debug", defaultValue = "false") boolean debugMode,
             @RequestHeader(value = "X-Debug-Wait-Ms", defaultValue = "2000") long debugWaitMs
     ) {
-        return processAction(request, null, debugMode, debugWaitMs);
+        return processAction(request, "", debugMode, debugWaitMs);
     }
 
     private Mono<ResponseEntity<ActionDebugResponse>> processAction(
@@ -131,37 +129,29 @@ public class BffController {
             boolean debugMode,
             long debugWaitMs
     ) {
-        return Mono.fromCallable(() -> tracing.span("bff.submit", span -> {
+        return Mono.fromCallable(() -> traced("bff.submit", () -> {
             String sessionId = request.sessionIdOrDefault();
             String requestId = idGenerator.generateRequestId();
             String eventId = idGenerator.generateEventId();
-            String otelTraceId = span.getSpanContext().getTraceId();
+            String otelTraceId = traceId();
 
-            span.setAttribute("requestId", requestId);
-            span.setAttribute("customerId", customerId != null ? customerId : "");
-            span.setAttribute("eventId", eventId);
-            span.setAttribute("session.id", sessionId);
-            span.setAttribute("debug.mode", debugMode);
+            attr("requestId", requestId);
+            attr("customerId", customerId);
+            attr("eventId", eventId);
+            attr("session.id", sessionId);
+            attr("debug.mode", debugMode ? "true" : "false");
 
-            try {
-                MDC.put("requestId", requestId);
-                if (customerId != null) MDC.put("customerId", customerId);
+            log.info("BFF: action={}, value={}, debug={}", request.action(), request.value(), debugMode);
 
-                log.info("BFF: action={}, value={}, debug={}", request.action(), request.value(), debugMode);
+            CounterEvent event = CounterEvent.create(
+                    requestId, customerId, eventId, sessionId, request.action(), request.value()
+            );
+            publisher.publishFireAndForget(event);
 
-                CounterEvent event = CounterEvent.create(
-                        requestId, customerId, eventId, sessionId, request.action(), request.value()
-                );
-                publisher.publishFireAndForget(event);
-
-                return new ActionDebugResponse(
-                        true, requestId, customerId != null ? customerId : "",
-                        eventId, otelTraceId, "accepted", null, null
-                );
-            } finally {
-                MDC.remove("requestId");
-                MDC.remove("customerId");
-            }
+            return new ActionDebugResponse(
+                    true, requestId, customerId,
+                    eventId, otelTraceId, "accepted", null, null
+            );
         }))
         .flatMap(baseResponse -> {
             if (!debugMode) {
