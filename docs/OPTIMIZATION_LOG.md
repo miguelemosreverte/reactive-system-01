@@ -440,3 +440,68 @@ Tuned Kafka producer settings across all services for better throughput:
 - `linger.ms=1` provides a good balance between batching and latency
 - LZ4 compression adds minimal CPU overhead but reduces network I/O significantly
 
+---
+
+## Final Results: Complete Optimization Summary (2025-12-22)
+
+### Optimizations Applied
+
+1. **Flink Scaling**: 1 → 2 taskmanagers, parallelism 4 → 8
+2. **Kafka Tuning**: linger.ms=1, batch.size=32KB, compression=lz4
+
+### Final Benchmark (30 seconds, concurrency 8)
+
+| Metric | Baseline | Final | Improvement |
+|--------|----------|-------|-------------|
+| Peak throughput | 1,998 ops/sec | **15,577 ops/sec** | **+680%** (7.8x) |
+| Avg throughput | 472 ops/sec | **5,397 ops/sec** | **+1,044%** (10.8x) |
+| P50 latency | 8ms | **1ms** | **-88%** |
+| P99 latency | 53ms | **6ms** | **-89%** |
+| Total ops (30s) | ~14,000 | **189,051** | **13.5x** |
+| Stability (CV) | 0.68 | **0.58** | **+15%** |
+
+### System Architecture (Final)
+
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────────────┐
+│     Gateway     │────▶│      Kafka      │────▶│         Flink           │
+│  (Spring Boot)  │     │  (8 partitions) │     │  (2 TMs, 16 slots)      │
+│  linger.ms=1    │     │                 │     │  parallelism=8          │
+│  batch=32KB     │     │                 │     │  linger.ms=1, lz4       │
+│  lz4 compress   │     │                 │     │                         │
+└─────────────────┘     └─────────────────┘     └───────────┬─────────────┘
+                                                             │
+                                                             ▼
+                                                      ┌─────────────┐
+                                                      │   Drools    │
+                                                      │ (async I/O) │
+                                                      └─────────────┘
+```
+
+### Key Learnings
+
+1. **Bottleneck Detection Works**: The automated diagnostic report correctly identified Flink as the bottleneck at 55% of trace time and provided the exact scaling command
+
+2. **Parallelism Matters**: Matching Flink parallelism to Kafka partition count doubled throughput immediately
+
+3. **Batching Balance**: `linger.ms=1` is optimal; `linger.ms=5` caused downstream timeouts
+
+4. **Compression Wins**: LZ4 compression reduces network I/O with minimal CPU overhead
+
+5. **Warm System Performs Better**: The system shows significantly better performance after warmup (peak 15k/s vs initial 3k/s)
+
+### Diagnostic Report Status
+
+The system now shows:
+```
+🟢 HEALTHY: System balanced, Flink leads at 15%
+NEXT STEP: System is balanced - scale horizontally for more throughput
+```
+
+### Further Optimization Opportunities
+
+1. **Add 3rd taskmanager**: Could push throughput to ~20k/s
+2. **Increase Kafka partitions to 16**: Would allow parallelism 16
+3. **Tune Drools connection pool**: Could reduce async call latency
+4. **Enable HTTP/2**: Could improve gateway performance
+
