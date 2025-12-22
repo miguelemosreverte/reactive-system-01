@@ -79,6 +79,38 @@ public class BottleneckAnalyzer {
             String diagnosis
     ) {}
 
+    /** Comparison with previous benchmark run. */
+    public record BenchmarkComparison(
+            long previousThroughput,
+            long currentThroughput,
+            double changePercent,
+            String trend,  // IMPROVED, DEGRADED, STABLE
+            String summary
+    ) {
+        public static BenchmarkComparison create(long previous, long current) {
+            if (previous == 0) {
+                return new BenchmarkComparison(0, current, 0, "BASELINE", "First benchmark run - establishing baseline");
+            }
+
+            double change = ((double) current - previous) / previous * 100;
+            String trend;
+            String summary;
+
+            if (change > 10) {
+                trend = "IMPROVED";
+                summary = String.format("↑ Throughput improved by %.1f%% (%d → %d ops/s)", change, previous, current);
+            } else if (change < -10) {
+                trend = "DEGRADED";
+                summary = String.format("↓ Throughput degraded by %.1f%% (%d → %d ops/s)", -change, previous, current);
+            } else {
+                trend = "STABLE";
+                summary = String.format("≈ Throughput stable (%.1f%% change, %d → %d ops/s)", change, previous, current);
+            }
+
+            return new BenchmarkComparison(previous, current, change, trend, summary);
+        }
+    }
+
     /** Complete diagnostic report with rich information. */
     public record DiagnosticReport(
             int traceCount,
@@ -89,11 +121,22 @@ public class BottleneckAnalyzer {
             double confidence,
             String diagnosis,
             List<String> recommendations,
-            String severityLevel  // INFO, WARNING, CRITICAL
+            String severityLevel,  // INFO, WARNING, CRITICAL
+            String oneLiner,       // Single-line summary for quick scanning
+            String verdict         // What to do next
     ) {
         /** Format as a detailed console report. */
         public String toConsoleReport() {
             StringBuilder sb = new StringBuilder();
+
+            // One-liner summary at the top
+            String severityIcon = switch (severityLevel) {
+                case "CRITICAL" -> "🔴";
+                case "WARNING" -> "🟡";
+                default -> "🟢";
+            };
+            sb.append("\n").append(severityIcon).append(" ").append(oneLiner).append("\n");
+
             sb.append("\n╔══════════════════════════════════════════════════════════════╗\n");
             sb.append("║                    DIAGNOSTIC REPORT                          ║\n");
             sb.append("╠══════════════════════════════════════════════════════════════╣\n");
@@ -124,6 +167,9 @@ public class BottleneckAnalyzer {
                 sb.append(String.format("║   → %-57s ║\n", truncate(rec, 57)));
             }
 
+            sb.append("╠══════════════════════════════════════════════════════════════╣\n");
+            sb.append("║ NEXT STEP                                                     ║\n");
+            sb.append(String.format("║ ▶ %-60s ║\n", truncate(verdict, 60)));
             sb.append("╚══════════════════════════════════════════════════════════════╝\n");
             return sb.toString();
         }
@@ -270,7 +316,9 @@ public class BottleneckAnalyzer {
                     0, 0, List.of(), "unknown", 0, 0,
                     "No trace data available for analysis",
                     List.of("Enable trace enrichment (remove --quick flag)"),
-                    "INFO"
+                    "INFO",
+                    "No traces - run without --quick for detailed analysis",
+                    "Re-run benchmark without --quick flag"
             );
         }
 
@@ -331,6 +379,10 @@ public class BottleneckAnalyzer {
         String severity = bottleneckPercent > 80 ? "CRITICAL" :
                           bottleneckPercent > 50 ? "WARNING" : "INFO";
 
+        // Generate one-liner and verdict
+        String oneLiner = generateOneLiner(primaryBottleneck, bottleneckPercent, severity);
+        String verdict = generateVerdict(primaryBottleneck, bottleneckPercent);
+
         return new DiagnosticReport(
                 traces.size(),
                 avgTotalDuration,
@@ -340,8 +392,40 @@ public class BottleneckAnalyzer {
                 confidence,
                 diagnosis,
                 recommendations,
-                severity
+                severity,
+                oneLiner,
+                verdict
         );
+    }
+
+    private String generateOneLiner(String bottleneck, double percent, String severity) {
+        String componentName = switch (bottleneck.toLowerCase()) {
+            case "flink-taskmanager" -> "Flink";
+            case "counter-application" -> "Gateway";
+            case "drools", "reactive-drools" -> "Drools";
+            case "kafka" -> "Kafka";
+            default -> bottleneck;
+        };
+
+        return switch (severity) {
+            case "CRITICAL" -> String.format("CRITICAL: %s consuming %.0f%% of latency - immediate action required", componentName, percent);
+            case "WARNING" -> String.format("WARNING: %s at %.0f%% - optimization recommended", componentName, percent);
+            default -> String.format("HEALTHY: System balanced, %s leads at %.0f%%", componentName, percent);
+        };
+    }
+
+    private String generateVerdict(String bottleneck, double percent) {
+        if (percent < 30) {
+            return "System is balanced - scale horizontally for more throughput";
+        }
+
+        return switch (bottleneck.toLowerCase()) {
+            case "flink-taskmanager" -> "Run: docker compose up -d --scale flink-taskmanager=2";
+            case "counter-application", "gateway" -> "Increase gateway connection pool size in application.yml";
+            case "kafka" -> "Set linger.ms=5 and batch.size=32768 in producer config";
+            case "drools", "reactive-drools" -> "Enable KieBase caching in Drools service";
+            default -> "Profile " + bottleneck + " for optimization opportunities";
+        };
     }
 
     private String generateComponentDiagnosis(String service, double percent, HealthStatus status) {
