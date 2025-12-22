@@ -2,6 +2,21 @@
 
 A Docker-first microservices architecture demonstrating real-time stream processing with React, Kafka, Flink, and Drools.
 
+![Benchmark Report](assets/benchmark-report.png)
+
+## Beyond the Stack
+
+This project is more than a technology demonstration. The emphasis is on **benchmarking methodology** and **observability infrastructure** as first-class concerns in system development.
+
+Key principles applied:
+
+- **Platform/Application separation** - Infrastructure concerns (Kafka, OTel, benchmarks) live in the platform layer; domain logic (Flink state machines, business rules) lives in the application layer. This enables fast compile cycles during domain development.
+- **Component-level benchmarking** - Each layer (HTTP, Gateway, Kafka, Drools, full E2E) is benchmarked independently to identify bottlenecks directly rather than guessing from aggregate metrics.
+- **Observability from day one** - Grafana dashboards, Loki log aggregation, Jaeger distributed tracing, and Prometheus metrics are integrated before optimization begins.
+- **Continuous measurement** - Performance work is iterative. Each optimization shifts the bottleneck elsewhere. The benchmark infrastructure supports regression testing across changes.
+
+For a detailed discussion of the system design choices and benchmarking approach, see [PRESENTATION.md](PRESENTATION.md).
+
 ## Architecture
 
 ```
