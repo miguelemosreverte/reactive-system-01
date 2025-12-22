@@ -195,6 +195,16 @@ public record BenchmarkResult(
         return analyzer.analyzeSampleEvents(sampleEvents);
     }
 
+    /** Generate a comprehensive diagnostic report with component health and recommendations. */
+    public BottleneckAnalyzer.DiagnosticReport generateDiagnosticReport() {
+        if (sampleEvents == null || sampleEvents.isEmpty()) {
+            return null;
+        }
+
+        BottleneckAnalyzer analyzer = new BottleneckAnalyzer();
+        return analyzer.generateDiagnosticReport(sampleEvents);
+    }
+
     public BenchmarkResult withComponentTiming(ComponentTiming timing) {
         return new BenchmarkResult(
                 component, name, description, startTime, endTime, durationMs,

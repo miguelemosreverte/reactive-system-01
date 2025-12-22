@@ -46,6 +46,94 @@ public class BottleneckAnalyzer {
             List<String> recommendations
     ) {}
 
+    /** Health status for a component. */
+    public enum HealthStatus {
+        HEALTHY("✓", "green"),      // < 20% of trace time
+        WARNING("⚠", "yellow"),     // 20-50% of trace time
+        CRITICAL("✗", "red");       // > 50% of trace time
+
+        private final String symbol;
+        private final String color;
+
+        HealthStatus(String symbol, String color) {
+            this.symbol = symbol;
+            this.color = color;
+        }
+
+        public String symbol() { return symbol; }
+        public String color() { return color; }
+
+        public static HealthStatus fromPercent(double percent) {
+            if (percent > 50) return CRITICAL;
+            if (percent > 20) return WARNING;
+            return HEALTHY;
+        }
+    }
+
+    /** Component health assessment. */
+    public record ComponentHealth(
+            String service,
+            long avgDurationUs,
+            double percentOfTotal,
+            HealthStatus status,
+            String diagnosis
+    ) {}
+
+    /** Complete diagnostic report with rich information. */
+    public record DiagnosticReport(
+            int traceCount,
+            long avgTotalDurationUs,
+            List<ComponentHealth> componentHealth,
+            String primaryBottleneck,
+            double bottleneckPercent,
+            double confidence,
+            String diagnosis,
+            List<String> recommendations,
+            String severityLevel  // INFO, WARNING, CRITICAL
+    ) {
+        /** Format as a detailed console report. */
+        public String toConsoleReport() {
+            StringBuilder sb = new StringBuilder();
+            sb.append("\n╔══════════════════════════════════════════════════════════════╗\n");
+            sb.append("║                    DIAGNOSTIC REPORT                          ║\n");
+            sb.append("╠══════════════════════════════════════════════════════════════╣\n");
+
+            sb.append(String.format("║ Traces Analyzed: %-3d    Avg E2E Latency: %-6.2fms           ║\n",
+                    traceCount, avgTotalDurationUs / 1000.0));
+            sb.append("╠══════════════════════════════════════════════════════════════╣\n");
+            sb.append("║ COMPONENT BREAKDOWN                                           ║\n");
+            sb.append("╠══════════════════════════════════════════════════════════════╣\n");
+
+            for (ComponentHealth ch : componentHealth) {
+                String bar = "█".repeat(Math.min((int)(ch.percentOfTotal / 5), 10));
+                String spaces = " ".repeat(10 - bar.length());
+                sb.append(String.format("║ %s %-20s %6.1f%% %s%s      ║\n",
+                        ch.status.symbol(), ch.service, ch.percentOfTotal, bar, spaces));
+            }
+
+            sb.append("╠══════════════════════════════════════════════════════════════╣\n");
+            sb.append(String.format("║ BOTTLENECK: %-20s (%.1f%% confidence)       ║\n",
+                    primaryBottleneck, confidence));
+            sb.append("╠══════════════════════════════════════════════════════════════╣\n");
+            sb.append("║ DIAGNOSIS                                                     ║\n");
+            sb.append(String.format("║ %-62s ║\n", truncate(diagnosis, 62)));
+            sb.append("╠══════════════════════════════════════════════════════════════╣\n");
+            sb.append("║ RECOMMENDATIONS                                               ║\n");
+
+            for (String rec : recommendations) {
+                sb.append(String.format("║   → %-57s ║\n", truncate(rec, 57)));
+            }
+
+            sb.append("╚══════════════════════════════════════════════════════════════╝\n");
+            return sb.toString();
+        }
+
+        private static String truncate(String s, int len) {
+            if (s == null) return "";
+            return s.length() <= len ? s : s.substring(0, len - 3) + "...";
+        }
+    }
+
     // ========================================================================
     // Trace Analysis
     // ========================================================================
@@ -168,6 +256,162 @@ public class BottleneckAnalyzer {
                 .collect(Collectors.toList());
 
         return analyzeTraces(traces);
+    }
+
+    /** Generate a comprehensive diagnostic report from sample events. */
+    public DiagnosticReport generateDiagnosticReport(List<SampleEvent> events) {
+        List<JaegerTrace> traces = events.stream()
+                .filter(e -> e.traceData() != null && e.traceData().trace() != null)
+                .map(e -> e.traceData().trace())
+                .collect(Collectors.toList());
+
+        if (traces.isEmpty()) {
+            return new DiagnosticReport(
+                    0, 0, List.of(), "unknown", 0, 0,
+                    "No trace data available for analysis",
+                    List.of("Enable trace enrichment (remove --quick flag)"),
+                    "INFO"
+            );
+        }
+
+        // Calculate per-service statistics
+        Map<String, List<Long>> durationsByService = new HashMap<>();
+        List<Long> totalDurations = new ArrayList<>();
+        Map<String, Integer> bottleneckCounts = new HashMap<>();
+
+        for (JaegerTrace trace : traces) {
+            TraceAnalysis analysis = analyzeTrace(trace);
+            totalDurations.add(analysis.totalDurationUs());
+
+            for (var entry : analysis.durationByService().entrySet()) {
+                durationsByService.computeIfAbsent(entry.getKey(), k -> new ArrayList<>())
+                        .add(entry.getValue());
+            }
+
+            bottleneckCounts.merge(analysis.bottleneck(), 1, Integer::sum);
+        }
+
+        long avgTotalDuration = (long) totalDurations.stream()
+                .mapToLong(Long::longValue).average().orElse(0);
+
+        // Build component health list
+        List<ComponentHealth> componentHealth = new ArrayList<>();
+        for (var entry : durationsByService.entrySet()) {
+            String service = entry.getKey();
+            long avgDuration = (long) entry.getValue().stream()
+                    .mapToLong(Long::longValue).average().orElse(0);
+            double percent = avgTotalDuration > 0 ? (avgDuration * 100.0) / avgTotalDuration : 0;
+            HealthStatus status = HealthStatus.fromPercent(percent);
+            String diagnosis = generateComponentDiagnosis(service, percent, status);
+
+            componentHealth.add(new ComponentHealth(service, avgDuration, percent, status, diagnosis));
+        }
+
+        // Sort by percentage (highest first)
+        componentHealth.sort((a, b) -> Double.compare(b.percentOfTotal(), a.percentOfTotal()));
+
+        // Find primary bottleneck
+        String primaryBottleneck = bottleneckCounts.entrySet().stream()
+                .max(Map.Entry.comparingByValue())
+                .map(Map.Entry::getKey)
+                .orElse("unknown");
+
+        double confidence = (double) bottleneckCounts.getOrDefault(primaryBottleneck, 0) / traces.size() * 100;
+        double bottleneckPercent = componentHealth.stream()
+                .filter(ch -> ch.service().equals(primaryBottleneck))
+                .findFirst()
+                .map(ComponentHealth::percentOfTotal)
+                .orElse(0.0);
+
+        // Generate diagnosis and recommendations
+        String diagnosis = generateOverallDiagnosis(primaryBottleneck, bottleneckPercent, confidence);
+        List<String> recommendations = generateDetailedRecommendations(primaryBottleneck, bottleneckPercent);
+
+        // Determine severity
+        String severity = bottleneckPercent > 80 ? "CRITICAL" :
+                          bottleneckPercent > 50 ? "WARNING" : "INFO";
+
+        return new DiagnosticReport(
+                traces.size(),
+                avgTotalDuration,
+                componentHealth,
+                primaryBottleneck,
+                bottleneckPercent,
+                confidence,
+                diagnosis,
+                recommendations,
+                severity
+        );
+    }
+
+    private String generateComponentDiagnosis(String service, double percent, HealthStatus status) {
+        return switch (status) {
+            case CRITICAL -> service + " is consuming " + String.format("%.0f%%", percent) + " of latency - needs immediate attention";
+            case WARNING -> service + " at " + String.format("%.0f%%", percent) + " - consider optimization";
+            case HEALTHY -> service + " performing well at " + String.format("%.0f%%", percent);
+        };
+    }
+
+    private String generateOverallDiagnosis(String bottleneck, double percent, double confidence) {
+        if (confidence < 50) {
+            return "Inconsistent bottleneck pattern - need more traces for reliable analysis";
+        }
+
+        String componentName = switch (bottleneck.toLowerCase()) {
+            case "flink-taskmanager" -> "Flink stream processing";
+            case "counter-application" -> "Gateway HTTP handling";
+            case "drools", "reactive-drools" -> "Drools rule evaluation";
+            case "kafka" -> "Kafka message passing";
+            default -> bottleneck;
+        };
+
+        if (percent > 80) {
+            return componentName + " is severely limiting throughput at " + String.format("%.0f%%", percent) + " of latency";
+        } else if (percent > 50) {
+            return componentName + " is the primary bottleneck at " + String.format("%.0f%%", percent) + " of latency";
+        } else {
+            return "System is relatively balanced, " + componentName + " leads at " + String.format("%.0f%%", percent);
+        }
+    }
+
+    private List<String> generateDetailedRecommendations(String bottleneck, double percent) {
+        List<String> recs = new ArrayList<>();
+
+        if (percent < 30) {
+            recs.add("System is well-balanced - consider horizontal scaling for throughput gains");
+            return recs;
+        }
+
+        switch (bottleneck.toLowerCase()) {
+            case "flink-taskmanager" -> {
+                recs.add("Add second Flink taskmanager (docker-compose scale)");
+                recs.add("Increase taskmanager.numberOfTaskSlots to match Kafka partitions");
+                recs.add("Tune parallelism.default to utilize all slots");
+                if (percent > 80) {
+                    recs.add("URGENT: Flink is severely backpressured - scale immediately");
+                }
+            }
+            case "counter-application", "gateway" -> {
+                recs.add("Increase HTTP thread pool size");
+                recs.add("Enable connection keepalive");
+                recs.add("Profile slow endpoints with async-profiler");
+            }
+            case "kafka" -> {
+                recs.add("Set linger.ms=5 for producer batching");
+                recs.add("Increase batch.size for larger batches");
+                recs.add("Consider acks=1 for non-critical data");
+            }
+            case "drools", "reactive-drools" -> {
+                recs.add("Enable KieBase caching between requests");
+                recs.add("Profile individual rules for optimization");
+                recs.add("Consider parallel rule execution");
+            }
+            default -> {
+                recs.add("Profile " + bottleneck + " for optimization opportunities");
+            }
+        }
+
+        return recs;
     }
 
     // ========================================================================
