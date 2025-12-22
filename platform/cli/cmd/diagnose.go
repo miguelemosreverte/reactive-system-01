@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -645,17 +644,3 @@ func startJFR(service string, duration int) {
 	fmt.Println("  - IntelliJ IDEA: File > Open > select .jfr file")
 }
 
-func findProjectRoot() string {
-	dir, _ := os.Getwd()
-	for {
-		if _, err := os.Stat(filepath.Join(dir, "docker-compose.yml")); err == nil {
-			return dir
-		}
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			break
-		}
-		dir = parent
-	}
-	return ""
-}

@@ -21,6 +21,10 @@ Examples:
 	Run: runStatus,
 }
 
+func init() {
+	rootCmd.AddCommand(statusCmd)
+}
+
 type ServiceCheck struct {
 	Name    string
 	URL     string
