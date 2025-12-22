@@ -103,6 +103,15 @@
         </dependency>
 
         <!-- ============================================ -->
+        <!-- AOP (for @Traced annotation) -->
+        <!-- ============================================ -->
+        <dependency>
+            <groupId>org.aspectj</groupId>
+            <artifactId>aspectjrt</artifactId>
+            <version>1.9.21</version>
+        </dependency>
+
+        <!-- ============================================ -->
         <!-- Test: JUnit 5 -->
         <!-- ============================================ -->
         <dependency>
