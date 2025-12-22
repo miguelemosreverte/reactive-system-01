@@ -505,7 +505,7 @@ services:
 
   ui:
     build:
-      context: ./application/ui
+      context: ./platform/ui
       dockerfile: Dockerfile
     container_name: reactive-ui
     ports:
@@ -519,7 +519,7 @@ services:
           cpus: '0.25'
     volumes:
       - ./DOCUMENTATION.md:/usr/share/nginx/docs/DOCUMENTATION.md:ro
-      - ./application/ui/DOCUMENTATION.md:/usr/share/nginx/docs/ui/DOCUMENTATION.md:ro
+      - ./platform/ui/DOCUMENTATION.md:/usr/share/nginx/docs/ui/DOCUMENTATION.md:ro
       - ./platform/deployment/docker/gateway/DOCUMENTATION.md:/usr/share/nginx/docs/gateway/DOCUMENTATION.md:ro
       - ./platform/deployment/docker/flink/DOCUMENTATION.md:/usr/share/nginx/docs/flink/DOCUMENTATION.md:ro
       - ./platform/deployment/docker/drools/DOCUMENTATION.md:/usr/share/nginx/docs/drools/DOCUMENTATION.md:ro

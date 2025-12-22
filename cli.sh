@@ -7,7 +7,7 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CLI_DIR="$SCRIPT_DIR/cli"
+CLI_DIR="$SCRIPT_DIR/platform/cli"
 
 # Set Docker host for Colima if running
 if [[ -S "$HOME/.colima/docker.sock" ]]; then

@@ -3,13 +3,14 @@ package com.reactive.drools.service;
 import com.reactive.drools.model.Counter;
 import com.reactive.drools.model.EvaluationRequest;
 import com.reactive.drools.model.EvaluationResponse;
-import com.reactive.platform.tracing.Tracing;
 import org.kie.api.runtime.KieContainer;
 import org.kie.api.runtime.StatelessKieSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.stereotype.Service;
+
+import static com.reactive.platform.tracing.Tracing.span;
 
 /**
  * Drools rule evaluation service.
@@ -26,7 +27,7 @@ import org.springframework.stereotype.Service;
 public class RuleService {
 
     private static final Logger log = LoggerFactory.getLogger(RuleService.class);
-    private final Tracing tracing = Tracing.create("drools-service");
+    private static final String SERVICE_NAME = "drools-service";
     private final StatelessKieSession statelessSession;
 
     public RuleService(KieContainer kieContainer) {
@@ -35,32 +36,32 @@ public class RuleService {
     }
 
     public EvaluationResponse evaluate(EvaluationRequest request) {
-        return tracing.span("drools.evaluate", span -> {
+        return span(SERVICE_NAME, "drools.evaluate", s -> {
             Counter counter = new Counter(request.getValue());
 
             // Add span attributes
-            span.setAttribute("drools.input_value", request.getValue());
+            s.setAttribute("drools.input_value", request.getValue());
 
             // Set business IDs as span attributes for Jaeger visibility
             if (request.getRequestId() != null) {
-                span.setAttribute("requestId", request.getRequestId());
+                s.setAttribute("requestId", request.getRequestId());
                 MDC.put("requestId", request.getRequestId());
             }
             if (request.getCustomerId() != null) {
-                span.setAttribute("customerId", request.getCustomerId());
+                s.setAttribute("customerId", request.getCustomerId());
                 MDC.put("customerId", request.getCustomerId());
             }
             if (request.getEventId() != null) {
-                span.setAttribute("eventId", request.getEventId());
+                s.setAttribute("eventId", request.getEventId());
             }
             if (request.getSessionId() != null) {
-                span.setAttribute("session.id", request.getSessionId());
+                s.setAttribute("session.id", request.getSessionId());
             }
 
             try {
                 // Execute rules using stateless session (thread-safe, no dispose needed)
                 statelessSession.execute(counter);
-                span.setAttribute("drools.rules_fired", 1);
+                s.setAttribute("drools.rules_fired", 1);
                 log.info("Drools evaluated: inputValue={}, alert={}, requestId={}, customerId={}",
                         request.getValue(), counter.getAlert(),
                         request.getRequestId(), request.getCustomerId());
@@ -71,14 +72,14 @@ public class RuleService {
                 response.setMessage(generateMessage(counter));
 
                 // Include the OpenTelemetry trace ID in response for observability
-                String traceId = span.getSpanContext().getTraceId();
+                String traceId = s.getSpanContext().getTraceId();
                 if (traceId != null && !traceId.equals("00000000000000000000000000000000")) {
                     response.setTraceId(traceId);
                 }
 
                 // Add result attributes
-                span.setAttribute("drools.result_value", response.getValue());
-                span.setAttribute("drools.alert_level", response.getAlert());
+                s.setAttribute("drools.result_value", response.getValue());
+                s.setAttribute("drools.alert_level", response.getAlert());
 
                 return response;
             } finally {
@@ -94,19 +95,13 @@ public class RuleService {
             return "No rules matched";
         }
 
-        switch (alert) {
-            case "NORMAL":
-                return "Counter is within normal range";
-            case "WARNING":
-                return "Counter value is elevated";
-            case "CRITICAL":
-                return "Counter value is critically high!";
-            case "RESET":
-                return "Counter has been reset";
-            case "INVALID":
-                return "Counter value is invalid (negative)";
-            default:
-                return "Unknown alert level";
-        }
+        return switch (alert) {
+            case "NORMAL" -> "Counter is within normal range";
+            case "WARNING" -> "Counter value is elevated";
+            case "CRITICAL" -> "Counter value is critically high!";
+            case "RESET" -> "Counter has been reset";
+            case "INVALID" -> "Counter value is invalid (negative)";
+            default -> "Unknown alert level";
+        };
     }
 }

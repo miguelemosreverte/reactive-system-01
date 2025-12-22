@@ -16,7 +16,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-REPORTS_DIR="$PROJECT_DIR/application/reports"
+REPORTS_DIR="$PROJECT_DIR/platform/reports"
 
 # Colors
 RED='\033[0;31m'
@@ -518,7 +518,7 @@ JAVA_EOF
     # Run benchmark
     print_info "Starting benchmark..."
     docker_maven java -cp ".:platform/target/classes:$module/target/classes:$module/target/test-classes:$classpath" \
-        BenchmarkRunner "$component" "$DURATION" "$CONCURRENCY" "$GATEWAY_URL" "$DROOLS_URL" "/app/application/reports" "$QUICK_MODE" "$SKIP_ENRICHMENT" || {
+        BenchmarkRunner "$component" "$DURATION" "$CONCURRENCY" "$GATEWAY_URL" "$DROOLS_URL" "/app/platform/reports" "$QUICK_MODE" "$SKIP_ENRICHMENT" || {
         print_error "Benchmark failed"
         rm -f "$runner_java" "$PROJECT_DIR/BenchmarkRunner.class"
         exit 1
