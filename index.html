@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reactive System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #fff;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 60px 20px;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+        h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, #00d4ff, #7b2cbf);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .subtitle {
+            font-size: 1.2rem;
+            color: #8892b0;
+        }
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin-bottom: 60px;
+        }
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 40px;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+        .card h2 {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .card p {
+            color: #8892b0;
+            line-height: 1.6;
+            margin-bottom: 25px;
+        }
+        .card a {
+            display: inline-block;
+            background: linear-gradient(90deg, #00d4ff, #7b2cbf);
+            color: #fff;
+            text-decoration: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: opacity 0.2s;
+        }
+        .card a:hover {
+            opacity: 0.9;
+        }
+        .icon {
+            font-size: 2rem;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+            margin-bottom: 60px;
+        }
+        .stat {
+            text-align: center;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+        }
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #00d4ff;
+        }
+        .stat-label {
+            color: #8892b0;
+            font-size: 0.9rem;
+            margin-top: 5px;
+        }
+        .tech-stack {
+            text-align: center;
+            padding: 40px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 16px;
+        }
+        .tech-stack h3 {
+            margin-bottom: 20px;
+            color: #8892b0;
+        }
+        .tech-icons {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+        .tech-icon {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            color: #8892b0;
+        }
+        .tech-icon img {
+            width: 48px;
+            height: 48px;
+            filter: grayscale(100%) brightness(1.5);
+            transition: filter 0.2s;
+        }
+        .tech-icon:hover img {
+            filter: none;
+        }
+        footer {
+            text-align: center;
+            margin-top: 60px;
+            padding: 20px;
+            color: #8892b0;
+            font-size: 0.9rem;
+        }
+        footer a {
+            color: #00d4ff;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Reactive System</h1>
+            <p class="subtitle">High-Performance Event-Driven Architecture</p>
+        </header>
+
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-value">16K+</div>
+                <div class="stat-label">req/s Drools</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value">10K+</div>
+                <div class="stat-label">req/s E2E Pipeline</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value">&lt;5ms</div>
+                <div class="stat-label">Avg Latency</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value">100%</div>
+                <div class="stat-label">Traced</div>
+            </div>
+        </div>
+
+        <div class="cards">
+            <div class="card">
+                <h2><span class="icon">📊</span> Platform Backoffice</h2>
+                <p>
+                    Infrastructure monitoring, distributed tracing,
+                    performance benchmarks, and system health dashboards.
+                    View Jaeger traces, Grafana dashboards, and benchmark reports.
+                </p>
+                <a href="reports/index.html">View Reports →</a>
+            </div>
+
+            <div class="card">
+                <h2><span class="icon">🚀</span> Application</h2>
+                <p>
+                    Business application interface for the reactive counter system.
+                    Send events, track state changes, and visualize the event flow
+                    through Kafka, Flink, and Drools.
+                </p>
+                <a href="ui/index.html">Launch App →</a>
+            </div>
+
+            <div class="card">
+                <h2><span class="icon">📖</span> Documentation</h2>
+                <p>
+                    Architecture guides, CLI reference, API documentation,
+                    and development setup instructions. Learn how the reactive
+                    pipeline processes events end-to-end.
+                </p>
+                <a href="docs/CLI_INVENTORY.md">View Docs →</a>
+            </div>
+
+            <div class="card">
+                <h2><span class="icon">⚡</span> Quick Start</h2>
+                <p>
+                    Get up and running in minutes with the CLI.
+                    Start all services, run benchmarks, and explore
+                    distributed traces across the system.
+                </p>
+                <a href="cli/README.md">CLI Guide →</a>
+            </div>
+        </div>
+
+        <div class="tech-stack">
+            <h3>Technology Stack</h3>
+            <div class="tech-icons">
+                <div class="tech-icon">
+                    <span style="font-size: 2rem">☕</span>
+                    <span>Spring Boot</span>
+                </div>
+                <div class="tech-icon">
+                    <span style="font-size: 2rem">📨</span>
+                    <span>Kafka</span>
+                </div>
+                <div class="tech-icon">
+                    <span style="font-size: 2rem">⚡</span>
+                    <span>Flink</span>
+                </div>
+                <div class="tech-icon">
+                    <span style="font-size: 2rem">🧠</span>
+                    <span>Drools</span>
+                </div>
+                <div class="tech-icon">
+                    <span style="font-size: 2rem">🔍</span>
+                    <span>Jaeger</span>
+                </div>
+                <div class="tech-icon">
+                    <span style="font-size: 2rem">📈</span>
+                    <span>Grafana</span>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>
+                Built with ❤️ using
+                <a href="https://github.com">GitHub</a>
+            </p>
+        </footer>
+    </div>
+</body>
+</html>

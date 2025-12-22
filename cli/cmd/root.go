@@ -7,22 +7,42 @@ import (
 var rootCmd = &cobra.Command{
 	Use:   "reactive",
 	Short: "Reactive System CLI",
-	Long: `Reactive System CLI - Manage and debug your reactive system.
+	Long: `Reactive System CLI - Manage your reactive system.
 
-Quick Commands:
-  reactive start              Start all services
-  reactive stop               Stop all services
-  reactive status             Show service status
+LIFECYCLE
+  start [service]     Start all services or a specific one
+  stop [service]      Stop services
+  restart [service]   Restart without rebuild
+  rebuild <service>   Rebuild and restart
+  logs <service>      Follow service logs
+  status              Show service health
+  down                Stop and remove containers
+  clean               Remove everything
 
-Debugging:
-  reactive trace <id>         Inspect a trace across all services
-  reactive logs <traceId>     Find logs for a specific trace
-  reactive send               Send a test event
+DIAGNOSTICS
+  doctor              Comprehensive health check
+  stats               Container resource usage
+  diagnose [subcmd]   Memory/performance diagnostics
 
-Benchmarks:
-  reactive benchmark run       Run all benchmarks
-  reactive benchmark report    View benchmark reports
-  reactive benchmark build-ui  Build React UI assets`,
+BENCHMARKING
+  bench <target>      Run benchmark (drools, full, gateway)
+
+OBSERVABILITY
+  trace [id]          Inspect distributed traces
+  search [traceId]    Search logs in Loki
+
+TESTING
+  send                Send test event
+
+DEVELOPMENT
+  shell <service>     Enter container shell
+  dev                 Start in development mode
+
+URLS
+  http://localhost:3000    UI Portal
+  http://localhost:8080    Gateway API
+  http://localhost:16686   Jaeger (Traces)
+  http://localhost:8081    Flink Dashboard`,
 }
 
 func Execute() error {
@@ -30,10 +50,15 @@ func Execute() error {
 }
 
 func init() {
-	// Add subcommands
+	// Observability commands (defined in other files via their init())
 	rootCmd.AddCommand(traceCmd)
 	rootCmd.AddCommand(logsCmd)
 	rootCmd.AddCommand(sendCmd)
-	rootCmd.AddCommand(statusCmd)
-	rootCmd.AddCommand(benchmarkCmd)
+
+	// Note: Other commands are added via init() in their respective files:
+	// - lifecycle.go: start, stop, restart, rebuild, down, clean, logs, dev, shell
+	// - diagnostics.go: doctor, stats, diagnose
+	// - bench.go: bench
+	// - status.go: status
+	// - benchmark.go: benchmark (old, to be deprecated)
 }
