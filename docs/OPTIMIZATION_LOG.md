@@ -292,9 +292,63 @@ Stability: 0.59 (CV - unstable, as expected under load)
 2. **Pre-commit verification**: Use default mode for accurate metrics (~75s)
 3. **CI/CD pipeline**: Use full 60s+ benchmarks with trace enrichment
 
-### Next Steps
+---
 
-1. Add automatic bottleneck detection from trace analysis
-2. Add benchmark timing to HTML report (meta-metrics display)
-3. Improve throughput stability through Flink/Kafka tuning
+## Automatic Bottleneck Detection (2025-12-22)
+
+### Implementation
+
+Added `BottleneckAnalyzer` class that automatically identifies performance bottlenecks from Jaeger traces.
+
+**Algorithm:**
+1. Analyze spans by service (counter-application, flink-taskmanager, drools)
+2. Calculate % of total trace time per service
+3. Identify the component with highest time consumption
+4. Calculate confidence based on consistency across multiple traces
+5. Generate service-specific recommendations
+
+### Bottleneck Analysis Results
+
+Running a 10-second benchmark with trace enrichment:
+
+```
+=== Bottleneck Analysis ===
+Traces analyzed: 2
+Primary bottleneck: flink-taskmanager (100.0% confidence)
+  Primary bottleneck: flink-taskmanager (96.5% of trace time, 100.0% confidence)
+  → Increase flink taskmanager slots
+  → Consider adding more taskmanagers
+```
+
+**Findings:**
+- Flink consumes 96.5% of the total E2E latency
+- 100% confidence (both traces show Flink as bottleneck)
+- Confirms earlier analysis: Flink parallelism (4) is limiting throughput
+
+### Service-Specific Recommendations
+
+The analyzer provides targeted recommendations based on the bottleneck:
+
+| Bottleneck | Recommendations |
+|------------|----------------|
+| counter-application | Increase connection pool, enable HTTP/2, add caching |
+| kafka | Use async acks, increase batch size, tune linger.ms |
+| flink-taskmanager | Increase parallelism, add taskmanagers |
+| drools | Cache rule sessions, optimize rules |
+
+### Usage
+
+```bash
+# With trace enrichment (includes bottleneck analysis)
+./cli.sh benchmark full --duration 10
+
+# Quick mode (no trace enrichment, no bottleneck analysis)
+./cli.sh benchmark full --quick
+```
+
+### Files Added
+
+- `platform/.../BottleneckAnalyzer.java`: Core analysis logic
+- `BenchmarkResult.analyzeBottlenecks()`: Convenience method
+- CLI and script updated to display bottleneck analysis
 
