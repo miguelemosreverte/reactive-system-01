@@ -129,6 +129,11 @@ public class KafkaPublisher<A> implements AutoCloseable {
      * Returns trace ID immediately without waiting for ack.
      */
     public String publishFireAndForget(A message) {
+        // Skip tracing if not sampled (99.9% of requests)
+        if (!Log.isSampled()) {
+            return publishFireAndForgetNoTrace(message);
+        }
+
         // Create producer span using Log API (no OTel types leaked)
         SpanHandle span = Log.producerSpan("kafka.publish.fast");
         span.attr("messaging.system", "kafka");
@@ -162,6 +167,32 @@ public class KafkaPublisher<A> implements AutoCloseable {
         }
 
         return traceId;
+    }
+
+    /**
+     * Ultra-fast fire-and-forget without any tracing overhead.
+     */
+    private String publishFireAndForgetNoTrace(A message) {
+        try {
+            byte[] bytes = codec.encode(message).getOrThrow();
+            String key = keyExtractor.apply(message);
+
+            ProducerRecord<String, byte[]> record = new ProducerRecord<>(topic, key, bytes);
+
+            producer.send(record, (metadata, exception) -> {
+                if (exception != null) {
+                    error("Fire-and-forget publish failed: {}", exception.getMessage());
+                    errorCount.incrementAndGet();
+                }
+            });
+
+            publishedCount.incrementAndGet();
+            return "";
+
+        } catch (Exception e) {
+            errorCount.incrementAndGet();
+            throw new RuntimeException("Publish failed", e);
+        }
     }
 
     /**
@@ -250,16 +281,23 @@ public class KafkaPublisher<A> implements AutoCloseable {
 
         public Builder<A> fireAndForget() {
             this.acks = "0";
-            this.maxInFlightRequests = 50;
-            this.lingerMs = 1;         // Minimal linger for lower latency
-            this.batchSize = 65536;
-            this.compression = "none";
+            this.maxInFlightRequests = 100;  // Increased for more parallelism
+            this.lingerMs = 0;         // No batching delay
+            this.batchSize = 32768;    // 32KB batches
+            this.compression = "none"; // No compression overhead locally
             return this;
         }
 
         private int lingerMs = 0;
         private int batchSize = 16384;
         private String compression = "none";
+
+        private long bufferMemory = 67108864; // 64MB default
+
+        public Builder<A> bufferMemory(long bytes) {
+            this.bufferMemory = bytes;
+            return this;
+        }
 
         public KafkaPublisher<A> build() {
             Properties props = new Properties();
@@ -272,6 +310,7 @@ public class KafkaPublisher<A> implements AutoCloseable {
             props.put(ProducerConfig.LINGER_MS_CONFIG, lingerMs);
             props.put(ProducerConfig.BATCH_SIZE_CONFIG, batchSize);
             props.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, compression);
+            props.put(ProducerConfig.BUFFER_MEMORY_CONFIG, bufferMemory);
 
             // Tracing is handled via Log API - no tracer injection needed
             KafkaProducer<String, byte[]> producer = new KafkaProducer<>(props);

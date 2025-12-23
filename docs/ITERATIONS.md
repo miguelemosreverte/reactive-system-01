@@ -372,7 +372,100 @@ Further improvements would require:
 
 ---
 
-## Iterations 18-20: Future Work
+## Iteration 18: Kafka Buffer Memory
+**Status**: COMPLETED (marginal)
+**Change**: Added buffer.memory=64MB configuration to Kafka producer
+**File**: `platform/src/main/java/com/reactive/platform/kafka/KafkaPublisher.java`
+
+### Result:
+**~0% improvement** - Buffer memory wasn't a bottleneck.
+
+---
+
+## Iteration 19: Skip Tracing in Fire-and-Forget
+**Status**: COMPLETED (kept)
+**Change**: Added isSampled() check to skip span creation on unsampled requests
+**File**: `platform/src/main/java/com/reactive/platform/kafka/KafkaPublisher.java`
+
+### Before:
+- Always creating producer span (overhead on 99.9% of requests)
+
+### After:
+- Skip span creation when not sampled
+- Peak throughput: ~9,500 req/s (variable)
+
+### Result:
+**Marginal improvement** - Reduces overhead on unsampled requests.
+
+---
+
+## Iteration 20: Snappy Compression
+**Status**: COMPLETED (reverted)
+**Change**: Tried Snappy compression instead of none
+**File**: `platform/src/main/java/com/reactive/platform/kafka/KafkaPublisher.java`
+
+### Result:
+**~0% improvement** - Compression overhead vs benefit neutral locally. Reverted to none.
+
+---
+
+## Iteration 21: maxInFlightRequests=100
+**Status**: COMPLETED (kept)
+**Change**: Increased maxInFlightRequests from 50 to 100
+**File**: `platform/src/main/java/com/reactive/platform/kafka/KafkaPublisher.java`
+
+### Result:
+**Variable results** - Peak ~9,500 req/s, average ~5,500 req/s. Kept for higher peak.
+
+---
+
+## Iteration 22: Reduce Batch Size and Linger
+**Status**: COMPLETED (kept)
+**Change**: Reduced batch size to 32KB, linger to 0ms
+**File**: `platform/src/main/java/com/reactive/platform/kafka/KafkaPublisher.java`
+
+### Result:
+**~0% improvement** - Lower latency variance, similar throughput.
+
+---
+
+## Summary After 22 Iterations
+
+| Iteration | Change | Impact |
+|-----------|--------|--------|
+| 1-7 | Core optimizations | +44.7% |
+| 8-11 | Fine-tuning | ~0% |
+| 12-17 | Various (reverted) | ~0% |
+| 18 | Buffer memory | ~0% |
+| 19 | Skip tracing on unsampled | marginal |
+| 20 | Snappy (reverted) | ~0% |
+| 21 | maxInFlight=100 | variable |
+| 22 | Smaller batches | ~0% |
+
+**Peak throughput: ~9,500 req/s (142,500 ops/15s)**
+**Note: High variance due to JVM warmup and GC patterns**
+
+---
+
+## Iteration 23: TBD
 **Status**: PENDING
 
-Reserved for future optimization attempts if needed.
+---
+
+## Iteration 24: TBD
+**Status**: PENDING
+
+---
+
+## Iteration 25: TBD
+**Status**: PENDING
+
+---
+
+## Iteration 26: TBD
+**Status**: PENDING
+
+---
+
+## Iteration 27: TBD
+**Status**: PENDING
