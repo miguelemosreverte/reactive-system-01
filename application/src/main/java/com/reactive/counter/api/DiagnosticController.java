@@ -20,8 +20,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 
-import static com.reactive.platform.tracing.Tracing.*;
-
 /**
  * Diagnostic controller for E2E trace validation.
  *
@@ -136,19 +134,14 @@ public class DiagnosticController {
     public Mono<ResponseEntity<Map<String, Object>>> runDiagnostic() {
         String sessionId = "diag-" + System.currentTimeMillis();
 
-        return Mono.fromCallable(() -> traced("diagnostic.run", () -> {
+        return Mono.fromCallable(() -> {
             String requestId = idGenerator.generateRequestId();
-            String otelTraceId = traceId();
 
-            attr("requestId", requestId);
-            attr("session.id", sessionId);
-
-            log.info("Running E2E diagnostic: requestId={}, traceId={}", requestId, otelTraceId);
+            log.info("Running E2E diagnostic: requestId={}, sessionId={}", requestId, sessionId);
 
             Map<String, Object> result = new LinkedHashMap<>();
             result.put("sessionId", sessionId);
             result.put("requestId", requestId);
-            result.put("otelTraceId", otelTraceId);
             result.put("timestamp", Instant.now().toString());
 
             try {
@@ -251,7 +244,7 @@ public class DiagnosticController {
                 result.put("error", e.getMessage());
                 return result;
             }
-        })).map(ResponseEntity::ok);
+        }).map(ResponseEntity::ok);
     }
 
     /**

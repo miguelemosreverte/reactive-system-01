@@ -1,14 +1,22 @@
 package com.reactive.counter.benchmark;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.reactive.platform.benchmark.BaseBenchmark;
+import com.reactive.platform.benchmark.BenchmarkResult;
 import com.reactive.platform.benchmark.BenchmarkTypes.*;
 import org.apache.kafka.clients.consumer.*;
 import org.apache.kafka.clients.producer.*;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
@@ -24,7 +32,10 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public class KafkaBenchmark extends BaseBenchmark {
 
-    private static final ObjectMapper mapper = new ObjectMapper();
+    private static final Logger log = LoggerFactory.getLogger(KafkaBenchmark.class);
+    private static final ObjectMapper mapper = new ObjectMapper()
+            .registerModule(new JavaTimeModule())
+            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
     private static final String EVENTS_TOPIC = "counter-events";  // Gateway sends here
     private static final String RESULTS_TOPIC = "counter-results";
 
@@ -242,5 +253,44 @@ public class KafkaBenchmark extends BaseBenchmark {
         }
         // Default to Docker Compose internal network
         return "kafka:29092";
+    }
+
+    // ========================================================================
+    // CLI Entry Point
+    // ========================================================================
+
+    public static void main(String[] args) throws IOException {
+        if (args.length < 6) {
+            System.err.println("Usage: KafkaBenchmark <durationMs> <concurrency> <gatewayUrl> <droolsUrl> <reportsDir> <skipEnrichment>");
+            System.exit(1);
+        }
+
+        long durationMs = Long.parseLong(args[0]);
+        int concurrency = Integer.parseInt(args[1]);
+        String gatewayUrl = args[2];
+        String droolsUrl = args[3];
+        String reportsDir = args[4];
+        boolean skipEnrichment = Boolean.parseBoolean(args[5]);
+
+        log.info("Starting Kafka Benchmark: duration={}ms, concurrency={}", durationMs, concurrency);
+
+        Config config = Config.builder()
+                .durationMs(durationMs)
+                .concurrency(concurrency)
+                .gatewayUrl(gatewayUrl)
+                .droolsUrl(droolsUrl)
+                .skipEnrichment(skipEnrichment)
+                .build();
+
+        KafkaBenchmark benchmark = create();
+        BenchmarkResult result = benchmark.run(config);
+
+        String json = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(result);
+        Path resultsPath = Path.of(reportsDir, "results.json");
+        Files.createDirectories(resultsPath.getParent());
+        Files.writeString(resultsPath, json);
+
+        log.info("Benchmark complete: {} ops, {} success, {} failed",
+                result.totalOperations(), result.successfulOperations(), result.failedOperations());
     }
 }

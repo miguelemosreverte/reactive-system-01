@@ -5,8 +5,8 @@ import com.reactive.counter.domain.CounterState;
 import com.reactive.counter.service.ResultConsumerService;
 import com.reactive.platform.id.IdGenerator;
 import com.reactive.platform.kafka.KafkaPublisher;
+import com.reactive.platform.observe.Log;
 import com.reactive.platform.serialization.JsonCodec;
-import io.opentelemetry.api.trace.Span;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
@@ -83,7 +83,7 @@ public class CounterController {
 
     @PostMapping("/counter")
     public Mono<ResponseEntity<ActionResponse>> submit(@RequestBody ActionRequest request) {
-        return submit(request, null);
+        return submit(request, "");
     }
 
     @PostMapping("/customers/{customerId}/counter/fast")
@@ -95,7 +95,7 @@ public class CounterController {
 
     @PostMapping("/counter/fast")
     public ResponseEntity<ActionResponse> submitFast(@RequestBody ActionRequest request) {
-        return submitFast(request, null);
+        return submitFast(request, "");
     }
 
     @GetMapping("/counter/status")
@@ -129,7 +129,7 @@ public class CounterController {
         publisher.publishFireAndForget(event);
 
         ActionResponse response = new ActionResponse(
-                true, requestId, customerId != null ? customerId : "",
+                true, requestId, customerId,
                 eventId, traceId(), waitForResult ? "pending" : "accepted");
 
         if (waitForResult) {
@@ -158,7 +158,7 @@ public class CounterController {
         publisher.publishFireAndForget(event);
 
         return ResponseEntity.ok(new ActionResponse(
-                true, requestId, customerId != null ? customerId : "",
+                true, requestId, customerId,
                 eventId, traceId(), "accepted"));
     }
 
@@ -167,24 +167,27 @@ public class CounterController {
     // ========================================================================
 
     private String kafkaKey(String customerId, String sessionId) {
-        return (customerId != null && !customerId.isEmpty())
-                ? customerId + ":" + sessionId
-                : sessionId;
+        return customerId.isEmpty()
+                ? sessionId
+                : customerId + ":" + sessionId;
     }
 
+    /**
+     * Add business context attributes to current span using platform Log API.
+     * No third-party OTel types leak into this controller.
+     */
     private void addSpanAttributes(String requestId, String customerId, String eventId,
                                    String sessionId, ActionRequest request) {
-        Span span = Span.current();
-        span.setAttribute("requestId", requestId);
-        span.setAttribute("customerId", customerId != null ? customerId : "");
-        span.setAttribute("eventId", eventId);
-        span.setAttribute("session.id", sessionId);
-        span.setAttribute("counter.action", request.action());
-        span.setAttribute("counter.value", request.value());
+        Log.attr("requestId", requestId);
+        Log.attr("customerId", customerId);
+        Log.attr("eventId", eventId);
+        Log.attr("session.id", sessionId);
+        Log.attr("counter.action", request.action());
+        Log.attr("counter.value", request.value());
     }
 
     private String traceId() {
-        return Span.current().getSpanContext().getTraceId();
+        return Log.traceId();
     }
 
     /** Called by ResultConsumerService to update local state cache. */

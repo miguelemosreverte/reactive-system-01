@@ -2,13 +2,12 @@ package com.reactive.counter.bff;
 
 import com.reactive.counter.api.ActionRequest;
 import com.reactive.counter.domain.CounterEvent;
+import com.reactive.platform.benchmark.BenchmarkTypes.LogEntry;
+import com.reactive.platform.benchmark.BenchmarkTypes.Trace;
+import com.reactive.platform.benchmark.ObservabilityFetcher;
 import com.reactive.platform.id.IdGenerator;
 import com.reactive.platform.kafka.KafkaPublisher;
-import com.reactive.platform.observability.ObservabilityClient;
-import com.reactive.platform.observability.ObservabilityClient.LogEntry;
-import com.reactive.platform.observability.ObservabilityClient.TraceData;
 import com.reactive.platform.serialization.JsonCodec;
-import com.reactive.platform.serialization.Result;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
@@ -22,9 +21,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-
-import static com.reactive.platform.tracing.Tracing.*;
 
 /**
  * Backend-for-Frontend (BFF) API.
@@ -60,7 +56,7 @@ public class BffController {
     private final IdGenerator idGenerator = IdGenerator.getInstance();
 
     private KafkaPublisher<CounterEvent> publisher;
-    private ObservabilityClient observability;
+    private ObservabilityFetcher observability;
 
     @PostConstruct
     void init() {
@@ -69,7 +65,7 @@ public class BffController {
                 .topic(eventsTopic)
                 .codec(JsonCodec.forClass(CounterEvent.class))
                 .keyExtractor(e -> buildKafkaKey(e.customerId(), e.sessionId())));
-        observability = ObservabilityClient.create(jaegerUrl, lokiUrl);
+        observability = ObservabilityFetcher.withUrls(jaegerUrl, lokiUrl);
         log.info("BFF initialized with Jaeger={}, Loki={}", jaegerUrl, lokiUrl);
     }
 
@@ -129,19 +125,13 @@ public class BffController {
             boolean debugMode,
             long debugWaitMs
     ) {
-        return Mono.fromCallable(() -> traced("bff.submit", () -> {
+        return Mono.fromCallable(() -> {
             String sessionId = request.sessionIdOrDefault();
             String requestId = idGenerator.generateRequestId();
             String eventId = idGenerator.generateEventId();
-            String otelTraceId = traceId();
 
-            attr("requestId", requestId);
-            attr("customerId", customerId);
-            attr("eventId", eventId);
-            attr("session.id", sessionId);
-            attr("debug.mode", debugMode ? "true" : "false");
-
-            log.info("BFF: action={}, value={}, debug={}", request.action(), request.value(), debugMode);
+            log.info("BFF: action={}, value={}, debug={}, requestId={}",
+                    request.action(), request.value(), debugMode, requestId);
 
             CounterEvent event = CounterEvent.create(
                     requestId, customerId, eventId, sessionId, request.action(), request.value()
@@ -150,9 +140,9 @@ public class BffController {
 
             return new ActionDebugResponse(
                     true, requestId, customerId,
-                    eventId, otelTraceId, "accepted", null, null
+                    eventId, "", "accepted", null, null
             );
-        }))
+        })
         .flatMap(baseResponse -> {
             if (!debugMode) {
                 return Mono.just(ResponseEntity.ok(baseResponse));
@@ -166,29 +156,24 @@ public class BffController {
     }
 
     private Mono<ActionDebugResponse> fetchDebugData(ActionDebugResponse base) {
-        return Mono.fromFuture(() -> {
-            CompletableFuture<Result<TraceData>> traceFuture =
-                    observability.fetchTrace(base.otelTraceId());
+        return Mono.fromCallable(() -> {
+            // Fetch trace synchronously
+            TraceInfo trace = observability.fetchTraceByOtelId(base.otelTraceId())
+                    .map(TraceInfo::from)
+                    .orElse(null);
 
+            // Fetch logs synchronously
             Instant now = Instant.now();
-            CompletableFuture<Result<List<LogEntry>>> logsFuture =
-                    observability.fetchLogs(base.requestId(), now.minusSeconds(60), now);
+            List<LogEntry> logEntries = observability.fetchLogs(base.requestId(), now.minusSeconds(60), now);
+            List<LogInfo> logs = logEntries.stream()
+                    .map(l -> new LogInfo(l.timestamp(), l.labels().getOrDefault("service", "unknown"), l.line()))
+                    .toList();
 
-            return traceFuture.thenCombine(logsFuture, (traceResult, logsResult) -> {
-                TraceInfo trace = traceResult.fold(e -> null, TraceInfo::from);
-                List<LogInfo> logs = logsResult.fold(
-                        e -> null,
-                        entries -> entries.stream()
-                                .map(l -> new LogInfo(l.timestamp(), l.service(), l.message()))
-                                .toList()
-                );
-
-                return new ActionDebugResponse(
-                        base.success(), base.requestId(), base.customerId(),
-                        base.eventId(), base.otelTraceId(), base.status(),
-                        trace, logs
-                );
-            });
+            return new ActionDebugResponse(
+                    base.success(), base.requestId(), base.customerId(),
+                    base.eventId(), base.otelTraceId(), base.status(),
+                    trace, logs.isEmpty() ? null : logs
+            );
         });
     }
 
@@ -202,11 +187,12 @@ public class BffController {
      */
     @GetMapping("/traces/{traceId}")
     public Mono<ResponseEntity<TraceInfo>> fetchTrace(@PathVariable String traceId) {
-        return Mono.fromFuture(() -> observability.fetchTrace(traceId))
-                .map(result -> result.fold(
-                        e -> ResponseEntity.notFound().<TraceInfo>build(),
-                        t -> ResponseEntity.ok(TraceInfo.from(t))
-                ));
+        return Mono.fromCallable(() ->
+                observability.fetchTraceByOtelId(traceId)
+                        .map(TraceInfo::from)
+                        .map(ResponseEntity::ok)
+                        .orElseGet(() -> ResponseEntity.notFound().build())
+        );
     }
 
     /**
@@ -218,34 +204,38 @@ public class BffController {
             @PathVariable String requestId,
             @RequestParam(defaultValue = "60") int lookbackSeconds
     ) {
-        Instant now = Instant.now();
-        Instant start = now.minusSeconds(lookbackSeconds);
-
-        return Mono.fromFuture(() -> observability.fetchLogs(requestId, start, now))
-                .map(result -> ResponseEntity.ok(result.fold(
-                        e -> List.<LogInfo>of(),
-                        entries -> entries.stream()
-                                .map(l -> new LogInfo(l.timestamp(), l.service(), l.message()))
-                                .toList()
-                )));
+        return Mono.fromCallable(() -> {
+            Instant now = Instant.now();
+            Instant start = now.minusSeconds(lookbackSeconds);
+            List<LogEntry> entries = observability.fetchLogs(requestId, start, now);
+            List<LogInfo> logs = entries.stream()
+                    .map(l -> new LogInfo(l.timestamp(), l.labels().getOrDefault("service", "unknown"), l.line()))
+                    .toList();
+            return ResponseEntity.ok(logs);
+        });
     }
 
     /**
-     * Search recent traces.
-     * GET /api/bff/traces?service=counter-application&limit=10
+     * Search recent traces by requestId.
+     * Note: Direct trace search by service is not supported - use requestId for lookup.
+     * GET /api/bff/traces?requestId=xxx
      */
     @GetMapping("/traces")
     public Mono<ResponseEntity<List<TraceInfo>>> searchTraces(
-            @RequestParam(defaultValue = "counter-application") String service,
-            @RequestParam(defaultValue = "10") int limit,
-            @RequestParam(defaultValue = "60") int lookbackSeconds
+            @RequestParam(required = false) String requestId,
+            @RequestParam(defaultValue = "10") int limit
     ) {
-        return Mono.fromFuture(() ->
-                observability.searchTraces(service, limit, Duration.ofSeconds(lookbackSeconds)))
-                .map(result -> ResponseEntity.ok(result.fold(
-                        e -> List.<TraceInfo>of(),
-                        traces -> traces.stream().map(TraceInfo::from).toList()
-                )));
+        return Mono.fromCallable(() -> {
+            if (requestId == null || requestId.isEmpty()) {
+                return ResponseEntity.ok(List.<TraceInfo>of());
+            }
+            // Search by requestId tag
+            List<TraceInfo> traces = observability.fetchTraceByAppId(requestId)
+                    .map(TraceInfo::from)
+                    .map(List::of)
+                    .orElse(List.of());
+            return ResponseEntity.ok(traces);
+        });
     }
 
     /**
@@ -287,13 +277,21 @@ public class BffController {
             long durationMs,
             List<SpanInfo> spans
     ) {
-        public static TraceInfo from(TraceData trace) {
+        /**
+         * Convert from BenchmarkTypes.Trace to TraceInfo.
+         */
+        public static TraceInfo from(Trace trace) {
+            // Calculate trace duration from spans (max end - min start)
+            long minStart = trace.spans().stream().mapToLong(s -> s.startTime()).min().orElse(0);
+            long maxEnd = trace.spans().stream().mapToLong(s -> s.startTime() + s.duration()).max().orElse(0);
+            long durationMs = (maxEnd - minStart) / 1000; // microseconds to milliseconds
+
             return new TraceInfo(
                     trace.traceId(),
                     trace.spans().size(),
-                    trace.durationMs(),
+                    durationMs,
                     trace.spans().stream()
-                            .map(s -> new SpanInfo(s.spanId(), s.operationName(), s.durationMs()))
+                            .map(s -> new SpanInfo(s.spanId(), s.operationName(), s.duration() / 1000))
                             .toList()
             );
         }
@@ -301,5 +299,5 @@ public class BffController {
 
     public record SpanInfo(String spanId, String operationName, long durationMs) {}
 
-    public record LogInfo(long timestamp, String service, String message) {}
+    public record LogInfo(String timestamp, String service, String message) {}
 }

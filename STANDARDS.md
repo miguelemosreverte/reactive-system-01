@@ -164,22 +164,22 @@ platform/src/main/java/com/reactive/platform/
 
 ```
 application/src/main/java/com/reactive/counter/
-├── [ ] CounterApplication.java
+├── [x] CounterApplication.java
 ├── api/
-│   [ ] ActionRequest.java
-│   [ ] CounterController.java
-│   [ ] DiagnosticController.java
+│   [x] ActionRequest.java (compact constructor normalizes nulls)
+│   [x] CounterController.java (uses Log.attr instead of OTel Span)
+│   [x] DiagnosticController.java (boundary - external JSON/HTTP)
 ├── bff/
-│   [ ] BffController.java
+│   [x] BffController.java (migrated to ObservabilityFetcher)
 ├── domain/
-│   [ ] CounterEvent.java
-│   [ ] CounterFSM.java
-│   [ ] CounterState.java
+│   [x] CounterEvent.java (Timing uses primitive long, not Long)
+│   [x] CounterFSM.java (boundary - fromString handles null)
+│   [x] CounterState.java (boundary - fromString handles null)
 ├── replay/
 │   [ ] CounterFSMAdapter.java
 │   [ ] ReplayController.java
 ├── service/
-│   [ ] ResultConsumerService.java
+│   [ ] ResultConsumerService.java (uses OTel directly - boundary for Kafka tracing)
 └── websocket/
     [ ] CounterWebSocketHandler.java
     [ ] WebSocketConfig.java
