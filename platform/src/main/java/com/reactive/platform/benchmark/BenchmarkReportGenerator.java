@@ -3,7 +3,6 @@ package com.reactive.platform.benchmark;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.reactive.platform.serialization.Unit;
 import com.reactive.platform.serialization.Result;
 
 import static com.reactive.platform.observe.Log.*;
@@ -78,16 +77,16 @@ public class BenchmarkReportGenerator {
 
     /**
      * Generate reports for multiple benchmark results.
+     * Returns the path to the generated index file.
      */
-    public Result<Unit> generateAll(List<BenchmarkResult> results) {
+    public Result<Path> generateAll(List<BenchmarkResult> results) {
         return Result.of(() -> {
             for (BenchmarkResult result : results) {
                 generate(result).getOrThrow();
             }
 
-            // Generate index
-            generateIndex(results).getOrThrow();
-            return Unit.VALUE;
+            // Generate index and return its path
+            return generateIndex(results).getOrThrow();
         });
     }
 

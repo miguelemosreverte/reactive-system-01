@@ -1,7 +1,6 @@
 package com.reactive.platform.observe;
 
-import com.reactive.platform.serialization.Unit;
-
+import java.util.Optional;
 import java.util.function.Supplier;
 
 /**
@@ -106,7 +105,7 @@ public final class Log {
      * Execute void work with debug logging and tracing span.
      */
     public static void traced(String operation, Runnable work) {
-        impl.traced(operation, () -> { work.run(); return Unit.VALUE; });
+        impl.traced(operation, () -> { work.run(); return Optional.empty(); });
     }
 
     // ========================================================================

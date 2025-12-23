@@ -1,6 +1,5 @@
 package com.reactive.platform.observe;
 
-import com.reactive.platform.serialization.Unit;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
@@ -49,7 +48,6 @@ public class TracedAspect {
             } catch (Throwable t) {
                 error[0] = t;
             }
-            return Unit.VALUE;
         });
 
         if (error[0] != null) {
