@@ -251,9 +251,9 @@ public class KafkaPublisher<A> implements AutoCloseable {
         public Builder<A> fireAndForget() {
             this.acks = "0";
             this.maxInFlightRequests = 20;
-            this.lingerMs = 5;        // Allow 5ms for batching
+            this.lingerMs = 5;        // 5ms for batching
             this.batchSize = 65536;   // 64KB batches
-            this.compression = "lz4"; // LZ4 compression for network efficiency
+            this.compression = "lz4"; // LZ4 compression
             return this;
         }
 

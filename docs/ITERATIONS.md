@@ -134,13 +134,52 @@
 
 ---
 
-## Iteration 7: TBD
-**Status**: PENDING
+## Iteration 7: Tested but Reverted
+**Status**: COMPLETED (no change)
+**Attempts**:
+1. Virtual threads - no improvement (WebFlux already non-blocking)
+2. More batching (10ms/128KB) - regression (adds latency)
+
+### Result:
+No additional improvement found. Reverted to iteration 6 settings.
 
 ---
 
-## Iteration 8: TBD
+## FINAL SUMMARY
+
+**Total improvement achieved: +44.7%**
+
+| Iteration | Optimization | Result |
+|-----------|-------------|--------|
+| Baseline | - | 124,440 ops |
+| 1 | acks=0 fire-and-forget | +14.3% |
+| 2 | linger=5ms, batch=64KB | +7.8% |
+| 3 | LZ4 compression | +0.7% |
+| 4 | Reduce logging | +13.1% |
+| 5 | Increase JVM heap | +3.1% |
+| 6 | Increase CPU cores | ~0% (scalability) |
+| 7 | Various (reverted) | ~0% |
+| **Final** | - | **180,035 ops** |
+
+The pipeline is now ~45% faster than baseline. Further optimization would require:
+- Horizontal scaling (multiple gateway instances)
+- Kafka cluster optimization
+- Alternative serialization (protobuf/avro)
+- Native compilation (GraalVM)
+
+---
+
+## Iterations 8-20: Future Optimization
 **Status**: PENDING
+
+Future areas to explore:
+- Horizontal scaling (load balancer + multiple gateway instances)
+- Kafka cluster optimization (more brokers, partitions)
+- Alternative serialization (protobuf, avro, msgpack)
+- GraalVM native compilation
+- Async I/O improvements
+- Object pooling for reduced GC
+- Connection pooling optimization
 
 ---
 
