@@ -129,7 +129,7 @@ public class CounterController {
         CounterEvent event = CounterEvent.create(
                 requestId, customerId, eventId, sessionId, request.action(), request.value());
 
-        log.info("Publishing event: action={}, value={}, session={}",
+        log.debug("Publishing event: action={}, value={}, session={}",
                 request.action(), request.value(), sessionId);
 
         publisher.publishFireAndForget(event);
@@ -158,7 +158,7 @@ public class CounterController {
         CounterEvent event = CounterEvent.create(
                 requestId, customerId, eventId, sessionId, request.action(), request.value());
 
-        log.info("Publishing event (fast): action={}, value={}, session={}",
+        log.debug("Publishing event (fast): action={}, value={}, session={}",
                 request.action(), request.value(), sessionId);
 
         publisher.publishFireAndForget(event);

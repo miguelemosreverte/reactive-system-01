@@ -64,8 +64,21 @@
 
 ---
 
-## Iteration 4: TBD
-**Status**: PENDING
+## Iteration 4: Reduce Logging Overhead
+**Status**: COMPLETED
+**Change**: Changed log level from DEBUG to INFO, hot-path logs from INFO to DEBUG
+**Files**: `application/src/main/resources/application.yml`, `CounterController.java`
+
+### Before:
+- Throughput: 154,357 ops (iteration 3)
+- Logging: DEBUG level, INFO on every request
+
+### After:
+- Throughput: 174,600 ops (15s, 32 workers)
+- Logging: INFO level, DEBUG on requests
+
+### Result:
+**+13.1% improvement** over iteration 3, **+40.3% over baseline**
 
 ---
 

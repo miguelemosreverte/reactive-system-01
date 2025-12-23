@@ -44,7 +44,7 @@ management:
 
 logging:
   level:
-    com.reactive: DEBUG
+    com.reactive: INFO   # Changed from DEBUG for performance
     org.apache.kafka: WARN
   pattern:
     console: "%d{ISO8601} %5p [%X{trace_id}/%X{span_id}] [%t] %c: %m%n"
