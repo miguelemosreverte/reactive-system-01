@@ -15,10 +15,61 @@ Code should look like Scala - functional, concise, type-safe.
 - Example: `TracingImpl.java` contains all OpenTelemetry code, `Tracing.java` exposes clean API
 
 ### 3. No Null
-- Never write `null` in our code
-- Wrap third-party nulls immediately: `Optional.ofNullable(thirdParty.getValue())`
-- Use empty strings `""` instead of null for String fields
-- Use `Optional<T>` for truly optional values
+
+**Rule: We never instantiate null. Ever.**
+
+When third-party code returns null (JSON parsing, Kafka callbacks, external APIs), we intercept it immediately at the boundary and convert to a proper value.
+
+#### Null-Free Type Mappings
+
+| Instead of null... | Use... |
+|-------------------|--------|
+| `String` | `""` (empty string) |
+| `List<T>` | `List.of()` (empty list) |
+| `Map<K,V>` | `Map.of()` (empty map) |
+| `Optional<T>` | `Optional.empty()` |
+| Void/Unit returns | `Optional.empty()` |
+
+#### Boundary Handling Pattern
+
+```java
+// At system boundaries (JSON, HTTP, Kafka), intercept nulls immediately:
+String value = externalApi.getValue();
+String safeValue = value != null ? value : "";  // Never propagate null
+
+// For Optional wrapping:
+Optional<User> user = Optional.ofNullable(repository.find(id));
+```
+
+#### Record Compact Constructors
+
+Records that may be deserialized (JSON) must have compact constructors to normalize nulls:
+
+```java
+public record Config(String name, List<String> items) {
+    public Config {
+        name = name != null ? name : "";
+        items = items != null ? items : List.of();
+    }
+}
+```
+
+#### Why Not Custom Unit Types?
+
+For void/side-effect operations, use `Optional.empty()` instead of custom Unit types:
+- No custom primitives to define or import
+- Standard Java, no cognitive overhead
+- Following Vavr's philosophy: custom Unit is "an ugly workaround"
+
+```java
+// Good: Use Optional.empty() for void operations
+public static void traced(String op, Runnable work) {
+    impl.traced(op, () -> { work.run(); return Optional.empty(); });
+}
+
+// Bad: Custom Unit type requires definition and imports
+public static Unit traced(String op, Runnable work) { ... }
+```
 
 ### 4. Errors as Types
 - Use `Result<T>` or `Either<Error, T>` patterns
