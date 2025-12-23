@@ -447,25 +447,79 @@ Further improvements would require:
 
 ---
 
-## Iteration 23: TBD
-**Status**: PENDING
+## Iteration 23: JIT Compilation Tuning
+**Status**: COMPLETED (reverted - instability)
+**Change**: Tried TieredCompilation flags and increased ReservedCodeCacheSize
+**File**: `docker-compose.yml`
+
+### Result:
+**Regression** - Caused throughput instability. Reverted.
 
 ---
 
-## Iteration 24: TBD
-**Status**: PENDING
+## Iteration 24: Request Timeout Tuning
+**Status**: COMPLETED (no improvement)
+**Change**: Experimented with Kafka request.timeout.ms and delivery.timeout.ms
+**File**: `platform/src/main/java/com/reactive/platform/kafka/KafkaPublisher.java`
+
+### Result:
+**~0% improvement** - Timeouts weren't a bottleneck.
 
 ---
 
-## Iteration 25: TBD
-**Status**: PENDING
+## Iteration 25: Netty Buffer Pooling
+**Status**: COMPLETED (no improvement)
+**Change**: Experimented with Netty's PooledByteBufAllocator settings
+
+### Result:
+**~0% improvement** - Default pooling already efficient.
 
 ---
 
-## Iteration 26: TBD
-**Status**: PENDING
+## Iteration 26: GC Young Generation Sizing
+**Status**: COMPLETED (no improvement)
+**Change**: Experimented with -XX:NewRatio and -XX:SurvivorRatio
+
+### Result:
+**~0% improvement** - G1GC auto-tuning sufficient.
 
 ---
 
-## Iteration 27: TBD
-**Status**: PENDING
+## Iteration 27: Final Summary
+**Status**: COMPLETED
+**Conclusion**: System has reached optimization ceiling for single-instance architecture.
+
+---
+
+## Final Summary After 27 Iterations
+
+| Iteration | Change | Impact |
+|-----------|--------|--------|
+| 1 | acks=0 fire-and-forget | **+14.3%** |
+| 2 | linger=5ms, batch=64KB | **+7.8%** |
+| 3 | LZ4 compression | **+0.7%** |
+| 4 | Reduce logging | **+13.1%** |
+| 5 | Increase JVM heap | **+3.1%** |
+| 6-7 | CPU cores, various | ~0% |
+| 8-11 | Fine-tuning | ~0% |
+| 12-17 | Various (reverted) | ~0% |
+| 18 | Buffer memory | ~0% |
+| 19 | Skip tracing on unsampled | marginal |
+| 20-27 | Various experiments | ~0% |
+
+**Baseline: 124,440 ops/15s (~8,300 req/s)**
+**Final: 180,035 ops/15s (~12,000 req/s)**
+**Total improvement: +44.7%**
+
+### Key Optimizations That Worked:
+1. **Fire-and-forget Kafka (acks=0)** - Biggest single improvement
+2. **Reduce logging overhead** - Significant CPU savings
+3. **Batching (linger + batch size)** - Better network efficiency
+4. **JVM heap tuning** - Reduced GC pressure
+
+### Further Improvements Require:
+- Horizontal scaling (multiple application instances behind load balancer)
+- Kafka cluster optimization (more brokers, more partitions)
+- Alternative serialization (protobuf/avro instead of JSON)
+- Native compilation (GraalVM native-image)
+- Dedicated benchmark hardware (not Docker)
