@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Full End-to-End Report</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        #root { min-height: 100vh; }
+        .loading { display: flex; justify-content: center; align-items: center; height: 100vh; font-size: 18px; color: #666; }
+    </style>
+</head>
+<body>
+    <div id="root"><div class="loading">Loading benchmark report...</div></div>
+    <script>
+        window.__BENCHMARK_DATA__ = {
+  "component" : "full",
+  "name" : "Full End-to-End",
+  "description" : "Complete pipeline: HTTP → Kafka → Flink → Drools",
+  "startTime" : "2025-12-23T00:35:32.580942611Z",
+  "endTime" : "2025-12-23T00:35:42.621041959Z",
+  "durationMs" : 10041,
+  "totalOperations" : 15555,
+  "successfulOperations" : 15555,
+  "failedOperations" : 0,
+  "peakThroughput" : 8789,
+  "avgThroughput" : 1549,
+  "throughputTimeline" : [ 0, 0, 0, 0, 2497, 3172, 3119, 8789, 3411, 3412, 3348 ],
+  "latency" : {
+    "min" : 0,
+    "max" : 62,
+    "avg" : 2,
+    "p50" : 2,
+    "p95" : 6,
+    "p99" : 9
+  },
+  "throughputStability" : 0.9839114415403093,
+  "cpuTimeline" : [ 21.142578125, 19.44580078125, 19.44580078125, 19.44580078125, 19.44580078125, 19.44580078125, 37.9150390625, 37.9150390625 ],
+  "memoryTimeline" : [ 1.2302075336968261, 1.2302075336968261, 1.2302075336968261, 1.2302075336968261, 3.0932425490301387, 2.346059989736732, 3.213059072176936, 2.526728440485857 ],
+  "peakCpu" : 37.9150390625,
+  "peakMemory" : 3.213059072176936,
+  "avgCpu" : 24.27520751953125,
+  "avgMemory" : 2.0124900232771212,
+  "componentTiming" : {
+    "gatewayMs" : 0,
+    "kafkaMs" : 0,
+    "flinkMs" : 0,
+    "droolsMs" : 0
+  },
+  "sampleEvents" : [ ],
+  "status" : "completed",
+  "errorMessage" : "",
+  "success" : true
+};
+        window.__BENCHMARK_COMMIT__ = "d185ad1";
+    </script>
+    <script src="../assets/benchmark-report.js"></script>
+</body>
+</html>

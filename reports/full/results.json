@@ -1,0 +1,39 @@
+{
+  "component" : "full",
+  "name" : "Full End-to-End",
+  "description" : "Complete pipeline: HTTP → Kafka → Flink → Drools",
+  "startTime" : "2025-12-23T00:35:32.580942611Z",
+  "endTime" : "2025-12-23T00:35:42.621041959Z",
+  "durationMs" : 10041,
+  "totalOperations" : 15555,
+  "successfulOperations" : 15555,
+  "failedOperations" : 0,
+  "peakThroughput" : 8789,
+  "avgThroughput" : 1549,
+  "throughputTimeline" : [ 0, 0, 0, 0, 2497, 3172, 3119, 8789, 3411, 3412, 3348 ],
+  "latency" : {
+    "min" : 0,
+    "max" : 62,
+    "avg" : 2,
+    "p50" : 2,
+    "p95" : 6,
+    "p99" : 9
+  },
+  "throughputStability" : 0.9839114415403093,
+  "cpuTimeline" : [ 21.142578125, 19.44580078125, 19.44580078125, 19.44580078125, 19.44580078125, 19.44580078125, 37.9150390625, 37.9150390625 ],
+  "memoryTimeline" : [ 1.2302075336968261, 1.2302075336968261, 1.2302075336968261, 1.2302075336968261, 3.0932425490301387, 2.346059989736732, 3.213059072176936, 2.526728440485857 ],
+  "peakCpu" : 37.9150390625,
+  "peakMemory" : 3.213059072176936,
+  "avgCpu" : 24.27520751953125,
+  "avgMemory" : 2.0124900232771212,
+  "componentTiming" : {
+    "gatewayMs" : 0,
+    "kafkaMs" : 0,
+    "flinkMs" : 0,
+    "droolsMs" : 0
+  },
+  "sampleEvents" : [ ],
+  "status" : "completed",
+  "errorMessage" : "",
+  "success" : true
+}

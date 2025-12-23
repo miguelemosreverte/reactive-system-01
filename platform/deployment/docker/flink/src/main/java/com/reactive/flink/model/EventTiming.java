@@ -1,96 +1,59 @@
 package com.reactive.flink.model;
 
-import java.io.Serializable;
-
 /**
- * Tracks timing information as an event flows through the pipeline
- * Used for per-component latency breakdown in benchmark reports
+ * Tracks timing information as an event flows through the pipeline.
+ * Used for per-component latency breakdown in benchmark reports.
+ *
+ * Immutable record with copy methods for creating modified instances.
+ * Uses primitive longs (0 = not set) to avoid boxed null handling.
  */
-public class EventTiming implements Serializable {
-    private static final long serialVersionUID = 1L;
+public record EventTiming(
+        long gatewayReceivedAt,
+        long gatewayPublishedAt,
+        long flinkReceivedAt,
+        long flinkProcessedAt,
+        long droolsStartAt,
+        long droolsEndAt
+) {
+    private static final EventTiming EMPTY = new EventTiming(0, 0, 0, 0, 0, 0);
 
-    private Long gatewayReceivedAt;
-    private Long gatewayPublishedAt;
-    private Long flinkReceivedAt;
-    private Long flinkProcessedAt;
-    private Long droolsStartAt;
-    private Long droolsEndAt;
-
-    public EventTiming() {
-    }
-
-    public Long getGatewayReceivedAt() {
-        return gatewayReceivedAt;
-    }
-
-    public void setGatewayReceivedAt(Long gatewayReceivedAt) {
-        this.gatewayReceivedAt = gatewayReceivedAt;
-    }
-
-    public Long getGatewayPublishedAt() {
-        return gatewayPublishedAt;
-    }
-
-    public void setGatewayPublishedAt(Long gatewayPublishedAt) {
-        this.gatewayPublishedAt = gatewayPublishedAt;
-    }
-
-    public Long getFlinkReceivedAt() {
-        return flinkReceivedAt;
-    }
-
-    public void setFlinkReceivedAt(Long flinkReceivedAt) {
-        this.flinkReceivedAt = flinkReceivedAt;
-    }
-
-    public Long getFlinkProcessedAt() {
-        return flinkProcessedAt;
-    }
-
-    public void setFlinkProcessedAt(Long flinkProcessedAt) {
-        this.flinkProcessedAt = flinkProcessedAt;
-    }
-
-    public Long getDroolsStartAt() {
-        return droolsStartAt;
-    }
-
-    public void setDroolsStartAt(Long droolsStartAt) {
-        this.droolsStartAt = droolsStartAt;
-    }
-
-    public Long getDroolsEndAt() {
-        return droolsEndAt;
-    }
-
-    public void setDroolsEndAt(Long droolsEndAt) {
-        this.droolsEndAt = droolsEndAt;
+    public static EventTiming empty() {
+        return EMPTY;
     }
 
     /**
-     * Copy timing from another instance
+     * Create from another timing, or empty if input is absent.
+     * Use at boundaries where timing may come from external sources.
      */
-    public static EventTiming copyFrom(EventTiming other) {
-        if (other == null) return new EventTiming();
-        EventTiming copy = new EventTiming();
-        copy.gatewayReceivedAt = other.gatewayReceivedAt;
-        copy.gatewayPublishedAt = other.gatewayPublishedAt;
-        copy.flinkReceivedAt = other.flinkReceivedAt;
-        copy.flinkProcessedAt = other.flinkProcessedAt;
-        copy.droolsStartAt = other.droolsStartAt;
-        copy.droolsEndAt = other.droolsEndAt;
-        return copy;
+    public static EventTiming from(EventTiming other) {
+        return other != null ? other : EMPTY;
     }
 
-    @Override
-    public String toString() {
-        return "EventTiming{" +
-                "gatewayReceivedAt=" + gatewayReceivedAt +
-                ", gatewayPublishedAt=" + gatewayPublishedAt +
-                ", flinkReceivedAt=" + flinkReceivedAt +
-                ", flinkProcessedAt=" + flinkProcessedAt +
-                ", droolsStartAt=" + droolsStartAt +
-                ", droolsEndAt=" + droolsEndAt +
-                '}';
+    public EventTiming withGatewayReceivedAt(long t) {
+        return new EventTiming(t, gatewayPublishedAt, flinkReceivedAt, flinkProcessedAt, droolsStartAt, droolsEndAt);
+    }
+
+    public EventTiming withGatewayPublishedAt(long t) {
+        return new EventTiming(gatewayReceivedAt, t, flinkReceivedAt, flinkProcessedAt, droolsStartAt, droolsEndAt);
+    }
+
+    public EventTiming withFlinkReceivedAt(long t) {
+        return new EventTiming(gatewayReceivedAt, gatewayPublishedAt, t, flinkProcessedAt, droolsStartAt, droolsEndAt);
+    }
+
+    public EventTiming withFlinkProcessedAt(long t) {
+        return new EventTiming(gatewayReceivedAt, gatewayPublishedAt, flinkReceivedAt, t, droolsStartAt, droolsEndAt);
+    }
+
+    public EventTiming withDroolsStartAt(long t) {
+        return new EventTiming(gatewayReceivedAt, gatewayPublishedAt, flinkReceivedAt, flinkProcessedAt, t, droolsEndAt);
+    }
+
+    public EventTiming withDroolsEndAt(long t) {
+        return new EventTiming(gatewayReceivedAt, gatewayPublishedAt, flinkReceivedAt, flinkProcessedAt, droolsStartAt, t);
+    }
+
+    public EventTiming withDroolsTiming(long start, long end) {
+        return new EventTiming(gatewayReceivedAt, gatewayPublishedAt, flinkReceivedAt, flinkProcessedAt, start, end);
     }
 }

@@ -157,7 +157,7 @@ public class CounterJob {
         // - Main output: CounterResult with alert="PENDING" (immediate feedback)
         // - Side output: PreDroolsResult for snapshot evaluation (bounded)
         SingleOutputStreamOperator<CounterResult> immediateResults = events
-                .keyBy(CounterEvent::getSessionId)
+                .keyBy(CounterEvent::sessionId)
                 .process(new CounterProcessor(LATENCY_MIN_MS, LATENCY_MAX_MS));
 
         // Send immediate results to counter-results topic
@@ -177,14 +177,14 @@ public class CounterJob {
             // without calling Drools - simulates processing without rule evaluation
             DataStream<CounterResult> bypassedAlerts = snapshots
                     .map(pre -> new CounterResult(
-                            pre.getSessionId(),
-                            pre.getCounterValue(),
+                            pre.sessionId(),
+                            pre.counterValue(),
                             "BYPASS",
                             "Drools bypassed (Layer 2 benchmark)",
-                            pre.getRequestId(),
-                            pre.getCustomerId(),
-                            pre.getEventId(),
-                            pre.getTiming()
+                            pre.requestId(),
+                            pre.customerId(),
+                            pre.eventId(),
+                            pre.timing()
                     ));
             bypassedAlerts.sinkTo(alertsSink);
         } else {

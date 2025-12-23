@@ -196,7 +196,7 @@ public final class Log {
     }
 
     // ========================================================================
-    // Async Span Support (for Kafka, async HTTP, etc.)
+    // Async Span Support
     // ========================================================================
 
     /**
@@ -210,16 +210,13 @@ public final class Log {
 
     /**
      * Handle for async span operations.
-     * Use this when work is async (e.g., Kafka callbacks, async HTTP).
+     * Use this when work is async (callbacks, futures, reactive streams).
      *
      * Usage:
-     *   SpanHandle span = Log.asyncSpan("kafka.publish", SpanType.PRODUCER);
-     *   span.attr("messaging.destination", topic);
+     *   SpanHandle span = Log.asyncSpan("send.message", SpanType.PRODUCER);
+     *   span.attr("destination", topic);
      *
-     *   // Inject headers into Kafka record
-     *   span.headers().forEach((k, v) -> record.headers().add(k, v.getBytes()));
-     *
-     *   producer.send(record, (metadata, error) -> {
+     *   sendAsync(message, (result, error) -> {
      *       if (error != null) span.failure(error);
      *       else span.success();
      *   });
@@ -236,6 +233,9 @@ public final class Log {
 
         /** Add numeric attribute to span. */
         void attr(String key, long value);
+
+        /** Create a child span under this span. */
+        SpanHandle childSpan(String operation, SpanType type);
 
         /** Mark span as successful and end it. */
         void success();
@@ -268,5 +268,141 @@ public final class Log {
      */
     public static SpanHandle consumerSpan(String operation) {
         return impl.asyncSpan(operation, SpanType.CONSUMER);
+    }
+
+    /**
+     * Start a consumer span with parent context from W3C trace headers.
+     * Use this when receiving messages to continue the distributed trace.
+     *
+     * @param operation the span name
+     * @param traceparent W3C traceparent header value (may be null or empty)
+     * @param tracestate W3C tracestate header value (may be null or empty)
+     */
+    public static SpanHandle consumerSpanWithParent(String operation, String traceparent, String tracestate) {
+        return impl.consumerSpanWithParent(operation, traceparent, tracestate);
+    }
+
+    // ========================================================================
+    // High-Level Traced Operations (hide all ceremony)
+    // ========================================================================
+
+    /**
+     * Execute work with a traced span, auto-extracting attributes from Traceable.
+     *
+     * Handles all ceremony:
+     * - Creates span of given type
+     * - Sets business IDs from Traceable input
+     * - Manages MDC for log correlation
+     * - Handles success/failure/cleanup
+     *
+     * Usage:
+     *   CounterResult result = Log.tracedProcess("flink.process", event, () -> {
+     *       return processEvent(event);
+     *   });
+     *
+     * @param operation span name
+     * @param input Traceable input for attribute extraction
+     * @param work the work to execute
+     * @return the result from work
+     */
+    public static <T> T tracedProcess(String operation, Traceable input,
+                                       java.util.function.Supplier<T> work) {
+        return impl.tracedProcess(operation, input, work);
+    }
+
+    /**
+     * Execute async work with tracing, returning SpanHandle for manual completion.
+     *
+     * Use this when work is truly async (callbacks, futures) and you need
+     * to call success()/failure() later.
+     *
+     * Usage:
+     *   SpanHandle span = Log.asyncTracedProcess("drools.call", input);
+     *   httpClient.sendAsync(request).thenAccept(response -> {
+     *       span.attr("http.status", response.statusCode());
+     *       span.success();
+     *   }).exceptionally(e -> {
+     *       span.failure(e);
+     *       return null;
+     *   });
+     */
+    public static SpanHandle asyncTracedProcess(String operation, Traceable input, SpanType type) {
+        return impl.asyncTracedProcess(operation, input, type);
+    }
+
+    /**
+     * Process a message that carries trace context, continuing the distributed trace.
+     *
+     * Handles all ceremony:
+     * - Creates span with parent context from message's traceparent/tracestate
+     * - Sets business IDs from TracedMessage
+     * - Manages MDC for log correlation
+     * - Returns SpanHandle for async completion
+     *
+     * Usage:
+     *   SpanHandle span = Log.asyncTracedConsume("flink.process", event);
+     *   span.attr("counter.action", action);  // Add operation-specific attrs
+     *   try {
+     *       // ... do work ...
+     *       span.success();
+     *   } catch (Exception e) {
+     *       span.failure(e);
+     *   }
+     *
+     * @param operation span name
+     * @param message TracedMessage with business IDs and trace context
+     * @param type span type (CONSUMER for processing incoming, PRODUCER for outgoing)
+     */
+    public static SpanHandle asyncTracedConsume(String operation, TracedMessage message, SpanType type) {
+        return impl.asyncTracedConsume(operation, message, type);
+    }
+
+    /**
+     * Receive/process a Traceable message with auto-extracted business IDs.
+     *
+     * Handles all ceremony:
+     * - Creates span of given type
+     * - Sets business IDs from Traceable
+     * - Manages MDC for log correlation
+     * - Returns SpanHandle for manual completion
+     *
+     * Use for operations where you already have a Traceable object
+     * and want to wrap work in a traced span.
+     *
+     * Usage:
+     *   SpanHandle span = Log.tracedReceive("deserialize", event, SpanType.CONSUMER);
+     *   span.attr("message.size", bytes.length);  // Add operation-specific attrs
+     *   // ... do work ...
+     *   span.success();
+     *
+     * @param operation span name
+     * @param message Traceable with business IDs
+     * @param type span type
+     */
+    public static SpanHandle tracedReceive(String operation, Traceable message, SpanType type) {
+        return impl.tracedReceive(operation, message, type);
+    }
+
+    // ========================================================================
+    // MDC Management (for log correlation)
+    // ========================================================================
+
+    /**
+     * Set MDC context for log correlation from a Traceable message.
+     * Sets requestId, customerId (if present), and traceId.
+     *
+     * @param traceId the trace ID from the current span
+     * @param message Traceable to extract business IDs from
+     */
+    public static void setMdc(String traceId, Traceable message) {
+        impl.setMdc(traceId, message);
+    }
+
+    /**
+     * Clear all MDC context.
+     * Call this in a finally block after processing is complete.
+     */
+    public static void clearMdc() {
+        impl.clearMdc();
     }
 }

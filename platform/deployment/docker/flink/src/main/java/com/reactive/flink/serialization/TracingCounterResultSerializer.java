@@ -14,9 +14,12 @@ import java.nio.charset.StandardCharsets;
 /**
  * Kafka serializer for CounterResult that injects W3C trace context headers.
  * This enables distributed trace propagation from Flink back to Gateway.
+ *
+ * INTERNAL: Receives CounterResult with guaranteed non-empty string fields.
+ * Uses record accessors and isEmpty() checks.
  */
 public class TracingCounterResultSerializer implements KafkaRecordSerializationSchema<CounterResult> {
-    private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 2L;
     private static final Logger LOG = LoggerFactory.getLogger(TracingCounterResultSerializer.class);
 
     private final String topic;
@@ -49,19 +52,20 @@ public class TracingCounterResultSerializer implements KafkaRecordSerializationS
             // Create headers with trace context
             RecordHeaders headers = new RecordHeaders();
 
-            if (result.getTraceparent() != null) {
+            // Record fields are guaranteed non-empty strings - use isEmpty() check
+            if (!result.traceparent().isEmpty()) {
                 headers.add(new RecordHeader("traceparent",
-                        result.getTraceparent().getBytes(StandardCharsets.UTF_8)));
+                        result.traceparent().getBytes(StandardCharsets.UTF_8)));
             }
 
-            if (result.getTracestate() != null) {
+            if (!result.tracestate().isEmpty()) {
                 headers.add(new RecordHeader("tracestate",
-                        result.getTracestate().getBytes(StandardCharsets.UTF_8)));
+                        result.tracestate().getBytes(StandardCharsets.UTF_8)));
             }
 
             // Use sessionId as key for Kafka partitioning
-            byte[] key = result.getSessionId() != null
-                    ? result.getSessionId().getBytes(StandardCharsets.UTF_8)
+            byte[] key = !result.sessionId().isEmpty()
+                    ? result.sessionId().getBytes(StandardCharsets.UTF_8)
                     : null;
 
             return new ProducerRecord<>(topic, null, timestamp, key, value, headers);

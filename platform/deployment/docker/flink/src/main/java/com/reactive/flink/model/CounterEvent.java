@@ -1,6 +1,8 @@
 package com.reactive.flink.model;
 
-import java.io.Serializable;
+import com.reactive.platform.observe.TracedMessage;
+
+import static com.reactive.platform.Opt.or;
 
 /**
  * Counter event received from Kafka.
@@ -11,122 +13,54 @@ import java.io.Serializable;
  * - eventId: Unique event ID
  * - sessionId: Counter instance ID
  *
- * Note: OpenTelemetry trace propagation is handled automatically by the OTel agent
- * via W3C traceparent headers in Kafka. No need to manually propagate trace IDs.
+ * Immutable record with compact constructor for boundary normalization.
+ * Implements TracedMessage for automatic span attribute extraction
+ * and trace context propagation.
  */
-public class CounterEvent implements Serializable {
-    private static final long serialVersionUID = 3L;
-
-    private String requestId;      // Correlation ID for this request
-    private String customerId;     // Customer/tenant ID for multi-tenancy
-    private String eventId;        // Unique event ID
-    private String sessionId;      // Counter instance ID
-    private String action;         // "increment", "decrement", "set"
-    private int value;
-    private long timestamp;
-    private EventTiming timing;
-    private long deserializedAt;
-
-    // Trace context propagation - stores W3C traceparent header value
-    private String traceparent;
-    private String tracestate;
-
-    public CounterEvent() {
+public record CounterEvent(
+        String requestId,
+        String customerId,
+        String eventId,
+        String sessionId,
+        String action,
+        int value,
+        long timestamp,
+        EventTiming timing,
+        long deserializedAt,
+        String traceparent,
+        String tracestate
+) implements TracedMessage {
+    /**
+     * Compact constructor normalizes all fields at construction.
+     * BOUNDARY: Jackson deserialization may provide nulls.
+     */
+    public CounterEvent {
+        requestId = or(requestId, "");
+        customerId = or(customerId, "");
+        eventId = or(eventId, "");
+        sessionId = or(sessionId, "");
+        action = or(action, "increment");
+        timing = EventTiming.from(timing);
+        traceparent = or(traceparent, "");
+        tracestate = or(tracestate, "");
     }
 
+    /**
+     * Convenience constructor for simple event creation.
+     */
     public CounterEvent(String sessionId, String action, int value) {
-        this.sessionId = sessionId;
-        this.action = action;
-        this.value = value;
-        this.timestamp = System.currentTimeMillis();
+        this("", "", "", sessionId, action, value, System.currentTimeMillis(),
+                EventTiming.empty(), 0, "", "");
     }
 
-    public String getRequestId() {
-        return requestId;
+    public CounterEvent withDeserializedAt(long t) {
+        return new CounterEvent(requestId, customerId, eventId, sessionId, action,
+                value, timestamp, timing, t, traceparent, tracestate);
     }
 
-    public void setRequestId(String requestId) {
-        this.requestId = requestId;
-    }
-
-    public String getCustomerId() {
-        return customerId;
-    }
-
-    public void setCustomerId(String customerId) {
-        this.customerId = customerId;
-    }
-
-    public String getEventId() {
-        return eventId;
-    }
-
-    public void setEventId(String eventId) {
-        this.eventId = eventId;
-    }
-
-    public String getSessionId() {
-        return sessionId;
-    }
-
-    public void setSessionId(String sessionId) {
-        this.sessionId = sessionId;
-    }
-
-    public String getAction() {
-        return action;
-    }
-
-    public void setAction(String action) {
-        this.action = action;
-    }
-
-    public int getValue() {
-        return value;
-    }
-
-    public void setValue(int value) {
-        this.value = value;
-    }
-
-    public long getTimestamp() {
-        return timestamp;
-    }
-
-    public void setTimestamp(long timestamp) {
-        this.timestamp = timestamp;
-    }
-
-    public EventTiming getTiming() {
-        return timing;
-    }
-
-    public void setTiming(EventTiming timing) {
-        this.timing = timing;
-    }
-
-    public long getDeserializedAt() {
-        return deserializedAt;
-    }
-
-    public void setDeserializedAt(long deserializedAt) {
-        this.deserializedAt = deserializedAt;
-    }
-
-    public String getTraceparent() {
-        return traceparent;
-    }
-
-    public void setTraceparent(String traceparent) {
-        this.traceparent = traceparent;
-    }
-
-    public String getTracestate() {
-        return tracestate;
-    }
-
-    public void setTracestate(String tracestate) {
-        this.tracestate = tracestate;
+    public CounterEvent withTraceContext(String traceparent, String tracestate) {
+        return new CounterEvent(requestId, customerId, eventId, sessionId, action,
+                value, timestamp, timing, deserializedAt, traceparent, tracestate);
     }
 
     @Override

@@ -2,16 +2,13 @@ package com.reactive.counter.websocket;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.reactive.counter.service.ResultConsumerService;
-import io.opentelemetry.api.GlobalOpenTelemetry;
-import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.api.trace.SpanKind;
-import io.opentelemetry.api.trace.Tracer;
+import com.reactive.platform.observe.Log;
+import com.reactive.platform.observe.Log.SpanHandle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.socket.WebSocketHandler;
-import org.springframework.web.reactive.socket.WebSocketMessage;
 import org.springframework.web.reactive.socket.WebSocketSession;
 import reactor.core.publisher.Mono;
 
@@ -32,11 +29,9 @@ public class CounterWebSocketHandler implements WebSocketHandler {
     private static final AtomicInteger connectionCount = new AtomicInteger(0);
 
     private final ResultConsumerService resultConsumerService;
-    private final Tracer tracer;
 
     public CounterWebSocketHandler(ResultConsumerService resultConsumerService) {
         this.resultConsumerService = resultConsumerService;
-        this.tracer = GlobalOpenTelemetry.getTracer("websocket-handler");
     }
 
     @Override
@@ -44,11 +39,9 @@ public class CounterWebSocketHandler implements WebSocketHandler {
         String sessionId = UUID.randomUUID().toString().substring(0, 8);
         int connNum = connectionCount.incrementAndGet();
 
-        Span connectSpan = tracer.spanBuilder("websocket.connect")
-                .setSpanKind(SpanKind.SERVER)
-                .setAttribute("websocket.session_id", sessionId)
-                .setAttribute("websocket.connection_count", connNum)
-                .startSpan();
+        SpanHandle connectSpan = Log.consumerSpan("websocket.connect");
+        connectSpan.attr("websocket.session_id", sessionId);
+        connectSpan.attr("websocket.connection_count", connNum);
 
         log.info("WebSocket connected: sessionId={}, totalConnections={}", sessionId, connNum);
 
@@ -64,7 +57,7 @@ public class CounterWebSocketHandler implements WebSocketHandler {
             welcomeMessage = "{\"type\":\"connected\"}";
         }
 
-        connectSpan.end();
+        connectSpan.success();
 
         // Stream results to this client
         return session.send(

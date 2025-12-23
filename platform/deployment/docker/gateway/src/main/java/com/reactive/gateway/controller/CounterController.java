@@ -12,6 +12,8 @@ import reactor.core.publisher.Mono;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
+import static com.reactive.platform.Opt.or;
+
 @RestController
 @RequestMapping("/api")
 @RequiredArgsConstructor
@@ -45,8 +47,7 @@ public class CounterController {
     }
 
     private Mono<ResponseEntity<Map<String, Object>>> processCounter(CounterCommand command) {
-        String sessionId = command.getSessionId() != null ? command.getSessionId() : "default";
-        command.setSessionId(sessionId);
+        command.setSessionId(or(command.getSessionId(), "default"));
 
         CompletableFuture<CounterResult> future = kafkaService.publishAndWait(command, DEFAULT_TIMEOUT_MS);
 
@@ -54,16 +55,15 @@ public class CounterController {
             .map(result -> ResponseEntity.ok(Map.<String, Object>of(
                 "success", true,
                 "requestId", result.getRequestId(),
-                "customerId", result.getCustomerId() != null ? result.getCustomerId() : "",
+                "customerId", or(result.getCustomerId(), ""),
                 "eventId", result.getEventId(),
                 "result", result
             )))
             .onErrorResume(ex -> {
                 log.error("Counter operation failed", ex);
-                String errorMessage = ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName();
                 return Mono.just(ResponseEntity.internalServerError().body(Map.of(
                     "success", false,
-                    "error", errorMessage
+                    "error", or(ex.getMessage(), ex.getClass().getSimpleName())
                 )));
             });
     }
@@ -91,15 +91,14 @@ public class CounterController {
     }
 
     private ResponseEntity<Map<String, Object>> processCounterFast(CounterCommand command) {
-        String sessionId = command.getSessionId() != null ? command.getSessionId() : "default";
-        command.setSessionId(sessionId);
+        command.setSessionId(or(command.getSessionId(), "default"));
 
         try {
             var result = kafkaService.publishFireAndForget(command);
             return ResponseEntity.ok(Map.of(
                 "success", true,
                 "requestId", result.requestId(),
-                "customerId", command.getCustomerId() != null ? command.getCustomerId() : "",
+                "customerId", or(command.getCustomerId(), ""),
                 "eventId", result.eventId(),
                 "status", "accepted"
             ));

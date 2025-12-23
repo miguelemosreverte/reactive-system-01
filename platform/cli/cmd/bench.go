@@ -115,16 +115,16 @@ func runSingleBenchmark(projectRoot, target string) {
 	reportsDir := filepath.Join(projectRoot, "reports")
 	os.MkdirAll(filepath.Join(reportsDir, target), 0755)
 
-	// Step 1: Compile platform module
-	printInfo("Compiling platform module...")
-	if !runMavenCompile(projectRoot, network, "platform") {
-		printError("Failed to compile platform module")
+	// Step 1: Install platform module (so other modules can depend on it)
+	printInfo("Installing platform module...")
+	if !runMavenCompile(projectRoot, network, "platform", true) {
+		printError("Failed to install platform module")
 		return
 	}
 
 	// Step 2: Compile target module
 	printInfo(fmt.Sprintf("Compiling %s module...", module))
-	if !runMavenCompile(projectRoot, network, module) {
+	if !runMavenCompile(projectRoot, network, module, false) {
 		printError(fmt.Sprintf("Failed to compile %s module", module))
 		return
 	}
@@ -183,7 +183,14 @@ func getBenchmarkConfig(target string) (module, testClass string) {
 	return "", ""
 }
 
-func runMavenCompile(projectRoot, network, module string) bool {
+func runMavenCompile(projectRoot, network, module string, install bool) bool {
+	var goals []string
+	if install {
+		goals = []string{"install", "-q", "-DskipTests"}
+	} else {
+		goals = []string{"compile", "test-compile", "-q", "-DskipTests", "-Pbenchmark"}
+	}
+
 	args := []string{
 		"run", "--rm",
 		"--network", network,
@@ -192,8 +199,8 @@ func runMavenCompile(projectRoot, network, module string) bool {
 		"-w", "/app",
 		"maven:3.9-eclipse-temurin-21",
 		"mvn", "-f", fmt.Sprintf("%s/pom.xml", module),
-		"compile", "test-compile", "-q", "-DskipTests", "-Pbenchmark",
 	}
+	args = append(args, goals...)
 
 	cmd := exec.Command("docker", args...)
 	cmd.Dir = projectRoot

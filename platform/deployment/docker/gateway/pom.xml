@@ -38,6 +38,13 @@
     </dependencyManagement>
 
     <dependencies>
+        <!-- Reactive Platform - unified observability API -->
+        <dependency>
+            <groupId>com.reactive</groupId>
+            <artifactId>platform</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+
         <!-- Spring WebFlux for reactive, non-blocking HTTP -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

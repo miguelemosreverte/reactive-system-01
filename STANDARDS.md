@@ -18,7 +18,153 @@ Code should look like Scala - functional, concise, type-safe.
 
 **Rule: We never instantiate null. Ever.**
 
-When third-party code returns null (JSON parsing, Kafka callbacks, external APIs), we intercept it immediately at the boundary and convert to a proper value.
+#### Boundaries vs Internal Code
+
+**Critical distinction:**
+
+1. **Third-party boundary** = where external code can return null
+   - JSON deserialization (Jackson)
+   - Kafka `record.value()`, `headers.lastHeader()`
+   - Flink state `valueState.value()` (null = uninitialized)
+   - `Map.get(key)` (always a boundary!)
+   - HTTP response parsing
+
+2. **Internal platform code** = WE own it, WE control it
+   - Once normalized at boundary, values are GUARANTEED non-null
+   - No defensive coding against ourselves
+   - Trust the type system
+
+**The rule: Normalize ONCE at the boundary, trust everywhere else.**
+
+#### The `Opt.or()` Utility
+
+Use at boundaries to capture nulls from third-party code:
+
+```java
+import static com.reactive.platform.Opt.or;
+
+// At boundary (third-party can return null)
+String value = or(externalApi.getValue(), "");
+int count = or(flinkState.value(), 0);
+Header h = or(record.headers().lastHeader("key"), defaultHeader);
+
+// Type-parametric - works with any type
+List<Item> items = or(response.getItems(), List.of());
+```
+
+#### Records = The Contract Between Modules
+
+Records with compact constructors are the correct way for inter-module communication:
+
+```java
+public record CounterEvent(String sessionId, String requestId, String action) {
+    public CounterEvent {
+        // Normalize ONCE at construction (the boundary)
+        sessionId = or(sessionId, "");
+        requestId = or(requestId, "");
+        action = or(action, "increment");
+    }
+}
+
+// EVERYWHERE ELSE: Trust the record, no or() needed
+void process(CounterEvent event) {
+    String id = event.requestId();  // Guaranteed non-null - DO NOT use or()
+    log.info("Processing {}", id);  // Safe
+}
+```
+
+#### What IS and IS NOT a Boundary
+
+```java
+// IS a boundary - use or()
+Jackson.readValue(json, MyRecord.class)  // JSON can have nulls
+record.value()                            // Kafka message can be null
+state.value()                             // Flink state can be null
+map.get(key)                              // Map access can return null
+headers.lastHeader(key)                   // Header may not exist
+
+// IS NOT a boundary - DO NOT use or()
+event.requestId()      // Our record - already normalized
+input.sessionId()      // Passed from our code - trust it
+result.customerId()    // We constructed this - trust it
+```
+
+#### Anti-Pattern: Defensive Coding Against Ourselves
+
+```java
+// BAD: Treating our own values as untrusted
+String requestId = or(event.requestId(), "");  // WRONG - we own this!
+String customerId = or(input.customerId(), ""); // WRONG - we set this!
+
+// GOOD: Trust internal values, normalize only at construction
+public record Event(String requestId) {
+    public Event {
+        requestId = or(requestId, "");  // Normalize once here
+    }
+}
+// Then everywhere: event.requestId() is guaranteed non-null
+```
+
+#### Immutable Update Methods (with-prefixed)
+
+When records need field updates (e.g., adding runtime data after deserialization),
+use `with`-prefixed methods that return new instances:
+
+```java
+public record CounterEvent(
+    String sessionId,
+    String requestId,
+    long deserializedAt,
+    String traceparent
+) {
+    public CounterEvent {
+        sessionId = or(sessionId, "");
+        requestId = or(requestId, "");
+        traceparent = or(traceparent, "");
+    }
+
+    // Wither methods for runtime field updates
+    public CounterEvent withDeserializedAt(long t) {
+        return new CounterEvent(sessionId, requestId, t, traceparent);
+    }
+
+    public CounterEvent withTraceContext(String traceparent) {
+        return new CounterEvent(sessionId, requestId, deserializedAt, traceparent);
+    }
+}
+
+// Usage in deserializer:
+CounterEvent event = objectMapper.readValue(json, CounterEvent.class)
+    .withDeserializedAt(System.currentTimeMillis())
+    .withTraceContext(traceparent);
+```
+
+For timing records with many fields, provide a combined wither:
+
+```java
+public record EventTiming(long start, long end) {
+    public EventTiming withDroolsTiming(long start, long end) {
+        return new EventTiming(start, end);
+    }
+}
+```
+
+#### Avoid Maps for Inter-Module DTOs
+
+Maps are always boundaries (`map.get()` can return null). Use records instead:
+
+```java
+// BAD: Map access is always a boundary
+Map<String, String> data = getMessage();
+String id = or(data.get("requestId"), "");  // Defensive code needed
+
+// GOOD: Record is a contract
+record Message(String requestId) {
+    public Message { requestId = or(requestId, ""); }
+}
+Message msg = getMessage();
+String id = msg.requestId();  // Guaranteed non-null
+```
 
 #### Null-Free Type Mappings
 
@@ -29,30 +175,6 @@ When third-party code returns null (JSON parsing, Kafka callbacks, external APIs
 | `Map<K,V>` | `Map.of()` (empty map) |
 | `Optional<T>` | `Optional.empty()` |
 | Void/Unit returns | `Optional.empty()` |
-
-#### Boundary Handling Pattern
-
-```java
-// At system boundaries (JSON, HTTP, Kafka), intercept nulls immediately:
-String value = externalApi.getValue();
-String safeValue = value != null ? value : "";  // Never propagate null
-
-// For Optional wrapping:
-Optional<User> user = Optional.ofNullable(repository.find(id));
-```
-
-#### Record Compact Constructors
-
-Records that may be deserialized (JSON) must have compact constructors to normalize nulls:
-
-```java
-public record Config(String name, List<String> items) {
-    public Config {
-        name = name != null ? name : "";
-        items = items != null ? items : List.of();
-    }
-}
-```
 
 #### Why Not Custom Unit Types?
 
@@ -213,27 +335,27 @@ gateway/src/main/java/com/reactive/gateway/
 
 ### platform/deployment/docker/flink
 
-Note: Flink requires mutable POJOs for state serialization. OTel is used directly
-since Flink operators have no auto-instrumentation. nullSafe() helper used for strings.
+Note: Flink 1.18+ supports immutable records. All models are now Java records with
+compact constructors for boundary normalization and wither methods for immutable updates.
 
 ```
 flink/src/main/java/com/reactive/flink/
 ├── [x] CounterJob.java
 ├── async/
-│   [x] AsyncDroolsEnricher.java (OTel for async HTTP)
+│   [x] AsyncDroolsEnricher.java (uses record accessors)
 ├── model/
-│   [x] CounterEvent.java (mutable POJO - Flink requirement)
-│   [x] CounterResult.java (mutable POJO)
-│   [x] EventTiming.java (mutable POJO)
-│   [x] PreDroolsResult.java (mutable POJO)
+│   [x] CounterEvent.java (record with compact constructor)
+│   [x] CounterResult.java (record with compact constructor)
+│   [x] EventTiming.java (record with wither methods)
+│   [x] PreDroolsResult.java (record with compact constructor)
 ├── processor/
 │   [x] AdaptiveLatencyController.java
-│   [x] CounterProcessor.java (OTel for Flink, nullSafe helper)
+│   [x] CounterProcessor.java (uses record accessors, or() for Flink state)
 └── serialization/
-    [x] CounterEventDeserializer.java (boundary - Kafka)
+    [x] CounterEventDeserializer.java (boundary - uses wither methods)
     [x] CounterResultSerializer.java
-    [x] TracingCounterResultSerializer.java
-    [x] TracingKafkaDeserializer.java
+    [x] TracingCounterResultSerializer.java (uses record accessors)
+    [x] TracingKafkaDeserializer.java (boundary - uses wither methods)
 ```
 
 ### platform/deployment/docker/drools

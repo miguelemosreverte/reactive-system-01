@@ -184,19 +184,67 @@ final class LogImpl {
                 .getTextMapPropagator()
                 .inject(context, headers, Map::put);
 
-        return new SpanHandleImpl(span, headers);
+        return new SpanHandleImpl(span, context, tracer, headers);
     }
+
+    Log.SpanHandle consumerSpanWithParent(String operation, String traceparent, String tracestate) {
+        // Extract parent context from W3C trace headers
+        Map<String, String> carrier = new HashMap<>();
+        if (traceparent != null && !traceparent.isEmpty()) {
+            carrier.put("traceparent", traceparent);
+        }
+        if (tracestate != null && !tracestate.isEmpty()) {
+            carrier.put("tracestate", tracestate);
+        }
+
+        Context extractedContext = GlobalOpenTelemetry.getPropagators()
+                .getTextMapPropagator()
+                .extract(Context.current(), carrier, HEADER_GETTER);
+
+        // Create consumer span with extracted parent
+        Span span = tracer.spanBuilder(operation)
+                .setParent(extractedContext)
+                .setSpanKind(SpanKind.CONSUMER)
+                .startSpan();
+
+        // Create context with this span for header injection
+        Context context = extractedContext.with(span);
+
+        // Extract propagation headers for downstream
+        Map<String, String> headers = new HashMap<>();
+        GlobalOpenTelemetry.getPropagators()
+                .getTextMapPropagator()
+                .inject(context, headers, Map::put);
+
+        return new SpanHandleImpl(span, context, tracer, headers);
+    }
+
+    private static final TextMapGetter<Map<String, String>> HEADER_GETTER = new TextMapGetter<>() {
+        @Override
+        public Iterable<String> keys(Map<String, String> carrier) {
+            return carrier.keySet();
+        }
+
+        @Override
+        public String get(Map<String, String> carrier, String key) {
+            return carrier != null ? carrier.get(key) : null;
+        }
+    };
 
     /**
      * Implementation of SpanHandle - all OTel details contained here.
      */
     private static final class SpanHandleImpl implements Log.SpanHandle {
         private final Span span;
+        private final Context context;
+        private final Tracer tracer;
         private final Map<String, String> headers;
         private volatile boolean ended = false;
 
-        SpanHandleImpl(Span span, Map<String, String> headers) {
+        SpanHandleImpl(Span span, Context context, Tracer tracer, Map<String, String> headers) {
             this.span = span;
+            this.context = context;
+            this.tracer = tracer;
             this.headers = Map.copyOf(headers); // Immutable copy
         }
 
@@ -221,6 +269,31 @@ final class LogImpl {
         }
 
         @Override
+        public Log.SpanHandle childSpan(String operation, Log.SpanType type) {
+            SpanKind kind = switch (type) {
+                case PRODUCER -> SpanKind.PRODUCER;
+                case CONSUMER -> SpanKind.CONSUMER;
+                case INTERNAL -> SpanKind.INTERNAL;
+            };
+
+            // Create child span with this span as parent
+            Span childSpan = tracer.spanBuilder(operation)
+                    .setParent(context)
+                    .setSpanKind(kind)
+                    .startSpan();
+
+            Context childContext = context.with(childSpan);
+
+            // Extract propagation headers for the child
+            Map<String, String> childHeaders = new HashMap<>();
+            GlobalOpenTelemetry.getPropagators()
+                    .getTextMapPropagator()
+                    .inject(childContext, childHeaders, Map::put);
+
+            return new SpanHandleImpl(childSpan, childContext, tracer, childHeaders);
+        }
+
+        @Override
         public void success() {
             if (!ended) {
                 ended = true;
@@ -238,6 +311,178 @@ final class LogImpl {
                 span.end();
             }
         }
+    }
+
+    // ========================================================================
+    // High-Level Traced Operations
+    // ========================================================================
+
+    <T> T tracedProcess(String operation, Traceable input,
+                        java.util.function.Supplier<T> work) {
+        Span span = tracer.spanBuilder(operation)
+                .setSpanKind(SpanKind.INTERNAL)
+                .startSpan();
+
+        // Business ID attributes from input
+        span.setAttribute("requestId", input.requestId());
+        span.setAttribute("customerId", input.customerId());
+        span.setAttribute("eventId", input.eventId());
+        span.setAttribute("session.id", input.sessionId());
+
+        // MDC for log correlation
+        if (!input.requestId().isEmpty()) {
+            org.slf4j.MDC.put("requestId", input.requestId());
+        }
+        org.slf4j.MDC.put("traceId", span.getSpanContext().getTraceId());
+
+        try (Scope scope = span.makeCurrent()) {
+            T result = work.get();
+            span.setStatus(io.opentelemetry.api.trace.StatusCode.OK);
+            return result;
+        } catch (Exception e) {
+            span.setStatus(io.opentelemetry.api.trace.StatusCode.ERROR, e.getMessage());
+            span.recordException(e);
+            throw e instanceof RuntimeException re ? re : new RuntimeException(e);
+        } finally {
+            span.end();
+            org.slf4j.MDC.clear();
+        }
+    }
+
+    Log.SpanHandle asyncTracedProcess(String operation, Traceable input, Log.SpanType type) {
+        SpanKind kind = switch (type) {
+            case PRODUCER -> SpanKind.PRODUCER;
+            case CONSUMER -> SpanKind.CONSUMER;
+            case INTERNAL -> SpanKind.INTERNAL;
+        };
+
+        Span span = tracer.spanBuilder(operation)
+                .setSpanKind(kind)
+                .startSpan();
+
+        // Business ID attributes from input
+        span.setAttribute("requestId", input.requestId());
+        span.setAttribute("customerId", input.customerId());
+        span.setAttribute("eventId", input.eventId());
+        span.setAttribute("session.id", input.sessionId());
+
+        // MDC for log correlation
+        if (!input.requestId().isEmpty()) {
+            org.slf4j.MDC.put("requestId", input.requestId());
+        }
+        org.slf4j.MDC.put("traceId", span.getSpanContext().getTraceId());
+
+        Context context = Context.current().with(span);
+        Map<String, String> headers = new HashMap<>();
+        GlobalOpenTelemetry.getPropagators()
+                .getTextMapPropagator()
+                .inject(context, headers, Map::put);
+
+        return new SpanHandleImpl(span, context, tracer, headers);
+    }
+
+    Log.SpanHandle asyncTracedConsume(String operation, TracedMessage message, Log.SpanType type) {
+        SpanKind kind = switch (type) {
+            case PRODUCER -> SpanKind.PRODUCER;
+            case CONSUMER -> SpanKind.CONSUMER;
+            case INTERNAL -> SpanKind.INTERNAL;
+        };
+
+        // Extract parent context from message's trace headers
+        Map<String, String> carrier = new HashMap<>();
+        String traceparent = message.traceparent();
+        String tracestate = message.tracestate();
+        if (traceparent != null && !traceparent.isEmpty()) {
+            carrier.put("traceparent", traceparent);
+        }
+        if (tracestate != null && !tracestate.isEmpty()) {
+            carrier.put("tracestate", tracestate);
+        }
+
+        Context extractedContext = GlobalOpenTelemetry.getPropagators()
+                .getTextMapPropagator()
+                .extract(Context.current(), carrier, HEADER_GETTER);
+
+        // Create span with extracted parent
+        Span span = tracer.spanBuilder(operation)
+                .setParent(extractedContext)
+                .setSpanKind(kind)
+                .startSpan();
+
+        // Business ID attributes from message (auto-extracted)
+        span.setAttribute("requestId", message.requestId());
+        span.setAttribute("customerId", message.customerId());
+        span.setAttribute("eventId", message.eventId());
+        span.setAttribute("session.id", message.sessionId());
+
+        // MDC for log correlation
+        if (!message.requestId().isEmpty()) {
+            org.slf4j.MDC.put("requestId", message.requestId());
+        }
+        org.slf4j.MDC.put("traceId", span.getSpanContext().getTraceId());
+
+        Context context = extractedContext.with(span);
+        Map<String, String> headers = new HashMap<>();
+        GlobalOpenTelemetry.getPropagators()
+                .getTextMapPropagator()
+                .inject(context, headers, Map::put);
+
+        return new SpanHandleImpl(span, context, tracer, headers);
+    }
+
+    Log.SpanHandle tracedReceive(String operation, Traceable message, Log.SpanType type) {
+        SpanKind kind = switch (type) {
+            case PRODUCER -> SpanKind.PRODUCER;
+            case CONSUMER -> SpanKind.CONSUMER;
+            case INTERNAL -> SpanKind.INTERNAL;
+        };
+
+        Span span = tracer.spanBuilder(operation)
+                .setSpanKind(kind)
+                .startSpan();
+
+        // Business ID attributes from message (auto-extracted)
+        span.setAttribute("requestId", message.requestId());
+        span.setAttribute("customerId", message.customerId());
+        span.setAttribute("eventId", message.eventId());
+        span.setAttribute("session.id", message.sessionId());
+
+        // MDC for log correlation
+        if (!message.requestId().isEmpty()) {
+            org.slf4j.MDC.put("requestId", message.requestId());
+        }
+        if (!message.customerId().isEmpty()) {
+            org.slf4j.MDC.put("customerId", message.customerId());
+        }
+        org.slf4j.MDC.put("traceId", span.getSpanContext().getTraceId());
+
+        Context context = Context.current().with(span);
+        Map<String, String> headers = new HashMap<>();
+        GlobalOpenTelemetry.getPropagators()
+                .getTextMapPropagator()
+                .inject(context, headers, Map::put);
+
+        return new SpanHandleImpl(span, context, tracer, headers);
+    }
+
+    // ========================================================================
+    // MDC Management
+    // ========================================================================
+
+    void setMdc(String traceId, Traceable message) {
+        if (!message.requestId().isEmpty()) {
+            org.slf4j.MDC.put("requestId", message.requestId());
+        }
+        if (!message.customerId().isEmpty()) {
+            org.slf4j.MDC.put("customerId", message.customerId());
+        }
+        if (traceId != null && !traceId.isEmpty()) {
+            org.slf4j.MDC.put("traceId", traceId);
+        }
+    }
+
+    void clearMdc() {
+        org.slf4j.MDC.clear();
     }
 
     // ========================================================================

@@ -1,6 +1,6 @@
 package com.reactive.flink.model;
 
-import java.io.Serializable;
+import static com.reactive.platform.Opt.or;
 
 /**
  * Counter result to be published to Kafka.
@@ -10,135 +10,49 @@ import java.io.Serializable;
  * - customerId: Customer/tenant ID for multi-tenancy
  * - eventId: Unique event ID
  * - sessionId: Counter instance ID
+ *
+ * Immutable record with compact constructor for normalization.
  */
-public class CounterResult implements Serializable {
-    private static final long serialVersionUID = 3L;
-
-    private String requestId;      // Correlation ID for this request
-    private String customerId;     // Customer/tenant ID for multi-tenancy
-    private String eventId;        // Unique event ID
-    private String sessionId;      // Counter instance ID
-    private int currentValue;
-    private String alert;
-    private String message;
-    private long timestamp;
-    private EventTiming timing;
-
-    // Trace context propagation - W3C traceparent/tracestate headers
-    private String traceparent;
-    private String tracestate;
-
-    public CounterResult() {
+public record CounterResult(
+        String sessionId,
+        int currentValue,
+        String alert,
+        String message,
+        String requestId,
+        String customerId,
+        String eventId,
+        EventTiming timing,
+        long timestamp,
+        String traceparent,
+        String tracestate
+) {
+    /**
+     * Compact constructor normalizes all fields at construction.
+     */
+    public CounterResult {
+        sessionId = or(sessionId, "");
+        alert = or(alert, "NONE");
+        message = or(message, "");
+        requestId = or(requestId, "");
+        customerId = or(customerId, "");
+        eventId = or(eventId, "");
+        timing = EventTiming.from(timing);
+        traceparent = or(traceparent, "");
+        tracestate = or(tracestate, "");
     }
 
-    public CounterResult(String sessionId, int currentValue, String alert, String message) {
-        this.sessionId = sessionId;
-        this.currentValue = currentValue;
-        this.alert = alert;
-        this.message = message;
-        this.timestamp = System.currentTimeMillis();
-    }
-
-    public CounterResult(String sessionId, int currentValue, String alert, String message,
-                         String requestId, String customerId) {
-        this(sessionId, currentValue, alert, message);
-        this.requestId = requestId;
-        this.customerId = customerId;
-    }
-
+    /**
+     * Create result with automatic timestamp.
+     */
     public CounterResult(String sessionId, int currentValue, String alert, String message,
                          String requestId, String customerId, String eventId, EventTiming timing) {
-        this(sessionId, currentValue, alert, message, requestId, customerId);
-        this.eventId = eventId;
-        this.timing = timing;
+        this(sessionId, currentValue, alert, message, requestId, customerId, eventId,
+             timing, System.currentTimeMillis(), "", "");
     }
 
-    public String getRequestId() {
-        return requestId;
-    }
-
-    public void setRequestId(String requestId) {
-        this.requestId = requestId;
-    }
-
-    public String getCustomerId() {
-        return customerId;
-    }
-
-    public void setCustomerId(String customerId) {
-        this.customerId = customerId;
-    }
-
-    public String getEventId() {
-        return eventId;
-    }
-
-    public void setEventId(String eventId) {
-        this.eventId = eventId;
-    }
-
-    public String getSessionId() {
-        return sessionId;
-    }
-
-    public void setSessionId(String sessionId) {
-        this.sessionId = sessionId;
-    }
-
-    public int getCurrentValue() {
-        return currentValue;
-    }
-
-    public void setCurrentValue(int currentValue) {
-        this.currentValue = currentValue;
-    }
-
-    public String getAlert() {
-        return alert;
-    }
-
-    public void setAlert(String alert) {
-        this.alert = alert;
-    }
-
-    public String getMessage() {
-        return message;
-    }
-
-    public void setMessage(String message) {
-        this.message = message;
-    }
-
-    public long getTimestamp() {
-        return timestamp;
-    }
-
-    public void setTimestamp(long timestamp) {
-        this.timestamp = timestamp;
-    }
-
-    public EventTiming getTiming() {
-        return timing;
-    }
-
-    public void setTiming(EventTiming timing) {
-        this.timing = timing;
-    }
-
-    public String getTraceparent() {
-        return traceparent;
-    }
-
-    public void setTraceparent(String traceparent) {
-        this.traceparent = traceparent;
-    }
-
-    public String getTracestate() {
-        return tracestate;
-    }
-
-    public void setTracestate(String tracestate) {
-        this.tracestate = tracestate;
+    public CounterResult withTraceContext(String traceparent, String tracestate) {
+        return new CounterResult(sessionId, currentValue, alert, message, requestId,
+                customerId, eventId, timing, timestamp, traceparent, tracestate);
     }
 
     @Override

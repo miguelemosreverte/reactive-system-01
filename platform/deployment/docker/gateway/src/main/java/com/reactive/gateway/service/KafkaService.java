@@ -2,17 +2,11 @@ package com.reactive.gateway.service;
 
 import com.reactive.gateway.model.CounterCommand;
 import com.reactive.gateway.model.CounterResult;
-import io.opentelemetry.api.GlobalOpenTelemetry;
-import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.api.trace.SpanKind;
-import io.opentelemetry.api.trace.Tracer;
-import io.opentelemetry.context.Context;
-import io.opentelemetry.context.propagation.TextMapGetter;
+import com.reactive.platform.observe.Log;
+import com.reactive.platform.observe.Log.SpanHandle;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.common.header.Header;
-import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -27,11 +21,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
+import static com.reactive.platform.Opt.or;
+
 /**
  * Kafka service for command publishing and result consumption.
  *
- * Clean service - business logic only.
- * Manual span creation only where OTel auto-instrumentation doesn't cover (Kafka consumer).
+ * Uses platform Log API for observability - no third-party OTel types leak into this service.
  */
 @Service
 @Slf4j
@@ -39,7 +34,6 @@ public class KafkaService {
 
     private final KafkaTemplate<String, CounterCommand> kafkaTemplate;
     private final IdGenerator idGenerator;
-    private final Tracer tracer;
 
     @Value("${app.kafka.topics.commands}")
     private String commandsTopic;
@@ -47,23 +41,9 @@ public class KafkaService {
     private final Map<String, CompletableFuture<CounterResult>> pendingTransactions = new ConcurrentHashMap<>();
     private final Sinks.Many<CounterResult> resultSink = Sinks.many().multicast().onBackpressureBuffer();
 
-    private static final TextMapGetter<Headers> HEADERS_GETTER = new TextMapGetter<>() {
-        @Override
-        public Iterable<String> keys(Headers headers) {
-            return () -> java.util.stream.StreamSupport.stream(headers.spliterator(), false)
-                    .map(Header::key).iterator();
-        }
-        @Override
-        public String get(Headers headers, String key) {
-            Header header = headers.lastHeader(key);
-            return header != null ? new String(header.value(), StandardCharsets.UTF_8) : null;
-        }
-    };
-
     public KafkaService(KafkaTemplate<String, CounterCommand> kafkaTemplate, IdGenerator idGenerator) {
         this.kafkaTemplate = kafkaTemplate;
         this.idGenerator = idGenerator;
-        this.tracer = GlobalOpenTelemetry.get().getTracer("gateway-kafka");
     }
 
     public record PublishResult(String requestId, String eventId) {}
@@ -73,17 +53,17 @@ public class KafkaService {
      */
     public PublishResult publishFireAndForget(CounterCommand command) {
         String requestId = idGenerator.generateRequestId();
-        String eventId = command.getEventId() != null ? command.getEventId() : idGenerator.generateEventId();
+        String eventId = or(command.getEventId(), idGenerator.generateEventId());
         long now = System.currentTimeMillis();
 
-        // Add business attributes to current span
+        // Add business attributes to current span using platform Log API
         addSpanAttributes(requestId, command.getCustomerId(), eventId);
 
-        // Prepare command
+        // Prepare command - normalize optional fields
         command.setRequestId(requestId);
         command.setEventId(eventId);
         command.setTimestamp(now);
-        if (command.getAction() != null) command.setAction(command.getAction().toLowerCase());
+        command.setAction(or(command.getAction(), "increment").toLowerCase());
         command.setTiming(CounterCommand.EventTiming.builder()
                 .gatewayReceivedAt(now)
                 .gatewayPublishedAt(System.currentTimeMillis())
@@ -101,7 +81,7 @@ public class KafkaService {
      */
     public CompletableFuture<CounterResult> publishAndWait(CounterCommand command, long timeoutMs) {
         String requestId = idGenerator.generateRequestId();
-        String eventId = command.getEventId() != null ? command.getEventId() : idGenerator.generateEventId();
+        String eventId = or(command.getEventId(), idGenerator.generateEventId());
         long now = System.currentTimeMillis();
 
         addSpanAttributes(requestId, command.getCustomerId(), eventId);
@@ -109,7 +89,7 @@ public class KafkaService {
         command.setRequestId(requestId);
         command.setEventId(eventId);
         command.setTimestamp(now);
-        if (command.getAction() != null) command.setAction(command.getAction().toLowerCase());
+        command.setAction(or(command.getAction(), "increment").toLowerCase());
         command.setTiming(CounterCommand.EventTiming.builder()
                 .gatewayReceivedAt(now)
                 .gatewayPublishedAt(System.currentTimeMillis())
@@ -135,37 +115,32 @@ public class KafkaService {
     }
 
     /**
-     * Kafka result consumer - creates span since OTel doesn't auto-instrument @KafkaListener.
+     * Kafka result consumer - uses platform Log API for consumer span.
      */
     @KafkaListener(topics = "${app.kafka.topics.results}", groupId = "gateway-java")
     public void onResult(ConsumerRecord<String, CounterResult> record) {
         CounterResult result = record.value();
-        if (result == null || result.getEventId() == null) return;
+        if (result == null) return;
+        if (result.eventId().isEmpty()) return;
 
-        // Extract trace context and create consumer span
-        Context parentContext = GlobalOpenTelemetry.getPropagators()
-                .getTextMapPropagator()
-                .extract(Context.current(), record.headers(), HEADERS_GETTER);
+        // Auto-extracts business IDs and manages MDC
+        SpanHandle span = Log.tracedReceive("counter-results consume", result, Log.SpanType.CONSUMER);
+        span.attr("messaging.system", "kafka");
+        span.attr("messaging.destination", record.topic());
 
-        Span span = tracer.spanBuilder("counter-results consume")
-                .setParent(parentContext)
-                .setSpanKind(SpanKind.CONSUMER)
-                .setAttribute("messaging.system", "kafka")
-                .setAttribute("messaging.destination", record.topic())
-                .setAttribute("eventId", result.getEventId())
-                .startSpan();
-
-        try (var scope = span.makeCurrent()) {
-            log.info("Result: eventId={}, value={}", result.getEventId(), result.getNewValue());
+        try {
+            log.info("Result: eventId={}, value={}", result.eventId(), result.getNewValue());
 
             // Complete pending transaction
-            CompletableFuture<CounterResult> future = pendingTransactions.remove(result.getEventId());
+            CompletableFuture<CounterResult> future = pendingTransactions.remove(result.eventId());
             if (future != null) future.complete(result);
 
             // Broadcast to WebSocket
             resultSink.tryEmitNext(result);
-        } finally {
-            span.end();
+            span.success();
+        } catch (Exception e) {
+            span.failure(e);
+            throw e;
         }
     }
 
@@ -173,31 +148,35 @@ public class KafkaService {
     // Helpers
     // ========================================================================
 
+    /**
+     * Add business attributes to current span using platform Log API.
+     * No third-party OTel types leak into this service.
+     */
     private void addSpanAttributes(String requestId, String customerId, String eventId) {
-        Span span = Span.current();
-        span.setAttribute("requestId", requestId);
-        span.setAttribute("customerId", customerId != null ? customerId : "");
-        span.setAttribute("eventId", eventId);
+        Log.attr("requestId", requestId);
+        Log.attr("customerId", or(customerId, ""));
+        Log.attr("eventId", eventId);
     }
 
     private String kafkaKey(CounterCommand command) {
-        String customerId = command.getCustomerId();
-        String sessionId = command.getSessionId();
-        return (customerId != null && !customerId.isEmpty())
-                ? customerId + ":" + sessionId
-                : sessionId;
+        String customerId = or(command.getCustomerId(), "");
+        String sessionId = or(command.getSessionId(), "default");
+        return customerId.isEmpty() ? sessionId : customerId + ":" + sessionId;
     }
 
     private ProducerRecord<String, CounterCommand> createRecordWithTraceContext(
             String topic, String key, CounterCommand value) {
         RecordHeaders headers = new RecordHeaders();
-        GlobalOpenTelemetry.getPropagators().getTextMapPropagator().inject(
-                Context.current(), headers,
-                (carrier, k, v) -> {
-                    if (carrier != null && k != null && v != null) {
-                        carrier.add(k, v.getBytes(StandardCharsets.UTF_8));
-                    }
-                });
+        // Inject trace context using platform Log API
+        Map<String, String> traceHeaders = Log.context().traceparent().isEmpty()
+                ? Map.of()
+                : Map.of("traceparent", Log.context().traceparent(),
+                         "tracestate", Log.context().tracestate());
+        traceHeaders.forEach((k, v) -> {
+            if (!v.isEmpty()) {
+                headers.add(k, v.getBytes(StandardCharsets.UTF_8));
+            }
+        });
         return new ProducerRecord<>(topic, null, key, value, headers);
     }
 
