@@ -49,6 +49,16 @@ public record BenchmarkResult(
         String status,
         String errorMessage
 ) {
+    // Compact constructor - normalize nulls to empty collections/defaults
+    public BenchmarkResult {
+        throughputTimeline = throughputTimeline != null ? throughputTimeline : List.of();
+        cpuTimeline = cpuTimeline != null ? cpuTimeline : List.of();
+        memoryTimeline = memoryTimeline != null ? memoryTimeline : List.of();
+        sampleEvents = sampleEvents != null ? sampleEvents : List.of();
+        status = status != null ? status : "unknown";
+        errorMessage = errorMessage != null ? errorMessage : "";
+    }
+
     // ========================================================================
     // Static Factories
     // ========================================================================
@@ -188,22 +198,18 @@ public record BenchmarkResult(
 
     /** Analyze sample events to detect bottlenecks. */
     public Optional<BottleneckAnalyzer.AggregateAnalysis> analyzeBottlenecks() {
-        if (sampleEvents == null || sampleEvents.isEmpty()) {
+        if (sampleEvents.isEmpty()) {
             return Optional.empty();
         }
-
-        BottleneckAnalyzer analyzer = new BottleneckAnalyzer();
-        return Optional.of(analyzer.analyzeSampleEvents(sampleEvents));
+        return Optional.of(new BottleneckAnalyzer().analyzeSampleEvents(sampleEvents));
     }
 
     /** Generate a comprehensive diagnostic report with component health and recommendations. */
     public Optional<BottleneckAnalyzer.DiagnosticReport> generateDiagnosticReport() {
-        if (sampleEvents == null || sampleEvents.isEmpty()) {
+        if (sampleEvents.isEmpty()) {
             return Optional.empty();
         }
-
-        BottleneckAnalyzer analyzer = new BottleneckAnalyzer();
-        return Optional.of(analyzer.generateDiagnosticReport(sampleEvents));
+        return Optional.of(new BottleneckAnalyzer().generateDiagnosticReport(sampleEvents));
     }
 
     public BenchmarkResult withComponentTiming(ComponentTiming timing) {
