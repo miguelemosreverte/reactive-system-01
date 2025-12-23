@@ -28,8 +28,21 @@
 
 ---
 
-## Iteration 2: TBD
-**Status**: PENDING
+## Iteration 2: Kafka Producer Batching
+**Status**: COMPLETED
+**Change**: Increased linger.ms to 5ms and batch.size to 64KB for fire-and-forget
+**File**: `platform/src/main/java/com/reactive/platform/kafka/KafkaPublisher.java`
+
+### Before:
+- Throughput: 142,201 ops (iteration 1)
+- Producer: linger.ms=0, batch.size=16KB
+
+### After:
+- Throughput: 153,246 ops (15s, 32 workers)
+- Producer: linger.ms=5, batch.size=64KB
+
+### Result:
+**+7.8% improvement** over iteration 1, **+23.2% over baseline**
 
 ---
 
