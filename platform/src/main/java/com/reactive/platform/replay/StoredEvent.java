@@ -35,6 +35,10 @@ public record StoredEvent(
         Objects.requireNonNull(eventId, "eventId cannot be null");
         Objects.requireNonNull(payload, "payload cannot be null");
         Objects.requireNonNull(timestamp, "timestamp cannot be null");
+        // Normalize optional fields to non-null
+        eventType = eventType != null ? eventType : "";
+        traceId = traceId != null ? traceId : "";
+        headers = headers != null ? headers : Map.of();
     }
 
     /**
@@ -74,14 +78,13 @@ public record StoredEvent(
      * Check if this event has a specific header.
      */
     public boolean hasHeader(String key) {
-        return headers != null && headers.containsKey(key);
+        return headers.containsKey(key);
     }
 
     /**
      * Get a header value.
      */
     public Optional<String> getHeader(String key) {
-        return Optional.ofNullable(headers)
-                .map(h -> h.get(key));
+        return Optional.ofNullable(headers.get(key));
     }
 }

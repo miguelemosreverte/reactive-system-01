@@ -128,7 +128,7 @@ public class ReplayService<S> {
             attr("event.index", index);
             attr("event.total", total);
             attr("event.id", event.eventId());
-            attr("event.type", event.eventType() != null ? event.eventType() : "unknown");
+            attr("event.type", event.eventType().isEmpty() ? "unknown" : event.eventType());
 
             Map<String, Object> stateMap = fsm.stateToMap(currentState);
 

@@ -100,7 +100,7 @@ public abstract class BaseBenchmark implements Benchmark {
             return buildResult("stopped", config);
         } catch (Exception e) {
             error("Benchmark error", e);
-            this.errorMessage = e.getMessage();
+            this.errorMessage = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
             return buildResult("error", config);
         } finally {
             running.set(false);
