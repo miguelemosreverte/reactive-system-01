@@ -250,10 +250,10 @@ public class KafkaPublisher<A> implements AutoCloseable {
 
         public Builder<A> fireAndForget() {
             this.acks = "0";
-            this.maxInFlightRequests = 20;
-            this.lingerMs = 5;        // 5ms for batching
-            this.batchSize = 65536;   // 64KB batches
-            this.compression = "lz4"; // LZ4 compression
+            this.maxInFlightRequests = 50;
+            this.lingerMs = 1;         // Minimal linger for lower latency
+            this.batchSize = 65536;
+            this.compression = "none";
             return this;
         }
 

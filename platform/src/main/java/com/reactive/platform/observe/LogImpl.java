@@ -140,6 +140,10 @@ final class LogImpl {
         return "00000000000000000000000000000000".equals(id) ? "" : id;
     }
 
+    boolean isSampled() {
+        return Span.current().isRecording();
+    }
+
     TraceContext currentContext() {
         Map<String, String> headers = new HashMap<>();
         GlobalOpenTelemetry.getPropagators()

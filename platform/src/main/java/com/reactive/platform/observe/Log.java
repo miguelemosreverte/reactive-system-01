@@ -148,6 +148,14 @@ public final class Log {
     }
 
     /**
+     * Check if current span is sampled (recording).
+     * Use to skip expensive attribute operations when not sampling.
+     */
+    public static boolean isSampled() {
+        return impl.isSampled();
+    }
+
+    /**
      * Get current trace context for propagation to downstream services.
      */
     public static TraceContext context() {

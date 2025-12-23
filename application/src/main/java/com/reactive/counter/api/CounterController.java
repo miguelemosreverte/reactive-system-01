@@ -179,11 +179,14 @@ public class CounterController {
     }
 
     /**
-     * Add business context attributes to current span using platform Log API.
-     * No third-party OTel types leak into this controller.
+     * Add business context attributes to current span.
+     * Only called when tracing is sampled (check first to avoid overhead).
      */
     private void addSpanAttributes(String requestId, String customerId, String eventId,
                                    String sessionId, ActionRequest request) {
+        // Skip if not sampled (99.9% of requests with 0.1% sampling)
+        if (!Log.isSampled()) return;
+
         Log.attr("requestId", requestId);
         Log.attr("customerId", customerId);
         Log.attr("eventId", eventId);

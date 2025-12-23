@@ -169,31 +169,100 @@ The pipeline is now ~45% faster than baseline. Further optimization would requir
 
 ---
 
-## Iterations 8-20: Future Optimization
-**Status**: PENDING
+## Iteration 8: Increase maxInFlightRequests
+**Status**: COMPLETED (marginal)
+**Change**: Increased maxInFlightRequests from 20 to 50
+**File**: `platform/src/main/java/com/reactive/platform/kafka/KafkaPublisher.java`
 
-Future areas to explore:
-- Horizontal scaling (load balancer + multiple gateway instances)
-- Kafka cluster optimization (more brokers, partitions)
-- Alternative serialization (protobuf, avro, msgpack)
-- GraalVM native compilation
-- Async I/O improvements
-- Object pooling for reduced GC
-- Connection pooling optimization
+### Before:
+- Throughput: 180,035 ops (iteration 7)
+- maxInFlightRequests: 20
 
----
+### After:
+- Throughput: ~180,000 ops (within margin of error)
+- maxInFlightRequests: 50
 
-## Iteration 9: TBD
-**Status**: PENDING
-
----
-
-## Iteration 10: TBD
-**Status**: PENDING
+### Result:
+**~0% improvement** - kept for potential benefit under higher load
 
 ---
 
-## Iteration 11: TBD
+## Iteration 9: Disable Compression (Local Docker)
+**Status**: COMPLETED (marginal)
+**Change**: Changed compression from lz4 to none (local Docker doesn't benefit from compression)
+**File**: `platform/src/main/java/com/reactive/platform/kafka/KafkaPublisher.java`
+
+### Before:
+- Throughput: ~180,000 ops
+- Compression: lz4
+
+### After:
+- Throughput: ~180,000 ops
+- Compression: none
+
+### Result:
+**~0% improvement** - compression adds CPU overhead without network benefit locally
+
+---
+
+## Iteration 10: Reduce Linger to 1ms
+**Status**: COMPLETED (marginal)
+**Change**: Reduced linger.ms from 5 to 1 for lower latency
+**File**: `platform/src/main/java/com/reactive/platform/kafka/KafkaPublisher.java`
+
+### Before:
+- Throughput: ~180,000 ops
+- linger.ms: 5
+
+### After:
+- Throughput: ~180,000 ops
+- linger.ms: 1
+
+### Result:
+**~0% improvement** - slightly lower latency, similar throughput
+
+---
+
+## Iteration 11: Skip Span Attributes When Not Sampled
+**Status**: COMPLETED (marginal)
+**Change**: Added Log.isSampled() check to skip attribute setting on unsampled spans
+**Files**: `Log.java`, `LogImpl.java`, `CounterController.java`
+
+### Before:
+- Always setting span attributes (overhead on 99.9% of unsampled requests)
+
+### After:
+- Check isSampled() first, skip if not recording
+
+### Result:
+**~0% improvement** - attribute setting overhead was minimal
+
+---
+
+## Summary After 11 Iterations
+
+| Iteration | Change | Impact | Cumulative |
+|-----------|--------|--------|------------|
+| Baseline | - | 124,440 ops | - |
+| 1 | acks=0 | +14.3% | 142,201 ops |
+| 2 | batching | +7.8% | 153,246 ops |
+| 3 | LZ4 compression | +0.7% | 154,357 ops |
+| 4 | reduce logging | +13.1% | 174,600 ops |
+| 5 | increase heap | +3.1% | 180,035 ops |
+| 6 | more CPUs | ~0% | 180,035 ops |
+| 7 | various (reverted) | ~0% | 180,035 ops |
+| 8 | maxInFlight=50 | ~0% | 180,035 ops |
+| 9 | no compression | ~0% | 180,035 ops |
+| 10 | linger=1ms | ~0% | 180,035 ops |
+| 11 | isSampled check | ~0% | 180,035 ops |
+
+**Total improvement: +44.7% (124,440 → 180,035 ops)**
+
+Note: Iterations 8-11 showed marginal improvements but were kept for code cleanliness and potential production benefits.
+
+---
+
+## Iteration 12: TBD
 **Status**: PENDING
 
 ---
