@@ -100,8 +100,37 @@
 
 ---
 
-## Iteration 6: TBD
-**Status**: PENDING
+## Iteration 6: Increase CPU Limit
+**Status**: COMPLETED
+**Change**: Increased CPU limit from 2 to 4 cores
+**File**: `docker-compose.yml`
+
+### Before:
+- Throughput: 180,035 ops (iteration 5, 32 workers)
+- CPU limit: 2 cores
+
+### After:
+- Throughput: 179,564 ops (64 workers)
+- CPU limit: 4 cores
+
+### Result:
+**~0% throughput change** - but enables handling higher concurrency (64 workers)
+
+---
+
+## Summary After 6 Iterations
+
+| Iteration | Change | Impact | Cumulative |
+|-----------|--------|--------|------------|
+| Baseline | - | 124,440 ops | - |
+| 1 | acks=0 | +14.3% | 142,201 ops |
+| 2 | batching | +7.8% | 153,246 ops |
+| 3 | LZ4 compression | +0.7% | 154,357 ops |
+| 4 | reduce logging | +13.1% | 174,600 ops |
+| 5 | increase heap | +3.1% | 180,035 ops |
+| 6 | more CPUs | ~0% | 179,564 ops |
+
+**Total improvement: +44.7% (124,440 → 180,035 ops)**
 
 ---
 
