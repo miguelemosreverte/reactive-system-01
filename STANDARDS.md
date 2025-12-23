@@ -187,65 +187,74 @@ application/src/main/java/com/reactive/counter/
 
 ### platform/deployment/docker/gateway
 
+Note: Gateway uses Lombok @Data for DTOs (mutable pattern). OTel is used directly
+in KafkaService since @KafkaListener requires manual span creation.
+
 ```
 gateway/src/main/java/com/reactive/gateway/
-├── [ ] GatewayApplication.java
+├── [x] GatewayApplication.java
 ├── config/
-│   [ ] CorsConfig.java
-│   [ ] KafkaConfig.java
-│   [ ] WebSocketConfig.java
+│   [x] CorsConfig.java
+│   [x] KafkaConfig.java
+│   [x] WebSocketConfig.java
 ├── controller/
-│   [ ] CounterController.java
-│   [ ] HealthController.java
-│   [ ] TraceController.java
+│   [x] CounterController.java (boundary null checks on input)
+│   [x] HealthController.java
+│   [x] TraceController.java
 ├── model/
-│   [ ] CounterCommand.java
-│   [ ] CounterResult.java
+│   [x] CounterCommand.java (Lombok @Data - mutable DTO)
+│   [x] CounterResult.java (Lombok @Data - mutable DTO)
 ├── service/
-│   [ ] IdGenerator.java
-│   [ ] KafkaService.java
+│   [x] IdGenerator.java
+│   [x] KafkaService.java (OTel for Kafka - not auto-instrumented)
 └── websocket/
-    [ ] WebSocketHandler.java
+    [x] WebSocketHandler.java
 ```
 
 ### platform/deployment/docker/flink
 
+Note: Flink requires mutable POJOs for state serialization. OTel is used directly
+since Flink operators have no auto-instrumentation. nullSafe() helper used for strings.
+
 ```
 flink/src/main/java/com/reactive/flink/
-├── [ ] CounterJob.java
+├── [x] CounterJob.java
 ├── async/
-│   [ ] AsyncDroolsEnricher.java
+│   [x] AsyncDroolsEnricher.java (OTel for async HTTP)
 ├── model/
-│   [ ] CounterEvent.java
-│   [ ] CounterResult.java
-│   [ ] EventTiming.java
-│   [ ] PreDroolsResult.java
+│   [x] CounterEvent.java (mutable POJO - Flink requirement)
+│   [x] CounterResult.java (mutable POJO)
+│   [x] EventTiming.java (mutable POJO)
+│   [x] PreDroolsResult.java (mutable POJO)
 ├── processor/
-│   [ ] AdaptiveLatencyController.java
-│   [ ] CounterProcessor.java
+│   [x] AdaptiveLatencyController.java
+│   [x] CounterProcessor.java (OTel for Flink, nullSafe helper)
 └── serialization/
-    [ ] CounterEventDeserializer.java
-    [ ] CounterResultSerializer.java
-    [ ] TracingCounterResultSerializer.java
-    [ ] TracingKafkaDeserializer.java
+    [x] CounterEventDeserializer.java (boundary - Kafka)
+    [x] CounterResultSerializer.java
+    [x] TracingCounterResultSerializer.java
+    [x] TracingKafkaDeserializer.java
 ```
 
 ### platform/deployment/docker/drools
 
+Note: Drools is a standalone service. OTel auto-instruments HTTP but
+additional span attributes are added manually. Boundary null checks on input.
+
 ```
 drools/src/main/java/com/reactive/drools/
-├── [ ] DroolsApplication.java
+├── [x] DroolsApplication.java
 ├── config/
-│   [ ] DroolsConfig.java
+│   [x] DroolsConfig.java
 ├── controller/
-│   [ ] HealthController.java
-│   [ ] RuleController.java
+│   [x] HealthController.java
+│   [x] RuleController.java
 ├── model/
-│   [ ] Counter.java
-│   [ ] EvaluationRequest.java
-│   [ ] EvaluationResponse.java
+│   [x] Counter.java
+│   [x] EvaluationRequest.java
+│   [x] EvaluationResponse.java
 └── service/
-    [ ] RuleService.java
+    [x] RuleService.java (adds attrs to auto-instrumented span)
 ```
 
 ### platform/cli (Go)
