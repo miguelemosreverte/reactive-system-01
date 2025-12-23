@@ -293,6 +293,74 @@ For now, use the tools manually following this workflow.
 
 ---
 
+---
+
+## Core Philosophy: Data for AI Analysis
+
+> **Date**: 2025-12-23
+
+The following principles must guide all diagnostic tooling development.
+
+### The Workflow
+
+```
+CLI provides rich, detailed data  →  AI analyzes and interprets
+```
+
+**The CLI's job**: Provide the most detailed amount of information possible.
+**The AI's job**: Analyze that data and draw conclusions.
+
+**What we must NOT do**: Hardcode analysis logic in software/CPU. The code should not try to interpret - it should only collect and present data.
+
+### User's Words (Protected)
+
+> "You are still guessing. We need low-level granularity to know exactly, with very high precision, where exactly is the bottleneck."
+
+> "We have traces, we have logs, we should be able to answer this question just fine. We even have the memory diagnostic."
+
+> "Don't add new metrics - USE existing observability (Jaeger traces, Loki logs, memory diag)"
+
+> "It should provide an overview and then pair components and so on. Hierarchical: overview → components → operations"
+
+> "The amount of information should be very clear and detailed with very low level of granularity. It should increase - provide overview then drill into components."
+
+> "Get as much understanding thanks to diagnosis of the state of the pipeline that we can have a conclusion that is pretty much obvious thanks to our analysis"
+
+### Requirements for Diagnostic Output
+
+1. **Hierarchical Structure**
+   - Level 1: System overview (saturation, throughput)
+   - Level 2: Component breakdown (gateway, kafka, flink, drools)
+   - Level 3: Operation details within each component
+   - Level 4: Individual spans and timings
+
+2. **Use Existing Observability**
+   - Jaeger traces (span timing, service breakdown)
+   - Loki logs (correlated by traceId)
+   - Docker stats (CPU, memory per container)
+   - Memory diagnostics (JVM heap, pressure)
+
+3. **Data Richness**
+   - The data must be so detailed that the bottleneck becomes obvious
+   - No guessing required - the answer should be self-evident from the data
+   - The AI can then provide interpretation and recommendations
+
+---
+
+## Iteration Protocol (Protected User Words)
+
+> **Date**: 2025-12-23
+
+> "This is iteration 1, and there will be 20. Continue to iterate 20 times, taking notes on each result of the impact and committing. Don't commit regressions to throughput."
+
+### Rules:
+1. **20 iterations** of optimization
+2. **Track impact** of each change
+3. **No regressions** - only commit improvements
+4. **Measure before and after** each change
+
+---
+
 ## Quick Reference
 
 ```bash

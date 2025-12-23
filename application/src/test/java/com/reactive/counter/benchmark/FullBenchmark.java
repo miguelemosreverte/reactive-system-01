@@ -153,17 +153,11 @@ public class FullBenchmark extends BaseBenchmark {
                             JsonNode result = mapper.readTree(response.body());
                             String traceId = result.path("requestId").asText(null);
                             String otelTraceId = result.path("otelTraceId").asText(null);
-                            long processingTimeMs = result.path("result").path("processingTimeMs").asLong(0);
 
-                            ComponentTiming timing = new ComponentTiming(
-                                    latencyMs - processingTimeMs, // gateway
-                                    0, // kafka (included in flink)
-                                    processingTimeMs, // flink
-                                    0  // drools (included in flink)
-                            );
-
-                            addSampleEvent(SampleEvent.success(requestId, traceId, otelTraceId, latencyMs)
-                                    .withTiming(timing));
+                            // Fire-and-forget: latencyMs is only the time to ACCEPT the event (gateway publish)
+                            // Actual processing (Kafka → Flink → Drools) happens asynchronously
+                            // Component timing can only be determined from traces post-benchmark
+                            addSampleEvent(SampleEvent.success(requestId, traceId, otelTraceId, latencyMs));
                         } catch (Exception e) {
                             addSampleEvent(SampleEvent.success(requestId, null, null, latencyMs));
                         }

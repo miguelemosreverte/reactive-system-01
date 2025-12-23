@@ -140,6 +140,11 @@ func runSingleBenchmark(projectRoot, target string) {
 	// Step 4: Generate HTML report
 	generateHTMLReport(reportsDir, target)
 
+	// Step 5: Bottleneck analysis (for full benchmark)
+	if target == "full" && !benchQuick {
+		analyzeBottleneck(filepath.Join(reportsDir, target, "results.json"))
+	}
+
 	fmt.Println()
 	printSuccess("Benchmark completed")
 	printInfo(fmt.Sprintf("Report: %s/%s/index.html", reportsDir, target))
@@ -403,4 +408,247 @@ func findProjectRoot() string {
 		dir = parent
 	}
 	return ""
+}
+
+// analyzeBottleneck fetches traces from Jaeger and outputs span timing data for AI analysis.
+// This function provides DATA only - interpretation should be done by the AI.
+func analyzeBottleneck(resultsFile string) {
+	// Read results to get total operations
+	var totalOps int64
+	data, err := os.ReadFile(resultsFile)
+	if err == nil {
+		var result struct {
+			TotalOperations int64 `json:"totalOperations"`
+		}
+		json.Unmarshal(data, &result)
+		totalOps = result.TotalOperations
+	}
+
+	fmt.Println()
+	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+	fmt.Println("  PIPELINE ANALYSIS")
+	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+	fmt.Println()
+	fmt.Println("  Architecture: Fire-and-Forget with Async Processing")
+	fmt.Println("  ─────────────────────────────────────────────────────────")
+	fmt.Println("  1. THROUGHPUT PATH (sync):  HTTP → Kafka publish → response")
+	fmt.Println("  2. PROCESSING PATH (async): Kafka → Flink → Drools (snapshots)")
+	fmt.Println()
+
+	// Fetch traces from Jaeger for each service
+	services := []string{"counter-application", "flink-taskmanager", "drools"}
+	spanStats := make(map[string][]int64)
+	serviceSpans := make(map[string]map[string][]int64)
+
+	for _, svc := range services {
+		serviceSpans[svc] = make(map[string][]int64)
+		traces := fetchJaegerTraces(svc, 20)
+		for _, trace := range traces {
+			for _, span := range trace.Spans {
+				spanStats[span.OperationName] = append(spanStats[span.OperationName], span.Duration)
+				serviceSpans[svc][span.OperationName] = append(serviceSpans[svc][span.OperationName], span.Duration)
+			}
+		}
+	}
+
+	if len(spanStats) == 0 {
+		printWarning("No traces found in Jaeger. Ensure tracing is configured correctly.")
+		return
+	}
+
+	// Calculate statistics for all spans
+	type spanStat struct {
+		name   string
+		avgMs  float64
+		minMs  float64
+		maxMs  float64
+		p50Ms  float64
+		p99Ms  float64
+		count  int
+	}
+	var spans []spanStat
+
+	for name, durations := range spanStats {
+		if len(durations) == 0 {
+			continue
+		}
+
+		// Sort for percentiles
+		sorted := make([]int64, len(durations))
+		copy(sorted, durations)
+		for i := 0; i < len(sorted)-1; i++ {
+			for j := i + 1; j < len(sorted); j++ {
+				if sorted[j] < sorted[i] {
+					sorted[i], sorted[j] = sorted[j], sorted[i]
+				}
+			}
+		}
+
+		var sum int64
+		for _, d := range sorted {
+			sum += d
+		}
+
+		p50Idx := len(sorted) / 2
+		p99Idx := int(float64(len(sorted)) * 0.99)
+		if p99Idx >= len(sorted) {
+			p99Idx = len(sorted) - 1
+		}
+
+		spans = append(spans, spanStat{
+			name:  name,
+			avgMs: float64(sum) / float64(len(sorted)) / 1000,
+			minMs: float64(sorted[0]) / 1000,
+			maxMs: float64(sorted[len(sorted)-1]) / 1000,
+			p50Ms: float64(sorted[p50Idx]) / 1000,
+			p99Ms: float64(sorted[p99Idx]) / 1000,
+			count: len(sorted),
+		})
+	}
+
+	// Sort by average duration (descending)
+	for i := 0; i < len(spans)-1; i++ {
+		for j := i + 1; j < len(spans); j++ {
+			if spans[j].avgMs > spans[i].avgMs {
+				spans[i], spans[j] = spans[j], spans[i]
+			}
+		}
+	}
+
+	// Categorize spans into throughput path vs processing path
+	throughputOps := []string{"POST /api/counter", "CounterController.submit", "kafka.publish.fast", "counter-events publish"}
+
+	isThroughputOp := func(name string) bool {
+		for _, op := range throughputOps {
+			if strings.Contains(name, op) || name == op {
+				return true
+			}
+		}
+		return false
+	}
+
+	// Print throughput path operations
+	fmt.Println("  THROUGHPUT PATH (affects ops/s):")
+	fmt.Println("  ─────────────────────────────────────────────────────────")
+	fmt.Printf("  %-35s %8s %8s %6s\n", "Operation", "Avg(ms)", "P99(ms)", "Count")
+	for _, s := range spans {
+		if isThroughputOp(s.name) {
+			fmt.Printf("  %-35s %8.1f %8.1f %6d\n", truncate(s.name, 35), s.avgMs, s.p99Ms, s.count)
+		}
+	}
+
+	// Print processing path operations with batching ratio
+	fmt.Println()
+	fmt.Println("  PROCESSING PATH (async, snapshot-based):")
+	fmt.Println("  ─────────────────────────────────────────────────────────")
+	fmt.Printf("  %-35s %8s %8s %6s %10s\n", "Operation", "Avg(ms)", "P99(ms)", "Count", "Batch Ratio")
+	for _, s := range spans {
+		if !isThroughputOp(s.name) {
+			batchRatio := ""
+			if totalOps > 0 && s.count > 0 {
+				ratio := float64(totalOps) / float64(s.count)
+				if ratio > 10 {
+					batchRatio = fmt.Sprintf("1:%d", int(ratio))
+				}
+			}
+			fmt.Printf("  %-35s %8.1f %8.1f %6d %10s\n", truncate(s.name, 35), s.avgMs, s.p99Ms, s.count, batchRatio)
+		}
+	}
+
+	// Summary with batch ratio explanation
+	fmt.Println()
+	fmt.Println("  ─────────────────────────────────────────────────────────")
+	if totalOps > 0 {
+		// Find drools call count
+		droolsCount := 0
+		for _, s := range spans {
+			if strings.Contains(s.name, "drools") || s.name == "POST" {
+				if s.count > droolsCount {
+					droolsCount = s.count
+				}
+			}
+		}
+		if droolsCount > 0 {
+			ratio := totalOps / int64(droolsCount)
+			fmt.Printf("  Total events: %d | Drools calls: %d | Batch ratio: 1:%d\n", totalOps, droolsCount, ratio)
+			fmt.Println("  → Drools latency does NOT limit throughput (snapshot-based)")
+		}
+	}
+
+	// Add timing data to results.json for AI analysis
+	timingData := make(map[string]interface{})
+	for _, s := range spans {
+		timingData[s.name] = map[string]interface{}{
+			"avgMs":       s.avgMs,
+			"minMs":       s.minMs,
+			"maxMs":       s.maxMs,
+			"p50Ms":       s.p50Ms,
+			"p99Ms":       s.p99Ms,
+			"count":       s.count,
+			"isThroughput": isThroughputOp(s.name),
+		}
+	}
+
+	// Update results.json with trace timing data
+	updateResultsWithTraceData(resultsFile, timingData)
+
+	fmt.Println()
+	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+}
+
+func updateResultsWithTraceData(resultsFile string, timingData map[string]interface{}) {
+	data, err := os.ReadFile(resultsFile)
+	if err != nil {
+		return
+	}
+
+	var result map[string]interface{}
+	if json.Unmarshal(data, &result) != nil {
+		return
+	}
+
+	result["traceTimingData"] = timingData
+
+	updatedData, err := json.MarshalIndent(result, "", "  ")
+	if err != nil {
+		return
+	}
+
+	os.WriteFile(resultsFile, updatedData, 0644)
+}
+
+type jaegerTrace struct {
+	TraceID string       `json:"traceID"`
+	Spans   []jaegerSpan `json:"spans"`
+}
+
+type jaegerSpan struct {
+	OperationName string `json:"operationName"`
+	Duration      int64  `json:"duration"` // microseconds
+}
+
+func fetchJaegerTraces(service string, limit int) []jaegerTrace {
+	url := fmt.Sprintf("http://localhost:16686/api/traces?service=%s&limit=%d&lookback=5m", service, limit)
+
+	cmd := exec.Command("curl", "-s", url)
+	output, err := cmd.Output()
+	if err != nil {
+		return nil
+	}
+
+	var response struct {
+		Data []jaegerTrace `json:"data"`
+	}
+	if json.Unmarshal(output, &response) != nil {
+		return nil
+	}
+
+	return response.Data
+}
+
+func truncate(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	return s[:maxLen-3] + "..."
 }
