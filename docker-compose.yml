@@ -478,12 +478,12 @@ services:
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
       - OTEL_TRACES_SAMPLER=parentbased_traceidratio
       - OTEL_TRACES_SAMPLER_ARG=${OTEL_SAMPLING_RATE:-0.001}
-      # JVM tuning
-      - JAVA_OPTS=-XX:+UseG1GC -XX:MaxGCPauseMillis=10 -Xms512m -Xmx1024m
+      # JVM tuning - increased heap for reduced GC pressure
+      - JAVA_OPTS=-XX:+UseG1GC -XX:MaxGCPauseMillis=10 -Xms768m -Xmx1536m
     deploy:
       resources:
         limits:
-          memory: 1280M
+          memory: 1792M
           cpus: '2.0'
     depends_on:
       kafka:

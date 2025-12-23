@@ -82,8 +82,21 @@
 
 ---
 
-## Iteration 5: TBD
-**Status**: PENDING
+## Iteration 5: Increase JVM Heap
+**Status**: COMPLETED
+**Change**: Increased JVM heap from 512m-1024m to 768m-1536m
+**File**: `docker-compose.yml`
+
+### Before:
+- Throughput: 174,600 ops (iteration 4)
+- JVM heap: -Xms512m -Xmx1024m
+
+### After:
+- Throughput: 180,035 ops (15s, 32 workers)
+- JVM heap: -Xms768m -Xmx1536m
+
+### Result:
+**+3.1% improvement** over iteration 4, **+44.7% over baseline**
 
 ---
 
