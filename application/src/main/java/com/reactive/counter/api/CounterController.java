@@ -59,7 +59,8 @@ public class CounterController {
                 .bootstrapServers(kafkaBootstrap)
                 .topic(eventsTopic)
                 .codec(JsonCodec.forClass(CounterEvent.class))
-                .keyExtractor(e -> kafkaKey(e.customerId(), e.sessionId())));
+                .keyExtractor(e -> kafkaKey(e.customerId(), e.sessionId()))
+                .fireAndForget());  // acks=0, maxInFlight=20 for max throughput
 
         // Register callback for state updates from Kafka results
         if (resultConsumerService != null) {

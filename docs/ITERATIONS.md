@@ -10,21 +10,21 @@
 
 ---
 
-## Iteration 1: Replace Node.js Gateway with Java
-**Status**: IN PROGRESS
-**Change**: Delete TypeScript gateway, implement Java Spring WebFlux gateway
-**Expected Impact**: 2-3x throughput improvement (multi-threaded)
+## Iteration 1: Use acks=0 for Fire-and-Forget
+**Status**: COMPLETED
+**Change**: Added `.fireAndForget()` to KafkaPublisher (acks=0, maxInFlight=20)
+**File**: `application/src/main/java/com/reactive/counter/api/CounterController.java`
 
 ### Before:
-- Throughput: 10,000-12,000 ops/s
-- Gateway: Node.js (single-threaded)
+- Throughput: 124,440 ops (15s, 32 workers)
+- Kafka producer: acks=1 (wait for leader acknowledgment)
 
 ### After:
-- Throughput: TBD
-- Gateway: Java Spring WebFlux (multi-threaded)
+- Throughput: 142,201 ops (15s, 32 workers)
+- Kafka producer: acks=0 (no wait)
 
 ### Result:
-TBD
+**+14.3% improvement** (17,761 more operations)
 
 ---
 
