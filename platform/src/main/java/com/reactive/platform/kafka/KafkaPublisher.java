@@ -251,13 +251,15 @@ public class KafkaPublisher<A> implements AutoCloseable {
         public Builder<A> fireAndForget() {
             this.acks = "0";
             this.maxInFlightRequests = 20;
-            this.lingerMs = 5;      // Allow 5ms for batching
-            this.batchSize = 65536; // 64KB batches
+            this.lingerMs = 5;        // Allow 5ms for batching
+            this.batchSize = 65536;   // 64KB batches
+            this.compression = "lz4"; // LZ4 compression for network efficiency
             return this;
         }
 
         private int lingerMs = 0;
         private int batchSize = 16384;
+        private String compression = "none";
 
         public KafkaPublisher<A> build() {
             Properties props = new Properties();
@@ -269,6 +271,7 @@ public class KafkaPublisher<A> implements AutoCloseable {
             props.put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, maxInFlightRequests);
             props.put(ProducerConfig.LINGER_MS_CONFIG, lingerMs);
             props.put(ProducerConfig.BATCH_SIZE_CONFIG, batchSize);
+            props.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, compression);
 
             // Tracing is handled via Log API - no tracer injection needed
             KafkaProducer<String, byte[]> producer = new KafkaProducer<>(props);

@@ -46,8 +46,21 @@
 
 ---
 
-## Iteration 3: TBD
-**Status**: PENDING
+## Iteration 3: LZ4 Compression
+**Status**: COMPLETED
+**Change**: Added LZ4 compression to Kafka producer
+**File**: `platform/src/main/java/com/reactive/platform/kafka/KafkaPublisher.java`
+
+### Before:
+- Throughput: 153,246 ops (iteration 2)
+- Compression: none
+
+### After:
+- Throughput: 154,357 ops (15s, 32 workers)
+- Compression: LZ4
+
+### Result:
+**+0.7% improvement** (marginal in local Docker, more impactful in network-constrained production)
 
 ---
 
