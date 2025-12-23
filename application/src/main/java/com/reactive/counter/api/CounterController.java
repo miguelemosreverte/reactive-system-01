@@ -60,7 +60,12 @@ public class CounterController {
                 .topic(eventsTopic)
                 .codec(JsonCodec.forClass(CounterEvent.class))
                 .keyExtractor(e -> kafkaKey(e.customerId(), e.sessionId())));
-        // Note: No tracer passed - KafkaPublisher gets its own from GlobalOpenTelemetry
+
+        // Register callback for state updates from Kafka results
+        if (resultConsumerService != null) {
+            resultConsumerService.setStateUpdateCallback(result ->
+                    updateState(result.sessionId(), result.currentValue(), result.alert(), result.message()));
+        }
     }
 
     @PreDestroy

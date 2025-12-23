@@ -37,13 +37,23 @@ public class ResultConsumerService {
     // Sink for broadcasting results to WebSocket clients
     private final Sinks.Many<CounterResult> resultSink = Sinks.many().multicast().onBackpressureBuffer();
 
+    // Callback for state updates (set by CounterController)
+    private java.util.function.Consumer<CounterResult> stateUpdateCallback;
+
     @Value("${app.result-timeout-ms:5000}")
     private long resultTimeoutMs;
 
     /**
+     * Register callback for state updates.
+     */
+    public void setStateUpdateCallback(java.util.function.Consumer<CounterResult> callback) {
+        this.stateUpdateCallback = callback;
+    }
+
+    /**
      * Listen for results from Flink with full trace context extraction.
      */
-    @KafkaListener(topics = "${app.kafka.topics.results}", groupId = "counter-app-results")
+    @KafkaListener(topics = "${app.kafka.topics.alerts}", groupId = "counter-app-alerts")
     public void onResult(ConsumerRecord<String, byte[]> record) {
         CounterResult result;
         try {
@@ -79,6 +89,11 @@ public class ResultConsumerService {
 
             // Broadcast to WebSocket clients
             broadcastToWebSocket(span, result);
+
+            // Update local state cache
+            if (stateUpdateCallback != null) {
+                stateUpdateCallback.accept(result);
+            }
 
             span.success();
         } catch (Exception e) {

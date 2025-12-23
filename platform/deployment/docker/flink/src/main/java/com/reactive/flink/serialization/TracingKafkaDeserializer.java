@@ -51,9 +51,15 @@ public class TracingKafkaDeserializer implements KafkaRecordDeserializationSchem
             // All Kafka tracing ceremony hidden in TracedKafka.consume
             CounterEvent event = TracedKafka.consume(
                     TracedKafka.Context.of(record.topic(), record.partition(), record.offset(), traceparent, tracestate),
-                    () -> objectMapper.readValue(value, CounterEvent.class)
-                            .withDeserializedAt(now)
-                            .withTraceContext(traceparent, tracestate)
+                    () -> {
+                        try {
+                            return objectMapper.readValue(value, CounterEvent.class)
+                                    .withDeserializedAt(now)
+                                    .withTraceContext(traceparent, tracestate);
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
             );
 
             if (event != null) {
