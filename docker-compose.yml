@@ -32,11 +32,11 @@ services:
       - "13133:13133" # Health check
     environment:
       - OTEL_FEATURE_ENABLED=${OTEL_FEATURE_ENABLED:-true}
-      - GOMEMLIMIT=1800MiB  # Go runtime memory limit - generous for dev benchmarks
+      - GOMEMLIMIT=2800MiB  # Go runtime memory limit - increased for benchmark load
     deploy:
       resources:
         limits:
-          memory: 2G    # Increased from 1G to handle benchmark load
+          memory: 3G    # Increased: was OOM at 2G (70% usage under load)
           cpus: '1.5'
     depends_on:
       jaeger:
@@ -62,13 +62,13 @@ services:
       - COLLECTOR_OTLP_ENABLED=true
       # Memory storage - balanced for dev benchmarks
       - SPAN_STORAGE_TYPE=memory
-      - MEMORY_MAX_TRACES=20000   # Balanced: retention vs memory
+      - MEMORY_MAX_TRACES=15000   # Balanced for benchmarks
       - GOMAXPROCS=2
-      - GOMEMLIMIT=3500MiB        # Leave headroom for GC
+      - GOMEMLIMIT=1800MiB        # Leave headroom for GC
     deploy:
       resources:
         limits:
-          memory: 4G    # Increased to prevent OOM during benchmarks
+          memory: 2G    # Tested: 1G caused 61% usage under load, 2G provides headroom
           cpus: '1.5'
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:16686"]
@@ -225,6 +225,10 @@ services:
       interval: 10s
       timeout: 10s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 2G  # Diagnostic: was using 997MB of 7.7GB (13%), reduced to 2GB
     networks:
       - reactive-network
 
@@ -333,6 +337,10 @@ services:
       timeout: 5s
       retries: 10
       start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 2G  # Diagnostic: was using 1009MB of 7.7GB (13%), reduced to 2GB
     networks:
       - reactive-network
 
