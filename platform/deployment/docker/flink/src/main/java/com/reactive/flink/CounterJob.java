@@ -69,9 +69,9 @@ public class CounterJob {
             System.getenv().getOrDefault("FLINK_PARALLELISM", "8"));
 
     // Async I/O configuration for Drools calls
-    // Higher capacity allows more concurrent Drools calls to overlap latency
+    // Capacity of 250 balances concurrency vs Drools overload (1000 causes regression)
     private static final int ASYNC_CAPACITY = Integer.parseInt(
-            System.getenv().getOrDefault("ASYNC_CAPACITY", "1000"));
+            System.getenv().getOrDefault("ASYNC_CAPACITY", "250"));
 
     // Timeout for async Drools calls (ms)
     private static final long ASYNC_TIMEOUT_MS = Long.parseLong(

@@ -179,6 +179,62 @@ for i in {1..10}; do ./cli.sh bench full; done
 
 ---
 
+### 4. Async Capacity Increase to 1000
+
+**Date:** 2024-12-24
+**Branch:** `cemetery/flink-async-capacity-1000`
+**Status:** REJECTED - Overwhelms Drools
+
+#### Change Description
+Increased ASYNC_CAPACITY from 250 to 1000:
+- Docker-compose: `ASYNC_CAPACITY=250` → `ASYNC_CAPACITY=1000`
+- Code default: aligned to 1000
+
+#### Rationale
+Higher async capacity should allow more concurrent Drools calls, overlapping HTTP latency and improving throughput. With 200 HTTP connections available, 1000 capacity should better utilize the connection pool.
+
+#### Benchmark Results
+| Metric | Before | After | Change |
+|--------|--------|-------|--------|
+| Total Ops | 315,901 | 198,657 | -37% |
+| Peak Throughput | 30,091/s | 13,792/s | -54% |
+| Avg Throughput | 4,858/s | 3,053/s | -37% |
+| P99 Latency | 6ms | 17ms | +183% |
+
+#### Root Cause Analysis
+**Too much concurrency overwhelms Drools.**
+
+The async capacity controls how many Drools calls can be in-flight simultaneously. At 1000 concurrent calls:
+1. Drools service receives 1000 simultaneous requests
+2. Drools thread pool (400 threads) becomes saturated
+3. Requests queue up, increasing latency
+4. Backpressure propagates back through the pipeline
+5. Overall throughput drops significantly
+
+The optimal value (250) balances:
+- Enough concurrency to hide HTTP latency
+- Not so much that Drools becomes overwhelmed
+- Memory pressure from 1000 in-flight requests vs 250
+
+#### Files Changed
+- `docker-compose.yml` (ASYNC_CAPACITY environment variable)
+- `platform/deployment/docker/flink/src/main/java/com/reactive/flink/CounterJob.java`
+
+#### How to Re-test
+```bash
+git checkout cemetery/flink-async-capacity-1000
+docker compose up -d flink-taskmanager flink-jobmanager
+# Verify env: docker compose exec flink-taskmanager env | grep ASYNC
+for i in {1..10}; do ./cli.sh bench full; done
+```
+
+#### Conditions That Might Change This Decision
+- If Drools thread pool is increased significantly (>1000 threads)
+- If running multiple Drools replicas behind a load balancer
+- If Drools processing time decreases substantially
+
+---
+
 ## Template for New Entries
 
 ```markdown
