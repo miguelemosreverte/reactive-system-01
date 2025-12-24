@@ -11,11 +11,12 @@ import (
 )
 
 var (
-	benchServersList    bool
-	benchServersOnly    string
-	benchServersExclude string
-	benchServersWorkers int
+	benchServersList     bool
+	benchServersOnly     string
+	benchServersExclude  string
+	benchServersWorkers  int
 	benchServersDuration int
+	benchServersTier     string
 )
 
 var benchServersCmd = &cobra.Command{
@@ -23,38 +24,31 @@ var benchServersCmd = &cobra.Command{
 	Short: "Benchmark HTTP server implementations",
 	Long: `Benchmark all registered HTTP server implementations.
 
-This command uses the pluggable server architecture to benchmark different
-HTTP server implementations and rank them by throughput.
+Uses the type-safe Server enum for server discovery and selection.
 
-Available Servers:
-  - IoUringServer        (io_uring + FFM, Linux only)
-  - RocketHttpServer     (NIO + SO_REUSEPORT)
-  - BossWorkerHttpServer (NIO Boss/Worker pattern)
-  - HyperHttpServer      (NIO + Pipelining)
-  - RawHttpServer        (NIO Multi-EventLoop)
-  - TurboHttpServer      (NIO + selectNow)
-  - UltraHttpServer      (NIO Minimal)
-  - ZeroCopyHttpServer   (NIO + Busy-poll)
-  - UltraFastHttpServer  (Single-thread)
-  - FastHttpServer       (Virtual Threads)
-  - NettyHttpServer      (Netty NIO)
-  - SpringBootHttpServer (Spring WebFlux)
+Server Tiers:
+  MAXIMUM_THROUGHPUT  (600K+ req/s)  - ROCKET, BOSS_WORKER, IO_URING
+  HIGH_THROUGHPUT     (500-600K req/s) - HYPER, RAW, TURBO
+  SPECIALIZED         (300-500K req/s) - ULTRA, ZERO_COPY, ULTRA_FAST
+  FRAMEWORK           (<300K req/s)    - FAST, NETTY, SPRING_BOOT
 
 Examples:
-  reactive bench servers --list              # List all registered servers
-  reactive bench servers                     # Benchmark all servers
-  reactive bench servers -w 16 -d 10         # 16 workers, 10s duration
-  reactive bench servers --only=Rocket,Boss  # Only specific servers
-  reactive bench servers --exclude=Spring    # Exclude slow servers`,
+  reactive bench servers --list                    # List all servers with tiers
+  reactive bench servers                           # Benchmark all servers
+  reactive bench servers -w 16 -d 10               # 16 workers, 10s duration
+  reactive bench servers --only=ROCKET,BOSS_WORKER # Type-safe server selection
+  reactive bench servers --tier=MAXIMUM_THROUGHPUT # Only fastest tier
+  reactive bench servers --exclude=SPRING_BOOT    # Exclude slow servers`,
 	Run: runBenchServers,
 }
 
 func init() {
 	benchServersCmd.Flags().BoolVarP(&benchServersList, "list", "l", false, "List available servers without benchmarking")
-	benchServersCmd.Flags().StringVar(&benchServersOnly, "only", "", "Only benchmark specific servers (comma-separated)")
-	benchServersCmd.Flags().StringVar(&benchServersExclude, "exclude", "", "Exclude specific servers (comma-separated)")
+	benchServersCmd.Flags().StringVar(&benchServersOnly, "only", "", "Only benchmark specific servers (comma-separated enum names)")
+	benchServersCmd.Flags().StringVar(&benchServersExclude, "exclude", "", "Exclude specific servers (comma-separated enum names)")
 	benchServersCmd.Flags().IntVarP(&benchServersWorkers, "workers", "w", 16, "Number of server workers")
 	benchServersCmd.Flags().IntVarP(&benchServersDuration, "duration", "d", 6, "Test duration in seconds")
+	benchServersCmd.Flags().StringVar(&benchServersTier, "tier", "", "Only benchmark servers in specific tier")
 	benchCmd.AddCommand(benchServersCmd)
 }
 
@@ -72,7 +66,6 @@ func runBenchServers(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	// Step 1: Compile platform module with dependencies
 	printHeader("HTTP Server Benchmark Suite")
 	fmt.Println()
 
@@ -81,6 +74,7 @@ func runBenchServers(cmd *cobra.Command, args []string) {
 		return
 	}
 
+	// Step 1: Compile platform module with dependencies
 	printInfo("Compiling platform module...")
 	if !compilePlatformWithDependencies(projectRoot) {
 		printError("Failed to compile platform module")
@@ -98,7 +92,7 @@ func listServers(projectRoot string) {
 	printHeader("Registered HTTP Servers")
 	fmt.Println()
 
-	// Compile and run GatewayFactory to list servers
+	// Compile and run Server.main() to list servers
 	if !compilePlatformWithDependencies(projectRoot) {
 		printError("Failed to compile platform module")
 		return
@@ -106,7 +100,7 @@ func listServers(projectRoot string) {
 
 	javaCmd := exec.Command("java",
 		"-cp", "target/classes:target/dependency/*",
-		"com.reactive.platform.http.server.GatewayFactory",
+		"com.reactive.platform.http.server.Server",
 	)
 	javaCmd.Dir = projectRoot + "/platform"
 	javaCmd.Stdout = os.Stdout
@@ -156,6 +150,9 @@ func runBenchmarkRunner(projectRoot string) {
 	if benchServersExclude != "" {
 		args = append(args, "--exclude", benchServersExclude)
 	}
+	if benchServersTier != "" {
+		args = append(args, "--tier", benchServersTier)
+	}
 
 	javaCmd := exec.Command("java", args...)
 	javaCmd.Dir = platformDir
@@ -177,13 +174,13 @@ func runBenchmarkRunner(projectRoot string) {
 var benchGatewayServerCmd = &cobra.Command{
 	Use:   "gateway-server",
 	Short: "Benchmark gateway with specific HTTP server",
-	Long: `Benchmark the gateway component using a specific HTTP server implementation.
+	Long: `Benchmark the gateway using a specific HTTP server implementation.
 
-This allows comparing how different server implementations affect gateway throughput.
+Uses the Server enum for type-safe server selection.
 
 Examples:
-  reactive bench gateway-server --server=RocketHttpServer
-  reactive bench gateway-server --server=SpringBootHttpServer
+  reactive bench gateway-server --server=ROCKET
+  reactive bench gateway-server --server=SPRING_BOOT
   reactive bench gateway-server --server=all  # Compare all implementations`,
 	Run: runBenchGatewayWithServer,
 }
@@ -191,7 +188,7 @@ Examples:
 var benchGatewayServerImpl string
 
 func init() {
-	benchGatewayServerCmd.Flags().StringVar(&benchGatewayServerImpl, "server", "RocketHttpServer", "HTTP server implementation to use")
+	benchGatewayServerCmd.Flags().StringVar(&benchGatewayServerImpl, "server", "ROCKET", "Server enum value (e.g., ROCKET, BOSS_WORKER)")
 	benchCmd.AddCommand(benchGatewayServerCmd)
 }
 
@@ -205,13 +202,9 @@ func runBenchGatewayWithServer(cmd *cobra.Command, args []string) {
 	printHeader(fmt.Sprintf("Gateway Benchmark with %s", benchGatewayServerImpl))
 	fmt.Println()
 
-	if benchGatewayServerImpl == "all" {
+	if strings.ToLower(benchGatewayServerImpl) == "all" {
 		// Run gateway benchmark with all server implementations
-		servers := []string{
-			"RocketHttpServer",
-			"BossWorkerHttpServer",
-			"FastHttpServer",
-		}
+		servers := []string{"ROCKET", "BOSS_WORKER", "FAST"}
 
 		for _, server := range servers {
 			fmt.Printf("\n%s %s %s\n\n", strings.Repeat("━", 20), server, strings.Repeat("━", 20))
@@ -223,16 +216,16 @@ func runBenchGatewayWithServer(cmd *cobra.Command, args []string) {
 }
 
 func runGatewayWithServer(projectRoot, serverImpl string) {
+	// Convert to enum format (uppercase)
+	serverImpl = strings.ToUpper(serverImpl)
+
 	printInfo(fmt.Sprintf("Using HTTP_SERVER_IMPL=%s", serverImpl))
 
 	// Set environment variable for GatewayFactory
 	os.Setenv("HTTP_SERVER_IMPL", serverImpl)
 	defer os.Unsetenv("HTTP_SERVER_IMPL")
 
-	// For now, just show what would be done
-	// Full implementation would start the gateway with the specified server
-	// and run wrk against it
-	printInfo("Gateway benchmark with pluggable servers is ready for implementation")
-	printInfo(fmt.Sprintf("Server: %s", serverImpl))
-	printInfo("The gateway would use GatewayFactory.createServerFromEnv() to select the server")
+	printInfo("Gateway benchmark with pluggable servers ready for implementation")
+	printInfo(fmt.Sprintf("Server: %s (type-safe enum)", serverImpl))
+	printInfo("The gateway would use GatewayFactory.fromEnv() to select the server")
 }

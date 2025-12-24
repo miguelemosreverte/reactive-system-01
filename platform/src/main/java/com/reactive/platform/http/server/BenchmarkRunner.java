@@ -8,7 +8,9 @@ import java.util.*;
 import java.util.concurrent.*;
 
 /**
- * Benchmark Runner - Discovers and benchmarks all registered HTTP servers.
+ * Benchmark Runner - Benchmarks HTTP server implementations using wrk.
+ *
+ * Uses the Server enum for type-safe server discovery.
  *
  * Usage:
  * <pre>
@@ -20,8 +22,9 @@ import java.util.concurrent.*;
  *   --threads N       wrk threads (default: 12)
  *   --connections N   wrk connections (default: 1000)
  *   --output DIR      Output directory for reports (default: ./benchmark-results)
- *   --servers A,B,C   Only benchmark specific servers (comma-separated)
+ *   --servers A,B,C   Only benchmark specific servers (comma-separated, e.g., ROCKET,BOSS_WORKER)
  *   --exclude A,B     Exclude specific servers
+ *   --tier TIER       Only benchmark servers in a specific tier (MAXIMUM_THROUGHPUT, HIGH_THROUGHPUT, etc.)
  * </pre>
  */
 public class BenchmarkRunner {
@@ -39,27 +42,22 @@ public class BenchmarkRunner {
         int wrkThreads,
         int wrkConnections,
         Path outputDir,
-        Set<String> includeServers,
-        Set<String> excludeServers
+        Set<Server> includeServers,
+        Set<Server> excludeServers,
+        Server.Tier tier
     ) {
         public static Config defaults() {
             return new Config(
-                16,
-                6,
-                12,
-                1000,
+                16, 6, 12, 1000,
                 Path.of("benchmark-results"),
-                Set.of(),
-                Set.of()
+                Set.of(), Set.of(), null
             );
         }
     }
 
     public record BenchmarkResult(
         int rank,
-        String name,
-        String technology,
-        String notes,
+        Server server,
         double requestsPerSecond,
         String avgLatency,
         String maxLatency,
@@ -70,10 +68,14 @@ public class BenchmarkRunner {
         public int compareTo(BenchmarkResult other) {
             return Double.compare(other.requestsPerSecond, this.requestsPerSecond);
         }
+
+        public String name() { return server.displayName(); }
+        public String technology() { return server.technology(); }
+        public String notes() { return server.notes(); }
     }
 
     /**
-     * Run benchmarks for all registered servers.
+     * Run benchmarks for all selected servers.
      */
     public List<BenchmarkResult> run() throws Exception {
         System.out.println("""
@@ -86,15 +88,16 @@ public class BenchmarkRunner {
             config.workers, config.durationSeconds, config.wrkThreads, config.wrkConnections);
 
         // Get servers to benchmark
-        List<ServerRegistry.ServerInfo> servers = ServerRegistry.all().stream()
-            .filter(s -> config.includeServers.isEmpty() || config.includeServers.contains(s.name()))
-            .filter(s -> !config.excludeServers.contains(s.name()))
+        List<Server> servers = Arrays.stream(Server.values())
+            .filter(s -> config.includeServers.isEmpty() || config.includeServers.contains(s))
+            .filter(s -> !config.excludeServers.contains(s))
+            .filter(s -> config.tier == null || s.tier() == config.tier)
             .toList();
 
         System.out.printf("Benchmarking %d servers...%n%n", servers.size());
 
         // Run each benchmark
-        for (ServerRegistry.ServerInfo server : servers) {
+        for (Server server : servers) {
             BenchmarkResult result = benchmarkServer(server);
             results.add(result);
         }
@@ -107,23 +110,20 @@ public class BenchmarkRunner {
         for (int i = 0; i < results.size(); i++) {
             BenchmarkResult r = results.get(i);
             rankedResults.add(new BenchmarkResult(
-                i + 1, r.name, r.technology, r.notes,
-                r.requestsPerSecond, r.avgLatency, r.maxLatency,
-                r.success, r.errorMessage
+                i + 1, r.server, r.requestsPerSecond,
+                r.avgLatency, r.maxLatency, r.success, r.errorMessage
             ));
         }
 
-        // Print results
+        // Print and save results
         printResults(rankedResults);
-
-        // Save reports
         saveReports(rankedResults);
 
         return rankedResults;
     }
 
-    private BenchmarkResult benchmarkServer(ServerRegistry.ServerInfo server) {
-        System.out.printf("Testing: %s (%s)%n", server.name(), server.technology());
+    private BenchmarkResult benchmarkServer(Server server) {
+        System.out.printf("Testing: %s (%s)%n", server.displayName(), server.technology());
 
         try {
             // Kill any existing Java processes on benchmark ports
@@ -145,8 +145,8 @@ public class BenchmarkRunner {
 
             if (!serverProcess.isAlive()) {
                 String output = new String(serverProcess.getInputStream().readAllBytes());
-                return new BenchmarkResult(0, server.name(), server.technology(), server.notes(),
-                    0, "N/A", "N/A", false, "Server failed to start: " + output);
+                return new BenchmarkResult(0, server, 0, "N/A", "N/A", false,
+                    "Server failed to start: " + output.substring(0, Math.min(200, output.length())));
             }
 
             // Run wrk benchmark
@@ -183,17 +183,15 @@ public class BenchmarkRunner {
 
             System.out.printf("  Result: %.2f req/s (avg latency: %s)%n%n", rps, avgLatency);
 
-            return new BenchmarkResult(0, server.name(), server.technology(), server.notes(),
-                rps, avgLatency, maxLatency, true, null);
+            return new BenchmarkResult(0, server, rps, avgLatency, maxLatency, true, null);
 
         } catch (Exception e) {
             System.out.printf("  ERROR: %s%n%n", e.getMessage());
-            return new BenchmarkResult(0, server.name(), server.technology(), server.notes(),
-                0, "N/A", "N/A", false, e.getMessage());
+            return new BenchmarkResult(0, server, 0, "N/A", "N/A", false, e.getMessage());
         }
     }
 
-    private String[] buildServerCommand(ServerRegistry.ServerInfo server, int port) {
+    private String[] buildServerCommand(Server server, int port) {
         List<String> cmd = new ArrayList<>();
         cmd.add("java");
         cmd.add("--enable-native-access=ALL-UNNAMED");
@@ -206,16 +204,15 @@ public class BenchmarkRunner {
         cmd.add(String.valueOf(port));
 
         // Add workers arg for most servers
-        if (!server.name().equals("UltraFastHttpServer") &&
-            !server.name().equals("SpringBootHttpServer")) {
+        if (server != Server.ULTRA_FAST && server != Server.SPRING_BOOT) {
             cmd.add(String.valueOf(config.workers));
         }
 
         // Special args for some servers
-        if (server.name().equals("IoUringServer")) {
+        if (server == Server.IO_URING) {
             cmd.add("false"); // busyPoll
             cmd.add("false"); // sqpoll
-        } else if (server.name().equals("ZeroCopyHttpServer")) {
+        } else if (server == Server.ZERO_COPY) {
             cmd.add("true"); // busyPoll
         }
 
@@ -245,9 +242,7 @@ public class BenchmarkRunner {
         for (String line : output.split("\n")) {
             if (line.trim().startsWith("Latency")) {
                 String[] parts = line.trim().split("\\s+");
-                if (parts.length >= 2) {
-                    return parts[1];
-                }
+                if (parts.length >= 2) return parts[1];
             }
         }
         return "N/A";
@@ -257,9 +252,7 @@ public class BenchmarkRunner {
         for (String line : output.split("\n")) {
             if (line.trim().startsWith("Latency")) {
                 String[] parts = line.trim().split("\\s+");
-                if (parts.length >= 4) {
-                    return parts[3];
-                }
+                if (parts.length >= 4) return parts[3];
             }
         }
         return "N/A";
@@ -279,11 +272,11 @@ public class BenchmarkRunner {
 
         for (BenchmarkResult r : results) {
             if (r.success) {
-                System.out.printf("%-4s %-22s %10.2f req/s  %-8s  %-20s  %s%n",
-                    r.rank + ".", r.name, r.requestsPerSecond, r.avgLatency, r.technology, r.notes);
+                System.out.printf("%-4s %-22s %10.0f req/s  %-8s  %-20s  %s%n",
+                    r.rank + ".", r.name(), r.requestsPerSecond, r.avgLatency, r.technology(), r.notes());
             } else {
                 System.out.printf("%-4s %-22s %13s  %-8s  %-20s  %s%n",
-                    r.rank + ".", r.name, "FAILED", "N/A", r.technology, r.errorMessage);
+                    r.rank + ".", r.name(), "FAILED", "N/A", r.technology(), r.errorMessage);
             }
         }
     }
@@ -293,19 +286,15 @@ public class BenchmarkRunner {
 
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
 
-        // Save JSON
         Path jsonPath = config.outputDir.resolve("benchmark_" + timestamp + ".json");
-        saveJsonReport(results, jsonPath);
-
-        // Save Markdown
         Path mdPath = config.outputDir.resolve("benchmark_" + timestamp + ".md");
+
+        saveJsonReport(results, jsonPath);
         saveMarkdownReport(results, mdPath);
 
         // Save latest (overwrite)
-        Path latestJson = config.outputDir.resolve("latest.json");
-        Path latestMd = config.outputDir.resolve("RANKING.md");
-        saveJsonReport(results, latestJson);
-        saveMarkdownReport(results, latestMd);
+        saveJsonReport(results, config.outputDir.resolve("latest.json"));
+        saveMarkdownReport(results, config.outputDir.resolve("RANKING.md"));
 
         System.out.printf("%nReports saved to:%n  %s%n  %s%n", jsonPath, mdPath);
     }
@@ -314,7 +303,7 @@ public class BenchmarkRunner {
         StringBuilder json = new StringBuilder();
         json.append("{\n");
         json.append(String.format("  \"timestamp\": \"%s\",%n", LocalDateTime.now()));
-        json.append(String.format("  \"config\": {%n"));
+        json.append("  \"config\": {\n");
         json.append(String.format("    \"workers\": %d,%n", config.workers));
         json.append(String.format("    \"duration_seconds\": %d,%n", config.durationSeconds));
         json.append(String.format("    \"wrk_threads\": %d,%n", config.wrkThreads));
@@ -326,9 +315,11 @@ public class BenchmarkRunner {
             BenchmarkResult r = results.get(i);
             json.append("    {\n");
             json.append(String.format("      \"rank\": %d,%n", r.rank));
-            json.append(String.format("      \"name\": \"%s\",%n", r.name));
-            json.append(String.format("      \"technology\": \"%s\",%n", r.technology));
-            json.append(String.format("      \"notes\": \"%s\",%n", r.notes));
+            json.append(String.format("      \"server\": \"%s\",%n", r.server.name()));
+            json.append(String.format("      \"name\": \"%s\",%n", r.name()));
+            json.append(String.format("      \"technology\": \"%s\",%n", r.technology()));
+            json.append(String.format("      \"tier\": \"%s\",%n", r.server.tier().name()));
+            json.append(String.format("      \"notes\": \"%s\",%n", r.notes()));
             json.append(String.format("      \"requests_per_second\": %.2f,%n", r.requestsPerSecond));
             json.append(String.format("      \"avg_latency\": \"%s\",%n", r.avgLatency));
             json.append(String.format("      \"max_latency\": \"%s\",%n", r.maxLatency));
@@ -352,26 +343,29 @@ public class BenchmarkRunner {
             config.workers, config.durationSeconds, config.wrkThreads, config.wrkConnections));
 
         md.append("## Rankings\n\n");
-        md.append("| Rank | Server | Throughput | Latency | Technology | Notes |\n");
-        md.append("|------|--------|------------|---------|------------|-------|\n");
+        md.append("| Rank | Server | Throughput | Latency | Tier | Technology |\n");
+        md.append("|------|--------|------------|---------|------|------------|\n");
 
         for (BenchmarkResult r : results) {
             if (r.success) {
-                md.append(String.format("| %d | %s | %.0f req/s | %s | %s | %s |%n",
-                    r.rank, r.name, r.requestsPerSecond, r.avgLatency, r.technology, r.notes));
+                md.append(String.format("| %d | %s | %.0f req/s | %s | %s | %s |\n",
+                    r.rank, r.name(), r.requestsPerSecond, r.avgLatency,
+                    r.server.tier().description(), r.technology()));
             } else {
-                md.append(String.format("| %d | %s | FAILED | N/A | %s | %s |%n",
-                    r.rank, r.name, r.technology, r.errorMessage));
+                md.append(String.format("| %d | %s | FAILED | N/A | %s | %s |\n",
+                    r.rank, r.name(), r.server.tier().description(), r.errorMessage));
             }
         }
 
-        md.append("\n## Server Registry\n\n");
-        md.append("All registered servers:\n\n");
-        md.append("| Name | Technology | Notes |\n");
-        md.append("|------|------------|-------|\n");
-
-        for (ServerRegistry.ServerInfo s : ServerRegistry.all()) {
-            md.append(String.format("| %s | %s | %s |%n", s.name(), s.technology(), s.notes()));
+        md.append("\n## Available Servers\n\n");
+        for (Server.Tier tier : Server.Tier.values()) {
+            md.append(String.format("### %s (%s)\n\n", tier.name().replace("_", " "), tier.description()));
+            md.append("| Server | Technology | Notes |\n");
+            md.append("|--------|------------|-------|\n");
+            for (Server s : Server.byTier(tier)) {
+                md.append(String.format("| %s | %s | %s |\n", s.displayName(), s.technology(), s.notes()));
+            }
+            md.append("\n");
         }
 
         Files.writeString(path, md.toString());
@@ -393,8 +387,9 @@ public class BenchmarkRunner {
         int threads = 12;
         int connections = 1000;
         Path outputDir = Path.of("benchmark-results");
-        Set<String> include = new HashSet<>();
-        Set<String> exclude = new HashSet<>();
+        Set<Server> include = new HashSet<>();
+        Set<Server> exclude = new HashSet<>();
+        Server.Tier tier = null;
 
         for (int i = 0; i < args.length; i++) {
             switch (args[i]) {
@@ -403,11 +398,26 @@ public class BenchmarkRunner {
                 case "--threads" -> threads = Integer.parseInt(args[++i]);
                 case "--connections" -> connections = Integer.parseInt(args[++i]);
                 case "--output" -> outputDir = Path.of(args[++i]);
-                case "--servers" -> include.addAll(Arrays.asList(args[++i].split(",")));
-                case "--exclude" -> exclude.addAll(Arrays.asList(args[++i].split(",")));
+                case "--servers" -> {
+                    for (String name : args[++i].split(",")) {
+                        Server.fromName(name.trim()).ifPresent(include::add);
+                    }
+                }
+                case "--exclude" -> {
+                    for (String name : args[++i].split(",")) {
+                        Server.fromName(name.trim()).ifPresent(exclude::add);
+                    }
+                }
+                case "--tier" -> {
+                    try {
+                        tier = Server.Tier.valueOf(args[++i].toUpperCase());
+                    } catch (IllegalArgumentException e) {
+                        System.err.println("Invalid tier. Valid: MAXIMUM_THROUGHPUT, HIGH_THROUGHPUT, SPECIALIZED, FRAMEWORK");
+                    }
+                }
             }
         }
 
-        return new Config(workers, duration, threads, connections, outputDir, include, exclude);
+        return new Config(workers, duration, threads, connections, outputDir, include, exclude, tier);
     }
 }

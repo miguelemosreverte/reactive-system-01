@@ -8,140 +8,97 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Factory for creating HTTP gateways with pluggable server implementations.
+ * Factory for creating HTTP servers with pluggable implementations.
  *
- * Supports:
- * - Server selection by name
- * - Environment variable configuration
- * - Default fallback to highest-performance server
- * - Automatic interceptor configuration
+ * Provides type-safe server selection using the Server enum.
  *
  * Usage:
  * <pre>
- * // Use default (RocketHttpServer)
- * HttpServerSpec server = GatewayFactory.createServer();
+ * // Direct creation
+ * HttpServerSpec server = GatewayFactory.create(Server.ROCKET);
  *
- * // Use specific implementation
- * HttpServerSpec server = GatewayFactory.createServer("SpringBootHttpServer");
+ * // From environment variable
+ * HttpServerSpec server = GatewayFactory.fromEnv();
  *
- * // Use from environment variable HTTP_SERVER_IMPL
- * HttpServerSpec server = GatewayFactory.createServerFromEnv();
- *
- * // Full builder pattern
+ * // Builder with interceptors
  * HttpServerSpec server = GatewayFactory.builder()
- *     .server("RocketHttpServer")
- *     .withTracing(TracingInterceptor.conditional())
- *     .withLogging(LoggingInterceptor.errorsOnly())
+ *     .server(Server.ROCKET)
+ *     .withConditionalTracing()
+ *     .withErrorLogging()
  *     .build();
  * </pre>
  */
 public final class GatewayFactory {
 
-    private static final String DEFAULT_SERVER = "RocketHttpServer";
-    private static final String ENV_SERVER_IMPL = "HTTP_SERVER_IMPL";
+    private static final String ENV_SERVER = "HTTP_SERVER_IMPL";
 
     private GatewayFactory() {}
 
     // ========================================================================
-    // Quick factory methods
+    // Direct Creation
     // ========================================================================
-
-    /**
-     * Create server with default implementation (RocketHttpServer).
-     * Note: Only works for servers with factories, not standalone-only servers.
-     */
-    public static HttpServerSpec createServer() {
-        return createServer(DEFAULT_SERVER);
-    }
 
     /**
      * Create server with specified implementation.
      */
-    public static HttpServerSpec createServer(String serverName) {
-        ServerRegistry.ServerInfo info = ServerRegistry.get(serverName)
-            .orElseThrow(() -> new IllegalArgumentException(
-                "Unknown server: " + serverName + ". Available: " + ServerRegistry.names()));
+    public static HttpServerSpec create(Server server) {
+        return server.create();
+    }
 
-        if (!info.hasFactory()) {
-            throw new UnsupportedOperationException(
-                serverName + " is standalone-only. Use mainClass() for command line execution, " +
-                "or register a factory with ServerRegistry.");
-        }
-
-        return info.create();
+    /**
+     * Create server with default implementation (ROCKET).
+     */
+    public static HttpServerSpec create() {
+        return create(Server.defaultServer());
     }
 
     /**
      * Create server from HTTP_SERVER_IMPL environment variable.
-     * Falls back to default if not set.
+     * Falls back to default if not set or invalid.
      */
-    public static HttpServerSpec createServerFromEnv() {
-        String impl = System.getenv(ENV_SERVER_IMPL);
-        return impl != null ? createServer(impl) : createServer();
+    public static HttpServerSpec fromEnv() {
+        return create(serverFromEnv());
     }
 
     /**
-     * Get server name from environment or default.
+     * Get server enum from environment variable.
      */
-    public static String getServerName() {
-        String impl = System.getenv(ENV_SERVER_IMPL);
-        return impl != null ? impl : DEFAULT_SERVER;
-    }
-
-    /**
-     * Get all available server names.
-     */
-    public static List<String> availableServers() {
-        return ServerRegistry.all().stream()
-            .map(ServerRegistry.ServerInfo::name)
-            .toList();
-    }
-
-    /**
-     * Get all servers that can be instantiated (have factories).
-     */
-    public static List<String> instantiableServers() {
-        return ServerRegistry.all().stream()
-            .filter(ServerRegistry.ServerInfo::hasFactory)
-            .map(ServerRegistry.ServerInfo::name)
-            .toList();
-    }
-
-    /**
-     * Check if a server name is valid.
-     */
-    public static boolean isValidServer(String name) {
-        return ServerRegistry.get(name).isPresent();
+    public static Server serverFromEnv() {
+        String impl = System.getenv(ENV_SERVER);
+        if (impl == null) {
+            return Server.defaultServer();
+        }
+        return Server.fromName(impl).orElseGet(() -> {
+            System.err.printf("Warning: Unknown server '%s', using default %s%n",
+                impl, Server.defaultServer().displayName());
+            return Server.defaultServer();
+        });
     }
 
     // ========================================================================
-    // Builder for advanced configuration
+    // Builder
     // ========================================================================
 
     /**
-     * Create a builder for advanced gateway configuration.
+     * Create a builder for advanced configuration.
      */
     public static Builder builder() {
         return new Builder();
     }
 
     public static final class Builder {
-        private String serverName = DEFAULT_SERVER;
-        private TracingInterceptor tracingInterceptor;
-        private LoggingInterceptor loggingInterceptor;
-        private final List<HttpServerSpec.Interceptor> customInterceptors = new ArrayList<>();
+        private Server server = Server.defaultServer();
+        private TracingInterceptor tracing;
+        private LoggingInterceptor logging;
+        private final List<HttpServerSpec.Interceptor> interceptors = new ArrayList<>();
 
         private Builder() {}
 
         /**
-         * Set server implementation by name.
+         * Set server implementation.
          */
-        public Builder server(String name) {
-            if (!isValidServer(name)) {
-                throw new IllegalArgumentException(
-                    "Unknown server: " + name + ". Available: " + availableServers());
-            }
-            this.serverName = name;
+        public Builder server(Server server) {
+            this.server = server;
             return this;
         }
 
@@ -149,18 +106,7 @@ public final class GatewayFactory {
          * Set server from environment variable.
          */
         public Builder serverFromEnv() {
-            String impl = System.getenv(ENV_SERVER_IMPL);
-            if (impl != null) {
-                this.serverName = impl;
-            }
-            return this;
-        }
-
-        /**
-         * Add tracing interceptor.
-         */
-        public Builder withTracing(TracingInterceptor interceptor) {
-            this.tracingInterceptor = interceptor;
+            this.server = GatewayFactory.serverFromEnv();
             return this;
         }
 
@@ -168,43 +114,55 @@ public final class GatewayFactory {
          * Add conditional tracing (only when headers request it).
          */
         public Builder withConditionalTracing() {
-            return withTracing(TracingInterceptor.conditional());
+            this.tracing = TracingInterceptor.conditional();
+            return this;
         }
 
         /**
          * Add always-on tracing.
          */
-        public Builder withAlwaysTracing() {
-            return withTracing(TracingInterceptor.always());
-        }
-
-        /**
-         * Add logging interceptor.
-         */
-        public Builder withLogging(LoggingInterceptor interceptor) {
-            this.loggingInterceptor = interceptor;
+        public Builder withTracing() {
+            this.tracing = TracingInterceptor.always();
             return this;
         }
 
         /**
-         * Add errors-only logging.
+         * Add custom tracing.
+         */
+        public Builder withTracing(TracingInterceptor tracing) {
+            this.tracing = tracing;
+            return this;
+        }
+
+        /**
+         * Add error-only logging.
          */
         public Builder withErrorLogging() {
-            return withLogging(LoggingInterceptor.errorsOnly());
+            this.logging = LoggingInterceptor.errorsOnly();
+            return this;
         }
 
         /**
          * Add full logging.
          */
-        public Builder withFullLogging() {
-            return withLogging(LoggingInterceptor.all());
+        public Builder withLogging() {
+            this.logging = LoggingInterceptor.all();
+            return this;
+        }
+
+        /**
+         * Add custom logging.
+         */
+        public Builder withLogging(LoggingInterceptor logging) {
+            this.logging = logging;
+            return this;
         }
 
         /**
          * Add custom interceptor.
          */
-        public Builder withInterceptor(HttpServerSpec.Interceptor interceptor) {
-            this.customInterceptors.add(interceptor);
+        public Builder with(HttpServerSpec.Interceptor interceptor) {
+            this.interceptors.add(interceptor);
             return this;
         }
 
@@ -212,51 +170,38 @@ public final class GatewayFactory {
          * Build the configured server.
          */
         public HttpServerSpec build() {
-            HttpServerSpec server = createServer(serverName);
+            HttpServerSpec result = server.create();
 
-            // Add interceptors in order: tracing -> logging -> custom
-            if (tracingInterceptor != null) {
-                server = server.intercept(tracingInterceptor);
+            // Apply interceptors in order: tracing -> logging -> custom
+            if (tracing != null) {
+                result = result.intercept(tracing);
             }
-            if (loggingInterceptor != null) {
-                server = server.intercept(loggingInterceptor);
+            if (logging != null) {
+                result = result.intercept(logging);
             }
-            for (HttpServerSpec.Interceptor interceptor : customInterceptors) {
-                server = server.intercept(interceptor);
+            for (HttpServerSpec.Interceptor i : interceptors) {
+                result = result.intercept(i);
             }
 
-            return server;
+            return result;
         }
     }
 
     // ========================================================================
-    // Server info display
+    // Utilities
     // ========================================================================
 
     /**
-     * Print available servers to stdout.
+     * List all available servers.
      */
-    public static void printAvailableServers() {
-        System.out.println("Available HTTP Server Implementations:");
-        System.out.println("═".repeat(80));
-        System.out.printf("%-25s %-20s %s%n", "Name", "Technology", "Notes");
-        System.out.println("─".repeat(80));
-
-        for (ServerRegistry.ServerInfo info : ServerRegistry.all()) {
-            String factory = info.hasFactory() ? "" : " [standalone]";
-            System.out.printf("%-25s %-20s %s%s%n",
-                info.name(), info.technology(), info.notes(), factory);
-        }
-
-        System.out.println();
-        System.out.println("Default: " + DEFAULT_SERVER);
-        System.out.println("Override: Set HTTP_SERVER_IMPL environment variable");
+    public static void printServers() {
+        Server.printAll();
     }
 
     /**
      * Main for listing servers.
      */
     public static void main(String[] args) {
-        printAvailableServers();
+        printServers();
     }
 }
