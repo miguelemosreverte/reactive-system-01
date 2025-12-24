@@ -11,8 +11,8 @@ spring:
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
       acks: 1
       retries: 0
-      batch-size: 32768         # 32KB - optimized for throughput
-      linger-ms: 1              # 1ms - low latency
+      batch-size: 65536         # 64KB - larger batches
+      linger-ms: 0              # No wait - send immediately when batch ready
       buffer-memory: 67108864   # 64MB buffer
       compression-type: lz4     # Fast compression
     consumer:
