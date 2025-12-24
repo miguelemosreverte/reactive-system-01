@@ -5,6 +5,7 @@ import com.reactive.counter.domain.CounterState;
 import com.reactive.counter.service.ResultConsumerService;
 import com.reactive.platform.id.IdGenerator;
 import com.reactive.platform.kafka.KafkaPublisher;
+import com.reactive.platform.kafka.BatchingKafkaPublisher;
 import com.reactive.platform.observe.Log;
 import com.reactive.counter.serialization.AvroCounterEventCodec;
 import jakarta.annotation.PostConstruct;
@@ -47,6 +48,15 @@ public class CounterController {
     @Value("${app.result-timeout-ms:5000}")
     private long resultTimeoutMs;
 
+    @Value("${app.batching.enabled:false}")
+    private boolean batchingEnabled;
+
+    @Value("${app.batching.max-size:1000}")
+    private int batchMaxSize;
+
+    @Value("${app.batching.max-delay-ms:100}")
+    private long batchMaxDelayMs;
+
     @Autowired(required = false)
     private ResultConsumerService resultConsumerService;
 
@@ -61,15 +71,31 @@ public class CounterController {
                 }
             });
     private KafkaPublisher<CounterEvent> publisher;
+    private BatchingKafkaPublisher<CounterEvent> batchingPublisher;
 
     @PostConstruct
     void init() {
-        publisher = KafkaPublisher.create(c -> c
-                .bootstrapServers(kafkaBootstrap)
-                .topic(eventsTopic)
-                .codec(AvroCounterEventCodec.create())  // Avro: ~5-10x faster than JSON
-                .keyExtractor(e -> kafkaKey(e.customerId(), e.sessionId()))
-                .fireAndForget());  // acks=0, maxInFlight=100 for max throughput
+        if (batchingEnabled) {
+            // High-throughput batching mode (Akka-style groupedWithin)
+            batchingPublisher = BatchingKafkaPublisher.create(c -> c
+                    .bootstrapServers(kafkaBootstrap)
+                    .topic(eventsTopic)
+                    .codec(AvroCounterEventCodec.create())
+                    .keyExtractor(e -> kafkaKey(e.customerId(), e.sessionId()))
+                    .groupedWithin(batchMaxSize, batchMaxDelayMs));  // e.g., 1000 items OR 100ms
+
+            log.info("Batching publisher enabled: maxSize={}, maxDelayMs={}", batchMaxSize, batchMaxDelayMs);
+        } else {
+            // Standard fire-and-forget mode
+            publisher = KafkaPublisher.create(c -> c
+                    .bootstrapServers(kafkaBootstrap)
+                    .topic(eventsTopic)
+                    .codec(AvroCounterEventCodec.create())
+                    .keyExtractor(e -> kafkaKey(e.customerId(), e.sessionId()))
+                    .fireAndForget());
+
+            log.info("Standard fire-and-forget publisher enabled");
+        }
 
         // Register callback for state updates from Kafka results
         if (resultConsumerService != null) {
@@ -82,6 +108,9 @@ public class CounterController {
     void cleanup() {
         if (publisher != null) {
             publisher.close();
+        }
+        if (batchingPublisher != null) {
+            batchingPublisher.close();
         }
     }
 
@@ -141,7 +170,7 @@ public class CounterController {
         log.debug("Publishing event: action={}, value={}, session={}",
                 request.action(), request.value(), sessionId);
 
-        publisher.publishFireAndForget(event);
+        publishEvent(event);
 
         ActionResponse response = new ActionResponse(
                 true, requestId, customerId,
@@ -170,7 +199,7 @@ public class CounterController {
         log.debug("Publishing event (fast): action={}, value={}, session={}",
                 request.action(), request.value(), sessionId);
 
-        publisher.publishFireAndForget(event);
+        publishEvent(event);
 
         return ResponseEntity.ok(new ActionResponse(
                 true, requestId, customerId,
@@ -180,6 +209,17 @@ public class CounterController {
     // ========================================================================
     // Helpers
     // ========================================================================
+
+    /**
+     * Publish event using either batching or standard publisher.
+     */
+    private void publishEvent(CounterEvent event) {
+        if (batchingEnabled && batchingPublisher != null) {
+            batchingPublisher.publish(event);
+        } else if (publisher != null) {
+            publisher.publishFireAndForget(event);
+        }
+    }
 
     private String kafkaKey(String customerId, String sessionId) {
         return customerId.isEmpty()

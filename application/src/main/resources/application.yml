@@ -27,6 +27,13 @@ app:
   result-timeout-ms: ${RESULT_TIMEOUT_MS:5000}
   # Enable WebSocket for real-time UI updates
   websocket-enabled: ${WEBSOCKET_ENABLED:true}
+
+  # Akka-style batching for maximum throughput (groupedWithin semantics)
+  batching:
+    enabled: ${BATCHING_ENABLED:true}      # Enable dynamic batching
+    max-size: ${BATCHING_MAX_SIZE:1000}    # Flush every N messages
+    max-delay-ms: ${BATCHING_MAX_DELAY:100} # OR every N milliseconds
+
   kafka:
     topics:
       events: counter-events
