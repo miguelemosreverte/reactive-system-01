@@ -3,6 +3,7 @@ package com.reactive.counter.api;
 import com.reactive.counter.domain.CounterEvent;
 import com.reactive.counter.domain.CounterState;
 import com.reactive.counter.service.ResultConsumerService;
+import com.reactive.diagnostic.DiagnosticCollector;
 import com.reactive.platform.id.IdGenerator;
 import com.reactive.platform.kafka.KafkaPublisher;
 import com.reactive.platform.observe.Log;
@@ -49,6 +50,9 @@ public class CounterController {
 
     @Autowired(required = false)
     private ResultConsumerService resultConsumerService;
+
+    @Autowired
+    private DiagnosticCollector diagnosticCollector;
 
     private final IdGenerator idGenerator = IdGenerator.getInstance();
     // Bounded LRU cache for session states (max 10k entries to prevent OOM)
@@ -158,19 +162,38 @@ public class CounterController {
     }
 
     private ResponseEntity<ActionResponse> submitFast(ActionRequest request, String customerId) {
+        long startTime = System.nanoTime();
+
         String sessionId = request.sessionIdOrDefault();
         String requestId = idGenerator.generateRequestId();
         String eventId = idGenerator.generateEventId();
+
+        // Record http_receive stage
+        diagnosticCollector.recordStageEvent("http_receive", (System.nanoTime() - startTime) / 1_000_000.0);
+        long validationStart = System.nanoTime();
 
         addSpanAttributes(requestId, customerId, eventId, sessionId, request);
 
         CounterEvent event = CounterEvent.create(
                 requestId, customerId, eventId, sessionId, request.action(), request.value());
 
+        // Record validation/serialization stage
+        diagnosticCollector.recordStageEvent("validation", (System.nanoTime() - validationStart) / 1_000_000.0);
+        long kafkaStart = System.nanoTime();
+
         log.debug("Publishing event (fast): action={}, value={}, session={}",
                 request.action(), request.value(), sessionId);
 
         publisher.publishFireAndForget(event);
+
+        // Record kafka_produce stage
+        double kafkaLatency = (System.nanoTime() - kafkaStart) / 1_000_000.0;
+        diagnosticCollector.recordStageEvent("kafka_produce", kafkaLatency);
+        diagnosticCollector.recordDependencyCall("kafka", kafkaLatency, true);
+
+        // Record total event
+        double totalLatency = (System.nanoTime() - startTime) / 1_000_000.0;
+        diagnosticCollector.recordEvent(100, totalLatency); // ~100 bytes per event
 
         return ResponseEntity.ok(new ActionResponse(
                 true, requestId, customerId,
