@@ -135,7 +135,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 768M  # Right-sized for 16GB host
+          memory: 1G  # Prometheus needs more under load
           cpus: '1.0'
     depends_on:
       otel-collector:
