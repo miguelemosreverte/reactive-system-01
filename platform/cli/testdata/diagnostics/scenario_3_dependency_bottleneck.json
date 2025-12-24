@@ -1,0 +1,310 @@
+{
+  "component": "gateway",
+  "instance_id": "gateway-prod-1",
+  "timestamp_ms": 1703462400000,
+  "uptime_ms": 172800000,
+  "version": "1.0.0",
+
+  "throughput": {
+    "events_per_second": 456.7,
+    "bytes_per_second": 91340,
+    "events_per_second_capacity": 2000,
+    "capacity_utilization_percent": 22.8,
+    "batch_size_avg": 78.9,
+    "batch_size_p99": 100,
+    "batches_per_second": 5.8,
+    "batch_efficiency_percent": 78.9,
+    "parallelism_active": 8,
+    "parallelism_max": 8,
+    "queue_depth": 4567,
+    "queue_capacity": 5000,
+    "rejected_count": 0,
+    "dropped_count": 0
+  },
+
+  "latency": {
+    "total_ms_p50": 234.5,
+    "total_ms_p95": 567.8,
+    "total_ms_p99": 1234.5,
+    "total_ms_max": 2345.6,
+    "cpu_time_ms": 8.9,
+    "queue_wait_ms": 12.3,
+    "lock_wait_ms": 3.4,
+    "gc_pause_ms": 5.6,
+    "network_ms": 12.3,
+    "serialization_ms": 4.5,
+    "deserialization_ms": 3.2,
+    "dependency_wait_ms": 189.4,
+    "breakdown_percent": {
+      "dependency_wait": 78.9,
+      "queue_wait": 5.1,
+      "network": 5.1,
+      "cpu": 3.7,
+      "gc_pause": 2.3,
+      "serialization": 1.9,
+      "lock_wait": 1.4,
+      "deserialization": 1.3
+    }
+  },
+
+  "saturation": {
+    "cpu_percent": 23.4,
+    "heap_used_percent": 45.6,
+    "heap_used_bytes": 1932735283,
+    "heap_max_bytes": 4294967296,
+    "old_gen_percent": 34.5,
+    "old_gen_bytes": 1111490560,
+    "old_gen_max_bytes": 3221225472,
+    "thread_pool_active": 8,
+    "thread_pool_max": 8,
+    "thread_pool_queue_depth": 4567,
+    "connection_pool_active": 10,
+    "connection_pool_max": 10,
+    "buffer_pool_used_percent": 23.4,
+    "file_descriptors_used": 234,
+    "file_descriptors_max": 1024
+  },
+
+  "trends": {
+    "throughput_trend": -0.45,
+    "latency_trend": 0.67,
+    "heap_growth_bytes_per_sec": 10485,
+    "old_gen_growth_bytes_per_sec": 5242,
+    "queue_depth_trend": 0.89,
+    "error_rate_trend": 0.02,
+    "gc_frequency_trend": 0.01,
+    "estimated_heap_exhaustion_sec": -1,
+    "estimated_old_gen_exhaustion_sec": -1
+  },
+
+  "contention": {
+    "lock_contention_percent": 2.3,
+    "most_contended_locks": [
+      {"name": "DroolsClient.lock", "contention_percent": 78.9, "wait_count": 45678, "avg_wait_ms": 189.4}
+    ],
+    "blocked_threads": 7,
+    "waiting_threads": 1,
+    "deadlock_detected": false,
+    "io_wait_percent": 78.9,
+    "queue_blocking_percent": 91.3
+  },
+
+  "memory": {
+    "heap_used_bytes": 1932735283,
+    "heap_committed_bytes": 2147483648,
+    "heap_max_bytes": 4294967296,
+    "non_heap_used_bytes": 134217728,
+    "direct_buffer_used_bytes": 67108864,
+    "direct_buffer_max_bytes": 536870912,
+    "allocation_rate_bytes_per_sec": 5242880,
+    "promotion_rate_bytes_per_sec": 104857,
+    "survivor_space_used_percent": 23.4,
+    "tenuring_threshold": 15,
+    "large_object_allocations_per_sec": 12,
+    "fragmentation_percent": 5.6,
+    "native_memory_used_bytes": 268435456,
+    "memory_pools": [
+      {"name": "Eden", "used_bytes": 134217728, "max_bytes": 536870912, "used_percent": 25.0},
+      {"name": "Survivor", "used_bytes": 33554432, "max_bytes": 134217728, "used_percent": 25.0},
+      {"name": "OldGen", "used_bytes": 1111490560, "max_bytes": 3221225472, "used_percent": 34.5},
+      {"name": "Metaspace", "used_bytes": 67108864, "max_bytes": 268435456, "used_percent": 25.0}
+    ]
+  },
+
+  "gc": {
+    "young_gc_count": 234,
+    "young_gc_time_ms": 1234,
+    "old_gc_count": 5,
+    "old_gc_time_ms": 567,
+    "gc_overhead_percent": 0.8,
+    "avg_young_gc_pause_ms": 5.3,
+    "avg_old_gc_pause_ms": 113.4,
+    "max_gc_pause_ms": 234.5,
+    "gc_frequency_per_min": 2.3,
+    "time_since_last_gc_ms": 45678,
+    "consecutive_full_gcs": 0,
+    "gc_cpu_percent": 1.2,
+    "objects_promoted_per_gc": 123456,
+    "gc_algorithm": "G1",
+    "gc_cause_histogram": {
+      "G1 Evacuation Pause": 234,
+      "Metadata GC Threshold": 5
+    }
+  },
+
+  "stages": [
+    {
+      "name": "http_receive",
+      "events_processed": 456789,
+      "events_per_second": 456.7,
+      "latency_ms_p50": 2.1,
+      "latency_ms_p99": 8.9,
+      "queue_depth": 12,
+      "is_bottleneck": false,
+      "saturation_percent": 12.3,
+      "error_count": 0,
+      "backpressure_applied": false
+    },
+    {
+      "name": "validation",
+      "events_processed": 456789,
+      "events_per_second": 456.7,
+      "latency_ms_p50": 3.4,
+      "latency_ms_p99": 12.3,
+      "queue_depth": 45,
+      "is_bottleneck": false,
+      "saturation_percent": 18.9,
+      "error_count": 0,
+      "backpressure_applied": false
+    },
+    {
+      "name": "drools_evaluation",
+      "events_processed": 456789,
+      "events_per_second": 456.7,
+      "latency_ms_p50": 189.4,
+      "latency_ms_p99": 567.8,
+      "queue_depth": 4567,
+      "is_bottleneck": true,
+      "saturation_percent": 100.0,
+      "error_count": 45,
+      "backpressure_applied": true
+    },
+    {
+      "name": "kafka_produce",
+      "events_processed": 456744,
+      "events_per_second": 456.7,
+      "latency_ms_p50": 8.9,
+      "latency_ms_p99": 23.4,
+      "queue_depth": 23,
+      "is_bottleneck": false,
+      "saturation_percent": 23.4,
+      "error_count": 0,
+      "backpressure_applied": false
+    }
+  ],
+
+  "dependencies": [
+    {
+      "name": "drools",
+      "type": "rule_engine",
+      "latency_ms_p50": 189.4,
+      "latency_ms_p99": 567.8,
+      "calls_per_second": 456.7,
+      "error_rate_percent": 0.98,
+      "circuit_breaker_state": "HALF_OPEN",
+      "connection_pool_used": 10,
+      "connection_pool_max": 10,
+      "saturation_percent": 100.0,
+      "last_error": "TimeoutException: Drools evaluation timeout after 500ms",
+      "last_error_time_ms": 1703462399000
+    },
+    {
+      "name": "kafka",
+      "type": "message_broker",
+      "latency_ms_p50": 8.9,
+      "latency_ms_p99": 23.4,
+      "calls_per_second": 5.8,
+      "error_rate_percent": 0.0,
+      "circuit_breaker_state": "CLOSED",
+      "connection_pool_used": 3,
+      "connection_pool_max": 10,
+      "saturation_percent": 30.0,
+      "last_error": null,
+      "last_error_time_ms": 0
+    }
+  ],
+
+  "errors": {
+    "total_error_count": 45,
+    "error_rate_percent": 0.98,
+    "errors_by_type": {
+      "TimeoutException": 42,
+      "ConnectionRefusedException": 3
+    },
+    "recent_errors": [
+      {"type": "TimeoutException", "message": "Drools evaluation timeout after 500ms", "timestamp_ms": 1703462399000, "stack_trace_hash": "drools123"},
+      {"type": "TimeoutException", "message": "Drools evaluation timeout after 500ms", "timestamp_ms": 1703462398500, "stack_trace_hash": "drools123"},
+      {"type": "ConnectionRefusedException", "message": "Cannot connect to drools:8080", "timestamp_ms": 1703462395000, "stack_trace_hash": "drools456"}
+    ],
+    "crash_indicators": {
+      "oom_risk": false,
+      "oom_risk_percent": 0,
+      "gc_thrashing": false,
+      "memory_leak_suspected": false,
+      "thread_exhaustion_risk": true
+    }
+  },
+
+  "capacity": {
+    "current_throughput": 456.7,
+    "max_observed_throughput": 2345.6,
+    "theoretical_max_throughput": 3000,
+    "headroom_percent": 0,
+    "limiting_factors": [
+      {"factor": "drools_dependency", "impact_percent": 100.0, "current_value": 100.0, "threshold_value": 80.0, "unit": "percent_saturated"},
+      {"factor": "drools_connection_pool", "impact_percent": 100.0, "current_value": 50, "threshold_value": 50, "unit": "connections"},
+      {"factor": "thread_pool_blocked", "impact_percent": 87.5, "current_value": 7, "threshold_value": 8, "unit": "threads"}
+    ]
+  },
+
+  "history": [
+    {
+      "bucket_start_ms": 1703462340000,
+      "bucket_duration_ms": 60000,
+      "avg_throughput": 567.8,
+      "avg_latency_ms": 178.9,
+      "max_latency_ms": 567.8,
+      "error_count": 12,
+      "heap_used_avg_percent": 45.6
+    },
+    {
+      "bucket_start_ms": 1703462280000,
+      "bucket_duration_ms": 60000,
+      "avg_throughput": 789.0,
+      "avg_latency_ms": 134.5,
+      "max_latency_ms": 456.7,
+      "error_count": 8,
+      "heap_used_avg_percent": 44.3
+    },
+    {
+      "bucket_start_ms": 1703462220000,
+      "bucket_duration_ms": 60000,
+      "avg_throughput": 1234.5,
+      "avg_latency_ms": 45.6,
+      "max_latency_ms": 123.4,
+      "error_count": 2,
+      "heap_used_avg_percent": 43.2
+    }
+  ],
+
+  "sampled_requests": [
+    {
+      "trace_id": "drools-slow-001",
+      "total_time_ms": 567.8,
+      "time_breakdown": {
+        "drools_evaluation": 523.4,
+        "http_receive": 2.1,
+        "validation": 3.4,
+        "kafka_produce": 8.9,
+        "serialization": 4.5,
+        "queue_wait": 25.5
+      },
+      "gc_pauses_encountered": 0,
+      "retries": 0,
+      "final_status": "SUCCESS"
+    },
+    {
+      "trace_id": "drools-timeout-001",
+      "total_time_ms": 512.3,
+      "time_breakdown": {
+        "drools_evaluation": 500.0,
+        "http_receive": 2.1,
+        "validation": 3.4,
+        "queue_wait": 6.8
+      },
+      "gc_pauses_encountered": 0,
+      "retries": 2,
+      "final_status": "TIMEOUT"
+    }
+  ]
+}
