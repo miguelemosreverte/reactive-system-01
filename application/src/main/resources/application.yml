@@ -20,9 +20,9 @@ spring:
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.ByteArraySerializer
-      acks: 1                   # Wait for leader ack (more stable)
-      batch-size: 65536         # 64KB - larger batches for throughput
-      linger-ms: 5              # 5ms - allows more batching
+      acks: 0                   # Fire-and-forget for max throughput
+      batch-size: 65536         # 64KB batches
+      linger-ms: 0              # No linger - send immediately
       buffer-memory: 67108864   # 64MB buffer
       compression-type: lz4     # Fast compression
     consumer:
