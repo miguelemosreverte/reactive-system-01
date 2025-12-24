@@ -5,14 +5,12 @@ x-version: &version "1.0.0"
 # ============================================
 # Tracing Strategy
 # ============================================
-# Default: Production-safe sampling (~1 trace per 10s at 100 ops/s)
-# On-demand: Add ?trace=true or X-Debug:true for full tracing on any request
+# Default: Production-safe sampling (~0.1% of requests)
+# On-demand: Add X-Debug:true header for full tracing on any request
 #
 # This means:
 #   - Normal requests: ~0.1% are traced (low overhead, no OOM)
 #   - Debug requests:  Always fully traced with detailed logs
-#
-# Override sampling: OTEL_SAMPLING_RATE=1.0 docker compose up (100% for debugging)
 
 services:
   # ============================================
@@ -275,13 +273,14 @@ services:
       - JAVA_OPTS=-Xmx1g -XX:+UseG1GC -XX:MaxGCPauseMillis=10
       - SERVICE_VERSION=1.0.0
       # OpenTelemetry Configuration
+      # Sampling controlled at application level via X-Debug header
       - OTEL_ENABLED=${OTEL_FEATURE_ENABLED:-true}
       - OTEL_SERVICE_NAME=drools
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
-      - OTEL_TRACES_SAMPLER=parentbased_traceidratio
-      - OTEL_TRACES_SAMPLER_ARG=${OTEL_SAMPLING_RATE:-0.001}
       - OTEL_METRICS_EXPORTER=otlp
-      - OTEL_LOGS_EXPORTER=otlp
+      - OTEL_LOGS_EXPORTER=none
+      - OTEL_EXPORTER_OTLP_TIMEOUT=10000
+      - OTEL_PROPAGATORS=tracecontext,baggage
     deploy:
       resources:
         limits:
@@ -317,11 +316,10 @@ services:
         jobmanager.rpc.address: flink-jobmanager
         parallelism.default: 8
       # OpenTelemetry Configuration
+      # Sampling controlled at application level via X-Debug header
       - OTEL_ENABLED=${OTEL_FEATURE_ENABLED:-true}
       - OTEL_SERVICE_NAME=flink-jobmanager
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
-      - OTEL_TRACES_SAMPLER=parentbased_traceidratio
-      - OTEL_TRACES_SAMPLER_ARG=${OTEL_SAMPLING_RATE:-0.001}
     depends_on:
       kafka:
         condition: service_healthy
@@ -365,26 +363,26 @@ services:
         taskmanager.network.memory.buffer-debloat.period: 25ms
         execution.buffer-timeout: 1ms
         taskmanager.memory.process.size: 3g
-        env.java.opts.taskmanager: -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/tmp/diagnostics/heapdump.hprof -Xlog:gc*:file=/tmp/diagnostics/gc.log:time,uptime,level,tags -XX:NativeMemoryTracking=summary
+        env.java.opts.taskmanager: -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/tmp/diagnostics/heapdump.hprof -Xlog:gc*:file=/tmp/diagnostics/gc.log:time,uptime,level,tags -XX:NativeMemoryTracking=summary --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED
       # System-wide latency bounds (CQRS snapshot evaluation)
-      - LATENCY_MIN_MS=${LATENCY_MIN_MS:-1}
+      - LATENCY_MIN_MS=${LATENCY_MIN_MS:-20}
       - LATENCY_MAX_MS=${LATENCY_MAX_MS:-100}
       - ALERTS_TOPIC=${COUNTER_ALERTS_TOPIC:-counter-alerts}
       - DROOLS_URL=http://drools:8080
       # Kafka consumer tuning for high throughput
       - KAFKA_FETCH_MAX_WAIT_MS=1
       - FLINK_BUFFER_TIMEOUT_MS=1
-      # Dev mode: reduced async capacity for memory stability
-      - ASYNC_CAPACITY=200
+      # Async capacity for Drools calls (CQRS bounded snapshots)
+      - ASYNC_CAPACITY=500
       # Benchmark mode: Skip Drools for Layer 2 benchmarks
       - SKIP_DROOLS=${SKIP_DROOLS:-false}
       # OpenTelemetry Configuration
+      # Flink uses always_on to connect async traces across pipeline
       - OTEL_ENABLED=${OTEL_FEATURE_ENABLED:-true}
       - OTEL_SERVICE_NAME=flink-taskmanager
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
       - OTEL_TRACES_EXPORTER=otlp
       - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
-      - OTEL_TRACES_SAMPLER=always_on
     deploy:
       resources:
         limits:
@@ -448,7 +446,7 @@ services:
       - KAFKA_FETCH_MAX_WAIT_MS=1
       - FLINK_BUFFER_TIMEOUT_MS=1
       # System-wide latency bounds
-      - LATENCY_MIN_MS=${LATENCY_MIN_MS:-1}
+      - LATENCY_MIN_MS=${LATENCY_MIN_MS:-20}
       - LATENCY_MAX_MS=${LATENCY_MAX_MS:-100}
       - DROOLS_URL=http://drools:8080
       - ALERTS_TOPIC=${COUNTER_ALERTS_TOPIC:-counter-alerts}
@@ -473,17 +471,16 @@ services:
       - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
       - SERVICE_VERSION=1.0.0
       # OpenTelemetry Configuration
+      # Sampling controlled at application level via X-Debug header
       - OTEL_ENABLED=${OTEL_FEATURE_ENABLED:-true}
       - OTEL_SERVICE_NAME=counter-application
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
-      - OTEL_TRACES_SAMPLER=parentbased_traceidratio
-      - OTEL_TRACES_SAMPLER_ARG=${OTEL_SAMPLING_RATE:-0.001}
-      # JVM tuning - increased heap for reduced GC pressure
-      - JAVA_OPTS=-XX:+UseG1GC -XX:MaxGCPauseMillis=10 -Xms768m -Xmx1536m
+      # JVM tuning - G1GC optimized for throughput
+      - JAVA_OPTS=-XX:+UseG1GC -XX:MaxGCPauseMillis=20 -Xms1024m -Xmx1024m -XX:+AlwaysPreTouch -XX:ParallelGCThreads=4 -XX:ConcGCThreads=2 -XX:G1HeapRegionSize=4m
     deploy:
       resources:
         limits:
-          memory: 1792M
+          memory: 3584M  # Increased for high-throughput benchmarks
           cpus: '4.0'
     depends_on:
       kafka:
