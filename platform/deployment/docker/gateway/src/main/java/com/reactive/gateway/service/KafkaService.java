@@ -83,7 +83,7 @@ public class KafkaService {
         diagnosticCollector.recordStageEvent("validation", (System.nanoTime() - validationStart) / 1_000_000.0);
         long serializationStart = System.nanoTime();
 
-        log.info("Publishing: session={}, action={}", command.getSessionId(), command.getAction());
+        log.debug("Publishing: session={}, action={}", command.getSessionId(), command.getAction());
 
         // Record serialization and kafka_produce stages
         ProducerRecord<String, CounterCommand> record = createRecordWithTraceContext(commandsTopic, kafkaKey(command), command);
@@ -136,7 +136,7 @@ public class KafkaService {
         diagnosticCollector.recordStageEvent("validation", (System.nanoTime() - validationStart) / 1_000_000.0);
         long serializationStart = System.nanoTime();
 
-        log.info("Publishing (wait): session={}, action={}", command.getSessionId(), command.getAction());
+        log.debug("Publishing (wait): session={}, action={}", command.getSessionId(), command.getAction());
 
         CompletableFuture<CounterResult> future = new CompletableFuture<>();
         pendingTransactions.put(eventId, future);
@@ -191,7 +191,7 @@ public class KafkaService {
         span.attr("messaging.destination", record.topic());
 
         try {
-            log.info("Result: eventId={}, value={}", result.eventId(), result.getNewValue());
+            log.debug("Result: eventId={}, value={}", result.eventId(), result.getNewValue());
 
             // Complete pending transaction
             CompletableFuture<CounterResult> future = pendingTransactions.remove(result.eventId());
