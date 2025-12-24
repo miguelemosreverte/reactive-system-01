@@ -36,7 +36,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 128M  # Needs headroom under high throughput
+          memory: 192M  # Increased: 116MB actual at idle
           cpus: '1.5'
     depends_on:
       jaeger:
@@ -135,7 +135,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 640M  # Tight: 503MB under load + headroom
+          memory: 512M  # Reduced for 7.7GB Docker limit
           cpus: '1.0'
     depends_on:
       otel-collector:
@@ -193,8 +193,13 @@ services:
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
+      KAFKA_HEAP_OPTS: "-Xmx256m -Xms256m"
     ports:
       - "2181:2181"
+    deploy:
+      resources:
+        limits:
+          memory: 384M  # 256MB heap + JVM overhead
     healthcheck:
       test: ["CMD", "nc", "-z", "localhost", "2181"]
       interval: 10s
@@ -228,7 +233,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1280M  # Right-sized: 1GB actual usage + headroom
+          memory: 1152M  # Kafka needs more for stability
     networks:
       - reactive-network
 
@@ -340,7 +345,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 768M  # Right-sized: 587MB actual usage
+          memory: 768M  # JobManager needs headroom
     networks:
       - reactive-network
 
@@ -370,7 +375,7 @@ services:
         taskmanager.network.memory.buffer-debloat.target: 50ms
         taskmanager.network.memory.buffer-debloat.period: 25ms
         execution.buffer-timeout: 1ms
-        taskmanager.memory.process.size: 1280m
+        taskmanager.memory.process.size: 1024m
         env.java.opts.taskmanager: -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/tmp/diagnostics/heapdump.hprof -Xlog:gc*:file=/tmp/diagnostics/gc.log:time,uptime,level,tags -XX:NativeMemoryTracking=summary --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED
       # System-wide latency bounds (CQRS snapshot evaluation)
       - LATENCY_MIN_MS=${LATENCY_MIN_MS:-20}
@@ -394,7 +399,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1408M  # Tight: 1.08GB actual, process.size=1280m + headroom
+          memory: 1280M  # Reduced: matches process.size setting
           cpus: '3.0'
     networks:
       - reactive-network
@@ -488,7 +493,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1536M  # Right-sized: 1.27GB actual, 1GB heap + JVM overhead
+          memory: 1536M  # 1GB heap + 512MB JVM overhead
           cpus: '4.0'
     depends_on:
       kafka:
