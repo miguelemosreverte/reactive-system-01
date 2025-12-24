@@ -135,7 +135,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 384M  # Reduced to make room for drools
+          memory: 512M  # Increased: was at 76% utilization
           cpus: '1.0'
     depends_on:
       otel-collector:
@@ -166,7 +166,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 128M  # Tight: 47MB actual
+          memory: 192M  # Increased: was at 87% utilization
           cpus: '0.25'
     volumes:
       - ./platform/deployment/docker/observability/grafana/provisioning:/etc/grafana/provisioning:ro
@@ -233,7 +233,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1280M  # Increased for sustained load
+          memory: 1792M  # Increased: was at 82% utilization
     networks:
       - reactive-network
 
@@ -345,7 +345,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 768M  # JobManager needs headroom
+          memory: 1024M  # Increased: was at 95% utilization
     networks:
       - reactive-network
 
@@ -375,7 +375,7 @@ services:
         taskmanager.network.memory.buffer-debloat.target: 50ms
         taskmanager.network.memory.buffer-debloat.period: 25ms
         execution.buffer-timeout: 1ms
-        taskmanager.memory.process.size: 1024m
+        taskmanager.memory.process.size: 1280m
         env.java.opts.taskmanager: -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/tmp/diagnostics/heapdump.hprof -Xlog:gc*:file=/tmp/diagnostics/gc.log:time,uptime,level,tags -XX:NativeMemoryTracking=summary --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED
       # System-wide latency bounds (CQRS snapshot evaluation)
       - LATENCY_MIN_MS=${LATENCY_MIN_MS:-20}
@@ -399,7 +399,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1280M  # Reduced: matches process.size setting
+          memory: 1536M  # Increased for better Flink processing
           cpus: '3.0'
     networks:
       - reactive-network
@@ -489,11 +489,11 @@ services:
       - OTEL_SERVICE_NAME=counter-application
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
       # JVM tuning - G1GC optimized for throughput (memory-efficient config)
-      - JAVA_OPTS=-XX:+UseG1GC -XX:MaxGCPauseMillis=20 -Xms1024m -Xmx1024m -XX:+AlwaysPreTouch -XX:ParallelGCThreads=4 -XX:ConcGCThreads=2 -XX:G1HeapRegionSize=4m
+      - JAVA_OPTS=-XX:+UseG1GC -XX:MaxGCPauseMillis=20 -Xms1536m -Xmx1536m -XX:+AlwaysPreTouch -XX:ParallelGCThreads=4 -XX:ConcGCThreads=2 -XX:G1HeapRegionSize=4m
     deploy:
       resources:
         limits:
-          memory: 1536M  # 1GB heap + 512MB JVM overhead
+          memory: 2048M  # Increased: was at 88% utilization
           cpus: '4.0'
     depends_on:
       kafka:
