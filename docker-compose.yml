@@ -37,7 +37,7 @@ services:
       resources:
         limits:
           memory: 512M  # Increased for sustained high-throughput load
-          cpus: '1.5'
+          cpus: '2.0'  # Increased: was at 56% with 1.5 cores
     depends_on:
       jaeger:
         condition: service_healthy
@@ -400,7 +400,7 @@ services:
       resources:
         limits:
           memory: 1536M  # Increased for better Flink processing
-          cpus: '3.0'
+          cpus: '4.0'  # Increased: was at 148% CPU during load
     networks:
       - reactive-network
 
