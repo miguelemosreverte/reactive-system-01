@@ -112,6 +112,32 @@
         </dependency>
 
         <!-- ============================================ -->
+        <!-- HTTP: Netty for high-performance server -->
+        <!-- ============================================ -->
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-all</artifactId>
+            <version>4.1.101.Final</version>
+        </dependency>
+
+        <!-- io_uring transport - kernel bypass for Linux -->
+        <dependency>
+            <groupId>io.netty.incubator</groupId>
+            <artifactId>netty-incubator-transport-native-io_uring</artifactId>
+            <version>0.0.25.Final</version>
+            <classifier>linux-aarch_64</classifier>
+        </dependency>
+
+        <!-- ============================================ -->
+        <!-- Spring Boot for comparison benchmark -->
+        <!-- ============================================ -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+            <version>3.2.0</version>
+        </dependency>
+
+        <!-- ============================================ -->
         <!-- Test: JUnit 5 -->
         <!-- ============================================ -->
         <dependency>
