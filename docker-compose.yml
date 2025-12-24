@@ -381,7 +381,7 @@ services:
       - KAFKA_FETCH_MAX_WAIT_MS=1
       - FLINK_BUFFER_TIMEOUT_MS=1
       # Async capacity for Drools calls (CQRS bounded snapshots)
-      - ASYNC_CAPACITY=250
+      - ASYNC_CAPACITY=200
       # Benchmark mode: Skip Drools for Layer 2 benchmarks
       - SKIP_DROOLS=${SKIP_DROOLS:-false}
       # OpenTelemetry Configuration
@@ -449,7 +449,7 @@ services:
     environment:
       # Parallelism matches taskmanager slots (8 slots, parallelism 4 = 8 total tasks)
       - FLINK_PARALLELISM=8  # Increased: 2 taskmanagers × 8 slots = 16 slots, parallelism 8 uses 16 (2 operator chains)
-      - ASYNC_CAPACITY=250
+      - ASYNC_CAPACITY=200
       # Kafka consumer tuning for high throughput
       - KAFKA_FETCH_MAX_WAIT_MS=1
       - FLINK_BUFFER_TIMEOUT_MS=1
@@ -484,11 +484,11 @@ services:
       - OTEL_SERVICE_NAME=counter-application
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
       # JVM tuning - G1GC optimized for throughput (memory-efficient config)
-      - JAVA_OPTS=-XX:+UseG1GC -XX:MaxGCPauseMillis=20 -Xms1024m -Xmx1024m -XX:+AlwaysPreTouch -XX:ParallelGCThreads=4 -XX:ConcGCThreads=2 -XX:G1HeapRegionSize=4m
+      - JAVA_OPTS=-XX:+UseG1GC -XX:MaxGCPauseMillis=20 -Xms2048m -Xmx2048m -XX:+AlwaysPreTouch -XX:ParallelGCThreads=4 -XX:ConcGCThreads=2 -XX:G1HeapRegionSize=4m
     deploy:
       resources:
         limits:
-          memory: 4096M  # 4GB for benchmark load (1GB heap + 3GB off-heap)
+          memory: 5120M  # 5GB for benchmark load (1GB heap + 4GB off-heap)
           cpus: '4.0'
     depends_on:
       kafka:
