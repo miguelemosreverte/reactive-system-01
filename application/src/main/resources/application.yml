@@ -11,8 +11,9 @@ spring:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.ByteArraySerializer
       acks: 1                   # Wait for leader ack (more stable)
-      batch-size: 32768         # 32KB - optimized for throughput
-      linger-ms: 1              # 1ms latency for minimal batching
+      batch-size: 65536         # 64KB - larger batches for throughput
+      linger-ms: 5              # 5ms - allows more batching
+      buffer-memory: 67108864   # 64MB buffer
       compression-type: lz4     # Fast compression
     consumer:
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
