@@ -315,6 +315,13 @@ final class LogImpl {
                 span.end();
             }
         }
+
+        @Override
+        public <T> T runInContext(java.util.function.Supplier<T> action) {
+            try (io.opentelemetry.context.Scope scope = context.makeCurrent()) {
+                return action.get();
+            }
+        }
     }
 
     // ========================================================================

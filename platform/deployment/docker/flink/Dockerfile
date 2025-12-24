@@ -5,15 +5,18 @@ ARG SERVICE_VERSION=1.0.0
 ARG OTEL_AGENT_VERSION=1.32.0
 
 # Stage 1: Build with Maven (cached dependencies)
-FROM maven:3.9-eclipse-temurin-21 AS build
+# Must use Java 17 to match Flink runtime
+FROM maven:3.9-eclipse-temurin-17 AS build
 
 WORKDIR /app
 
 # Copy and build platform module first (shared infrastructure)
+# Override Java version to 17 for Flink compatibility
 COPY platform/pom.xml platform/pom.xml
 COPY platform/src platform/src
 RUN --mount=type=cache,target=/root/.m2/repository \
-    mvn -f platform/pom.xml install -DskipTests -q
+    mvn -f platform/pom.xml install -DskipTests -q \
+    -Djava.version=17 -Dmaven.compiler.source=17 -Dmaven.compiler.target=17
 
 # Copy only pom.xml first for dependency caching
 COPY platform/deployment/docker/flink/pom.xml .

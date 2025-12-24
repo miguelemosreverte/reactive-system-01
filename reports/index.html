@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Benchmark Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        #root { min-height: 100vh; }
+        .loading { display: flex; justify-content: center; align-items: center; height: 100vh; font-size: 18px; color: #666; }
+    </style>
+</head>
+<body>
+    <div id="root"><div class="loading">Loading benchmark dashboard...</div></div>
+    <script>
+        window.__BENCHMARK_INDEX__ = {
+  "components": [
+    {
+      "avgCpu": 87.58618903882575,
+      "avgMemory": 2.7045985367292076,
+      "avgThroughput": 2842,
+      "component": "kafka",
+      "componentTiming": {
+        "droolsMs": 0,
+        "flinkMs": 0,
+        "gatewayMs": 0,
+        "kafkaMs": 0
+      },
+      "cpuTimeline": [
+        65.72265625,
+        65.72265625,
+        65.72265625,
+        65.72265625,
+        65.72265625,
+        68.46923828125,
+        68.46923828125,
+        68.46923828125,
+        68.46923828125,
+        68.46923828125,
+        77.001953125,
+        77.001953125,
+        77.001953125,
+        77.001953125,
+        77.001953125,
+        86.85302734375,
+        86.85302734375,
+        86.85302734375,
+        86.85302734375,
+        86.85302734375,
+        101.9287109375,
+        101.9287109375,
+        101.9287109375,
+        101.9287109375,
+        101.9287109375,
+        107.7880859375,
+        107.7880859375,
+        107.7880859375,
+        107.7880859375,
+        107.7880859375,
+        117.17529296875,
+        117.17529296875,
+        117.17529296875
+      ],
+      "description": "Tests Kafka produce/consume round-trip",
+      "durationMs": 73033,
+      "endTime": "2025-12-23T15:34:20.667759225Z",
+      "errorMessage": "",
+      "failedOperations": 207629,
+      "id": "kafka",
+      "latency": {
+        "avg": 28946,
+        "max": 63515,
+        "min": 2097,
+        "p50": 28418,
+        "p95": 52059,
+        "p99": 60192
+      },
+      "memoryTimeline": [
+        0.6299909020047616,
+        0.6299909020047616,
+        0.6299909020047616,
+        0.6673206594950256,
+        1.2440755557340282,
+        2.5399717144239564,
+        3.767554382262629,
+        1.866509430824688,
+        3.1278616003504194,
+        1.1776351543776804,
+        2.3815666991694786,
+        3.641173962266847,
+        1.507197282870049,
+        2.6346647414622226,
+        3.795108737425896,
+        1.73257467845374,
+        2.8814406255419875,
+        4.090798201883357,
+        2.20577189948797,
+        3.3906126359156232,
+        4.583164372910885,
+        2.607481847738041,
+        3.7890999155978022,
+        1.7966077017375126,
+        3.012720487192348,
+        4.213726917501655,
+        2.175675824239444,
+        3.385834063579048,
+        4.6118488946908895,
+        2.580772038064258,
+        3.7799919890587557,
+        4.995734852811042,
+        3.177282138982286
+      ],
+      "name": "Kafka Benchmark",
+      "peakCpu": 117.17529296875,
+      "peakMemory": 4.995734852811042,
+      "peakThroughput": 0,
+      "sampleEvents": [],
+      "startTime": "2025-12-23T15:33:07.634187968Z",
+      "status": "completed",
+      "success": false,
+      "successfulOperations": 0,
+      "throughputStability": 0,
+      "throughputTimeline": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "totalOperations": 207629
+    },
+    {
+      "avgCpu": 445.48413825757575,
+      "avgMemory": 14.51396789914719,
+      "avgThroughput": 5284,
+      "component": "gateway",
+      "componentTiming": {
+        "droolsMs": 0,
+        "flinkMs": 0,
+        "gatewayMs": 0,
+        "kafkaMs": 0
+      },
+      "cpuTimeline": [
+        467.3828125,
+        467.3828125,
+        467.3828125,
+        467.3828125,
+        467.3828125,
+        471.9970703125,
+        471.9970703125,
+        471.9970703125,
+        471.9970703125,
+        471.9970703125,
+        464.22119140625,
+        464.22119140625,
+        464.22119140625,
+        464.22119140625,
+        464.22119140625,
+        451.06201171875,
+        451.06201171875,
+        451.06201171875,
+        451.06201171875,
+        451.06201171875,
+        432.958984375,
+        432.958984375,
+        432.958984375,
+        432.958984375,
+        432.958984375,
+        414.29443359375,
+        414.29443359375,
+        414.29443359375,
+        414.29443359375,
+        414.29443359375,
+        397.13134765625,
+        397.13134765625,
+        397.13134765625
+      ],
+      "description": "Tests HTTP + Kafka publish",
+      "durationMs": 35076,
+      "endTime": "2025-12-23T15:35:57.706805446Z",
+      "errorMessage": "",
+      "failedOperations": 185373,
+      "id": "gateway",
+      "latency": {
+        "avg": 0,
+        "max": 251,
+        "min": 0,
+        "p50": 0,
+        "p95": 2,
+        "p99": 6
+      },
+      "memoryTimeline": [
+        1.0443374679981159,
+        1.0443374679981159,
+        1.0443374679981159,
+        1.2206935016466558,
+        0.7429309617859564,
+        7.034884548091022,
+        8.744398977393217,
+        10.52486677583604,
+        9.344017036507276,
+        6.946630699242401,
+        7.5330870904547185,
+        19.45079106736015,
+        3.970532845536587,
+        37.975463328279716,
+        8.212751817751364,
+        17.451616396937673,
+        29.101645260838758,
+        22.489817183385824,
+        21.558237316389498,
+        10.610038842009729,
+        27.616450428120665,
+        16.01415917081862,
+        23.37673776205084,
+        2.441565612731379,
+        9.677105931533212,
+        18.633848819674924,
+        12.11153140101736,
+        18.688521784562035,
+        18.8028876403747,
+        17.36858379467946,
+        18.557980996448507,
+        12.356767163627925,
+        57.26938411277671
+      ],
+      "name": "Gateway Benchmark",
+      "peakCpu": 471.9970703125,
+      "peakMemory": 57.26938411277671,
+      "peakThroughput": 39540,
+      "sampleEvents": [
+        {
+          "componentTiming": {
+            "droolsMs": 0,
+            "flinkMs": 0,
+            "gatewayMs": 0,
+            "kafkaMs": 0
+          },
+          "error": null,
+          "id": "gateway_6_1766504155675",
+          "latencyMs": 4,
+          "otelTraceId": null,
+          "status": "error",
+          "timestamp": 1766504155683,
+          "traceData": {
+            "empty": true,
+            "logs": [],
+            "trace": {
+              "empty": true,
+              "processes": {},
+              "spans": [],
+              "traceId": ""
+            }
+          },
+          "traceId": null
+        },
+        {
+          "componentTiming": {
+            "droolsMs": 0,
+            "flinkMs": 0,
+            "gatewayMs": 0,
+            "kafkaMs": 0
+          },
+          "error": null,
+          "id": "gateway_7_1766504155674",
+          "latencyMs": 5,
+          "otelTraceId": null,
+          "status": "error",
+          "timestamp": 1766504155683,
+          "traceData": {
+            "empty": true,
+            "logs": [],
+            "trace": {
+              "empty": true,
+              "processes": {},
+              "spans": [],
+              "traceId": ""
+            }
+          },
+          "traceId": null
+        },
+        {
+          "componentTiming": {
+            "droolsMs": 0,
+            "flinkMs": 0,
+            "gatewayMs": 0,
+            "kafkaMs": 0
+          },
+          "error": null,
+          "id": "gateway_7_1766504155683",
+          "latencyMs": 0,
+          "otelTraceId": null,
+          "status": "error",
+          "timestamp": 1766504155683,
+          "traceData": {
+            "empty": true,
+            "logs": [],
+            "trace": {
+              "empty": true,
+              "processes": {},
+              "spans": [],
+              "traceId": ""
+            }
+          },
+          "traceId": null
+        },
+        {
+          "componentTiming": {
+            "droolsMs": 0,
+            "flinkMs": 0,
+            "gatewayMs": 0,
+            "kafkaMs": 0
+          },
+          "error": null,
+          "id": "gateway_6_1766504155683",
+          "latencyMs": 1,
+          "otelTraceId": null,
+          "status": "error",
+          "timestamp": 1766504155684,
+          "traceData": {
+            "empty": true,
+            "logs": [],
+            "trace": {
+              "empty": true,
+              "processes": {},
+              "spans": [],
+              "traceId": ""
+            }
+          },
+          "traceId": null
+        },
+        {
+          "componentTiming": {
+            "droolsMs": 0,
+            "flinkMs": 0,
+            "gatewayMs": 0,
+            "kafkaMs": 0
+          },
+          "error": null,
+          "id": "gateway_3_1766504155682",
+          "latencyMs": 0,
+          "otelTraceId": null,
+          "status": "error",
+          "timestamp": 1766504155684,
+          "traceData": {
+            "empty": true,
+            "logs": [],
+            "trace": {
+              "empty": true,
+              "processes": {},
+              "spans": [],
+              "traceId": ""
+            }
+          },
+          "traceId": null
+        },
+        {
+          "componentTiming": {
+            "droolsMs": 0,
+            "flinkMs": 0,
+            "gatewayMs": 0,
+            "kafkaMs": 0
+          },
+          "error": null,
+          "id": "gateway_5_1766504155677",
+          "latencyMs": 0,
+          "otelTraceId": null,
+          "status": "error",
+          "timestamp": 1766504155685,
+          "traceData": {
+            "empty": true,
+            "logs": [],
+            "trace": {
+              "empty": true,
+              "processes": {},
+              "spans": [],
+              "traceId": ""
+            }
+          },
+          "traceId": null
+        },
+        {
+          "componentTiming": {
+            "droolsMs": 0,
+            "flinkMs": 0,
+            "gatewayMs": 0,
+            "kafkaMs": 0
+          },
+          "error": null,
+          "id": "gateway_2_1766504155683",
+          "latencyMs": 1,
+          "otelTraceId": null,
+          "status": "error",
+          "timestamp": 1766504155685,
+          "traceData": {
+            "empty": true,
+            "logs": [],
+            "trace": {
+              "empty": true,
+              "processes": {},
+              "spans": [],
+              "traceId": ""
+            }
+          },
+          "traceId": null
+        },
+        {
+          "componentTiming": {
+            "droolsMs": 0,
+            "flinkMs": 0,
+            "gatewayMs": 0,
+            "kafkaMs": 0
+          },
+          "error": null,
+          "id": "gateway_1_1766504155681",
+          "latencyMs": 4,
+          "otelTraceId": null,
+          "status": "error",
+          "timestamp": 1766504155685,
+          "traceData": {
+            "empty": true,
+            "logs": [],
+            "trace": {
+              "empty": true,
+              "processes": {},
+              "spans": [],
+              "traceId": ""
+            }
+          },
+          "traceId": null
+        },
+        {
+          "componentTiming": {
+            "droolsMs": 0,
+            "flinkMs": 0,
+            "gatewayMs": 0,
+            "kafkaMs": 0
+          },
+          "error": null,
+          "id": "gateway_4_1766504155680",
+          "latencyMs": 5,
+          "otelTraceId": null,
+          "status": "error",
+          "timestamp": 1766504155685,
+          "traceData": {
+            "empty": true,
+            "logs": [],
+            "trace": {
+              "empty": true,
+              "processes": {},
+              "spans": [],
+              "traceId": ""
+            }
+          },
+          "traceId": null
+        },
+        {
+          "componentTiming": {
+            "droolsMs": 0,
+            "flinkMs": 0,
+            "gatewayMs": 0,
+            "kafkaMs": 0
+          },
+          "error": null,
+          "id": "gateway_0_1766504155678",
+          "latencyMs": 4,
+          "otelTraceId": null,
+          "status": "error",
+          "timestamp": 1766504155685,
+          "traceData": {
+            "empty": true,
+            "logs": [],
+            "trace": {
+              "empty": true,
+              "processes": {},
+              "spans": [],
+              "traceId": ""
+            }
+          },
+          "traceId": null
+        }
+      ],
+      "startTime": "2025-12-23T15:35:22.630990834Z",
+      "status": "completed",
+      "success": false,
+      "successfulOperations": 0,
+      "throughputStability": 1.287888997443997,
+      "throughputTimeline": [
+        0,
+        0,
+        0,
+        0,
+        7668,
+        14394,
+        39540,
+        18028,
+        22120,
+        22329,
+        22875,
+        22773,
+        20297,
+        19902,
+        15418,
+        15371,
+        12047,
+        11994,
+        3002,
+        2927,
+        2454,
+        2592,
+        2697,
+        2659,
+        2790,
+        2678,
+        2811,
+        2815,
+        2481,
+        2428,
+        2688,
+        2789,
+        2642,
+        2540,
+        3205,
+        3194,
+        2114,
+        2133,
+        2627,
+        2632,
+        2299,
+        2354,
+        2385,
+        2472,
+        2566,
+        2415,
+        2111,
+        2309,
+        2564,
+        2510,
+        1902,
+        2054,
+        1970,
+        1912,
+        2153,
+        2178,
+        2455,
+        2404,
+        1907,
+        1890
+      ],
+      "totalOperations": 185373
+    },
+    {
+      "avgCpu": 360.67346643518516,
+      "avgMemory": 18.258370179456726,
+      "avgThroughput": 4118,
+      "component": "full",
+      "componentTiming": {
+        "droolsMs": 0,
+        "flinkMs": 0,
+        "gatewayMs": 0,
+        "kafkaMs": 0
+      },
+      "cpuTimeline": [
+        359.58251953125,
+        359.58251953125,
+        359.58251953125,
+        344.7998046875,
+        344.7998046875,
+        344.7998046875,
+        344.7998046875,
+        344.7998046875,
+        341.2109375,
+        341.2109375,
+        341.2109375,
+        341.2109375,
+        341.2109375,
+        339.90478515625,
+        339.90478515625,
+        339.90478515625,
+        339.90478515625,
+        332.70263671875,
+        332.70263671875,
+        332.70263671875,
+        332.70263671875,
+        332.70263671875,
+        332.080078125,
+        332.080078125,
+        332.080078125,
+        332.080078125,
+        877.9296875
+      ],
+      "description": "Complete pipeline: HTTP → Kafka → Flink → Drools",
+      "durationMs": 39394,
+      "endTime": "2025-12-23T15:36:49.853167513Z",
+      "errorMessage": "",
+      "failedOperations": 162240,
+      "id": "full",
+      "latency": {
+        "avg": 0,
+        "max": 11931,
+        "min": 0,
+        "p50": 0,
+        "p95": 1,
+        "p99": 6
+      },
+      "memoryTimeline": [
+        1.2345784607857437,
+        1.2345784607857437,
+        1.2345784607857437,
+        1.385151991088744,
+        1.0619947816481143,
+        0.792995495223614,
+        7.828047489662825,
+        10.99398908413022,
+        12.4020177107887,
+        16.45069680468947,
+        22.54479886544821,
+        19.1797358477272,
+        15.087461808374982,
+        27.277087876582602,
+        23.184078997969028,
+        12.93816629019082,
+        30.832201344695026,
+        16.390313341927936,
+        24.20274482365213,
+        21.193247005027672,
+        27.351352064207752,
+        7.337845033401197,
+        24.972342482488884,
+        50.366326032806,
+        3.4197398319494594,
+        56.286773912601106,
+        55.793150546692694
+      ],
+      "name": "Full End-to-End",
+      "peakCpu": 877.9296875,
+      "peakMemory": 56.286773912601106,
+      "peakThroughput": 42901,
+      "sampleEvents": [
+        {
+          "componentTiming": {
+            "droolsMs": 0,
+            "flinkMs": 0,
+            "gatewayMs": 0,
+            "kafkaMs": 0
+          },
+          "error": null,
+          "id": "full_2_1766504195543",
+          "latencyMs": 23,
+          "otelTraceId": null,
+          "status": "error",
+          "timestamp": 1766504195640,
+          "traceData": {
+            "empty": true,
+            "logs": [],
+            "trace": {
+              "empty": true,
+              "processes": {},
+              "spans": [],
+              "traceId": ""
+            }
+          },
+          "traceId": null
+        },
+        {
+          "componentTiming": {
+            "droolsMs": 0,
+            "flinkMs": 0,
+            "gatewayMs": 0,
+            "kafkaMs": 0
+          },
+          "error": null,
+          "id": "full_3_1766504195568",
+          "latencyMs": 2,
+          "otelTraceId": null,
+          "status": "error",
+          "timestamp": 1766504195672,
+          "traceData": {
+            "empty": true,
+            "logs": [],
+            "trace": {
+              "empty": true,
+              "processes": {},
+              "spans": [],
+              "traceId": ""
+            }
+          },
+          "traceId": null
+        },
+        {
+          "componentTiming": {
+            "droolsMs": 0,
+            "flinkMs": 0,
+            "gatewayMs": 0,
+            "kafkaMs": 0
+          },
+          "error": null,
+          "id": "full_1_1766504195570",
+          "latencyMs": 0,
+          "otelTraceId": null,
+          "status": "error",
+          "timestamp": 1766504195740,
+          "traceData": {
+            "empty": true,
+            "logs": [],
+            "trace": {
+              "empty": true,
+              "processes": {},
+              "spans": [],
+              "traceId": ""
+            }
+          },
+          "traceId": null
+        },
+        {
+          "componentTiming": {
+            "droolsMs": 0,
+            "flinkMs": 0,
+            "gatewayMs": 0,
+            "kafkaMs": 0
+          },
+          "error": null,
+          "id": "full_5_1766504195569",
+          "latencyMs": 1,
+          "otelTraceId": null,
+          "status": "error",
+          "timestamp": 1766504195838,
+          "traceData": {
+            "empty": true,
+            "logs": [],
+            "trace": {
+              "empty": true,
+              "processes": {},
+              "spans": [],
+              "traceId": ""
+            }
+          },
+          "traceId": null
+        },
+        {
+          "componentTiming": {
+            "droolsMs": 0,
+            "flinkMs": 0,
+            "gatewayMs": 0,
+            "kafkaMs": 0
+          },
+          "error": null,
+          "id": "full_7_1766504195625",
+          "latencyMs": 80,
+          "otelTraceId": null,
+          "status": "error",
+          "timestamp": 1766504195960,
+          "traceData": {
+            "empty": true,
+            "logs": [],
+            "trace": {
+              "empty": true,
+              "processes": {},
+              "spans": [],
+              "traceId": ""
+            }
+          },
+          "traceId": null
+        },
+        {
+          "componentTiming": {
+            "droolsMs": 0,
+            "flinkMs": 0,
+            "gatewayMs": 0,
+            "kafkaMs": 0
+          },
+          "error": null,
+          "id": "full_2_1766504195640",
+          "latencyMs": 64,
+          "otelTraceId": null,
+          "status": "error",
+          "timestamp": 1766504196420,
+          "traceData": {
+            "empty": true,
+            "logs": [],
+            "trace": {
+              "empty": true,
+              "processes": {},
+              "spans": [],
+              "traceId": ""
+            }
+          },
+          "traceId": null
+        },
+        {
+          "componentTiming": {
+            "droolsMs": 0,
+            "flinkMs": 0,
+            "gatewayMs": 0,
+            "kafkaMs": 0
+          },
+          "error": null,
+          "id": "full_4_1766504195585",
+          "latencyMs": 85,
+          "otelTraceId": null,
+          "status": "error",
+          "timestamp": 1766504196456,
+          "traceData": {
+            "empty": true,
+            "logs": [],
+            "trace": {
+              "empty": true,
+              "processes": {},
+              "spans": [],
+              "traceId": ""
+            }
+          },
+          "traceId": null
+        },
+        {
+          "componentTiming": {
+            "droolsMs": 0,
+            "flinkMs": 0,
+            "gatewayMs": 0,
+            "kafkaMs": 0
+          },
+          "error": null,
+          "id": "full_6_1766504195625",
+          "latencyMs": 45,
+          "otelTraceId": null,
+          "status": "error",
+          "timestamp": 1766504196530,
+          "traceData": {
+            "empty": true,
+            "logs": [],
+            "trace": {
+              "empty": true,
+              "processes": {},
+              "spans": [],
+              "traceId": ""
+            }
+          },
+          "traceId": null
+        },
+        {
+          "componentTiming": {
+            "droolsMs": 0,
+            "flinkMs": 0,
+            "gatewayMs": 0,
+            "kafkaMs": 0
+          },
+          "error": null,
+          "id": "full_0_1766504195574",
+          "latencyMs": 96,
+          "otelTraceId": null,
+          "status": "error",
+          "timestamp": 1766504196861,
+          "traceData": {
+            "empty": true,
+            "logs": [],
+            "trace": {
+              "empty": true,
+              "processes": {},
+              "spans": [],
+              "traceId": ""
+            }
+          },
+          "traceId": null
+        },
+        {
+          "componentTiming": {
+            "droolsMs": 0,
+            "flinkMs": 0,
+            "gatewayMs": 0,
+            "kafkaMs": 0
+          },
+          "error": null,
+          "id": "full_1_1766504195741",
+          "latencyMs": 818,
+          "otelTraceId": null,
+          "status": "error",
+          "timestamp": 1766504197033,
+          "traceData": {
+            "empty": true,
+            "logs": [],
+            "trace": {
+              "empty": true,
+              "processes": {},
+              "spans": [],
+              "traceId": ""
+            }
+          },
+          "traceId": null
+        }
+      ],
+      "startTime": "2025-12-23T15:36:10.459952740Z",
+      "status": "completed",
+      "success": false,
+      "successfulOperations": 0,
+      "throughputStability": 1.3285978891946624,
+      "throughputTimeline": [
+        0,
+        0,
+        0,
+        0,
+        9032,
+        13739,
+        42901,
+        20444,
+        22948,
+        23344,
+        21059,
+        20855,
+        15721,
+        15723,
+        18927,
+        19021,
+        10892,
+        10566,
+        2927,
+        2707,
+        2875,
+        2820,
+        2667,
+        2666,
+        2101,
+        2107,
+        2751,
+        2746,
+        2419,
+        2426,
+        2346,
+        2399,
+        2459,
+        2520,
+        1808,
+        1825,
+        1353,
+        1340,
+        2521,
+        2521,
+        2212,
+        2210,
+        89,
+        89,
+        1186,
+        1185,
+        6,
+        8
+      ],
+      "totalOperations": 162240,
+      "traceTimingData": {
+        "counter-events process": {
+          "avgMs": 0.9563571428571429,
+          "count": 14,
+          "isThroughput": false,
+          "maxMs": 3.517,
+          "minMs": 0.081,
+          "p50Ms": 0.719,
+          "p99Ms": 3.517
+        },
+        "kafka.consume": {
+          "avgMs": 0.0035,
+          "count": 20,
+          "isThroughput": false,
+          "maxMs": 0.007,
+          "minMs": 0.002,
+          "p50Ms": 0.003,
+          "p99Ms": 0.007
+        }
+      }
+    }
+  ],
+  "generatedAt": "2025-12-23T12:36:51-03:00"
+};
+    </script>
+    <script src="assets/benchmark-index.js"></script>
+</body>
+</html>

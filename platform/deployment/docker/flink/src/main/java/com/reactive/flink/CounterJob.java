@@ -3,8 +3,10 @@ package com.reactive.flink;
 import com.reactive.flink.async.AsyncDroolsEnricher;
 import com.reactive.flink.model.CounterEvent;
 import com.reactive.flink.model.CounterResult;
+import com.reactive.flink.model.EventTiming;
 import com.reactive.flink.model.PreDroolsResult;
 import com.reactive.flink.processor.CounterProcessor;
+import com.reactive.flink.serialization.RecordSerializer;
 import com.reactive.flink.serialization.TracingKafkaDeserializer;
 import com.reactive.flink.serialization.TracingCounterResultSerializer;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
@@ -87,6 +89,13 @@ public class CounterJob {
 
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
+        // Register Kryo serializers for Java records (Flink's default Kryo can't serialize records)
+        env.getConfig().addDefaultKryoSerializer(CounterEvent.class, new RecordSerializer(CounterEvent.class));
+        env.getConfig().addDefaultKryoSerializer(CounterResult.class, new RecordSerializer(CounterResult.class));
+        env.getConfig().addDefaultKryoSerializer(PreDroolsResult.class, new RecordSerializer(PreDroolsResult.class));
+        env.getConfig().addDefaultKryoSerializer(EventTiming.class, new RecordSerializer(EventTiming.class));
+        LOG.info("Registered Kryo serializers for Java record types");
+
         // Set parallelism
         env.setParallelism(PARALLELISM);
 
@@ -122,10 +131,10 @@ public class CounterJob {
 
         // Kafka producer properties - balanced for latency + throughput
         Properties producerProps = new Properties();
-        producerProps.setProperty("linger.ms", "1");           // Small delay to enable minimal batching
-        producerProps.setProperty("batch.size", "32768");      // 32KB batch size (filled quickly)
-        producerProps.setProperty("acks", "1");                // Leader acknowledgment only
-        producerProps.setProperty("compression.type", "lz4"); // Fast compression
+        producerProps.setProperty("linger.ms", "1");            // 1ms delay for low latency
+        producerProps.setProperty("batch.size", "32768");       // 32KB batch size
+        producerProps.setProperty("acks", "1");                 // Leader acknowledgment only
+        producerProps.setProperty("compression.type", "lz4");   // Fast compression
         producerProps.setProperty("buffer.memory", "67108864"); // 64MB buffer
         LOG.info("Producer config: linger.ms=1, batch.size=32KB, compression=lz4");
 

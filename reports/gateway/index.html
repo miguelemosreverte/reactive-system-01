@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gateway Benchmark Report</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        #root { min-height: 100vh; }
+        .loading { display: flex; justify-content: center; align-items: center; height: 100vh; font-size: 18px; color: #666; }
+    </style>
+</head>
+<body>
+    <div id="root"><div class="loading">Loading benchmark report...</div></div>
+    <script>
+        window.__BENCHMARK_DATA__ = {
+  "component" : "gateway",
+  "name" : "Gateway Benchmark",
+  "description" : "Tests HTTP + Kafka publish",
+  "startTime" : "2025-12-24T00:09:09.783982255Z",
+  "endTime" : "2025-12-24T00:09:31.603913082Z",
+  "durationMs" : 21820,
+  "totalOperations" : 3468,
+  "successfulOperations" : 3468,
+  "failedOperations" : 0,
+  "peakThroughput" : 2313,
+  "avgThroughput" : 158,
+  "throughputTimeline" : [ 0, 0, 0, 0, 531, 809, 656, 2313, 383, 220, 194, 190, 204, 220, 212, 157, 169, 80, 69, 118, 31, 108, 29, 26, 25, 49, 35, 42 ],
+  "latency" : {
+    "min" : 5,
+    "max" : 3574,
+    "avg" : 219,
+    "p50" : 92,
+    "p95" : 847,
+    "p99" : 2140
+  },
+  "throughputStability" : 1.8118304050188205,
+  "cpuTimeline" : [ 208.16650390625, 208.16650390625, 208.16650390625, 208.16650390625, 347.65625, 347.65625, 347.65625, 347.65625, 347.65625, 463.96484375, 463.96484375, 463.96484375, 463.96484375, 463.96484375, 635.02197265625, 635.02197265625 ],
+  "memoryTimeline" : [ 1.0249002189135816, 1.0249002189135816, 1.0249002189135816, 1.0249002189135816, 1.70056702029693, 2.7577070126499827, 3.7808103590271425, 1.5983881791593089, 1.705901052588531, 2.2195302152970484, 2.4232150327064677, 2.792742562702999, 2.924214891420243, 3.090634620273871, 3.127330006311688, 3.178552421623715 ],
+  "peakCpu" : 635.02197265625,
+  "peakMemory" : 3.7808103590271425,
+  "avgCpu" : 385.05096435546875,
+  "avgMemory" : 2.2124496406070158,
+  "componentTiming" : {
+    "gatewayMs" : 0,
+    "kafkaMs" : 0,
+    "flinkMs" : 0,
+    "droolsMs" : 0
+  },
+  "sampleEvents" : [ ],
+  "status" : "completed",
+  "errorMessage" : "",
+  "success" : true
+};
+        window.__BENCHMARK_COMMIT__ = "d814ec6";
+    </script>
+    <script src="../assets/benchmark-report.js"></script>
+</body>
+</html>

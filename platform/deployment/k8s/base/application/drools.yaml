@@ -68,10 +68,7 @@ spec:
               value: "drools"
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
               value: "http://otel-collector.reactive-observability.svc.cluster.local:4317"
-            - name: OTEL_TRACES_SAMPLER
-              value: "parentbased_traceidratio"
-            - name: OTEL_TRACES_SAMPLER_ARG
-              value: "1.0"
+            # Sampling controlled at application level via X-Debug header
             - name: OTEL_METRICS_EXPORTER
               value: "otlp"
             - name: OTEL_LOGS_EXPORTER

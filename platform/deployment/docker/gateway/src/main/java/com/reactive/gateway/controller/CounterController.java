@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 import static com.reactive.platform.Opt.or;
+import com.reactive.platform.observe.Log;
 
 @RestController
 @RequestMapping("/api")
@@ -57,6 +58,7 @@ public class CounterController {
                 "requestId", result.getRequestId(),
                 "customerId", or(result.getCustomerId(), ""),
                 "eventId", result.getEventId(),
+                "traceId", or(Log.traceId(), ""),
                 "result", result
             )))
             .onErrorResume(ex -> {
@@ -71,27 +73,41 @@ public class CounterController {
     /**
      * Fast counter endpoint with customer context - fire-and-forget.
      * POST /api/customers/{customerId}/counter/fast
+     *
+     * Headers:
+     * - X-Debug: true - Enable full tracing for this request
      */
     @PostMapping("/customers/{customerId}/counter/fast")
     public ResponseEntity<Map<String, Object>> counterFastWithCustomer(
             @PathVariable String customerId,
-            @RequestBody CounterCommand command) {
+            @RequestBody CounterCommand command,
+            @RequestHeader(value = "X-Debug", defaultValue = "false") boolean debugMode) {
 
         command.setCustomerId(customerId);
-        return processCounterFast(command);
+        return processCounterFast(command, debugMode);
     }
 
     /**
      * Fast counter endpoint - fire-and-forget (backwards compatible).
      * POST /api/counter/fast
+     *
+     * Headers:
+     * - X-Debug: true - Enable full tracing for this request
      */
     @PostMapping("/counter/fast")
-    public ResponseEntity<Map<String, Object>> counterFast(@RequestBody CounterCommand command) {
-        return processCounterFast(command);
+    public ResponseEntity<Map<String, Object>> counterFast(
+            @RequestBody CounterCommand command,
+            @RequestHeader(value = "X-Debug", defaultValue = "false") boolean debugMode) {
+        return processCounterFast(command, debugMode);
     }
 
-    private ResponseEntity<Map<String, Object>> processCounterFast(CounterCommand command) {
+    private ResponseEntity<Map<String, Object>> processCounterFast(CounterCommand command, boolean debugMode) {
         command.setSessionId(or(command.getSessionId(), "default"));
+
+        // Enable investigation mode for X-Debug requests - forces full tracing
+        if (debugMode) {
+            Log.enableInvestigation();
+        }
 
         try {
             var result = kafkaService.publishFireAndForget(command);
@@ -100,7 +116,9 @@ public class CounterController {
                 "requestId", result.requestId(),
                 "customerId", or(command.getCustomerId(), ""),
                 "eventId", result.eventId(),
-                "status", "accepted"
+                "status", "accepted",
+                "traceId", or(Log.traceId(), ""),
+                "debug", debugMode
             ));
         } catch (Exception ex) {
             log.error("Fast counter failed", ex);
@@ -108,6 +126,11 @@ public class CounterController {
                 "success", false,
                 "error", "Failed to publish"
             ));
+        } finally {
+            // Always clean up investigation mode
+            if (debugMode) {
+                Log.disableInvestigation();
+            }
         }
     }
 

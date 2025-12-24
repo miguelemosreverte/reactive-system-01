@@ -125,7 +125,7 @@ public class CounterProcessor extends KeyedProcessFunction<String, CounterEvent,
     }
 
     private int applyAction(String action, int currentValue, int delta) {
-        return switch (action) {
+        return switch (action.toLowerCase()) {
             case "increment" -> currentValue + delta;
             case "decrement" -> currentValue - delta;
             case "set" -> delta;

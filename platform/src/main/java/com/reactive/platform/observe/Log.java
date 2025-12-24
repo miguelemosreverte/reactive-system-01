@@ -251,6 +251,9 @@ public final class Log {
         /** Mark span as failed with error and end it. */
         void failure(Throwable error);
 
+        /** Run code with this span as the current context. */
+        <T> T runInContext(java.util.function.Supplier<T> action);
+
         /** End span (equivalent to success). */
         @Override
         default void close() { success(); }

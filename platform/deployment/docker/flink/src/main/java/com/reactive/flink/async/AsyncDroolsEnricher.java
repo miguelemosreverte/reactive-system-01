@@ -35,9 +35,9 @@ public class AsyncDroolsEnricher extends RichAsyncFunction<PreDroolsResult, Coun
 
     private final String droolsUrl;
 
-    private static final int MAX_CONNECTIONS = 100;
-    private static final Duration CONNECT_TIMEOUT = Duration.ofMillis(1000);
-    private static final Duration REQUEST_TIMEOUT = Duration.ofMillis(5000);
+    private static final int MAX_CONNECTIONS = 100;  // Balanced for memory/throughput
+    private static final Duration CONNECT_TIMEOUT = Duration.ofMillis(1000);  // Connection timeout
+    private static final Duration REQUEST_TIMEOUT = Duration.ofMillis(5000);  // Request timeout
 
     private transient HttpClient httpClient;
     private transient ObjectMapper objectMapper;
@@ -53,10 +53,11 @@ public class AsyncDroolsEnricher extends RichAsyncFunction<PreDroolsResult, Coun
         httpClient = HttpClient.newBuilder()
                 .connectTimeout(CONNECT_TIMEOUT)
                 .executor(executor)
-                .version(HttpClient.Version.HTTP_1_1)
+                .version(HttpClient.Version.HTTP_1_1)  // HTTP/1.1 for compatibility
                 .build();
         objectMapper = new ObjectMapper();
-        LOG.info("AsyncDroolsEnricher initialized with {} max concurrent connections", MAX_CONNECTIONS);
+        LOG.info("AsyncDroolsEnricher initialized: {} connections, HTTP/1.1, timeout={}ms",
+                MAX_CONNECTIONS, REQUEST_TIMEOUT.toMillis());
     }
 
     @Override
@@ -70,8 +71,8 @@ public class AsyncDroolsEnricher extends RichAsyncFunction<PreDroolsResult, Coun
     public void asyncInvoke(PreDroolsResult input, ResultFuture<CounterResult> resultFuture) {
         long droolsStartAt = System.currentTimeMillis();
 
-        // Auto-extracts business IDs (requestId, customerId, etc.) and sets MDC
-        SpanHandle span = Log.asyncTracedProcess("async.drools.enrich", input, Log.SpanType.PRODUCER);
+        // Auto-extracts business IDs and connects to parent trace context from TracedMessage
+        SpanHandle span = Log.asyncTracedConsume("async.drools.enrich", input, Log.SpanType.PRODUCER);
         span.attr("http.method", "POST");
         span.attr("http.url", droolsUrl + "/api/evaluate");
         span.attr("peer.service", "drools");
@@ -82,12 +83,16 @@ public class AsyncDroolsEnricher extends RichAsyncFunction<PreDroolsResult, Coun
 
             HttpRequest request = buildRequest(input, span.headers());
 
-            httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
-                    .thenAccept(response -> handleResponse(response, input, droolsStartAt, span, resultFuture))
-                    .exceptionally(error -> {
-                        handleError(error, input, droolsStartAt, span, resultFuture);
-                        return null;
-                    });
+            // Run HTTP call within span's context so OTel agent picks up trace context
+            span.runInContext(() -> {
+                httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                        .thenAccept(response -> handleResponse(response, input, droolsStartAt, span, resultFuture))
+                        .exceptionally(error -> {
+                            handleError(error, input, droolsStartAt, span, resultFuture);
+                            return null;
+                        });
+                return null;
+            });
 
         } catch (Exception e) {
             handleError(e, input, droolsStartAt, span, resultFuture);

@@ -1,0 +1,34 @@
+[
+  {
+    "timestamp": "2025-12-24T00:51:57.786850536Z",
+    "component": "kafka",
+    "containerId": "c159840f73d9",
+    "containerName": "reactive-kafka-init",
+    "exitCode": 0,
+    "exitReason": "Normal exit",
+    "oomKilled": false,
+    "restartCount": 0,
+    "uptime": "",
+    "memoryAtCrash": {
+      "usedBytes": 0,
+      "limitBytes": 0,
+      "usagePercent": 0
+    },
+    "lastLogs": [
+      "Creating Kafka topics with development retention settings...",
+      "Retention: 5 minutes (300000ms), 100MB per partition",
+      "Created topic counter-events.",
+      "Created topic counter-results.",
+      "Created topic counter-alerts.",
+      "Updating retention on existing topics...",
+      "Completed updating config for topic counter-events.",
+      "Completed updating config for topic counter-results.",
+      "Completed updating config for topic counter-alerts.",
+      "Kafka topics configured with 5-minute retention (dev mode)!"
+    ],
+    "errorPatterns": [],
+    "rootCause": "Unknown crash reason",
+    "recommendation": "Review the logs above for more details.",
+    "severity": "LOW"
+  }
+]

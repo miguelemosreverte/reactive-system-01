@@ -83,4 +83,4 @@ configMapGenerator:
     literals:
       - ENVIRONMENT=production
       - LOG_LEVEL=INFO
-      - OTEL_SAMPLING_RATE=0.01
+      # Sampling controlled at application level via X-Debug header

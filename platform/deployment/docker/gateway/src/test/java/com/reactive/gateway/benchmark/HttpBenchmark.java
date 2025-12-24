@@ -1,12 +1,21 @@
 package com.reactive.gateway.benchmark;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.reactive.platform.benchmark.BaseBenchmark;
+import com.reactive.platform.benchmark.BenchmarkResult;
 import com.reactive.platform.benchmark.BenchmarkTypes.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.ExecutorService;
@@ -20,6 +29,11 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Tests the health endpoint to measure pure HTTP overhead.
  */
 public class HttpBenchmark extends BaseBenchmark {
+
+    private static final Logger log = LoggerFactory.getLogger(HttpBenchmark.class);
+    private static final ObjectMapper mapper = new ObjectMapper()
+            .registerModule(new JavaTimeModule())
+            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
     private final HttpClient client;
 
@@ -103,5 +117,46 @@ public class HttpBenchmark extends BaseBenchmark {
         } finally {
             executor.shutdownNow();
         }
+    }
+
+    // ========================================================================
+    // Main Entry Point
+    // ========================================================================
+
+    public static void main(String[] args) throws IOException {
+        if (args.length < 6) {
+            System.err.println("Usage: HttpBenchmark <durationMs> <concurrency> <gatewayUrl> <droolsUrl> <reportsDir> <skipEnrichment>");
+            System.exit(1);
+        }
+
+        long durationMs = Long.parseLong(args[0]);
+        int concurrency = Integer.parseInt(args[1]);
+        String gatewayUrl = args[2];
+        String droolsUrl = args[3];
+        String reportsDir = args[4];
+        boolean skipEnrichment = Boolean.parseBoolean(args[5]);
+
+        log.info("Starting HTTP Benchmark: duration={}ms, concurrency={}, url={}",
+                durationMs, concurrency, gatewayUrl);
+
+        Config config = Config.builder()
+                .durationMs(durationMs)
+                .concurrency(concurrency)
+                .gatewayUrl(gatewayUrl)
+                .droolsUrl(droolsUrl)
+                .skipEnrichment(skipEnrichment)
+                .build();
+
+        HttpBenchmark benchmark = HttpBenchmark.create();
+        BenchmarkResult result = benchmark.run(config);
+
+        // Write results
+        String json = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(result);
+        Path resultsPath = Path.of(reportsDir, "results.json");
+        Files.createDirectories(resultsPath.getParent());
+        Files.writeString(resultsPath, json);
+
+        log.info("Benchmark complete: throughput={}/s, latencyP50={}ms, ops={}",
+                result.avgThroughput(), result.latency().p50(), result.totalOperations());
     }
 }

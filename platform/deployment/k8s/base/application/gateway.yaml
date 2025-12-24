@@ -75,10 +75,7 @@ spec:
               value: "counter-application"
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
               value: "http://otel-collector.reactive-observability.svc.cluster.local:4317"
-            - name: OTEL_TRACES_SAMPLER
-              value: "parentbased_traceidratio"
-            - name: OTEL_TRACES_SAMPLER_ARG
-              value: "1.0"
+            # Sampling controlled at application level via X-Debug header
             - name: JAVA_OPTS
               value: "-XX:+UseG1GC -XX:MaxGCPauseMillis=10 -Xms512m -Xmx1024m"
           resources:

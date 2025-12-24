@@ -4,13 +4,15 @@
   "namespace": "com.reactive.platform.schema",
   "doc": "Event representing a counter action",
   "fields": [
+    {"name": "requestId", "type": "string", "doc": "Request correlation ID"},
+    {"name": "customerId", "type": "string", "doc": "Customer identifier", "default": ""},
     {"name": "eventId", "type": "string", "doc": "Unique event identifier"},
     {"name": "sessionId", "type": "string", "doc": "Session identifier"},
     {"name": "action", "type": "string", "doc": "Action: increment, decrement, set, reset"},
     {"name": "value", "type": "int", "doc": "Value for the action"},
     {"name": "timestamp", "type": "long", "doc": "Event timestamp in millis"},
-    {"name": "traceId", "type": ["null", "string"], "default": null, "doc": "OpenTelemetry trace ID"},
-    {"name": "spanId", "type": ["null", "string"], "default": null, "doc": "OpenTelemetry span ID"},
+    {"name": "traceparent", "type": ["null", "string"], "default": null, "doc": "W3C traceparent header"},
+    {"name": "tracestate", "type": ["null", "string"], "default": null, "doc": "W3C tracestate header"},
     {
       "name": "timing",
       "type": ["null", {

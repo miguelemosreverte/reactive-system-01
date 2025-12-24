@@ -394,7 +394,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 6144M  # 6GB - Flink process=2816MB + ~3.3GB overhead for native memory
+          memory: 4096M  # 4GB - Flink process=2816MB + ~1.3GB overhead
           cpus: '3.0'
     networks:
       - reactive-network
