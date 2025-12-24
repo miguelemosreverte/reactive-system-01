@@ -62,15 +62,40 @@ func init() {
 // ============================================================================
 
 type DiagnosticReport struct {
-	Timestamp       string                       `json:"timestamp"`
-	OverallHealth   string                       `json:"overallHealth"`
-	HealthScore     int                          `json:"healthScore"`
-	Components      map[string]*ComponentReport  `json:"components"`
-	Bottlenecks     []Bottleneck                 `json:"bottlenecks"`
-	OOMEvents       []OOMEvent                   `json:"oomEvents"`
-	Recommendations []Recommendation             `json:"recommendations"`
-	TraceAnalysis   *TraceAnalysis               `json:"traceAnalysis,omitempty"`
-	Summary         string                       `json:"summary"`
+	Timestamp        string                       `json:"timestamp"`
+	OverallHealth    string                       `json:"overallHealth"`
+	HealthScore      int                          `json:"healthScore"`
+	Components       map[string]*ComponentReport  `json:"components"`
+	Bottlenecks      []Bottleneck                 `json:"bottlenecks"`
+	OOMEvents        []OOMEvent                   `json:"oomEvents"`
+	Recommendations  []Recommendation             `json:"recommendations"`
+	TraceAnalysis    *TraceAnalysis               `json:"traceAnalysis,omitempty"`
+	LastBenchmark    *BenchmarkSummary            `json:"lastBenchmark,omitempty"`
+	Optimizations    []Optimization               `json:"optimizations,omitempty"`
+	Summary          string                       `json:"summary"`
+}
+
+type BenchmarkSummary struct {
+	Timestamp         string  `json:"timestamp"`
+	TotalOps          int64   `json:"totalOps"`
+	SuccessRate       float64 `json:"successRate"`
+	AvgThroughput     float64 `json:"avgThroughput"`
+	PeakThroughput    float64 `json:"peakThroughput"`
+	AvgLatencyMs      float64 `json:"avgLatencyMs"`
+	P99LatencyMs      float64 `json:"p99LatencyMs"`
+	AvgCPU            float64 `json:"avgCpu"`
+	PeakMemory        float64 `json:"peakMemory"`
+	ThroughputStability float64 `json:"throughputStability"`
+}
+
+type Optimization struct {
+	Category    string `json:"category"`
+	Component   string `json:"component"`
+	Current     string `json:"current"`
+	Suggested   string `json:"suggested"`
+	Impact      string `json:"impact"`
+	Command     string `json:"command"`
+	Priority    int    `json:"priority"`
 }
 
 type ComponentReport struct {
@@ -187,11 +212,17 @@ func runDiagnoseFull(cmd *cobra.Command, args []string) {
 	// Analyze recent traces from Jaeger
 	report.TraceAnalysis = analyzeTraces(report)
 
+	// Load last benchmark results for context
+	report.LastBenchmark = loadLastBenchmark()
+
 	// Detect OOM events
 	detectOOMEvents(report)
 
 	// Identify bottlenecks
 	identifyBottlenecks(report)
+
+	// Generate optimization opportunities
+	generateOptimizations(report)
 
 	// Generate recommendations
 	generateRecommendations(report)
@@ -917,6 +948,214 @@ func identifyBottlenecks(report *DiagnosticReport) {
 }
 
 // ============================================================================
+// LAST BENCHMARK LOADING
+// ============================================================================
+
+func loadLastBenchmark() *BenchmarkSummary {
+	// Try to load the most recent benchmark results
+	resultsPath := "reports/full/results.json"
+	data, err := os.ReadFile(resultsPath)
+	if err != nil {
+		return nil
+	}
+
+	var results map[string]interface{}
+	if err := json.Unmarshal(data, &results); err != nil {
+		return nil
+	}
+
+	summary := &BenchmarkSummary{}
+
+	if v, ok := results["startTime"].(string); ok {
+		summary.Timestamp = v
+	}
+	if v, ok := results["totalOperations"].(float64); ok {
+		summary.TotalOps = int64(v)
+	}
+	if v, ok := results["successfulOperations"].(float64); ok && summary.TotalOps > 0 {
+		summary.SuccessRate = v / float64(summary.TotalOps) * 100
+	}
+	if v, ok := results["avgThroughput"].(float64); ok {
+		summary.AvgThroughput = v
+	}
+	if v, ok := results["peakThroughput"].(float64); ok {
+		summary.PeakThroughput = v
+	}
+	if latency, ok := results["latency"].(map[string]interface{}); ok {
+		if v, ok := latency["avg"].(float64); ok {
+			summary.AvgLatencyMs = v
+		}
+		if v, ok := latency["p99"].(float64); ok {
+			summary.P99LatencyMs = v
+		}
+	}
+	if v, ok := results["avgCpu"].(float64); ok {
+		summary.AvgCPU = v
+	}
+	if v, ok := results["peakMemory"].(float64); ok {
+		summary.PeakMemory = v
+	}
+	if v, ok := results["throughputStability"].(float64); ok {
+		summary.ThroughputStability = v
+	}
+
+	return summary
+}
+
+// ============================================================================
+// OPTIMIZATION OPPORTUNITIES
+// ============================================================================
+
+func generateOptimizations(report *DiagnosticReport) {
+	priority := 1
+
+	// Calculate total memory usage and identify waste
+	var totalMemoryUsed, totalMemoryLimit int64
+	for _, comp := range report.Components {
+		totalMemoryUsed += comp.Memory.ContainerUsed
+		totalMemoryLimit += comp.Memory.ContainerLimit
+	}
+
+	// Memory optimization: containers using < 30% of allocated memory
+	for name, comp := range report.Components {
+		if comp.Status != "running" {
+			continue
+		}
+
+		// Under-utilized memory (could reduce container limit)
+		if comp.Memory.ContainerPct < 30 && comp.Memory.ContainerLimit > 512*1024*1024 {
+			currentMB := comp.Memory.ContainerLimit / (1024 * 1024)
+			suggestedMB := (comp.Memory.ContainerUsed * 2) / (1024 * 1024)
+			if suggestedMB < 512 {
+				suggestedMB = 512
+			}
+			if suggestedMB < currentMB-256 {
+				report.Optimizations = append(report.Optimizations, Optimization{
+					Category:  "MEMORY_REDUCE",
+					Component: name,
+					Current:   fmt.Sprintf("%dMB allocated, %.0f%% used", currentMB, comp.Memory.ContainerPct),
+					Suggested: fmt.Sprintf("Reduce to %dMB", suggestedMB),
+					Impact:    fmt.Sprintf("Save %dMB for other services", currentMB-suggestedMB),
+					Command:   fmt.Sprintf("# In docker-compose.yml, %s.deploy.resources.limits.memory: %dM", name, suggestedMB),
+					Priority:  priority,
+				})
+				priority++
+			}
+		}
+
+		// Over-utilized memory (should increase to prevent OOM)
+		if comp.Memory.ContainerPct > 70 {
+			currentMB := comp.Memory.ContainerLimit / (1024 * 1024)
+			suggestedMB := (comp.Memory.ContainerLimit * 15 / 10) / (1024 * 1024) // 50% increase
+			report.Optimizations = append(report.Optimizations, Optimization{
+				Category:  "MEMORY_INCREASE",
+				Component: name,
+				Current:   fmt.Sprintf("%dMB allocated, %.0f%% used", currentMB, comp.Memory.ContainerPct),
+				Suggested: fmt.Sprintf("Increase to %dMB", suggestedMB),
+				Impact:    "Prevent OOM during peak load",
+				Command:   fmt.Sprintf("# In docker-compose.yml, %s.deploy.resources.limits.memory: %dM", name, suggestedMB),
+				Priority:  priority,
+			})
+			priority++
+		}
+
+		// JVM heap optimization
+		if comp.Memory.HeapPct > 70 {
+			heapMB := comp.Memory.HeapMax / (1024 * 1024)
+			suggestedHeapMB := heapMB * 15 / 10 // 50% increase
+			report.Optimizations = append(report.Optimizations, Optimization{
+				Category:  "HEAP_INCREASE",
+				Component: name,
+				Current:   fmt.Sprintf("-Xmx%dm (%.0f%% used)", heapMB, comp.Memory.HeapPct),
+				Suggested: fmt.Sprintf("-Xmx%dm", suggestedHeapMB),
+				Impact:    "Reduce GC frequency, prevent OutOfMemoryError",
+				Command:   fmt.Sprintf("# In docker-compose.yml, %s JAVA_OPTS: add -Xmx%dm", name, suggestedHeapMB),
+				Priority:  priority,
+			})
+			priority++
+		}
+
+		// GC tuning optimization
+		if comp.GC != nil {
+			if comp.GC.MaxPauseMs > 100 {
+				report.Optimizations = append(report.Optimizations, Optimization{
+					Category:  "GC_TUNING",
+					Component: name,
+					Current:   fmt.Sprintf("Max GC pause: %.0fms", comp.GC.MaxPauseMs),
+					Suggested: "Target 50ms max pause",
+					Impact:    "Reduce latency spikes, improve P99",
+					Command:   fmt.Sprintf("# Add to JAVA_OPTS: -XX:MaxGCPauseMillis=50 -XX:+UseG1GC"),
+					Priority:  priority,
+				})
+				priority++
+			}
+			if comp.GC.FullGCCount > 0 {
+				report.Optimizations = append(report.Optimizations, Optimization{
+					Category:  "GC_FULL_GC",
+					Component: name,
+					Current:   fmt.Sprintf("%d Full GC events detected", comp.GC.FullGCCount),
+					Suggested: "Increase heap to eliminate Full GC",
+					Impact:    "Major latency improvement (Full GC causes 100ms+ pauses)",
+					Command:   "# Double heap size: -Xmx should be 2x current value",
+					Priority:  priority,
+				})
+				priority++
+			}
+		}
+	}
+
+	// Benchmark-based optimizations
+	if report.LastBenchmark != nil {
+		// Throughput stability optimization
+		if report.LastBenchmark.ThroughputStability < 0.7 {
+			report.Optimizations = append(report.Optimizations, Optimization{
+				Category:  "THROUGHPUT_STABILITY",
+				Component: "system",
+				Current:   fmt.Sprintf("Stability: %.0f%% (inconsistent)", report.LastBenchmark.ThroughputStability*100),
+				Suggested: "Target >80% stability",
+				Impact:    "Predictable performance, better user experience",
+				Command:   "# Investigate GC pauses, Kafka batching, connection pooling",
+				Priority:  priority,
+			})
+			priority++
+		}
+
+		// High latency optimization
+		if report.LastBenchmark.P99LatencyMs > 100 {
+			report.Optimizations = append(report.Optimizations, Optimization{
+				Category:  "LATENCY_P99",
+				Component: "system",
+				Current:   fmt.Sprintf("P99 latency: %.0fms", report.LastBenchmark.P99LatencyMs),
+				Suggested: "Target <50ms P99",
+				Impact:    "Better tail latency, improved reliability",
+				Command:   "# Check GC logs, enable async processing, tune timeouts",
+				Priority:  priority,
+			})
+			priority++
+		}
+
+		// CPU optimization
+		if report.LastBenchmark.AvgCPU > 300 {
+			report.Optimizations = append(report.Optimizations, Optimization{
+				Category:  "CPU_USAGE",
+				Component: "system",
+				Current:   fmt.Sprintf("Avg CPU: %.0f%% across all containers", report.LastBenchmark.AvgCPU),
+				Suggested: "Reduce CPU-intensive operations",
+				Impact:    "Lower costs, room for growth",
+				Command:   "# Profile hot spots, optimize serialization, reduce logging",
+				Priority:  priority,
+			})
+			priority++
+		}
+	}
+
+	// Sort by priority
+	sort.Slice(report.Optimizations, func(i, j int) bool {
+		return report.Optimizations[i].Priority < report.Optimizations[j].Priority
+	})
+}
+
+// ============================================================================
 // RECOMMENDATIONS
 // ============================================================================
 
@@ -1220,6 +1459,35 @@ func outputHumanReadable(report *DiagnosticReport) {
 		}
 	}
 
+	// Last Benchmark Summary
+	if report.LastBenchmark != nil {
+		printHeader("LAST BENCHMARK RESULTS")
+		cyan := "\033[36m"
+		fmt.Printf("  %sTimestamp:%s %s\n", cyan, resetColor, report.LastBenchmark.Timestamp)
+		fmt.Printf("  %sThroughput:%s %.0f ops/s avg, %.0f ops/s peak\n",
+			cyan, resetColor, report.LastBenchmark.AvgThroughput, report.LastBenchmark.PeakThroughput)
+		fmt.Printf("  %sLatency:%s %.1fms avg, %.1fms P99\n",
+			cyan, resetColor, report.LastBenchmark.AvgLatencyMs, report.LastBenchmark.P99LatencyMs)
+		fmt.Printf("  %sSuccess Rate:%s %.1f%% (%d ops)\n",
+			cyan, resetColor, report.LastBenchmark.SuccessRate, report.LastBenchmark.TotalOps)
+
+		// Stability indicator
+		stabilityColor := "\033[32m" // Green
+		stabilityLabel := "STABLE"
+		if report.LastBenchmark.ThroughputStability < 0.7 {
+			stabilityColor = "\033[33m" // Yellow
+			stabilityLabel = "UNSTABLE"
+		}
+		if report.LastBenchmark.ThroughputStability < 0.5 {
+			stabilityColor = "\033[31m" // Red
+			stabilityLabel = "VERY UNSTABLE"
+		}
+		fmt.Printf("  %sStability:%s %s%.0f%%%s (%s)\n",
+			cyan, resetColor, stabilityColor, report.LastBenchmark.ThroughputStability*100, resetColor, stabilityLabel)
+		fmt.Printf("  %sResources:%s %.0f%% CPU, %.0f%% peak memory\n\n",
+			cyan, resetColor, report.LastBenchmark.AvgCPU, report.LastBenchmark.PeakMemory)
+	}
+
 	// Bottlenecks
 	if len(report.Bottlenecks) > 0 {
 		printHeader("BOTTLENECKS IDENTIFIED")
@@ -1246,6 +1514,24 @@ func outputHumanReadable(report *DiagnosticReport) {
 				oom.Container, oom.RestartCount)
 		}
 		fmt.Println()
+	}
+
+	// Optimization Opportunities
+	if len(report.Optimizations) > 0 {
+		printHeader("OPTIMIZATION OPPORTUNITIES")
+		green := "\033[32m"
+		cyan := "\033[36m"
+		for i, opt := range report.Optimizations {
+			if i >= 5 {
+				fmt.Printf("  ... and %d more optimizations available\n\n", len(report.Optimizations)-5)
+				break
+			}
+			fmt.Printf("  %s%d. [%s] %s%s\n", green, i+1, opt.Category, opt.Component, resetColor)
+			fmt.Printf("     Current:   %s\n", opt.Current)
+			fmt.Printf("     Suggested: %s\n", opt.Suggested)
+			fmt.Printf("     Impact:    %s\n", opt.Impact)
+			fmt.Printf("     %sCommand:%s  %s\n\n", cyan, resetColor, opt.Command)
+		}
 	}
 
 	// Recommendations
