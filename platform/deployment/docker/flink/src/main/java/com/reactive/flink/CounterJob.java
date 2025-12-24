@@ -60,9 +60,9 @@ public class CounterJob {
     private static final long BUFFER_TIMEOUT_MS = Long.parseLong(
             System.getenv().getOrDefault("FLINK_BUFFER_TIMEOUT_MS", "1"));
 
-    // Kafka fetch wait: how long consumer waits for data before returning
+    // Kafka fetch wait: how long consumer waits for data before returning (lower = faster)
     private static final String KAFKA_FETCH_MAX_WAIT_MS =
-            System.getenv().getOrDefault("KAFKA_FETCH_MAX_WAIT_MS", "10");
+            System.getenv().getOrDefault("KAFKA_FETCH_MAX_WAIT_MS", "5");
 
     // Parallelism configuration
     private static final int PARALLELISM = Integer.parseInt(
