@@ -32,11 +32,11 @@ services:
       - "13133:13133" # Health check
     environment:
       - OTEL_FEATURE_ENABLED=${OTEL_FEATURE_ENABLED:-true}
-      - GOMEMLIMIT=3500MiB  # Go runtime memory limit - increased for benchmark load
+      - GOMEMLIMIT=1200MiB  # Go runtime memory limit
     deploy:
       resources:
         limits:
-          memory: 4G    # Increased from 3G for heavy benchmark load
+          memory: 1536M  # Right-sized: actual usage ~640MB
           cpus: '1.5'
     depends_on:
       jaeger:
@@ -64,11 +64,11 @@ services:
       - SPAN_STORAGE_TYPE=memory
       - MEMORY_MAX_TRACES=15000   # Balanced for benchmarks
       - GOMAXPROCS=2
-      - GOMEMLIMIT=1800MiB        # Leave headroom for GC
+      - GOMEMLIMIT=800MiB
     deploy:
       resources:
         limits:
-          memory: 2G    # Tested: 1G caused 61% usage under load, 2G provides headroom
+          memory: 1G    # Right-sized: actual usage ~300MB
           cpus: '1.5'
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:16686"]
@@ -135,7 +135,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1G  # Increased from 512M - still OOM under high load
+          memory: 768M  # Right-sized for 16GB host
           cpus: '1.0'
     depends_on:
       otel-collector:
@@ -228,7 +228,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 2G  # Diagnostic: was using 997MB of 7.7GB (13%), reduced to 2GB
+          memory: 1536M  # Right-sized: actual usage ~1GB
     networks:
       - reactive-network
 
@@ -288,7 +288,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1280M
+          memory: 1024M  # Right-sized: actual usage ~580MB
           cpus: '2.0'
     depends_on:
       otel-collector:
@@ -340,7 +340,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 2G  # Diagnostic: was using 1009MB of 7.7GB (13%), reduced to 2GB
+          memory: 1280M  # Right-sized: actual usage ~1GB
     networks:
       - reactive-network
 
@@ -370,7 +370,7 @@ services:
         taskmanager.network.memory.buffer-debloat.target: 50ms
         taskmanager.network.memory.buffer-debloat.period: 25ms
         execution.buffer-timeout: 1ms
-        taskmanager.memory.process.size: 2816m
+        taskmanager.memory.process.size: 1792m
         env.java.opts.taskmanager: -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/tmp/diagnostics/heapdump.hprof -Xlog:gc*:file=/tmp/diagnostics/gc.log:time,uptime,level,tags -XX:NativeMemoryTracking=summary --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED
       # System-wide latency bounds (CQRS snapshot evaluation)
       - LATENCY_MIN_MS=${LATENCY_MIN_MS:-20}
@@ -394,7 +394,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 4096M  # 4GB - Flink process=2816MB + ~1.3GB overhead
+          memory: 2048M  # 2GB - Flink process=1792m + 256MB overhead
           cpus: '3.0'
     networks:
       - reactive-network
@@ -484,11 +484,11 @@ services:
       - OTEL_SERVICE_NAME=counter-application
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
       # JVM tuning - G1GC optimized for throughput (memory-efficient config)
-      - JAVA_OPTS=-XX:+UseG1GC -XX:MaxGCPauseMillis=20 -Xms2048m -Xmx2048m -XX:+AlwaysPreTouch -XX:ParallelGCThreads=4 -XX:ConcGCThreads=2 -XX:G1HeapRegionSize=4m
+      - JAVA_OPTS=-XX:+UseG1GC -XX:MaxGCPauseMillis=20 -Xms1024m -Xmx1024m -XX:+AlwaysPreTouch -XX:ParallelGCThreads=4 -XX:ConcGCThreads=2 -XX:G1HeapRegionSize=4m
     deploy:
       resources:
         limits:
-          memory: 5120M  # 5GB for benchmark load (1GB heap + 4GB off-heap)
+          memory: 2048M  # 2GB (1GB heap + 1GB off-heap)
           cpus: '4.0'
     depends_on:
       kafka:
