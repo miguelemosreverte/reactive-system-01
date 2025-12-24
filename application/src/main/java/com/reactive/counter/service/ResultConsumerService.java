@@ -34,8 +34,8 @@ public class ResultConsumerService {
     // Pending transactions awaiting results (for wait-for-result mode)
     private final Map<String, CompletableFuture<CounterResult>> pendingTransactions = new ConcurrentHashMap<>();
 
-    // Sink for broadcasting results to WebSocket clients
-    private final Sinks.Many<CounterResult> resultSink = Sinks.many().multicast().onBackpressureBuffer();
+    // Sink for broadcasting results to WebSocket clients (bounded buffer to prevent OOM)
+    private final Sinks.Many<CounterResult> resultSink = Sinks.many().multicast().onBackpressureBuffer(1000);
 
     // Callback for state updates (set by CounterController)
     private java.util.function.Consumer<CounterResult> stateUpdateCallback;
@@ -76,7 +76,7 @@ public class ResultConsumerService {
                 result);
 
         try {
-            log.info("Received result from Flink: eventId={}, sessionId={}, value={}, alert={}",
+            log.debug("Received result from Flink: eventId={}, sessionId={}, value={}, alert={}",
                     result.eventId(), result.sessionId(), result.currentValue(), result.alert());
 
             // Complete pending transaction if any (for wait-for-result mode)

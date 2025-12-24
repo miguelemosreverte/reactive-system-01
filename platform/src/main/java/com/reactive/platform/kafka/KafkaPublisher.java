@@ -282,8 +282,8 @@ public class KafkaPublisher<A> implements AutoCloseable {
         public Builder<A> fireAndForget() {
             this.acks = "0";
             this.maxInFlightRequests = 100;  // Increased for more parallelism
-            this.lingerMs = 0;         // No batching delay
-            this.batchSize = 32768;    // 32KB batches
+            this.lingerMs = 0;         // No batching delay for minimal latency
+            this.batchSize = 65536;    // 64KB batches
             this.compression = "none"; // No compression overhead locally
             return this;
         }
@@ -292,7 +292,7 @@ public class KafkaPublisher<A> implements AutoCloseable {
         private int batchSize = 16384;
         private String compression = "none";
 
-        private long bufferMemory = 67108864; // 64MB default
+        private long bufferMemory = 16777216; // 16MB - reduced from 64MB to save memory
 
         public Builder<A> bufferMemory(long bytes) {
             this.bufferMemory = bytes;

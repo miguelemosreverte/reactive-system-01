@@ -6,7 +6,7 @@ import com.reactive.counter.service.ResultConsumerService;
 import com.reactive.platform.id.IdGenerator;
 import com.reactive.platform.kafka.KafkaPublisher;
 import com.reactive.platform.observe.Log;
-import com.reactive.platform.serialization.JsonCodec;
+import com.reactive.counter.serialization.AvroCounterEventCodec;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
@@ -18,8 +18,9 @@ import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Counter REST API.
@@ -50,7 +51,15 @@ public class CounterController {
     private ResultConsumerService resultConsumerService;
 
     private final IdGenerator idGenerator = IdGenerator.getInstance();
-    private final Map<String, CounterState> stateStore = new ConcurrentHashMap<>();
+    // Bounded LRU cache for session states (max 10k entries to prevent OOM)
+    private static final int MAX_STATE_ENTRIES = 10_000;
+    private final Map<String, CounterState> stateStore = Collections.synchronizedMap(
+            new LinkedHashMap<>(16, 0.75f, true) {
+                @Override
+                protected boolean removeEldestEntry(Map.Entry<String, CounterState> eldest) {
+                    return size() > MAX_STATE_ENTRIES;
+                }
+            });
     private KafkaPublisher<CounterEvent> publisher;
 
     @PostConstruct
@@ -58,9 +67,9 @@ public class CounterController {
         publisher = KafkaPublisher.create(c -> c
                 .bootstrapServers(kafkaBootstrap)
                 .topic(eventsTopic)
-                .codec(JsonCodec.forClass(CounterEvent.class))
+                .codec(AvroCounterEventCodec.create())  // Avro: ~5-10x faster than JSON
                 .keyExtractor(e -> kafkaKey(e.customerId(), e.sessionId()))
-                .fireAndForget());  // acks=0, maxInFlight=20 for max throughput
+                .fireAndForget());  // acks=0, maxInFlight=100 for max throughput
 
         // Register callback for state updates from Kafka results
         if (resultConsumerService != null) {

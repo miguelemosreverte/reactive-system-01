@@ -475,12 +475,12 @@ services:
       - OTEL_ENABLED=${OTEL_FEATURE_ENABLED:-true}
       - OTEL_SERVICE_NAME=counter-application
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
-      # JVM tuning - G1GC optimized for throughput
-      - JAVA_OPTS=-XX:+UseG1GC -XX:MaxGCPauseMillis=20 -Xms1024m -Xmx1024m -XX:+AlwaysPreTouch -XX:ParallelGCThreads=4 -XX:ConcGCThreads=2 -XX:G1HeapRegionSize=4m
+      # JVM tuning - G1GC optimized for throughput (memory-efficient config)
+      - JAVA_OPTS=-XX:+UseG1GC -XX:MaxGCPauseMillis=20 -Xms768m -Xmx768m -XX:+AlwaysPreTouch -XX:ParallelGCThreads=4 -XX:ConcGCThreads=2 -XX:G1HeapRegionSize=2m
     deploy:
       resources:
         limits:
-          memory: 3584M  # Increased for high-throughput benchmarks
+          memory: 2048M  # Reduced after memory optimizations (bounded buffers, smaller Kafka buffer)
           cpus: '4.0'
     depends_on:
       kafka:
