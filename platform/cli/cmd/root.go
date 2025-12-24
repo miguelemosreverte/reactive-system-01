@@ -40,6 +40,12 @@ OBSERVABILITY
     replay events     List stored events
     replay history    Show state transitions
 
+CONFIGURATION
+  config show         Display configuration summary
+  config validate     Check for errors/warnings
+  config env          Generate .env file from HOCON
+  config json         Export as JSON
+
 DEVELOPMENT
   shell <service>     Enter container shell
   dev                 Start in development mode
@@ -67,6 +73,7 @@ func init() {
 	// - diagnostics.go: doctor, stats
 	// - diagnose.go: memory
 	// - bench.go: bench (with subcommands: doctor, history)
+	// - config.go: config (with subcommands: show, validate, env, json)
 	// - e2e.go: e2e
 	// - status.go: status
 }
