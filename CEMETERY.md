@@ -129,6 +129,56 @@ for i in {1..10}; do ./cli.sh bench full; done
 
 ---
 
+### 3. Flink Parallelism Increase
+
+**Date:** 2024-12-24
+**Branch:** `cemetery/flink-parallelism-12`
+**Status:** REJECTED - No improvement
+
+#### Change Description
+Increased Flink parallelism from 8 to 12:
+- `FLINK_PARALLELISM`: 8 → 12
+
+#### Rationale
+More parallel threads should allow better CPU utilization and higher throughput, especially with 8 Kafka partitions allowing up to 8 concurrent consumers.
+
+#### Benchmark Results
+| Metric | Before | After | Change |
+|--------|--------|-------|--------|
+| Total Ops | ~316K | ~295K | -7% |
+| Consistency | Stable | Variable | Worse |
+
+#### Root Cause Analysis
+**The bottleneck is network I/O, not CPU.**
+
+With 12 threads but only 8 Kafka partitions:
+1. 4 threads have no partitions to consume from (idle)
+2. More threads compete for the same HTTP connection pool to Drools
+3. Context switching overhead increases
+4. No improvement in actual processing capacity
+
+The system is limited by:
+- Kafka partition count (8)
+- HTTP connection pool to Drools (200)
+- Drools processing capacity
+
+#### Files Changed
+- `platform/deployment/docker/flink/src/main/java/com/reactive/flink/CounterJob.java`
+
+#### How to Re-test
+```bash
+git checkout cemetery/flink-parallelism-12
+./cli.sh rebuild flink
+for i in {1..10}; do ./cli.sh bench full; done
+```
+
+#### Conditions That Might Change This Decision
+- If Kafka partition count is increased to 12+
+- If running on a machine with more CPU cores
+- If Drools becomes faster and HTTP I/O is no longer the bottleneck
+
+---
+
 ## Template for New Entries
 
 ```markdown
