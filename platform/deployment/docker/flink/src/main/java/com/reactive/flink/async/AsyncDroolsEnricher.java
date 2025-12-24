@@ -36,7 +36,7 @@ public class AsyncDroolsEnricher extends RichAsyncFunction<PreDroolsResult, Coun
 
     private final String droolsUrl;
 
-    private static final int MAX_CONNECTIONS = 100;  // Balanced for memory/throughput
+    private static final int MAX_CONNECTIONS = 200;  // Matches half of async capacity for balanced queueing
     private static final Duration CONNECT_TIMEOUT = Duration.ofMillis(1000);  // Connection timeout
     private static final Duration REQUEST_TIMEOUT = Duration.ofMillis(5000);  // Request timeout
 
