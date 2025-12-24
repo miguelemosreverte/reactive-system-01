@@ -3,6 +3,7 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -114,6 +115,15 @@ func runSingleBenchmark(projectRoot, target string) {
 
 	reportsDir := filepath.Join(projectRoot, "reports")
 	os.MkdirAll(filepath.Join(reportsDir, target), 0755)
+
+	// Copy assets to reports directory
+	assetsDir := filepath.Join(reportsDir, "assets")
+	srcAssets := filepath.Join(projectRoot, "platform", "reports", "assets")
+	fmt.Printf("→ Copying assets: %s -> %s\n", srcAssets, assetsDir)
+	os.RemoveAll(assetsDir)
+	if err := copyDir(srcAssets, assetsDir); err != nil {
+		fmt.Printf("✗ Could not copy assets: %v\n", err)
+	}
 
 	// Step 1: Install platform module (so other modules can depend on it)
 	printInfo("Installing platform module...")
@@ -651,4 +661,38 @@ func truncate(s string, maxLen int) string {
 		return s
 	}
 	return s[:maxLen-3] + "..."
+}
+
+// copyDir recursively copies a directory
+func copyDir(src, dst string) error {
+	return filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		relPath, err := filepath.Rel(src, path)
+		if err != nil {
+			return err
+		}
+		dstPath := filepath.Join(dst, relPath)
+
+		if info.IsDir() {
+			return os.MkdirAll(dstPath, info.Mode())
+		}
+
+		srcFile, err := os.Open(path)
+		if err != nil {
+			return err
+		}
+		defer srcFile.Close()
+
+		dstFile, err := os.Create(dstPath)
+		if err != nil {
+			return err
+		}
+		defer dstFile.Close()
+
+		_, err = io.Copy(dstFile, srcFile)
+		return err
+	})
 }

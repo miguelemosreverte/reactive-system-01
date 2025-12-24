@@ -36,6 +36,9 @@ TESTING
 OBSERVABILITY
   trace [id]          Inspect distributed traces
   search [traceId]    Search logs in Loki
+  replay <session>    Replay events with full tracing (for debugging)
+    replay events     List stored events
+    replay history    Show state transitions
 
 DEVELOPMENT
   shell <service>     Enter container shell
@@ -57,6 +60,7 @@ func init() {
 	rootCmd.AddCommand(traceCmd)
 	rootCmd.AddCommand(logsCmd)
 	rootCmd.AddCommand(sendCmd)
+	rootCmd.AddCommand(replayCmd)
 
 	// Note: Other commands are added via init() in their respective files:
 	// - lifecycle.go: start, stop, restart, rebuild, down, clean, logs, dev, shell
