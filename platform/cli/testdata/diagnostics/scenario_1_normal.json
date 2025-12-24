@@ -1,0 +1,270 @@
+{
+  "component": "gateway",
+  "instance_id": "gateway-prod-1",
+  "timestamp_ms": 1703462400000,
+  "uptime_ms": 3600000,
+  "version": "1.0.0",
+
+  "throughput": {
+    "events_per_second": 1523.4,
+    "bytes_per_second": 304680,
+    "events_per_second_capacity": 2000,
+    "capacity_utilization_percent": 76.2,
+    "batch_size_avg": 85.3,
+    "batch_size_p99": 100,
+    "batches_per_second": 17.9,
+    "batch_efficiency_percent": 85.3,
+    "parallelism_active": 6,
+    "parallelism_max": 8,
+    "queue_depth": 234,
+    "queue_capacity": 5000,
+    "rejected_count": 0,
+    "dropped_count": 0
+  },
+
+  "latency": {
+    "total_ms_p50": 12.3,
+    "total_ms_p95": 34.5,
+    "total_ms_p99": 67.8,
+    "total_ms_max": 123.4,
+    "cpu_time_ms": 3.2,
+    "queue_wait_ms": 2.1,
+    "lock_wait_ms": 0.8,
+    "gc_pause_ms": 1.2,
+    "network_ms": 3.5,
+    "serialization_ms": 1.1,
+    "deserialization_ms": 0.9,
+    "dependency_wait_ms": 0.5,
+    "breakdown_percent": {
+      "network": 28.5,
+      "cpu": 26.0,
+      "queue_wait": 17.1,
+      "gc_pause": 9.8,
+      "serialization": 8.9,
+      "deserialization": 7.3,
+      "lock_wait": 6.5,
+      "dependency_wait": 4.1
+    }
+  },
+
+  "saturation": {
+    "cpu_percent": 45.6,
+    "heap_used_percent": 52.3,
+    "heap_used_bytes": 2248146944,
+    "heap_max_bytes": 4294967296,
+    "old_gen_percent": 38.4,
+    "old_gen_bytes": 1236950016,
+    "old_gen_max_bytes": 3221225472,
+    "thread_pool_active": 6,
+    "thread_pool_max": 8,
+    "thread_pool_queue_depth": 234,
+    "connection_pool_active": 23,
+    "connection_pool_max": 50,
+    "buffer_pool_used_percent": 34.5,
+    "file_descriptors_used": 456,
+    "file_descriptors_max": 1024
+  },
+
+  "trends": {
+    "throughput_trend": 0.02,
+    "latency_trend": 0.01,
+    "heap_growth_bytes_per_sec": 10485,
+    "old_gen_growth_bytes_per_sec": 5242,
+    "queue_depth_trend": 0.0,
+    "error_rate_trend": 0.0,
+    "gc_frequency_trend": 0.0,
+    "estimated_heap_exhaustion_sec": -1,
+    "estimated_old_gen_exhaustion_sec": -1
+  },
+
+  "contention": {
+    "lock_contention_percent": 2.3,
+    "most_contended_locks": [],
+    "blocked_threads": 0,
+    "waiting_threads": 2,
+    "deadlock_detected": false,
+    "io_wait_percent": 5.6,
+    "queue_blocking_percent": 4.7
+  },
+
+  "memory": {
+    "heap_used_bytes": 2248146944,
+    "heap_committed_bytes": 3221225472,
+    "heap_max_bytes": 4294967296,
+    "non_heap_used_bytes": 134217728,
+    "direct_buffer_used_bytes": 67108864,
+    "direct_buffer_max_bytes": 536870912,
+    "allocation_rate_bytes_per_sec": 10485760,
+    "promotion_rate_bytes_per_sec": 524288,
+    "survivor_space_used_percent": 23.4,
+    "tenuring_threshold": 15,
+    "large_object_allocations_per_sec": 12,
+    "fragmentation_percent": 5.6,
+    "native_memory_used_bytes": 268435456,
+    "memory_pools": [
+      {"name": "Eden", "used_bytes": 268435456, "max_bytes": 536870912, "used_percent": 50.0},
+      {"name": "Survivor", "used_bytes": 33554432, "max_bytes": 134217728, "used_percent": 25.0},
+      {"name": "OldGen", "used_bytes": 1236950016, "max_bytes": 3221225472, "used_percent": 38.4},
+      {"name": "Metaspace", "used_bytes": 67108864, "max_bytes": 268435456, "used_percent": 25.0}
+    ]
+  },
+
+  "gc": {
+    "young_gc_count": 234,
+    "young_gc_time_ms": 1234,
+    "old_gc_count": 5,
+    "old_gc_time_ms": 567,
+    "gc_overhead_percent": 0.5,
+    "avg_young_gc_pause_ms": 5.3,
+    "avg_old_gc_pause_ms": 113.4,
+    "max_gc_pause_ms": 145.6,
+    "gc_frequency_per_min": 3.9,
+    "time_since_last_gc_ms": 12345,
+    "consecutive_full_gcs": 0,
+    "gc_cpu_percent": 1.2,
+    "objects_promoted_per_gc": 234567,
+    "gc_algorithm": "G1",
+    "gc_cause_histogram": {
+      "G1 Evacuation Pause": 234,
+      "Metadata GC Threshold": 5
+    }
+  },
+
+  "stages": [
+    {
+      "name": "http_receive",
+      "events_processed": 1523456,
+      "events_per_second": 1523.4,
+      "latency_ms_p50": 2.1,
+      "latency_ms_p99": 8.9,
+      "queue_depth": 23,
+      "is_bottleneck": false,
+      "saturation_percent": 45.6,
+      "error_count": 0,
+      "backpressure_applied": false
+    },
+    {
+      "name": "validation",
+      "events_processed": 1523456,
+      "events_per_second": 1523.4,
+      "latency_ms_p50": 1.2,
+      "latency_ms_p99": 5.6,
+      "queue_depth": 45,
+      "is_bottleneck": false,
+      "saturation_percent": 34.5,
+      "error_count": 0,
+      "backpressure_applied": false
+    },
+    {
+      "name": "serialization",
+      "events_processed": 1523456,
+      "events_per_second": 1523.4,
+      "latency_ms_p50": 1.1,
+      "latency_ms_p99": 4.5,
+      "queue_depth": 67,
+      "is_bottleneck": false,
+      "saturation_percent": 28.9,
+      "error_count": 0,
+      "backpressure_applied": false
+    },
+    {
+      "name": "kafka_produce",
+      "events_processed": 1523456,
+      "events_per_second": 1523.4,
+      "latency_ms_p50": 3.5,
+      "latency_ms_p99": 12.3,
+      "queue_depth": 99,
+      "is_bottleneck": false,
+      "saturation_percent": 56.7,
+      "error_count": 0,
+      "backpressure_applied": false
+    }
+  ],
+
+  "dependencies": [
+    {
+      "name": "kafka",
+      "type": "message_broker",
+      "latency_ms_p50": 3.5,
+      "latency_ms_p99": 12.3,
+      "calls_per_second": 17.9,
+      "error_rate_percent": 0.0,
+      "circuit_breaker_state": "CLOSED",
+      "connection_pool_used": 5,
+      "connection_pool_max": 10,
+      "saturation_percent": 50.0,
+      "last_error": null,
+      "last_error_time_ms": 0
+    }
+  ],
+
+  "errors": {
+    "total_error_count": 0,
+    "error_rate_percent": 0.0,
+    "errors_by_type": {},
+    "recent_errors": [],
+    "crash_indicators": {
+      "oom_risk": false,
+      "oom_risk_percent": 0,
+      "gc_thrashing": false,
+      "memory_leak_suspected": false,
+      "thread_exhaustion_risk": false
+    }
+  },
+
+  "capacity": {
+    "current_throughput": 1523.4,
+    "max_observed_throughput": 1987.6,
+    "theoretical_max_throughput": 2500,
+    "headroom_percent": 39.1,
+    "limiting_factors": []
+  },
+
+  "history": [
+    {
+      "bucket_start_ms": 1703462340000,
+      "bucket_duration_ms": 60000,
+      "avg_throughput": 1512.3,
+      "avg_latency_ms": 12.1,
+      "max_latency_ms": 67.8,
+      "error_count": 0,
+      "heap_used_avg_percent": 51.2
+    },
+    {
+      "bucket_start_ms": 1703462280000,
+      "bucket_duration_ms": 60000,
+      "avg_throughput": 1534.5,
+      "avg_latency_ms": 11.8,
+      "max_latency_ms": 65.4,
+      "error_count": 0,
+      "heap_used_avg_percent": 50.8
+    },
+    {
+      "bucket_start_ms": 1703462220000,
+      "bucket_duration_ms": 60000,
+      "avg_throughput": 1545.6,
+      "avg_latency_ms": 12.5,
+      "max_latency_ms": 72.3,
+      "error_count": 0,
+      "heap_used_avg_percent": 52.1
+    }
+  ],
+
+  "sampled_requests": [
+    {
+      "trace_id": "abc123def456",
+      "total_time_ms": 12.3,
+      "time_breakdown": {
+        "http_receive": 2.1,
+        "validation": 1.2,
+        "serialization": 1.1,
+        "kafka_produce": 3.5,
+        "cpu": 3.2,
+        "other": 1.2
+      },
+      "gc_pauses_encountered": 0,
+      "retries": 0,
+      "final_status": "SUCCESS"
+    }
+  ]
+}

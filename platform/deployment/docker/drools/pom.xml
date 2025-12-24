@@ -117,14 +117,7 @@
         <!-- Profile for running benchmarks outside Docker -->
         <profile>
             <id>benchmark</id>
-            <dependencies>
-                <dependency>
-                    <groupId>com.reactive</groupId>
-                    <artifactId>platform</artifactId>
-                    <version>1.0.0</version>
-                    <scope>test</scope>
-                </dependency>
-            </dependencies>
+            <!-- No changes needed - platform dependency is already compile scope -->
         </profile>
     </profiles>
 

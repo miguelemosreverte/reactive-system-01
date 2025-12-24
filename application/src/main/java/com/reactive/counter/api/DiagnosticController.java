@@ -308,10 +308,212 @@ public class DiagnosticController {
                 "endpoints", Map.of(
                         "validate", "GET /api/diagnostic/validate/{traceId}",
                         "run", "POST /api/diagnostic/run",
-                        "services", "GET /api/diagnostic/services"
+                        "services", "GET /api/diagnostic/services",
+                        "performance", "GET /api/diagnostic/performance"
                 ),
                 "expectedServices", E2E_SERVICES
         ));
+    }
+
+    /**
+     * Performance summary for optimization workflow.
+     *
+     * GET /api/diagnostic/performance
+     *
+     * Returns key performance metrics aggregated from Prometheus:
+     * - Component latencies (gateway, drools)
+     * - Memory usage (heap, GC)
+     * - Throughput indicators
+     * - Actionable recommendations
+     */
+    @GetMapping("/performance")
+    public Mono<ResponseEntity<Map<String, Object>>> getPerformanceSummary() {
+        return Mono.fromCallable(() -> {
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("timestamp", Instant.now().toString());
+
+            try {
+                // Collect metrics from all components
+                Map<String, Object> gateway = collectComponentMetrics("gateway", "http://localhost:3000/actuator/metrics");
+                Map<String, Object> drools = collectComponentMetrics("drools", "http://drools:8080/actuator/metrics");
+
+                result.put("components", Map.of(
+                    "gateway", gateway,
+                    "drools", drools
+                ));
+
+                // Memory protection status
+                Map<String, Object> memoryProtection = collectMemoryProtection();
+                result.put("memoryProtection", memoryProtection);
+
+                // Generate actionable recommendations
+                List<String> recommendations = generateRecommendations(gateway, drools, memoryProtection);
+                result.put("recommendations", recommendations);
+
+                // Summary
+                result.put("summary", Map.of(
+                    "healthyComponents", countHealthy(gateway, drools),
+                    "hasActionableItems", !recommendations.isEmpty()
+                ));
+
+            } catch (Exception e) {
+                log.error("Failed to collect performance metrics: {}", e.getMessage());
+                result.put("error", e.getMessage());
+            }
+
+            return result;
+        }).map(ResponseEntity::ok);
+    }
+
+    private Map<String, Object> collectComponentMetrics(String name, String metricsUrl) {
+        Map<String, Object> metrics = new LinkedHashMap<>();
+        metrics.put("name", name);
+
+        try {
+            // Get JVM memory
+            var memReq = HttpRequest.newBuilder()
+                    .uri(URI.create(metricsUrl + "/jvm.memory.used"))
+                    .timeout(Duration.ofSeconds(3))
+                    .GET()
+                    .build();
+
+            var memResp = httpClient.send(memReq, HttpResponse.BodyHandlers.ofString());
+            if (memResp.statusCode() == 200) {
+                JsonNode memNode = mapper.readTree(memResp.body());
+                JsonNode measurements = memNode.get("measurements");
+                if (measurements != null && measurements.isArray()) {
+                    for (JsonNode m : measurements) {
+                        if ("VALUE".equals(m.path("statistic").asText())) {
+                            metrics.put("memoryUsedMB", m.path("value").asDouble() / (1024 * 1024));
+                        }
+                    }
+                }
+            }
+
+            // Get HTTP request metrics
+            var httpReq = HttpRequest.newBuilder()
+                    .uri(URI.create(metricsUrl + "/http.server.requests"))
+                    .timeout(Duration.ofSeconds(3))
+                    .GET()
+                    .build();
+
+            var httpResp = httpClient.send(httpReq, HttpResponse.BodyHandlers.ofString());
+            if (httpResp.statusCode() == 200) {
+                JsonNode httpNode = mapper.readTree(httpResp.body());
+                JsonNode measurements = httpNode.get("measurements");
+                if (measurements != null && measurements.isArray()) {
+                    for (JsonNode m : measurements) {
+                        String stat = m.path("statistic").asText();
+                        double value = m.path("value").asDouble();
+                        switch (stat) {
+                            case "COUNT" -> metrics.put("requestCount", (long) value);
+                            case "TOTAL_TIME" -> metrics.put("totalTimeMs", value * 1000);
+                            case "MAX" -> metrics.put("maxLatencyMs", value * 1000);
+                        }
+                    }
+                }
+
+                // Calculate average latency
+                if (metrics.containsKey("requestCount") && metrics.containsKey("totalTimeMs")) {
+                    long count = (Long) metrics.get("requestCount");
+                    double total = (Double) metrics.get("totalTimeMs");
+                    if (count > 0) {
+                        metrics.put("avgLatencyMs", total / count);
+                    }
+                }
+            }
+
+            metrics.put("status", "UP");
+
+        } catch (Exception e) {
+            metrics.put("status", "DOWN");
+            metrics.put("error", e.getMessage());
+        }
+
+        return metrics;
+    }
+
+    private Map<String, Object> collectMemoryProtection() {
+        Map<String, Object> protection = new LinkedHashMap<>();
+
+        try {
+            // Get Drools protection stats
+            var droolsReq = HttpRequest.newBuilder()
+                    .uri(URI.create("http://drools:8080/api/protection/stats"))
+                    .timeout(Duration.ofSeconds(3))
+                    .GET()
+                    .build();
+
+            var droolsResp = httpClient.send(droolsReq, HttpResponse.BodyHandlers.ofString());
+            if (droolsResp.statusCode() == 200) {
+                JsonNode stats = mapper.readTree(droolsResp.body());
+                protection.put("drools", Map.of(
+                    "maxConcurrent", stats.path("maxConcurrent").asInt(),
+                    "activeRequests", stats.path("activeRequests").asInt(),
+                    "rejectedTotal", stats.path("rejectedTotal").asLong(),
+                    "utilization", (double) stats.path("activeRequests").asInt() / stats.path("maxConcurrent").asInt()
+                ));
+            }
+        } catch (Exception e) {
+            protection.put("drools", Map.of("error", e.getMessage()));
+        }
+
+        return protection;
+    }
+
+    private List<String> generateRecommendations(
+            Map<String, Object> gateway,
+            Map<String, Object> drools,
+            Map<String, Object> memoryProtection) {
+
+        List<String> recommendations = new ArrayList<>();
+
+        // Check memory usage
+        if (gateway.containsKey("memoryUsedMB")) {
+            double memMB = (Double) gateway.get("memoryUsedMB");
+            if (memMB > 800) {
+                recommendations.add("Gateway memory usage high (" + Math.round(memMB) + "MB). Consider increasing heap or reducing cache sizes.");
+            }
+        }
+
+        // Check latency
+        if (gateway.containsKey("avgLatencyMs")) {
+            double avgLatency = (Double) gateway.get("avgLatencyMs");
+            if (avgLatency > 20) {
+                recommendations.add("Gateway average latency elevated (" + Math.round(avgLatency) + "ms). Check Kafka producer batching.");
+            }
+        }
+
+        // Check Drools utilization
+        if (memoryProtection.containsKey("drools")) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> droolsStats = (Map<String, Object>) memoryProtection.get("drools");
+            if (droolsStats.containsKey("utilization")) {
+                double util = (Double) droolsStats.get("utilization");
+                if (util > 0.8) {
+                    recommendations.add("Drools concurrency near limit (" + Math.round(util * 100) + "%). Consider increasing DROOLS_MAX_CONCURRENT.");
+                }
+            }
+            if (droolsStats.containsKey("rejectedTotal")) {
+                long rejected = (Long) droolsStats.get("rejectedTotal");
+                if (rejected > 0) {
+                    recommendations.add("Drools has rejected " + rejected + " requests due to capacity. Increase DROOLS_MAX_CONCURRENT or reduce load.");
+                }
+            }
+        }
+
+        if (recommendations.isEmpty()) {
+            recommendations.add("No immediate issues detected. Run benchmark to measure throughput.");
+        }
+
+        return recommendations;
+    }
+
+    private int countHealthy(Map<String, Object> gateway, Map<String, Object> drools) {
+        int count = 0;
+        if ("UP".equals(gateway.get("status"))) count++;
+        if ("UP".equals(drools.get("status"))) count++;
+        return count;
     }
 
     // ========================================================================

@@ -34,7 +34,7 @@ public class RuleService {
         statelessSession.execute(counter);
 
         String alert = or(counter.getAlert(), "NONE");
-        log.info("Evaluated: value={}, alert={}", request.getValue(), alert);
+        log.debug("Evaluated: value={}, alert={}", request.getValue(), alert);
 
         EvaluationResponse response = new EvaluationResponse();
         response.setValue(counter.getValue());

@@ -109,7 +109,7 @@ public class TracingKafkaDeserializer implements KafkaRecordDeserializationSchem
 
     /** Convert CharSequence to String safely. */
     private String str(CharSequence cs) {
-        return or(cs, "").toString();
+        return cs != null ? cs.toString() : "";
     }
 
     @Override

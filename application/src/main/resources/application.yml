@@ -1,7 +1,17 @@
 server:
   port: 3000
+  # Netty tuning for throughput
+  netty:
+    connection-timeout: 5000
+  http2:
+    enabled: false  # HTTP/1.1 for compatibility
 
 spring:
+  reactor:
+    netty:
+      pool:
+        max-connections: 1000       # Allow more concurrent connections
+        pending-acquire-timeout: 10000
   application:
     name: counter-application
 
@@ -11,8 +21,9 @@ spring:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.ByteArraySerializer
       acks: 1                   # Wait for leader ack (more stable)
-      batch-size: 65536         # 64KB - larger batches
-      linger-ms: 0              # No wait - send immediately when batch ready
+      batch-size: 65536         # 64KB - larger batches for throughput
+      linger-ms: 5              # 5ms - allows more batching
+      buffer-memory: 67108864   # 64MB buffer
       compression-type: lz4     # Fast compression
     consumer:
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer

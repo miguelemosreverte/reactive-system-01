@@ -1,5 +1,10 @@
 server:
   port: 3000
+  tomcat:
+    threads:
+      max: 400
+      min-spare: 50
+    accept-count: 200
 
 spring:
   application:
@@ -48,7 +53,7 @@ otel:
 logging:
   level:
     root: INFO
-    com.reactive.gateway: DEBUG
+    com.reactive.gateway: INFO  # INFO for throughput (DEBUG generates per-event logs)
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - traceId=%X{traceId} spanId=%X{spanId} - %msg%n"
 

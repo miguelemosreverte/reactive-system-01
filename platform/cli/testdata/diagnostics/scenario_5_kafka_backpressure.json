@@ -1,0 +1,313 @@
+{
+  "component": "gateway",
+  "instance_id": "gateway-prod-3",
+  "timestamp_ms": 1703462400000,
+  "uptime_ms": 43200000,
+  "version": "1.0.0",
+
+  "throughput": {
+    "events_per_second": 567.8,
+    "bytes_per_second": 113560,
+    "events_per_second_capacity": 2000,
+    "capacity_utilization_percent": 28.4,
+    "batch_size_avg": 100.0,
+    "batch_size_p99": 100,
+    "batches_per_second": 5.7,
+    "batch_efficiency_percent": 100.0,
+    "parallelism_active": 8,
+    "parallelism_max": 8,
+    "queue_depth": 4890,
+    "queue_capacity": 5000,
+    "rejected_count": 1234,
+    "dropped_count": 567
+  },
+
+  "latency": {
+    "total_ms_p50": 456.7,
+    "total_ms_p95": 2345.6,
+    "total_ms_p99": 5678.9,
+    "total_ms_max": 12345.6,
+    "cpu_time_ms": 12.3,
+    "queue_wait_ms": 345.6,
+    "lock_wait_ms": 23.4,
+    "gc_pause_ms": 8.9,
+    "network_ms": 45.6,
+    "serialization_ms": 6.7,
+    "deserialization_ms": 0,
+    "dependency_wait_ms": 23.4,
+    "breakdown_percent": {
+      "queue_wait": 74.2,
+      "network": 9.8,
+      "dependency_wait": 5.0,
+      "lock_wait": 5.0,
+      "cpu": 2.6,
+      "gc_pause": 1.9,
+      "serialization": 1.4
+    }
+  },
+
+  "saturation": {
+    "cpu_percent": 34.5,
+    "heap_used_percent": 67.8,
+    "heap_used_bytes": 2899102924,
+    "heap_max_bytes": 4294967296,
+    "old_gen_percent": 56.7,
+    "old_gen_bytes": 1826338406,
+    "old_gen_max_bytes": 3221225472,
+    "thread_pool_active": 8,
+    "thread_pool_max": 8,
+    "thread_pool_queue_depth": 4890,
+    "connection_pool_active": 10,
+    "connection_pool_max": 10,
+    "buffer_pool_used_percent": 98.7,
+    "file_descriptors_used": 567,
+    "file_descriptors_max": 1024
+  },
+
+  "trends": {
+    "throughput_trend": -0.34,
+    "latency_trend": 0.56,
+    "heap_growth_bytes_per_sec": 104857,
+    "old_gen_growth_bytes_per_sec": 52428,
+    "queue_depth_trend": 0.67,
+    "error_rate_trend": 0.78,
+    "gc_frequency_trend": 0.12,
+    "estimated_heap_exhaustion_sec": 8192,
+    "estimated_old_gen_exhaustion_sec": 16384
+  },
+
+  "contention": {
+    "lock_contention_percent": 23.4,
+    "most_contended_locks": [
+      {"name": "KafkaProducer.accumulator", "contention_percent": 78.9, "wait_count": 123456, "avg_wait_ms": 234.5},
+      {"name": "RecordBatch.append", "contention_percent": 56.7, "wait_count": 89012, "avg_wait_ms": 178.9},
+      {"name": "BufferPool.allocate", "contention_percent": 45.6, "wait_count": 67890, "avg_wait_ms": 123.4}
+    ],
+    "blocked_threads": 5,
+    "waiting_threads": 3,
+    "deadlock_detected": false,
+    "io_wait_percent": 67.8,
+    "queue_blocking_percent": 97.8
+  },
+
+  "memory": {
+    "heap_used_bytes": 2899102924,
+    "heap_committed_bytes": 3758096384,
+    "heap_max_bytes": 4294967296,
+    "non_heap_used_bytes": 167772160,
+    "direct_buffer_used_bytes": 524288000,
+    "direct_buffer_max_bytes": 536870912,
+    "allocation_rate_bytes_per_sec": 31457280,
+    "promotion_rate_bytes_per_sec": 1048576,
+    "survivor_space_used_percent": 67.8,
+    "tenuring_threshold": 6,
+    "large_object_allocations_per_sec": 89,
+    "fragmentation_percent": 18.9,
+    "native_memory_used_bytes": 671088640,
+    "memory_pools": [
+      {"name": "Eden", "used_bytes": 402653184, "max_bytes": 536870912, "used_percent": 75.0},
+      {"name": "Survivor", "used_bytes": 100663296, "max_bytes": 134217728, "used_percent": 75.0},
+      {"name": "OldGen", "used_bytes": 1826338406, "max_bytes": 3221225472, "used_percent": 56.7},
+      {"name": "Metaspace", "used_bytes": 83886080, "max_bytes": 268435456, "used_percent": 31.2}
+    ]
+  },
+
+  "gc": {
+    "young_gc_count": 1234,
+    "young_gc_time_ms": 8901,
+    "old_gc_count": 23,
+    "old_gc_time_ms": 2345,
+    "gc_overhead_percent": 2.3,
+    "avg_young_gc_pause_ms": 7.2,
+    "avg_old_gc_pause_ms": 102.0,
+    "max_gc_pause_ms": 345.6,
+    "gc_frequency_per_min": 6.7,
+    "time_since_last_gc_ms": 12345,
+    "consecutive_full_gcs": 0,
+    "gc_cpu_percent": 3.4,
+    "objects_promoted_per_gc": 2345678,
+    "gc_algorithm": "G1",
+    "gc_cause_histogram": {
+      "G1 Evacuation Pause": 1234,
+      "G1 Humongous Allocation": 23
+    }
+  },
+
+  "stages": [
+    {
+      "name": "http_receive",
+      "events_processed": 567890,
+      "events_per_second": 567.8,
+      "latency_ms_p50": 2.3,
+      "latency_ms_p99": 8.9,
+      "queue_depth": 23,
+      "is_bottleneck": false,
+      "saturation_percent": 15.6,
+      "error_count": 0,
+      "backpressure_applied": false
+    },
+    {
+      "name": "validation",
+      "events_processed": 567890,
+      "events_per_second": 567.8,
+      "latency_ms_p50": 4.5,
+      "latency_ms_p99": 15.6,
+      "queue_depth": 89,
+      "is_bottleneck": false,
+      "saturation_percent": 23.4,
+      "error_count": 12,
+      "backpressure_applied": false
+    },
+    {
+      "name": "serialization",
+      "events_processed": 567878,
+      "events_per_second": 567.8,
+      "latency_ms_p50": 6.7,
+      "latency_ms_p99": 23.4,
+      "queue_depth": 234,
+      "is_bottleneck": false,
+      "saturation_percent": 34.5,
+      "error_count": 0,
+      "backpressure_applied": false
+    },
+    {
+      "name": "kafka_produce",
+      "events_processed": 566077,
+      "events_per_second": 567.8,
+      "latency_ms_p50": 345.6,
+      "latency_ms_p99": 5678.9,
+      "queue_depth": 4890,
+      "is_bottleneck": true,
+      "saturation_percent": 97.8,
+      "error_count": 1801,
+      "backpressure_applied": true
+    }
+  ],
+
+  "dependencies": [
+    {
+      "name": "kafka",
+      "type": "message_broker",
+      "latency_ms_p50": 345.6,
+      "latency_ms_p99": 5678.9,
+      "calls_per_second": 5.7,
+      "error_rate_percent": 3.18,
+      "circuit_breaker_state": "HALF_OPEN",
+      "connection_pool_used": 10,
+      "connection_pool_max": 10,
+      "saturation_percent": 100.0,
+      "last_error": "TimeoutException: Expiring 100 record(s) for counter-events-0:120000 ms has passed since batch creation",
+      "last_error_time_ms": 1703462399500
+    }
+  ],
+
+  "errors": {
+    "total_error_count": 1813,
+    "error_rate_percent": 3.18,
+    "errors_by_type": {
+      "TimeoutException": 1234,
+      "BufferExhaustedException": 456,
+      "RecordTooLargeException": 89,
+      "NotLeaderOrFollowerException": 34
+    },
+    "recent_errors": [
+      {"type": "TimeoutException", "message": "Expiring 100 record(s) for counter-events-0:120000 ms has passed since batch creation", "timestamp_ms": 1703462399500, "stack_trace_hash": "kafka123"},
+      {"type": "BufferExhaustedException", "message": "Failed to allocate memory within the configured max blocking time 60000 ms", "timestamp_ms": 1703462399000, "stack_trace_hash": "kafka456"},
+      {"type": "NotLeaderOrFollowerException", "message": "For requests intended only for the leader, this error indicates that the broker is not the current leader", "timestamp_ms": 1703462395000, "stack_trace_hash": "kafka789"}
+    ],
+    "crash_indicators": {
+      "oom_risk": false,
+      "oom_risk_percent": 12.3,
+      "gc_thrashing": false,
+      "memory_leak_suspected": false,
+      "thread_exhaustion_risk": false
+    }
+  },
+
+  "capacity": {
+    "current_throughput": 567.8,
+    "max_observed_throughput": 2345.6,
+    "theoretical_max_throughput": 3000,
+    "headroom_percent": 2.2,
+    "limiting_factors": [
+      {"factor": "kafka_producer_buffer", "impact_percent": 97.8, "current_value": 97.8, "threshold_value": 80.0, "unit": "percent_full"},
+      {"factor": "kafka_broker_throughput", "impact_percent": 100.0, "current_value": 100.0, "threshold_value": 80.0, "unit": "percent_saturated"},
+      {"factor": "network_bandwidth", "impact_percent": 67.8, "current_value": 67.8, "threshold_value": 80.0, "unit": "percent_capacity"},
+      {"factor": "connection_pool", "impact_percent": 100.0, "current_value": 50, "threshold_value": 50, "unit": "connections"}
+    ]
+  },
+
+  "history": [
+    {
+      "bucket_start_ms": 1703462340000,
+      "bucket_duration_ms": 60000,
+      "avg_throughput": 789.0,
+      "avg_latency_ms": 345.6,
+      "max_latency_ms": 5678.9,
+      "error_count": 456,
+      "heap_used_avg_percent": 65.4
+    },
+    {
+      "bucket_start_ms": 1703462280000,
+      "bucket_duration_ms": 60000,
+      "avg_throughput": 1234.5,
+      "avg_latency_ms": 123.4,
+      "max_latency_ms": 1234.5,
+      "error_count": 123,
+      "heap_used_avg_percent": 56.7
+    },
+    {
+      "bucket_start_ms": 1703462220000,
+      "bucket_duration_ms": 60000,
+      "avg_throughput": 1567.8,
+      "avg_latency_ms": 45.6,
+      "max_latency_ms": 234.5,
+      "error_count": 12,
+      "heap_used_avg_percent": 45.6
+    }
+  ],
+
+  "sampled_requests": [
+    {
+      "trace_id": "kafka-slow-001",
+      "total_time_ms": 5678.9,
+      "time_breakdown": {
+        "http_receive": 2.3,
+        "validation": 4.5,
+        "serialization": 6.7,
+        "queue_wait_kafka": 4567.8,
+        "kafka_produce": 1089.7,
+        "cpu": 7.9
+      },
+      "gc_pauses_encountered": 1,
+      "retries": 3,
+      "final_status": "SUCCESS"
+    },
+    {
+      "trace_id": "kafka-timeout-001",
+      "total_time_ms": 120000,
+      "time_breakdown": {
+        "http_receive": 2.3,
+        "validation": 4.5,
+        "serialization": 6.7,
+        "queue_wait_kafka": 119986.5
+      },
+      "gc_pauses_encountered": 4,
+      "retries": 5,
+      "final_status": "TIMEOUT"
+    },
+    {
+      "trace_id": "kafka-buffer-exhausted-001",
+      "total_time_ms": 60000,
+      "time_breakdown": {
+        "http_receive": 2.3,
+        "validation": 4.5,
+        "serialization": 6.7,
+        "buffer_allocation_wait": 59986.5
+      },
+      "gc_pauses_encountered": 2,
+      "retries": 0,
+      "final_status": "BUFFER_EXHAUSTED"
+    }
+  ]
+}

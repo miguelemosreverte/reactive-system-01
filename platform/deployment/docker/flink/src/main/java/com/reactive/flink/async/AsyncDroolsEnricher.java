@@ -2,6 +2,7 @@ package com.reactive.flink.async;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.reactive.flink.diagnostic.FlinkDiagnosticCollector;
 import com.reactive.flink.model.CounterResult;
 import com.reactive.flink.model.EventTiming;
 import com.reactive.flink.model.PreDroolsResult;
@@ -35,7 +36,7 @@ public class AsyncDroolsEnricher extends RichAsyncFunction<PreDroolsResult, Coun
 
     private final String droolsUrl;
 
-    private static final int MAX_CONNECTIONS = 100;  // Balanced for memory/throughput
+    private static final int MAX_CONNECTIONS = 200;  // Matches half of async capacity for balanced queueing
     private static final Duration CONNECT_TIMEOUT = Duration.ofMillis(1000);  // Connection timeout
     private static final Duration REQUEST_TIMEOUT = Duration.ofMillis(5000);  // Request timeout
 
@@ -71,6 +72,9 @@ public class AsyncDroolsEnricher extends RichAsyncFunction<PreDroolsResult, Coun
     public void asyncInvoke(PreDroolsResult input, ResultFuture<CounterResult> resultFuture) {
         long droolsStartAt = System.currentTimeMillis();
 
+        // Track async queue depth for diagnostics
+        FlinkDiagnosticCollector.recordAsyncRequestStart();
+
         // Auto-extracts business IDs and connects to parent trace context from TracedMessage
         SpanHandle span = Log.asyncTracedConsume("async.drools.enrich", input, Log.SpanType.PRODUCER);
         span.attr("http.method", "POST");
@@ -79,7 +83,7 @@ public class AsyncDroolsEnricher extends RichAsyncFunction<PreDroolsResult, Coun
         span.attr("counter.value", input.counterValue());
 
         try {
-            LOG.info("Calling Drools: session={}, value={}", input.sessionId(), input.counterValue());
+            LOG.debug("Calling Drools: session={}, value={}", input.sessionId(), input.counterValue());
 
             HttpRequest request = buildRequest(input, span.headers());
 
@@ -102,6 +106,8 @@ public class AsyncDroolsEnricher extends RichAsyncFunction<PreDroolsResult, Coun
     @Override
     public void timeout(PreDroolsResult input, ResultFuture<CounterResult> resultFuture) {
         LOG.warn("Drools call timed out: session={}", input.sessionId());
+        FlinkDiagnosticCollector.recordAsyncRequestComplete();
+        FlinkDiagnosticCollector.recordAsyncTimeout();
         complete(resultFuture, buildResult(input, input.arrivalTime(), "TIMEOUT", "Drools evaluation timed out"));
     }
 
@@ -126,6 +132,9 @@ public class AsyncDroolsEnricher extends RichAsyncFunction<PreDroolsResult, Coun
 
     private void handleResponse(HttpResponse<String> response, PreDroolsResult input,
                                 long droolsStartAt, SpanHandle span, ResultFuture<CounterResult> resultFuture) {
+        // Track async completion for diagnostics
+        FlinkDiagnosticCollector.recordAsyncRequestComplete();
+
         long droolsEndAt = System.currentTimeMillis();
         span.attr("http.status_code", response.statusCode());
         span.attr("drools.latency_ms", droolsEndAt - droolsStartAt);
@@ -140,11 +149,13 @@ public class AsyncDroolsEnricher extends RichAsyncFunction<PreDroolsResult, Coun
             } else {
                 LOG.warn("Drools returned {}: {}", response.statusCode(), response.body());
                 span.failure(new RuntimeException("Non-200: " + response.statusCode()));
+                FlinkDiagnosticCollector.recordAsyncError();
                 complete(resultFuture, buildResult(input, droolsStartAt, "ERROR", "Drools error: " + response.statusCode()));
             }
         } catch (Exception e) {
             LOG.error("Error parsing Drools response", e);
             span.failure(e);
+            FlinkDiagnosticCollector.recordAsyncError();
             complete(resultFuture, buildResult(input, droolsStartAt, "ERROR", "Parse error: " + e.getMessage()));
         }
     }
@@ -152,6 +163,8 @@ public class AsyncDroolsEnricher extends RichAsyncFunction<PreDroolsResult, Coun
     private void handleError(Throwable error, PreDroolsResult input, long droolsStartAt,
                              SpanHandle span, ResultFuture<CounterResult> resultFuture) {
         LOG.error("Drools call failed", error);
+        FlinkDiagnosticCollector.recordAsyncRequestComplete();
+        FlinkDiagnosticCollector.recordAsyncError();
         span.failure(error);
         complete(resultFuture, buildResult(input, droolsStartAt, "ERROR", "Call failed: " + error.getMessage()));
     }

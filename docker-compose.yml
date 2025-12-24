@@ -32,11 +32,11 @@ services:
       - "13133:13133" # Health check
     environment:
       - OTEL_FEATURE_ENABLED=${OTEL_FEATURE_ENABLED:-true}
-      - GOMEMLIMIT=1200MiB  # Go runtime memory limit
+      - GOMEMLIMIT=100MiB   # Go runtime memory limit
     deploy:
       resources:
         limits:
-          memory: 1536M  # Right-sized: actual usage ~640MB
+          memory: 128M  # Needs headroom under high throughput
           cpus: '1.5'
     depends_on:
       jaeger:
@@ -62,13 +62,13 @@ services:
       - COLLECTOR_OTLP_ENABLED=true
       # Memory storage - balanced for dev benchmarks
       - SPAN_STORAGE_TYPE=memory
-      - MEMORY_MAX_TRACES=15000   # Balanced for benchmarks
-      - GOMAXPROCS=2
-      - GOMEMLIMIT=800MiB
+      - MEMORY_MAX_TRACES=1000    # Reduced - only need sample traces
+      - GOMAXPROCS=1
+      - GOMEMLIMIT=50MiB          # 11MB actual usage at idle
     deploy:
       resources:
         limits:
-          memory: 1G    # Right-sized: actual usage ~300MB
+          memory: 96M   # Right-sized: 46MB under load + headroom
           cpus: '1.5'
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:16686"]
@@ -90,7 +90,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 768M  # Increased from 512M - was at 87% usage
+          memory: 256M  # 175MB under load + headroom
           cpus: '0.5'
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:3100/ready"]
@@ -110,7 +110,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 128M
+          memory: 96M  # Tight: 50MB actual
           cpus: '0.25'
     depends_on:
       loki:
@@ -135,7 +135,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1G  # Prometheus needs more under load
+          memory: 640M  # Tight: 503MB under load + headroom
           cpus: '1.0'
     depends_on:
       otel-collector:
@@ -166,7 +166,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 256M
+          memory: 128M  # Tight: 47MB actual
           cpus: '0.25'
     volumes:
       - ./platform/deployment/docker/observability/grafana/provisioning:/etc/grafana/provisioning:ro
@@ -228,7 +228,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1536M  # Right-sized: actual usage ~1GB
+          memory: 1280M  # Right-sized: 1GB actual usage + headroom
     networks:
       - reactive-network
 
@@ -288,7 +288,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1024M  # Right-sized: actual usage ~580MB
+          memory: 512M  # Right-sized: 350MB actual usage
           cpus: '2.0'
     depends_on:
       otel-collector:
@@ -340,7 +340,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1280M  # Right-sized: actual usage ~1GB
+          memory: 768M  # Right-sized: 587MB actual usage
     networks:
       - reactive-network
 
@@ -370,7 +370,7 @@ services:
         taskmanager.network.memory.buffer-debloat.target: 50ms
         taskmanager.network.memory.buffer-debloat.period: 25ms
         execution.buffer-timeout: 1ms
-        taskmanager.memory.process.size: 1792m
+        taskmanager.memory.process.size: 1280m
         env.java.opts.taskmanager: -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/tmp/diagnostics/heapdump.hprof -Xlog:gc*:file=/tmp/diagnostics/gc.log:time,uptime,level,tags -XX:NativeMemoryTracking=summary --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED
       # System-wide latency bounds (CQRS snapshot evaluation)
       - LATENCY_MIN_MS=${LATENCY_MIN_MS:-20}
@@ -381,7 +381,7 @@ services:
       - KAFKA_FETCH_MAX_WAIT_MS=1
       - FLINK_BUFFER_TIMEOUT_MS=1
       # Async capacity for Drools calls (CQRS bounded snapshots)
-      - ASYNC_CAPACITY=200
+      - ASYNC_CAPACITY=250
       # Benchmark mode: Skip Drools for Layer 2 benchmarks
       - SKIP_DROOLS=${SKIP_DROOLS:-false}
       # OpenTelemetry Configuration
@@ -394,7 +394,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 2048M  # 2GB - Flink process=1792m + 256MB overhead
+          memory: 1408M  # Tight: 1.08GB actual, process.size=1280m + headroom
           cpus: '3.0'
     networks:
       - reactive-network
@@ -449,7 +449,7 @@ services:
     environment:
       # Parallelism matches taskmanager slots (8 slots, parallelism 4 = 8 total tasks)
       - FLINK_PARALLELISM=8  # Increased: 2 taskmanagers × 8 slots = 16 slots, parallelism 8 uses 16 (2 operator chains)
-      - ASYNC_CAPACITY=200
+      - ASYNC_CAPACITY=250
       # Kafka consumer tuning for high throughput
       - KAFKA_FETCH_MAX_WAIT_MS=1
       - FLINK_BUFFER_TIMEOUT_MS=1
@@ -484,11 +484,11 @@ services:
       - OTEL_SERVICE_NAME=counter-application
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
       # JVM tuning - G1GC optimized for throughput (memory-efficient config)
-      - JAVA_OPTS=-XX:+UseG1GC -XX:MaxGCPauseMillis=20 -Xms768m -Xmx768m -XX:+AlwaysPreTouch -XX:ParallelGCThreads=4 -XX:ConcGCThreads=2 -XX:G1HeapRegionSize=4m
+      - JAVA_OPTS=-XX:+UseG1GC -XX:MaxGCPauseMillis=20 -Xms1024m -Xmx1024m -XX:+AlwaysPreTouch -XX:ParallelGCThreads=4 -XX:ConcGCThreads=2 -XX:G1HeapRegionSize=4m
     deploy:
       resources:
         limits:
-          memory: 2560M  # 2.5GB (768m heap + 1.75GB off-heap for Kafka buffers)
+          memory: 1536M  # Right-sized: 1.27GB actual, 1GB heap + JVM overhead
           cpus: '4.0'
     depends_on:
       kafka:
@@ -520,7 +520,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 128M
+          memory: 32M  # Tight: 5MB actual (nginx serving static files)
           cpus: '0.25'
     volumes:
       - ./DOCUMENTATION.md:/usr/share/nginx/docs/DOCUMENTATION.md:ro
@@ -555,7 +555,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 256M
+          memory: 96M  # Tight: 29MB actual
           cpus: '0.25'
     networks:
       - reactive-network
