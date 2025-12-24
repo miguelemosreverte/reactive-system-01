@@ -21,8 +21,12 @@ import java.util.concurrent.ConcurrentHashMap;
  * <pre>
  *   PlatformConfig config = PlatformConfig.load();
  *
- *   // Get service memory
- *   long heapMb = config.service("application").heapMb();
+ *   // Type-safe service access (no string keys!)
+ *   long heapMb = config.application().heapMb();
+ *   long flinkMemory = config.flinkTaskManager().containerMb();
+ *
+ *   // Or use the enum
+ *   long kafkaMemory = config.service(Service.KAFKA).containerMb();
  *
  *   // Get benchmark thresholds
  *   int minThroughput = config.benchmark().minThroughput();
@@ -38,7 +42,37 @@ public final class PlatformConfig {
     private static volatile PlatformConfig instance;
 
     private final Config config;
-    private final Map<String, ServiceConfig> serviceCache = new ConcurrentHashMap<>();
+    private final Map<Service, ServiceConfig> serviceCache = new ConcurrentHashMap<>();
+
+    /**
+     * All platform services - provides compile-time safety for service access.
+     */
+    public enum Service {
+        APPLICATION("application"),
+        GATEWAY("gateway"),
+        FLINK_JOB_MANAGER("flink-jobmanager"),
+        FLINK_TASK_MANAGER("flink-taskmanager"),
+        DROOLS("drools"),
+        KAFKA("kafka"),
+        OTEL_COLLECTOR("otel-collector"),
+        JAEGER("jaeger"),
+        PROMETHEUS("prometheus"),
+        LOKI("loki"),
+        PROMTAIL("promtail"),
+        GRAFANA("grafana"),
+        CADVISOR("cadvisor"),
+        UI("ui");
+
+        private final String configKey;
+
+        Service(String configKey) {
+            this.configKey = configKey;
+        }
+
+        public String configKey() {
+            return configKey;
+        }
+    }
 
     private PlatformConfig(Config config) {
         this.config = config.getConfig(ROOT);
@@ -79,15 +113,73 @@ public final class PlatformConfig {
     }
 
     // ==========================================================================
-    // Service Configuration
+    // Service Configuration - Type-safe accessors
     // ==========================================================================
 
     /**
-     * Get configuration for a specific service.
+     * Get configuration for a specific service using the enum.
      */
-    public ServiceConfig service(String name) {
-        return serviceCache.computeIfAbsent(name, n ->
-            new ServiceConfig(config.getConfig("services." + n)));
+    public ServiceConfig service(Service service) {
+        return serviceCache.computeIfAbsent(service, s ->
+            new ServiceConfig(config.getConfig("services." + s.configKey())));
+    }
+
+    // Direct accessors for each service - fully type-safe, no strings!
+
+    public ServiceConfig application() {
+        return service(Service.APPLICATION);
+    }
+
+    public ServiceConfig gateway() {
+        return service(Service.GATEWAY);
+    }
+
+    public ServiceConfig flinkJobManager() {
+        return service(Service.FLINK_JOB_MANAGER);
+    }
+
+    public ServiceConfig flinkTaskManager() {
+        return service(Service.FLINK_TASK_MANAGER);
+    }
+
+    public ServiceConfig drools() {
+        return service(Service.DROOLS);
+    }
+
+    public ServiceConfig kafkaService() {
+        return service(Service.KAFKA);
+    }
+
+    public ServiceConfig otelCollector() {
+        return service(Service.OTEL_COLLECTOR);
+    }
+
+    public ServiceConfig jaeger() {
+        return service(Service.JAEGER);
+    }
+
+    public ServiceConfig prometheus() {
+        return service(Service.PROMETHEUS);
+    }
+
+    public ServiceConfig loki() {
+        return service(Service.LOKI);
+    }
+
+    public ServiceConfig promtail() {
+        return service(Service.PROMTAIL);
+    }
+
+    public ServiceConfig grafana() {
+        return service(Service.GRAFANA);
+    }
+
+    public ServiceConfig cadvisor() {
+        return service(Service.CADVISOR);
+    }
+
+    public ServiceConfig ui() {
+        return service(Service.UI);
     }
 
     /**
@@ -102,10 +194,9 @@ public final class PlatformConfig {
      */
     public long allocatedMemoryMb() {
         long total = 0;
-        Config services = config.getConfig("services");
-        for (String service : services.root().keySet()) {
+        for (Service svc : Service.values()) {
             try {
-                total += services.getMemorySize(service + ".memory.container").toBytes() / BYTES_PER_MB;
+                total += service(svc).containerMb();
             } catch (Exception ignored) {
                 // Service might not have memory config
             }

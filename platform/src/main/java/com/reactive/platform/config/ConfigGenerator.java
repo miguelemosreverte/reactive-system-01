@@ -34,6 +34,24 @@ public final class ConfigGenerator {
         this.config = PlatformConfig.loadProfile(profile);
     }
 
+    // Mapping from Service enum to environment variable prefix
+    private static final Map<PlatformConfig.Service, String> ENV_PREFIX = Map.ofEntries(
+        Map.entry(PlatformConfig.Service.APPLICATION, "APP"),
+        Map.entry(PlatformConfig.Service.GATEWAY, "GATEWAY"),
+        Map.entry(PlatformConfig.Service.FLINK_JOB_MANAGER, "FLINK_JM"),
+        Map.entry(PlatformConfig.Service.FLINK_TASK_MANAGER, "FLINK_TM"),
+        Map.entry(PlatformConfig.Service.DROOLS, "DROOLS"),
+        Map.entry(PlatformConfig.Service.KAFKA, "KAFKA"),
+        Map.entry(PlatformConfig.Service.OTEL_COLLECTOR, "OTEL"),
+        Map.entry(PlatformConfig.Service.JAEGER, "JAEGER"),
+        Map.entry(PlatformConfig.Service.PROMETHEUS, "PROMETHEUS"),
+        Map.entry(PlatformConfig.Service.LOKI, "LOKI"),
+        Map.entry(PlatformConfig.Service.PROMTAIL, "PROMTAIL"),
+        Map.entry(PlatformConfig.Service.GRAFANA, "GRAFANA"),
+        Map.entry(PlatformConfig.Service.CADVISOR, "CADVISOR"),
+        Map.entry(PlatformConfig.Service.UI, "UI")
+    );
+
     /**
      * Generate .env file for Docker Compose.
      */
@@ -42,27 +60,17 @@ public final class ConfigGenerator {
         sb.append("# Generated from reference.conf - DO NOT EDIT MANUALLY\n");
         sb.append("# Regenerate with: ./cli.sh config generate env\n\n");
 
-        // Memory settings
+        // Memory settings - type-safe iteration over all services
         sb.append("# Service Memory Limits (container)\n");
-        appendServiceMemory(sb, "application", "APP");
-        appendServiceMemory(sb, "gateway", "GATEWAY");
-        appendServiceMemory(sb, "flink-jobmanager", "FLINK_JM");
-        appendServiceMemory(sb, "flink-taskmanager", "FLINK_TM");
-        appendServiceMemory(sb, "drools", "DROOLS");
-        appendServiceMemory(sb, "kafka", "KAFKA");
-        appendServiceMemory(sb, "otel-collector", "OTEL");
-        appendServiceMemory(sb, "jaeger", "JAEGER");
-        appendServiceMemory(sb, "prometheus", "PROMETHEUS");
-        appendServiceMemory(sb, "loki", "LOKI");
-        appendServiceMemory(sb, "promtail", "PROMTAIL");
-        appendServiceMemory(sb, "grafana", "GRAFANA");
-        appendServiceMemory(sb, "cadvisor", "CADVISOR");
-        appendServiceMemory(sb, "ui", "UI");
+        for (PlatformConfig.Service service : PlatformConfig.Service.values()) {
+            appendServiceMemory(sb, service);
+        }
 
         sb.append("\n# Flink Settings\n");
-        sb.append("FLINK_TM_PROCESS_SIZE=").append(config.service("flink-taskmanager").processSizeMb()).append("m\n");
-        sb.append("FLINK_PARALLELISM=").append(config.service("flink-taskmanager").parallelism()).append("\n");
-        sb.append("FLINK_ASYNC_CAPACITY=").append(config.service("flink-taskmanager").asyncCapacity()).append("\n");
+        var flinkTm = config.flinkTaskManager();
+        sb.append("FLINK_TM_PROCESS_SIZE=").append(flinkTm.processSizeMb()).append("m\n");
+        sb.append("FLINK_PARALLELISM=").append(flinkTm.parallelism()).append("\n");
+        sb.append("FLINK_ASYNC_CAPACITY=").append(flinkTm.asyncCapacity()).append("\n");
 
         sb.append("\n# Kafka Settings\n");
         PlatformConfig.KafkaConfig.ProducerConfig producer = config.kafka().producer();
@@ -85,7 +93,8 @@ public final class ConfigGenerator {
         return sb.toString();
     }
 
-    private void appendServiceMemory(StringBuilder sb, String service, String prefix) {
+    private void appendServiceMemory(StringBuilder sb, PlatformConfig.Service service) {
+        String prefix = ENV_PREFIX.get(service);
         try {
             PlatformConfig.ServiceConfig svc = config.service(service);
             sb.append(prefix).append("_MEMORY=").append(svc.containerMb()).append("M\n");
@@ -134,11 +143,11 @@ public final class ConfigGenerator {
                 headroom, headroomPct));
         }
 
-        // Check heap vs container ratios
-        checkHeapRatio(errors, warnings, "application");
-        checkHeapRatio(errors, warnings, "gateway");
-        checkHeapRatio(errors, warnings, "drools");
-        checkHeapRatio(errors, warnings, "kafka");
+        // Check heap vs container ratios for JVM services
+        checkHeapRatio(errors, warnings, PlatformConfig.Service.APPLICATION);
+        checkHeapRatio(errors, warnings, PlatformConfig.Service.GATEWAY);
+        checkHeapRatio(errors, warnings, PlatformConfig.Service.DROOLS);
+        checkHeapRatio(errors, warnings, PlatformConfig.Service.KAFKA);
 
         // Check benchmark thresholds
         if (config.benchmark().minThroughput() < 1000) {
@@ -148,22 +157,23 @@ public final class ConfigGenerator {
         return new ValidationReport(errors, warnings, totalMemory, allocated);
     }
 
-    private void checkHeapRatio(List<String> errors, List<String> warnings, String service) {
+    private void checkHeapRatio(List<String> errors, List<String> warnings, PlatformConfig.Service service) {
         try {
             PlatformConfig.ServiceConfig svc = config.service(service);
             long container = svc.containerMb();
             long heap = svc.heapMb();
             double ratio = (double) heap / container;
 
+            String name = service.configKey();
             if (ratio > 0.85) {
                 warnings.add(String.format(
                     "%s: heap/container ratio %.0f%% too high (heap=%dMB, container=%dMB). Leave room for native memory.",
-                    service, ratio * 100, heap, container));
+                    name, ratio * 100, heap, container));
             }
             if (ratio < 0.5) {
                 warnings.add(String.format(
                     "%s: heap/container ratio %.0f%% wasteful (heap=%dMB, container=%dMB)",
-                    service, ratio * 100, heap, container));
+                    name, ratio * 100, heap, container));
             }
         } catch (Exception ignored) {}
     }
@@ -189,13 +199,10 @@ public final class ConfigGenerator {
         sb.append(String.format("%-22s %8s %8s %s\n", "Service", "Container", "Heap", "Description"));
         sb.append("───────────────────────────────────────────────────────────\n");
 
-        String[] services = {"application", "gateway", "flink-jobmanager", "flink-taskmanager",
-                            "drools", "kafka", "otel-collector", "jaeger", "prometheus",
-                            "loki", "promtail", "grafana", "cadvisor", "ui"};
-
-        for (String name : services) {
+        // Type-safe iteration over all services
+        for (PlatformConfig.Service service : PlatformConfig.Service.values()) {
             try {
-                PlatformConfig.ServiceConfig svc = config.service(name);
+                PlatformConfig.ServiceConfig svc = config.service(service);
                 String heap;
                 try {
                     heap = svc.heapMb() + "MB";
@@ -203,7 +210,7 @@ public final class ConfigGenerator {
                     heap = "-";
                 }
                 sb.append(String.format("%-22s %6dMB %8s %s\n",
-                    name, svc.containerMb(), heap, truncate(svc.description(), 30)));
+                    service.configKey(), svc.containerMb(), heap, truncate(svc.description(), 30)));
             } catch (Exception ignored) {}
         }
 
