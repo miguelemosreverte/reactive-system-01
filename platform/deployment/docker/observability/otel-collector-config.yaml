@@ -7,23 +7,22 @@ receivers:
         endpoint: 0.0.0.0:4318
 
 processors:
-  # Batch processor with larger batches for efficiency
+  # Batch processor - sized for memory efficiency
   batch:
-    timeout: 2s
-    send_batch_size: 2048
-    send_batch_max_size: 4096
+    timeout: 1s
+    send_batch_size: 512
+    send_batch_max_size: 1024
 
-  # Memory limiter - generous for development benchmarks
-  # Production should use tighter limits with tail-based sampling
+  # Memory limiter - sized for 512M container / 400MiB GOMEMLIMIT
   memory_limiter:
     check_interval: 1s
-    limit_mib: 1700       # Hard limit (must be < GOMEMLIMIT 1800MiB)
-    spike_limit_mib: 300  # Soft limit for spikes
+    limit_mib: 350        # Hard limit (< GOMEMLIMIT 400MiB)
+    spike_limit_mib: 50   # Soft limit for spikes
 
-  # Tail-based sampling - keep errors and slow traces, sample the rest
-  # 100% for testing - sample events need full traces
+  # Probabilistic sampling to reduce load during benchmarks
+  # 10% sampling provides good visibility while reducing memory pressure
   probabilistic_sampler:
-    sampling_percentage: 100  # Full sampling for development
+    sampling_percentage: 10  # 10% sampling for memory efficiency
 
   # Add resource attributes
   resource:
@@ -55,8 +54,8 @@ exporters:
       max_elapsed_time: 120s
     sending_queue:
       enabled: true
-      num_consumers: 8       # More consumers for benchmark load
-      queue_size: 5000       # Larger queue for burst handling
+      num_consumers: 4       # Reduced for memory efficiency
+      queue_size: 1000       # Reduced for 512M container
 
   # Prometheus exporter for metrics
   prometheus:
