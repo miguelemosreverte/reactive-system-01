@@ -224,6 +224,17 @@
                 <configuration>
                     <source>${java.version}</source>
                     <target>${java.version}</target>
+                    <!-- Exclude Java 21 specific files for Java 17 compatibility in Docker builds -->
+                    <excludes>
+                        <!-- FFM API (Foreign Function & Memory) - Java 21+ only -->
+                        <exclude>**/IoUringServer.java</exclude>
+                        <exclude>**/UltraFastServer.java</exclude>
+                        <!-- Virtual Threads - Java 21+ only -->
+                        <exclude>**/VirtualThreadBenchmark.java</exclude>
+                        <exclude>**/HybridBenchmark.java</exclude>
+                        <exclude>**/FinalBenchmark.java</exclude>
+                        <exclude>**/MultiClientBenchmark.java</exclude>
+                    </excludes>
                     <annotationProcessorPaths>
                         <path>
                             <groupId>org.openjdk.jmh</groupId>
