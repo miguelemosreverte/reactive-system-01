@@ -111,8 +111,8 @@ public class CounterJob {
         Properties kafkaProps = new Properties();
         kafkaProps.setProperty("fetch.max.wait.ms", KAFKA_FETCH_MAX_WAIT_MS);
         kafkaProps.setProperty("fetch.min.bytes", "1");
-        // Ensure consumer polls continuously
-        kafkaProps.setProperty("max.poll.records", "500");
+        // Ensure consumer polls continuously - higher for throughput
+        kafkaProps.setProperty("max.poll.records", "1000");
         kafkaProps.setProperty("max.poll.interval.ms", "300000");
         kafkaProps.setProperty("heartbeat.interval.ms", "3000");
         kafkaProps.setProperty("session.timeout.ms", "30000");
