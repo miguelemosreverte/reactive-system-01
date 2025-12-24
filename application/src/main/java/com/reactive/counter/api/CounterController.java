@@ -72,7 +72,7 @@ public class CounterController {
                 .bootstrapServers(kafkaBootstrap)
                 .topic(eventsTopic)
                 .codec(AvroCounterEventCodec.create())  // Avro: ~5-10x faster than JSON
-                .keyExtractor(e -> kafkaKey(e.customerId(), e.sessionId()))
+                .keyExtractor(e -> e.eventId())  // Use eventId for partition distribution
                 .fireAndForget());  // acks=0, maxInFlight=100 for max throughput
 
         // Register callback for state updates from Kafka results
