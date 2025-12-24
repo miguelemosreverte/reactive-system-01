@@ -32,11 +32,11 @@ services:
       - "13133:13133" # Health check
     environment:
       - OTEL_FEATURE_ENABLED=${OTEL_FEATURE_ENABLED:-true}
-      - GOMEMLIMIT=100MiB   # Go runtime memory limit - 36MB actual usage at idle
+      - GOMEMLIMIT=100MiB   # Go runtime memory limit
     deploy:
       resources:
         limits:
-          memory: 128M  # Right-sized: 36MB actual usage, 128MB with headroom
+          memory: 128M  # Needs headroom under high throughput
           cpus: '1.5'
     depends_on:
       jaeger:
@@ -90,7 +90,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 192M  # Right-sized: 126MB under load + headroom
+          memory: 256M  # 175MB under load + headroom
           cpus: '0.5'
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:3100/ready"]
@@ -110,7 +110,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 128M
+          memory: 96M  # Tight: 50MB actual
           cpus: '0.25'
     depends_on:
       loki:
@@ -135,7 +135,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 768M  # Right-sized: 503MB under load + headroom
+          memory: 640M  # Tight: 503MB under load + headroom
           cpus: '1.0'
     depends_on:
       otel-collector:
@@ -166,7 +166,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 256M
+          memory: 128M  # Tight: 47MB actual
           cpus: '0.25'
     volumes:
       - ./platform/deployment/docker/observability/grafana/provisioning:/etc/grafana/provisioning:ro
@@ -370,7 +370,7 @@ services:
         taskmanager.network.memory.buffer-debloat.target: 50ms
         taskmanager.network.memory.buffer-debloat.period: 25ms
         execution.buffer-timeout: 1ms
-        taskmanager.memory.process.size: 1536m
+        taskmanager.memory.process.size: 1280m
         env.java.opts.taskmanager: -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/tmp/diagnostics/heapdump.hprof -Xlog:gc*:file=/tmp/diagnostics/gc.log:time,uptime,level,tags -XX:NativeMemoryTracking=summary --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED
       # System-wide latency bounds (CQRS snapshot evaluation)
       - LATENCY_MIN_MS=${LATENCY_MIN_MS:-20}
@@ -394,7 +394,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1792M  # Right-sized: 1.25GB actual, process.size=1536m + headroom
+          memory: 1408M  # Tight: 1.08GB actual, process.size=1280m + headroom
           cpus: '3.0'
     networks:
       - reactive-network
@@ -520,7 +520,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 128M
+          memory: 32M  # Tight: 5MB actual (nginx serving static files)
           cpus: '0.25'
     volumes:
       - ./DOCUMENTATION.md:/usr/share/nginx/docs/DOCUMENTATION.md:ro
@@ -555,7 +555,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 256M
+          memory: 96M  # Tight: 29MB actual
           cpus: '0.25'
     networks:
       - reactive-network
