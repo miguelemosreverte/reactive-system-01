@@ -32,11 +32,11 @@ services:
       - "13133:13133" # Health check
     environment:
       - OTEL_FEATURE_ENABLED=${OTEL_FEATURE_ENABLED:-true}
-      - GOMEMLIMIT=2800MiB  # Go runtime memory limit - increased for benchmark load
+      - GOMEMLIMIT=3500MiB  # Go runtime memory limit - increased for benchmark load
     deploy:
       resources:
         limits:
-          memory: 3G    # Increased: was OOM at 2G (70% usage under load)
+          memory: 4G    # Increased from 3G for heavy benchmark load
           cpus: '1.5'
     depends_on:
       jaeger:
@@ -370,7 +370,7 @@ services:
         taskmanager.network.memory.buffer-debloat.target: 50ms
         taskmanager.network.memory.buffer-debloat.period: 25ms
         execution.buffer-timeout: 1ms
-        taskmanager.memory.process.size: 3g
+        taskmanager.memory.process.size: 2816m
         env.java.opts.taskmanager: -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/tmp/diagnostics/heapdump.hprof -Xlog:gc*:file=/tmp/diagnostics/gc.log:time,uptime,level,tags -XX:NativeMemoryTracking=summary --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED
       # System-wide latency bounds (CQRS snapshot evaluation)
       - LATENCY_MIN_MS=${LATENCY_MIN_MS:-20}
@@ -381,7 +381,7 @@ services:
       - KAFKA_FETCH_MAX_WAIT_MS=1
       - FLINK_BUFFER_TIMEOUT_MS=1
       # Async capacity for Drools calls (CQRS bounded snapshots)
-      - ASYNC_CAPACITY=500
+      - ASYNC_CAPACITY=350
       # Benchmark mode: Skip Drools for Layer 2 benchmarks
       - SKIP_DROOLS=${SKIP_DROOLS:-false}
       # OpenTelemetry Configuration
@@ -394,7 +394,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 3584M  # Increased for processing backlog + async operations
+          memory: 5120M  # 5GB - Flink process=2816MB + ~2.2GB overhead for native memory
           cpus: '3.0'
     networks:
       - reactive-network
@@ -449,7 +449,7 @@ services:
     environment:
       # Parallelism matches taskmanager slots (8 slots, parallelism 4 = 8 total tasks)
       - FLINK_PARALLELISM=8  # Increased: 2 taskmanagers × 8 slots = 16 slots, parallelism 8 uses 16 (2 operator chains)
-      - ASYNC_CAPACITY=500
+      - ASYNC_CAPACITY=350
       # Kafka consumer tuning for high throughput
       - KAFKA_FETCH_MAX_WAIT_MS=1
       - FLINK_BUFFER_TIMEOUT_MS=1
