@@ -78,6 +78,57 @@ for i in {1..10}; do ./reactive bench full --quick; done
 
 ---
 
+### 2. Flink Checkpoint Interval Increase
+
+**Date:** 2024-12-24
+**Branch:** `cemetery/flink-checkpoint-10s`
+**Status:** REJECTED - Causes regression
+
+#### Change Description
+Increased Flink checkpointing interval from 5 seconds to 10 seconds:
+- `env.enableCheckpointing(5000)` → `env.enableCheckpointing(10000)`
+
+#### Rationale
+Checkpointing adds overhead as Flink must snapshot state to durable storage. Reducing checkpoint frequency should reduce this overhead and allow more resources for actual processing.
+
+#### Benchmark Results
+| Metric | Before | After | Change |
+|--------|--------|-------|--------|
+| Total Ops | 315,506 | 291,176 | -8% |
+| Peak Throughput | 31,589/s | 22,577/s | -29% |
+| Avg Throughput | 4,852/s | 4,477/s | -8% |
+| P99 Latency | 6ms | 9ms | +50% |
+
+#### Root Cause Analysis
+**Flink's Kafka source depends on checkpoints for offset commits.**
+
+The Kafka source in Flink commits offsets during checkpoints. With a 10-second interval:
+1. Offsets are committed less frequently
+2. If the consumer falls behind, it takes longer to recognize and handle backpressure
+3. The consumer can accumulate more unprocessed messages before acknowledging them
+4. This creates memory pressure and slower recovery from any hiccups
+
+The 5-second interval provides better feedback loop for the Kafka consumer to stay synchronized with actual processing capacity.
+
+#### Files Changed
+- `platform/deployment/docker/flink/src/main/java/com/reactive/flink/CounterJob.java`
+
+#### How to Re-test
+```bash
+git checkout cemetery/flink-checkpoint-10s
+./cli.sh rebuild flink
+# Run 10+ warmup iterations
+for i in {1..10}; do ./cli.sh bench full; done
+# Compare with main branch
+```
+
+#### Conditions That Might Change This Decision
+- If using incremental checkpointing with RocksDB (more efficient checkpoints)
+- If running with more parallelism (less per-task state to checkpoint)
+- If the Kafka consumer lag monitoring shows checkpoints aren't the bottleneck
+
+---
+
 ## Template for New Entries
 
 ```markdown
