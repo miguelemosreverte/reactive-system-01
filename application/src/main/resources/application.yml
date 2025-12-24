@@ -1,7 +1,17 @@
 server:
   port: 3000
+  # Netty tuning for throughput
+  netty:
+    connection-timeout: 5000
+  http2:
+    enabled: false  # HTTP/1.1 for compatibility
 
 spring:
+  reactor:
+    netty:
+      pool:
+        max-connections: 1000       # Allow more concurrent connections
+        pending-acquire-timeout: 10000
   application:
     name: counter-application
 
