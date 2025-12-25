@@ -104,7 +104,7 @@ public class CounterJob {
 
         // Enable checkpointing for continuous consumption
         // Without checkpointing, Kafka source may stop after initial batch
-        env.enableCheckpointing(5000); // Checkpoint every 5 seconds
+        env.enableCheckpointing(10000); // Checkpoint every 10 seconds (reduced overhead)
         LOG.info("Checkpointing enabled: 5000ms interval");
 
         // Kafka consumer properties for continuous consumption

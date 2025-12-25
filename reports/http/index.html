@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTTP Benchmark Report</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        #root { min-height: 100vh; }
+        .loading { display: flex; justify-content: center; align-items: center; height: 100vh; font-size: 18px; color: #666; }
+    </style>
+</head>
+<body>
+    <div id="root"><div class="loading">Loading benchmark report...</div></div>
+    <script>
+        window.__BENCHMARK_DATA__ = {
+  "component" : "http",
+  "name" : "HTTP Benchmark",
+  "description" : "Tests gateway HTTP endpoint latency",
+  "startTime" : "2025-12-24T09:09:11.540106243Z",
+  "endTime" : "2025-12-24T09:09:46.587936234Z",
+  "durationMs" : 35047,
+  "totalOperations" : 144910,
+  "successfulOperations" : 0,
+  "failedOperations" : 144910,
+  "peakThroughput" : 5795,
+  "avgThroughput" : 4134,
+  "throughputTimeline" : [ 0, 0, 0, 0, 1490, 3792, 3670, 4242, 4413, 4281, 5124, 5557, 4924, 4377, 4769, 4928, 5212, 5795, 5533, 4700, 5060, 5666, 5662, 5300, 3939, 4874, 5375, 5743, 5509, 5752, 5688, 5107, 4766, 3631, 31, 0 ],
+  "latency" : {
+    "min" : 0,
+    "max" : 0,
+    "avg" : 0,
+    "p50" : 0,
+    "p95" : 0,
+    "p99" : 0
+  },
+  "throughputStability" : 0.49052166942599545,
+  "cpuTimeline" : [ 150.29296875, 150.29296875, 150.29296875, 150.29296875, 150.29296875, 248.37646484375, 248.37646484375, 248.37646484375, 248.37646484375, 248.37646484375, 254.5166015625, 254.5166015625, 254.5166015625, 254.5166015625, 254.5166015625, 250.146484375, 250.146484375, 250.146484375, 250.146484375, 250.146484375, 276.171875, 276.171875, 276.171875, 276.171875, 276.171875, 278.08837890625, 278.08837890625, 278.08837890625, 278.08837890625, 278.08837890625, 285.85205078125, 285.85205078125, 285.85205078125, 285.85205078125, 285.85205078125, 282.97119140625 ],
+  "memoryTimeline" : [ 1.3212517700811208, 1.3212517700811208, 1.3212517700811208, 1.5281095995551763, 2.7128275419941583, 3.4345648002432045, 4.117848678265522, 1.463606186759941, 2.0619424152085566, 2.5077099997388608, 3.7807710957454983, 1.942383028063115, 3.022438149399281, 3.583878056192254, 1.0305129435180294, 2.1545290826668535, 3.5307155728460438, 1.8192272013058939, 3.3866720651882565, 4.164986942418288, 1.689741132718884, 3.359017627150211, 1.4471845116793327, 2.809388269449459, 2.8949190942358176, 3.853020153180381, 1.6749515783654454, 3.464604290174066, 1.406868435179309, 3.1754887308530684, 1.2761020756633923, 2.434477050658071, 3.276383046786311, 3.0642196701465534, 3.0728625962520106, 3.0728625962520106 ],
+  "peakCpu" : 285.85205078125,
+  "peakMemory" : 4.164986942418288,
+  "avgCpu" : 250.00542534722223,
+  "avgMemory" : 2.560515820224906,
+  "componentTiming" : {
+    "gatewayMs" : 0,
+    "kafkaMs" : 0,
+    "flinkMs" : 0,
+    "droolsMs" : 0
+  },
+  "sampleEvents" : [ {
+    "id" : "http-1766567384581",
+    "traceId" : null,
+    "otelTraceId" : null,
+    "timestamp" : 1766567384581,
+    "latencyMs" : 14,
+    "status" : "error",
+    "error" : "Status: 404",
+    "componentTiming" : {
+      "gatewayMs" : 0,
+      "kafkaMs" : 0,
+      "flinkMs" : 0,
+      "droolsMs" : 0
+    },
+    "traceData" : {
+      "trace" : {
+        "traceId" : "",
+        "spans" : [ ],
+        "processes" : { },
+        "empty" : true
+      },
+      "logs" : [ ],
+      "empty" : true
+    }
+  }, {
+    "id" : "http-1766567384581",
+    "traceId" : null,
+    "otelTraceId" : null,
+    "timestamp" : 1766567384581,
+    "latencyMs" : 14,
+    "status" : "error",
+    "error" : "Status: 404",
+    "componentTiming" : {
+      "gatewayMs" : 0,
+      "kafkaMs" : 0,
+      "flinkMs" : 0,
+      "droolsMs" : 0
+    },
+    "traceData" : {
+      "trace" : {
+        "traceId" : "",
+        "spans" : [ ],
+        "processes" : { },
+        "empty" : true
+      },
+      "logs" : [ ],
+      "empty" : true
+    }
+  }, {
+    "id" : "http-1766567384582",
+    "traceId" : null,
+    "otelTraceId" : null,
+    "timestamp" : 1766567384582,
+    "latencyMs" : 16,
+    "status" : "error",
+    "error" : "Status: 404",
+    "componentTiming" : {
+      "gatewayMs" : 0,
+      "kafkaMs" : 0,
+      "flinkMs" : 0,
+      "droolsMs" : 0
+    },
+    "traceData" : {
+      "trace" : {
+        "traceId" : "",
+        "spans" : [ ],
+        "processes" : { },
+        "empty" : true
+      },
+      "logs" : [ ],
+      "empty" : true
+    }
+  }, {
+    "id" : "http-1766567384582",
+    "traceId" : null,
+    "otelTraceId" : null,
+    "timestamp" : 1766567384582,
+    "latencyMs" : 14,
+    "status" : "error",
+    "error" : "Status: 404",
+    "componentTiming" : {
+      "gatewayMs" : 0,
+      "kafkaMs" : 0,
+      "flinkMs" : 0,
+      "droolsMs" : 0
+    },
+    "traceData" : {
+      "trace" : {
+        "traceId" : "",
+        "spans" : [ ],
+        "processes" : { },
+        "empty" : true
+      },
+      "logs" : [ ],
+      "empty" : true
+    }
+  }, {
+    "id" : "http-1766567384582",
+    "traceId" : null,
+    "otelTraceId" : null,
+    "timestamp" : 1766567384582,
+    "latencyMs" : 16,
+    "status" : "error",
+    "error" : "Status: 404",
+    "componentTiming" : {
+      "gatewayMs" : 0,
+      "kafkaMs" : 0,
+      "flinkMs" : 0,
+      "droolsMs" : 0
+    },
+    "traceData" : {
+      "trace" : {
+        "traceId" : "",
+        "spans" : [ ],
+        "processes" : { },
+        "empty" : true
+      },
+      "logs" : [ ],
+      "empty" : true
+    }
+  }, {
+    "id" : "http-1766567384582",
+    "traceId" : null,
+    "otelTraceId" : null,
+    "timestamp" : 1766567384582,
+    "latencyMs" : 15,
+    "status" : "error",
+    "error" : "Status: 404",
+    "componentTiming" : {
+      "gatewayMs" : 0,
+      "kafkaMs" : 0,
+      "flinkMs" : 0,
+      "droolsMs" : 0
+    },
+    "traceData" : {
+      "trace" : {
+        "traceId" : "",
+        "spans" : [ ],
+        "processes" : { },
+        "empty" : true
+      },
+      "logs" : [ ],
+      "empty" : true
+    }
+  }, {
+    "id" : "http-1766567384582",
+    "traceId" : null,
+    "otelTraceId" : null,
+    "timestamp" : 1766567384582,
+    "latencyMs" : 15,
+    "status" : "error",
+    "error" : "Status: 404",
+    "componentTiming" : {
+      "gatewayMs" : 0,
+      "kafkaMs" : 0,
+      "flinkMs" : 0,
+      "droolsMs" : 0
+    },
+    "traceData" : {
+      "trace" : {
+        "traceId" : "",
+        "spans" : [ ],
+        "processes" : { },
+        "empty" : true
+      },
+      "logs" : [ ],
+      "empty" : true
+    }
+  }, {
+    "id" : "http-1766567384583",
+    "traceId" : null,
+    "otelTraceId" : null,
+    "timestamp" : 1766567384583,
+    "latencyMs" : 16,
+    "status" : "error",
+    "error" : "Status: 404",
+    "componentTiming" : {
+      "gatewayMs" : 0,
+      "kafkaMs" : 0,
+      "flinkMs" : 0,
+      "droolsMs" : 0
+    },
+    "traceData" : {
+      "trace" : {
+        "traceId" : "",
+        "spans" : [ ],
+        "processes" : { },
+        "empty" : true
+      },
+      "logs" : [ ],
+      "empty" : true
+    }
+  }, {
+    "id" : "http-1766567384583",
+    "traceId" : null,
+    "otelTraceId" : null,
+    "timestamp" : 1766567384583,
+    "latencyMs" : 15,
+    "status" : "error",
+    "error" : "Status: 404",
+    "componentTiming" : {
+      "gatewayMs" : 0,
+      "kafkaMs" : 0,
+      "flinkMs" : 0,
+      "droolsMs" : 0
+    },
+    "traceData" : {
+      "trace" : {
+        "traceId" : "",
+        "spans" : [ ],
+        "processes" : { },
+        "empty" : true
+      },
+      "logs" : [ ],
+      "empty" : true
+    }
+  }, {
+    "id" : "http-1766567384584",
+    "traceId" : null,
+    "otelTraceId" : null,
+    "timestamp" : 1766567384584,
+    "latencyMs" : 16,
+    "status" : "error",
+    "error" : "Status: 404",
+    "componentTiming" : {
+      "gatewayMs" : 0,
+      "kafkaMs" : 0,
+      "flinkMs" : 0,
+      "droolsMs" : 0
+    },
+    "traceData" : {
+      "trace" : {
+        "traceId" : "",
+        "spans" : [ ],
+        "processes" : { },
+        "empty" : true
+      },
+      "logs" : [ ],
+      "empty" : true
+    }
+  } ],
+  "status" : "completed",
+  "errorMessage" : "",
+  "success" : false
+};
+        window.__BENCHMARK_COMMIT__ = "2402340";
+    </script>
+    <script src="../assets/benchmark-report.js"></script>
+</body>
+</html>

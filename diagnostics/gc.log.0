@@ -1,434 +1,101 @@
-[2025-12-24T04:34:55.185+0000][0.003s][info][gc] Using G1
-[2025-12-24T04:34:55.189+0000][0.007s][info][gc,init] Version: 17.0.14+7 (release)
-[2025-12-24T04:34:55.189+0000][0.007s][info][gc,init] CPUs: 4 total, 3 available
-[2025-12-24T04:34:55.189+0000][0.007s][info][gc,init] Memory: 4096M
-[2025-12-24T04:34:55.189+0000][0.008s][info][gc,init] Large Page Support: Disabled
-[2025-12-24T04:34:55.189+0000][0.008s][info][gc,init] NUMA Support: Disabled
-[2025-12-24T04:34:55.189+0000][0.008s][info][gc,init] Compressed Oops: Enabled (32-bit)
-[2025-12-24T04:34:55.189+0000][0.008s][info][gc,init] Heap Region Size: 1M
-[2025-12-24T04:34:55.190+0000][0.008s][info][gc,init] Heap Min Capacity: 1012M
-[2025-12-24T04:34:55.190+0000][0.008s][info][gc,init] Heap Initial Capacity: 1012M
-[2025-12-24T04:34:55.190+0000][0.008s][info][gc,init] Heap Max Capacity: 1012M
-[2025-12-24T04:34:55.190+0000][0.008s][info][gc,init] Pre-touch: Disabled
-[2025-12-24T04:34:55.190+0000][0.008s][info][gc,init] Parallel Workers: 3
-[2025-12-24T04:34:55.190+0000][0.008s][info][gc,init] Concurrent Workers: 1
-[2025-12-24T04:34:55.190+0000][0.008s][info][gc,init] Concurrent Refinement Workers: 3
-[2025-12-24T04:34:55.190+0000][0.008s][info][gc,init] Periodic GC: Disabled
-[2025-12-24T04:34:55.194+0000][0.013s][info][gc,metaspace] CDS archive(s) mapped at: [0x0000009000000000-0x0000009000a70000-0x0000009000a70000), size 10944512, SharedBaseAddress: 0x0000009000000000, ArchiveRelocationMode: 1.
-[2025-12-24T04:34:55.195+0000][0.013s][info][gc,metaspace] Compressed class space mapped at: 0x0000009001000000-0x000000900e000000, reserved size: 218103808
-[2025-12-24T04:34:55.195+0000][0.013s][info][gc,metaspace] Narrow klass base: 0x0000009000000000, Narrow klass shift: 0, Narrow klass range: 0x100000000
-[2025-12-24T04:34:55.525+0000][0.343s][info][gc,start    ] GC(0) Pause Young (Normal) (G1 Evacuation Pause)
-[2025-12-24T04:34:55.526+0000][0.344s][info][gc,task     ] GC(0) Using 3 workers of 3 for evacuation
-[2025-12-24T04:34:55.529+0000][0.347s][info][gc,phases   ] GC(0)   Pre Evacuate Collection Set: 0.1ms
-[2025-12-24T04:34:55.529+0000][0.347s][info][gc,phases   ] GC(0)   Merge Heap Roots: 0.1ms
-[2025-12-24T04:34:55.529+0000][0.347s][info][gc,phases   ] GC(0)   Evacuate Collection Set: 2.4ms
-[2025-12-24T04:34:55.529+0000][0.347s][info][gc,phases   ] GC(0)   Post Evacuate Collection Set: 0.3ms
-[2025-12-24T04:34:55.529+0000][0.347s][info][gc,phases   ] GC(0)   Other: 0.6ms
-[2025-12-24T04:34:55.529+0000][0.347s][info][gc,heap     ] GC(0) Eden regions: 50->0(43)
-[2025-12-24T04:34:55.529+0000][0.347s][info][gc,heap     ] GC(0) Survivor regions: 0->7(7)
-[2025-12-24T04:34:55.529+0000][0.347s][info][gc,heap     ] GC(0) Old regions: 0->1
-[2025-12-24T04:34:55.529+0000][0.347s][info][gc,heap     ] GC(0) Archive regions: 2->2
-[2025-12-24T04:34:55.529+0000][0.347s][info][gc,heap     ] GC(0) Humongous regions: 10->9
-[2025-12-24T04:34:55.529+0000][0.347s][info][gc,metaspace] GC(0) Metaspace: 14608K(14784K)->14608K(14784K) NonClass: 12692K(12800K)->12692K(12800K) Class: 1915K(1984K)->1915K(1984K)
-[2025-12-24T04:34:55.529+0000][0.347s][info][gc          ] GC(0) Pause Young (Normal) (G1 Evacuation Pause) 60M->16M(1012M) 4.030ms
-[2025-12-24T04:34:55.529+0000][0.348s][info][gc,cpu      ] GC(0) User=0.00s Sys=0.00s Real=0.01s
-[2025-12-24T04:34:55.659+0000][0.477s][info][gc,start    ] GC(1) Pause Young (Normal) (G1 Evacuation Pause)
-[2025-12-24T04:34:55.659+0000][0.477s][info][gc,task     ] GC(1) Using 3 workers of 3 for evacuation
-[2025-12-24T04:34:55.663+0000][0.481s][info][gc,phases   ] GC(1)   Pre Evacuate Collection Set: 0.1ms
-[2025-12-24T04:34:55.663+0000][0.481s][info][gc,phases   ] GC(1)   Merge Heap Roots: 0.0ms
-[2025-12-24T04:34:55.663+0000][0.481s][info][gc,phases   ] GC(1)   Evacuate Collection Set: 3.1ms
-[2025-12-24T04:34:55.663+0000][0.481s][info][gc,phases   ] GC(1)   Post Evacuate Collection Set: 0.3ms
-[2025-12-24T04:34:55.663+0000][0.481s][info][gc,phases   ] GC(1)   Other: 0.3ms
-[2025-12-24T04:34:55.663+0000][0.481s][info][gc,heap     ] GC(1) Eden regions: 43->0(46)
-[2025-12-24T04:34:55.663+0000][0.481s][info][gc,heap     ] GC(1) Survivor regions: 7->4(7)
-[2025-12-24T04:34:55.663+0000][0.482s][info][gc,heap     ] GC(1) Old regions: 1->8
-[2025-12-24T04:34:55.663+0000][0.482s][info][gc,heap     ] GC(1) Archive regions: 2->2
-[2025-12-24T04:34:55.663+0000][0.482s][info][gc,heap     ] GC(1) Humongous regions: 9->9
-[2025-12-24T04:34:55.664+0000][0.482s][info][gc,metaspace] GC(1) Metaspace: 18187K(18432K)->18187K(18432K) NonClass: 15870K(16000K)->15870K(16000K) Class: 2317K(2432K)->2317K(2432K)
-[2025-12-24T04:34:55.664+0000][0.482s][info][gc          ] GC(1) Pause Young (Normal) (G1 Evacuation Pause) 59M->20M(1012M) 4.646ms
-[2025-12-24T04:34:55.664+0000][0.482s][info][gc,cpu      ] GC(1) User=0.01s Sys=0.00s Real=0.00s
-[2025-12-24T04:34:55.793+0000][0.611s][info][gc,start    ] GC(2) Pause Young (Normal) (G1 Evacuation Pause)
-[2025-12-24T04:34:55.793+0000][0.611s][info][gc,task     ] GC(2) Using 3 workers of 3 for evacuation
-[2025-12-24T04:34:55.795+0000][0.613s][info][gc,phases   ] GC(2)   Pre Evacuate Collection Set: 0.1ms
-[2025-12-24T04:34:55.795+0000][0.613s][info][gc,phases   ] GC(2)   Merge Heap Roots: 0.0ms
-[2025-12-24T04:34:55.795+0000][0.613s][info][gc,phases   ] GC(2)   Evacuate Collection Set: 1.3ms
-[2025-12-24T04:34:55.795+0000][0.613s][info][gc,phases   ] GC(2)   Post Evacuate Collection Set: 0.3ms
-[2025-12-24T04:34:55.795+0000][0.613s][info][gc,phases   ] GC(2)   Other: 0.3ms
-[2025-12-24T04:34:55.795+0000][0.613s][info][gc,heap     ] GC(2) Eden regions: 46->0(44)
-[2025-12-24T04:34:55.795+0000][0.613s][info][gc,heap     ] GC(2) Survivor regions: 4->6(7)
-[2025-12-24T04:34:55.795+0000][0.613s][info][gc,heap     ] GC(2) Old regions: 8->8
-[2025-12-24T04:34:55.795+0000][0.613s][info][gc,heap     ] GC(2) Archive regions: 2->2
-[2025-12-24T04:34:55.795+0000][0.614s][info][gc,heap     ] GC(2) Humongous regions: 9->9
-[2025-12-24T04:34:55.795+0000][0.614s][info][gc,metaspace] GC(2) Metaspace: 19697K(19968K)->19697K(19968K) NonClass: 17179K(17344K)->17179K(17344K) Class: 2518K(2624K)->2518K(2624K)
-[2025-12-24T04:34:55.795+0000][0.614s][info][gc          ] GC(2) Pause Young (Normal) (G1 Evacuation Pause) 66M->23M(1012M) 2.703ms
-[2025-12-24T04:34:55.795+0000][0.614s][info][gc,cpu      ] GC(2) User=0.00s Sys=0.00s Real=0.00s
-[2025-12-24T04:34:55.893+0000][0.712s][info][gc,start    ] GC(3) Pause Young (Concurrent Start) (Metadata GC Threshold)
-[2025-12-24T04:34:55.894+0000][0.712s][info][gc,task     ] GC(3) Using 3 workers of 3 for evacuation
-[2025-12-24T04:34:55.897+0000][0.715s][info][gc,phases   ] GC(3)   Pre Evacuate Collection Set: 0.1ms
-[2025-12-24T04:34:55.897+0000][0.715s][info][gc,phases   ] GC(3)   Merge Heap Roots: 0.1ms
-[2025-12-24T04:34:55.897+0000][0.715s][info][gc,phases   ] GC(3)   Evacuate Collection Set: 2.5ms
-[2025-12-24T04:34:55.897+0000][0.715s][info][gc,phases   ] GC(3)   Post Evacuate Collection Set: 0.3ms
-[2025-12-24T04:34:55.897+0000][0.715s][info][gc,phases   ] GC(3)   Other: 0.4ms
-[2025-12-24T04:34:55.897+0000][0.715s][info][gc,heap     ] GC(3) Eden regions: 40->0(70)
-[2025-12-24T04:34:55.897+0000][0.716s][info][gc,heap     ] GC(3) Survivor regions: 6->4(7)
-[2025-12-24T04:34:55.897+0000][0.716s][info][gc,heap     ] GC(3) Old regions: 8->11
-[2025-12-24T04:34:55.897+0000][0.716s][info][gc,heap     ] GC(3) Archive regions: 2->2
-[2025-12-24T04:34:55.897+0000][0.716s][info][gc,heap     ] GC(3) Humongous regions: 9->9
-[2025-12-24T04:34:55.897+0000][0.716s][info][gc,metaspace] GC(3) Metaspace: 21297K(21504K)->21297K(21504K) NonClass: 18548K(18624K)->18548K(18624K) Class: 2748K(2880K)->2748K(2880K)
-[2025-12-24T04:34:55.898+0000][0.716s][info][gc          ] GC(3) Pause Young (Concurrent Start) (Metadata GC Threshold) 63M->23M(1012M) 4.119ms
-[2025-12-24T04:34:55.898+0000][0.716s][info][gc,cpu      ] GC(3) User=0.01s Sys=0.01s Real=0.00s
-[2025-12-24T04:34:55.898+0000][0.716s][info][gc          ] GC(4) Concurrent Mark Cycle
-[2025-12-24T04:34:55.898+0000][0.716s][info][gc,marking  ] GC(4) Concurrent Clear Claimed Marks
-[2025-12-24T04:34:55.898+0000][0.716s][info][gc,marking  ] GC(4) Concurrent Clear Claimed Marks 0.104ms
-[2025-12-24T04:34:55.899+0000][0.717s][info][gc,marking  ] GC(4) Concurrent Scan Root Regions
-[2025-12-24T04:34:55.901+0000][0.719s][info][gc,marking  ] GC(4) Concurrent Scan Root Regions 2.209ms
-[2025-12-24T04:34:55.901+0000][0.719s][info][gc,marking  ] GC(4) Concurrent Mark
-[2025-12-24T04:34:55.901+0000][0.720s][info][gc,marking  ] GC(4) Concurrent Mark From Roots
-[2025-12-24T04:34:55.901+0000][0.720s][info][gc,task     ] GC(4) Using 1 workers of 1 for marking
-[2025-12-24T04:34:55.905+0000][0.724s][info][gc,marking  ] GC(4) Concurrent Mark From Roots 4.153ms
-[2025-12-24T04:34:55.906+0000][0.724s][info][gc,marking  ] GC(4) Concurrent Preclean
-[2025-12-24T04:34:55.908+0000][0.726s][info][gc,marking  ] GC(4) Concurrent Preclean 2.462ms
-[2025-12-24T04:34:55.908+0000][0.727s][info][gc,start    ] GC(4) Pause Remark
-[2025-12-24T04:34:55.910+0000][0.728s][info][gc          ] GC(4) Pause Remark 25M->25M(1012M) 1.759ms
-[2025-12-24T04:34:55.910+0000][0.728s][info][gc,cpu      ] GC(4) User=0.00s Sys=0.00s Real=0.01s
-[2025-12-24T04:34:55.911+0000][0.729s][info][gc,marking  ] GC(4) Concurrent Mark 9.477ms
-[2025-12-24T04:34:55.911+0000][0.729s][info][gc,marking  ] GC(4) Concurrent Rebuild Remembered Sets
-[2025-12-24T04:34:55.913+0000][0.732s][info][gc,marking  ] GC(4) Concurrent Rebuild Remembered Sets 2.794ms
-[2025-12-24T04:34:55.914+0000][0.732s][info][gc,start    ] GC(4) Pause Cleanup
-[2025-12-24T04:34:55.914+0000][0.732s][info][gc          ] GC(4) Pause Cleanup 25M->25M(1012M) 0.181ms
-[2025-12-24T04:34:55.914+0000][0.732s][info][gc,cpu      ] GC(4) User=0.00s Sys=0.00s Real=0.00s
-[2025-12-24T04:34:55.914+0000][0.732s][info][gc,marking  ] GC(4) Concurrent Cleanup for Next Mark
-[2025-12-24T04:34:55.919+0000][0.737s][info][gc,marking  ] GC(4) Concurrent Cleanup for Next Mark 4.652ms
-[2025-12-24T04:34:55.919+0000][0.737s][info][gc          ] GC(4) Concurrent Mark Cycle 21.457ms
-[2025-12-24T04:34:56.177+0000][0.995s][info][gc,start    ] GC(5) Pause Young (Normal) (G1 Evacuation Pause)
-[2025-12-24T04:34:56.177+0000][0.996s][info][gc,task     ] GC(5) Using 3 workers of 3 for evacuation
-[2025-12-24T04:34:56.180+0000][0.998s][info][gc,phases   ] GC(5)   Pre Evacuate Collection Set: 0.1ms
-[2025-12-24T04:34:56.180+0000][0.998s][info][gc,phases   ] GC(5)   Merge Heap Roots: 0.0ms
-[2025-12-24T04:34:56.180+0000][0.998s][info][gc,phases   ] GC(5)   Evacuate Collection Set: 2.3ms
-[2025-12-24T04:34:56.180+0000][0.998s][info][gc,phases   ] GC(5)   Post Evacuate Collection Set: 0.2ms
-[2025-12-24T04:34:56.180+0000][0.998s][info][gc,phases   ] GC(5)   Other: 0.3ms
-[2025-12-24T04:34:56.180+0000][0.998s][info][gc,heap     ] GC(5) Eden regions: 70->0(102)
-[2025-12-24T04:34:56.180+0000][0.999s][info][gc,heap     ] GC(5) Survivor regions: 4->6(10)
-[2025-12-24T04:34:56.180+0000][0.999s][info][gc,heap     ] GC(5) Old regions: 11->11
-[2025-12-24T04:34:56.180+0000][0.999s][info][gc,heap     ] GC(5) Archive regions: 2->2
-[2025-12-24T04:34:56.180+0000][0.999s][info][gc,heap     ] GC(5) Humongous regions: 9->9
-[2025-12-24T04:34:56.180+0000][0.999s][info][gc,metaspace] GC(5) Metaspace: 30306K(30656K)->30306K(30656K) NonClass: 26350K(26560K)->26350K(26560K) Class: 3955K(4096K)->3955K(4096K)
-[2025-12-24T04:34:56.181+0000][0.999s][info][gc          ] GC(5) Pause Young (Normal) (G1 Evacuation Pause) 93M->25M(1012M) 3.476ms
-[2025-12-24T04:34:56.181+0000][0.999s][info][gc,cpu      ] GC(5) User=0.01s Sys=0.00s Real=0.01s
-[2025-12-24T04:34:56.443+0000][1.262s][info][gc,start    ] GC(6) Pause Young (Concurrent Start) (Metadata GC Threshold)
-[2025-12-24T04:34:56.444+0000][1.262s][info][gc,task     ] GC(6) Using 3 workers of 3 for evacuation
-[2025-12-24T04:34:56.446+0000][1.264s][info][gc,phases   ] GC(6)   Pre Evacuate Collection Set: 0.1ms
-[2025-12-24T04:34:56.446+0000][1.265s][info][gc,phases   ] GC(6)   Merge Heap Roots: 0.1ms
-[2025-12-24T04:34:56.446+0000][1.265s][info][gc,phases   ] GC(6)   Evacuate Collection Set: 1.7ms
-[2025-12-24T04:34:56.446+0000][1.265s][info][gc,phases   ] GC(6)   Post Evacuate Collection Set: 0.4ms
-[2025-12-24T04:34:56.447+0000][1.265s][info][gc,phases   ] GC(6)   Other: 0.4ms
-[2025-12-24T04:34:56.447+0000][1.265s][info][gc,heap     ] GC(6) Eden regions: 33->0(102)
-[2025-12-24T04:34:56.447+0000][1.265s][info][gc,heap     ] GC(6) Survivor regions: 6->7(14)
-[2025-12-24T04:34:56.447+0000][1.265s][info][gc,heap     ] GC(6) Old regions: 11->11
-[2025-12-24T04:34:56.447+0000][1.265s][info][gc,heap     ] GC(6) Archive regions: 2->2
-[2025-12-24T04:34:56.447+0000][1.265s][info][gc,heap     ] GC(6) Humongous regions: 11->11
-[2025-12-24T04:34:56.447+0000][1.266s][info][gc,metaspace] GC(6) Metaspace: 36158K(36416K)->36158K(36416K) NonClass: 31380K(31488K)->31380K(31488K) Class: 4777K(4928K)->4777K(4928K)
-[2025-12-24T04:34:56.447+0000][1.266s][info][gc          ] GC(6) Pause Young (Concurrent Start) (Metadata GC Threshold) 60M->28M(1012M) 3.931ms
-[2025-12-24T04:34:56.448+0000][1.266s][info][gc,cpu      ] GC(6) User=0.00s Sys=0.00s Real=0.00s
-[2025-12-24T04:34:56.448+0000][1.266s][info][gc          ] GC(7) Concurrent Mark Cycle
-[2025-12-24T04:34:56.448+0000][1.266s][info][gc,marking  ] GC(7) Concurrent Clear Claimed Marks
-[2025-12-24T04:34:56.450+0000][1.268s][info][gc,marking  ] GC(7) Concurrent Clear Claimed Marks 2.121ms
-[2025-12-24T04:34:56.450+0000][1.268s][info][gc,marking  ] GC(7) Concurrent Scan Root Regions
-[2025-12-24T04:34:56.452+0000][1.270s][info][gc,marking  ] GC(7) Concurrent Scan Root Regions 1.994ms
-[2025-12-24T04:34:56.452+0000][1.270s][info][gc,marking  ] GC(7) Concurrent Mark
-[2025-12-24T04:34:56.452+0000][1.270s][info][gc,marking  ] GC(7) Concurrent Mark From Roots
-[2025-12-24T04:34:56.452+0000][1.271s][info][gc,task     ] GC(7) Using 1 workers of 1 for marking
-[2025-12-24T04:34:56.458+0000][1.276s][info][gc,marking  ] GC(7) Concurrent Mark From Roots 5.945ms
-[2025-12-24T04:34:56.458+0000][1.277s][info][gc,marking  ] GC(7) Concurrent Preclean
-[2025-12-24T04:34:56.458+0000][1.277s][info][gc,marking  ] GC(7) Concurrent Preclean 0.137ms
-[2025-12-24T04:34:56.459+0000][1.277s][info][gc,start    ] GC(7) Pause Remark
-[2025-12-24T04:34:56.461+0000][1.279s][info][gc          ] GC(7) Pause Remark 31M->31M(1012M) 2.290ms
-[2025-12-24T04:34:56.461+0000][1.280s][info][gc,cpu      ] GC(7) User=0.01s Sys=0.00s Real=0.00s
-[2025-12-24T04:34:56.461+0000][1.280s][info][gc,marking  ] GC(7) Concurrent Mark 9.328ms
-[2025-12-24T04:34:56.462+0000][1.280s][info][gc,marking  ] GC(7) Concurrent Rebuild Remembered Sets
-[2025-12-24T04:34:56.465+0000][1.283s][info][gc,marking  ] GC(7) Concurrent Rebuild Remembered Sets 3.176ms
-[2025-12-24T04:34:56.465+0000][1.283s][info][gc,start    ] GC(7) Pause Cleanup
-[2025-12-24T04:34:56.465+0000][1.283s][info][gc          ] GC(7) Pause Cleanup 32M->32M(1012M) 0.123ms
-[2025-12-24T04:34:56.465+0000][1.283s][info][gc,cpu      ] GC(7) User=0.00s Sys=0.00s Real=0.00s
-[2025-12-24T04:34:56.465+0000][1.283s][info][gc,marking  ] GC(7) Concurrent Cleanup for Next Mark
-[2025-12-24T04:34:56.470+0000][1.288s][info][gc,marking  ] GC(7) Concurrent Cleanup for Next Mark 4.335ms
-[2025-12-24T04:34:56.470+0000][1.288s][info][gc          ] GC(7) Concurrent Mark Cycle 21.938ms
-[2025-12-24T04:34:56.790+0000][1.608s][info][gc,start    ] GC(8) Pause Young (Normal) (G1 Evacuation Pause)
-[2025-12-24T04:34:56.790+0000][1.608s][info][gc,task     ] GC(8) Using 3 workers of 3 for evacuation
-[2025-12-24T04:34:56.794+0000][1.612s][info][gc,phases   ] GC(8)   Pre Evacuate Collection Set: 0.1ms
-[2025-12-24T04:34:56.794+0000][1.612s][info][gc,phases   ] GC(8)   Merge Heap Roots: 0.0ms
-[2025-12-24T04:34:56.794+0000][1.613s][info][gc,phases   ] GC(8)   Evacuate Collection Set: 3.4ms
-[2025-12-24T04:34:56.794+0000][1.613s][info][gc,phases   ] GC(8)   Post Evacuate Collection Set: 0.3ms
-[2025-12-24T04:34:56.794+0000][1.613s][info][gc,phases   ] GC(8)   Other: 0.4ms
-[2025-12-24T04:34:56.795+0000][1.613s][info][gc,heap     ] GC(8) Eden regions: 102->0(541)
-[2025-12-24T04:34:56.795+0000][1.613s][info][gc,heap     ] GC(8) Survivor regions: 7->8(14)
-[2025-12-24T04:34:56.795+0000][1.613s][info][gc,heap     ] GC(8) Old regions: 11->11
-[2025-12-24T04:34:56.795+0000][1.613s][info][gc,heap     ] GC(8) Archive regions: 2->2
-[2025-12-24T04:34:56.795+0000][1.613s][info][gc,heap     ] GC(8) Humongous regions: 11->11
-[2025-12-24T04:34:56.795+0000][1.613s][info][gc,metaspace] GC(8) Metaspace: 45786K(46144K)->45786K(46144K) NonClass: 39474K(39680K)->39474K(39680K) Class: 6312K(6464K)->6312K(6464K)
-[2025-12-24T04:34:56.795+0000][1.614s][info][gc          ] GC(8) Pause Young (Normal) (G1 Evacuation Pause) 130M->30M(1012M) 5.431ms
-[2025-12-24T04:34:56.795+0000][1.614s][info][gc,cpu      ] GC(8) User=0.01s Sys=0.00s Real=0.00s
-[2025-12-24T04:34:57.841+0000][2.660s][info][gc,start    ] GC(9) Pause Young (Concurrent Start) (Metadata GC Threshold)
-[2025-12-24T04:34:57.842+0000][2.660s][info][gc,task     ] GC(9) Using 3 workers of 3 for evacuation
-[2025-12-24T04:34:57.853+0000][2.671s][info][gc,phases   ] GC(9)   Pre Evacuate Collection Set: 0.2ms
-[2025-12-24T04:34:57.853+0000][2.671s][info][gc,phases   ] GC(9)   Merge Heap Roots: 0.1ms
-[2025-12-24T04:34:57.853+0000][2.671s][info][gc,phases   ] GC(9)   Evacuate Collection Set: 9.6ms
-[2025-12-24T04:34:57.853+0000][2.671s][info][gc,phases   ] GC(9)   Post Evacuate Collection Set: 0.8ms
-[2025-12-24T04:34:57.853+0000][2.672s][info][gc,phases   ] GC(9)   Other: 0.7ms
-[2025-12-24T04:34:57.853+0000][2.672s][info][gc,heap     ] GC(9) Eden regions: 179->0(527)
-[2025-12-24T04:34:57.853+0000][2.672s][info][gc,heap     ] GC(9) Survivor regions: 8->17(69)
-[2025-12-24T04:34:57.854+0000][2.672s][info][gc,heap     ] GC(9) Old regions: 11->11
-[2025-12-24T04:34:57.854+0000][2.672s][info][gc,heap     ] GC(9) Archive regions: 2->2
-[2025-12-24T04:34:57.854+0000][2.672s][info][gc,heap     ] GC(9) Humongous regions: 12->12
-[2025-12-24T04:34:57.854+0000][2.672s][info][gc,metaspace] GC(9) Metaspace: 60468K(61120K)->60468K(61120K) NonClass: 52106K(52416K)->52106K(52416K) Class: 8361K(8704K)->8361K(8704K)
-[2025-12-24T04:34:57.854+0000][2.672s][info][gc          ] GC(9) Pause Young (Concurrent Start) (Metadata GC Threshold) 209M->39M(1012M) 12.486ms
-[2025-12-24T04:34:57.854+0000][2.672s][info][gc,cpu      ] GC(9) User=0.02s Sys=0.01s Real=0.01s
-[2025-12-24T04:34:57.854+0000][2.672s][info][gc          ] GC(10) Concurrent Mark Cycle
-[2025-12-24T04:34:57.854+0000][2.673s][info][gc,marking  ] GC(10) Concurrent Clear Claimed Marks
-[2025-12-24T04:34:57.854+0000][2.673s][info][gc,marking  ] GC(10) Concurrent Clear Claimed Marks 0.149ms
-[2025-12-24T04:34:57.855+0000][2.673s][info][gc,marking  ] GC(10) Concurrent Scan Root Regions
-[2025-12-24T04:34:57.859+0000][2.677s][info][gc,marking  ] GC(10) Concurrent Scan Root Regions 4.214ms
-[2025-12-24T04:34:57.859+0000][2.677s][info][gc,marking  ] GC(10) Concurrent Mark
-[2025-12-24T04:34:57.859+0000][2.677s][info][gc,marking  ] GC(10) Concurrent Mark From Roots
-[2025-12-24T04:34:57.859+0000][2.677s][info][gc,task     ] GC(10) Using 1 workers of 1 for marking
-[2025-12-24T04:34:57.869+0000][2.687s][info][gc,marking  ] GC(10) Concurrent Mark From Roots 9.842ms
-[2025-12-24T04:34:57.869+0000][2.687s][info][gc,marking  ] GC(10) Concurrent Preclean
-[2025-12-24T04:34:57.869+0000][2.687s][info][gc,marking  ] GC(10) Concurrent Preclean 0.091ms
-[2025-12-24T04:34:57.869+0000][2.688s][info][gc,start    ] GC(10) Pause Remark
-[2025-12-24T04:34:57.872+0000][2.690s][info][gc          ] GC(10) Pause Remark 46M->46M(1012M) 2.825ms
-[2025-12-24T04:34:57.872+0000][2.690s][info][gc,cpu      ] GC(10) User=0.01s Sys=0.00s Real=0.00s
-[2025-12-24T04:34:57.873+0000][2.691s][info][gc,marking  ] GC(10) Concurrent Mark 13.719ms
-[2025-12-24T04:34:57.873+0000][2.691s][info][gc,marking  ] GC(10) Concurrent Rebuild Remembered Sets
-[2025-12-24T04:34:57.876+0000][2.694s][info][gc,marking  ] GC(10) Concurrent Rebuild Remembered Sets 3.111ms
-[2025-12-24T04:34:57.876+0000][2.694s][info][gc,start    ] GC(10) Pause Cleanup
-[2025-12-24T04:34:57.876+0000][2.695s][info][gc          ] GC(10) Pause Cleanup 47M->47M(1012M) 0.244ms
-[2025-12-24T04:34:57.877+0000][2.695s][info][gc,cpu      ] GC(10) User=0.00s Sys=0.00s Real=0.00s
-[2025-12-24T04:34:57.877+0000][2.695s][info][gc,marking  ] GC(10) Concurrent Cleanup for Next Mark
-[2025-12-24T04:34:57.877+0000][2.696s][info][gc,marking  ] GC(10) Concurrent Cleanup for Next Mark 0.618ms
-[2025-12-24T04:34:57.877+0000][2.696s][info][gc          ] GC(10) Concurrent Mark Cycle 23.236ms
-[2025-12-24T04:34:59.704+0000][4.522s][info][gc,start    ] GC(11) Pause Young (Normal) (G1 Evacuation Pause)
-[2025-12-24T04:34:59.704+0000][4.523s][info][gc,task     ] GC(11) Using 3 workers of 3 for evacuation
-[2025-12-24T04:34:59.720+0000][4.538s][info][gc,phases   ] GC(11)   Pre Evacuate Collection Set: 0.1ms
-[2025-12-24T04:34:59.720+0000][4.538s][info][gc,phases   ] GC(11)   Merge Heap Roots: 0.1ms
-[2025-12-24T04:34:59.720+0000][4.539s][info][gc,phases   ] GC(11)   Evacuate Collection Set: 14.1ms
-[2025-12-24T04:34:59.720+0000][4.539s][info][gc,phases   ] GC(11)   Post Evacuate Collection Set: 1.1ms
-[2025-12-24T04:34:59.721+0000][4.539s][info][gc,phases   ] GC(11)   Other: 0.5ms
-[2025-12-24T04:34:59.721+0000][4.539s][info][gc,heap     ] GC(11) Eden regions: 527->0(407)
-[2025-12-24T04:34:59.721+0000][4.539s][info][gc,heap     ] GC(11) Survivor regions: 17->29(68)
-[2025-12-24T04:34:59.721+0000][4.539s][info][gc,heap     ] GC(11) Old regions: 11->11
-[2025-12-24T04:34:59.721+0000][4.539s][info][gc,heap     ] GC(11) Archive regions: 2->2
-[2025-12-24T04:34:59.721+0000][4.539s][info][gc,heap     ] GC(11) Humongous regions: 12->12
-[2025-12-24T04:34:59.721+0000][4.539s][info][gc,metaspace] GC(11) Metaspace: 78346K(79104K)->78346K(79104K) NonClass: 67903K(68288K)->67903K(68288K) Class: 10443K(10816K)->10443K(10816K)
-[2025-12-24T04:34:59.721+0000][4.539s][info][gc          ] GC(11) Pause Young (Normal) (G1 Evacuation Pause) 566M->51M(1012M) 17.067ms
-[2025-12-24T04:34:59.721+0000][4.540s][info][gc,cpu      ] GC(11) User=0.04s Sys=0.02s Real=0.02s
-[2025-12-24T04:35:03.328+0000][8.146s][info][gc,start    ] GC(12) Pause Young (Normal) (G1 Evacuation Pause)
-[2025-12-24T04:35:03.328+0000][8.147s][info][gc,task     ] GC(12) Using 3 workers of 3 for evacuation
-[2025-12-24T04:35:03.337+0000][8.155s][info][gc,phases   ] GC(12)   Pre Evacuate Collection Set: 0.1ms
-[2025-12-24T04:35:03.337+0000][8.155s][info][gc,phases   ] GC(12)   Merge Heap Roots: 0.1ms
-[2025-12-24T04:35:03.337+0000][8.155s][info][gc,phases   ] GC(12)   Evacuate Collection Set: 7.2ms
-[2025-12-24T04:35:03.337+0000][8.155s][info][gc,phases   ] GC(12)   Post Evacuate Collection Set: 0.9ms
-[2025-12-24T04:35:03.337+0000][8.155s][info][gc,phases   ] GC(12)   Other: 0.4ms
-[2025-12-24T04:35:03.337+0000][8.156s][info][gc,heap     ] GC(12) Eden regions: 407->0(534)
-[2025-12-24T04:35:03.337+0000][8.156s][info][gc,heap     ] GC(12) Survivor regions: 29->28(55)
-[2025-12-24T04:35:03.337+0000][8.156s][info][gc,heap     ] GC(12) Old regions: 11->13
-[2025-12-24T04:35:03.338+0000][8.156s][info][gc,heap     ] GC(12) Archive regions: 2->2
-[2025-12-24T04:35:03.338+0000][8.156s][info][gc,heap     ] GC(12) Humongous regions: 22->17
-[2025-12-24T04:35:03.338+0000][8.156s][info][gc,metaspace] GC(12) Metaspace: 80071K(81024K)->80071K(81024K) NonClass: 69356K(69824K)->69356K(69824K) Class: 10715K(11200K)->10715K(11200K)
-[2025-12-24T04:35:03.338+0000][8.156s][info][gc          ] GC(12) Pause Young (Normal) (G1 Evacuation Pause) 468M->57M(1012M) 9.782ms
-[2025-12-24T04:35:03.338+0000][8.156s][info][gc,cpu      ] GC(12) User=0.03s Sys=0.00s Real=0.01s
-[2025-12-24T04:35:10.111+0000][14.929s][info][gc,start    ] GC(13) Pause Young (Normal) (G1 Evacuation Pause)
-[2025-12-24T04:35:10.111+0000][14.929s][info][gc,task     ] GC(13) Using 3 workers of 3 for evacuation
-[2025-12-24T04:35:10.127+0000][14.946s][info][gc,phases   ] GC(13)   Pre Evacuate Collection Set: 0.1ms
-[2025-12-24T04:35:10.128+0000][14.946s][info][gc,phases   ] GC(13)   Merge Heap Roots: 0.1ms
-[2025-12-24T04:35:10.128+0000][14.946s][info][gc,phases   ] GC(13)   Evacuate Collection Set: 14.5ms
-[2025-12-24T04:35:10.128+0000][14.946s][info][gc,phases   ] GC(13)   Post Evacuate Collection Set: 1.3ms
-[2025-12-24T04:35:10.128+0000][14.946s][info][gc,phases   ] GC(13)   Other: 0.7ms
-[2025-12-24T04:35:10.128+0000][14.946s][info][gc,heap     ] GC(13) Eden regions: 534->0(579)
-[2025-12-24T04:35:10.128+0000][14.946s][info][gc,heap     ] GC(13) Survivor regions: 28->28(71)
-[2025-12-24T04:35:10.128+0000][14.947s][info][gc,heap     ] GC(13) Old regions: 13->13
-[2025-12-24T04:35:10.128+0000][14.947s][info][gc,heap     ] GC(13) Archive regions: 2->2
-[2025-12-24T04:35:10.128+0000][14.947s][info][gc,heap     ] GC(13) Humongous regions: 17->17
-[2025-12-24T04:35:10.129+0000][14.947s][info][gc,metaspace] GC(13) Metaspace: 80263K(81152K)->80263K(81152K) NonClass: 69531K(69952K)->69531K(69952K) Class: 10731K(11200K)->10731K(11200K)
-[2025-12-24T04:35:10.129+0000][14.947s][info][gc          ] GC(13) Pause Young (Normal) (G1 Evacuation Pause) 591M->57M(1012M) 18.000ms
-[2025-12-24T04:35:10.129+0000][14.947s][info][gc,cpu      ] GC(13) User=0.04s Sys=0.01s Real=0.02s
-[2025-12-24T04:35:16.259+0000][21.078s][info][gc,start    ] GC(14) Pause Young (Normal) (G1 Evacuation Pause)
-[2025-12-24T04:35:16.260+0000][21.078s][info][gc,task     ] GC(14) Using 3 workers of 3 for evacuation
-[2025-12-24T04:35:16.269+0000][21.087s][info][gc,phases   ] GC(14)   Pre Evacuate Collection Set: 0.1ms
-[2025-12-24T04:35:16.269+0000][21.088s][info][gc,phases   ] GC(14)   Merge Heap Roots: 0.1ms
-[2025-12-24T04:35:16.269+0000][21.088s][info][gc,phases   ] GC(14)   Evacuate Collection Set: 8.3ms
-[2025-12-24T04:35:16.269+0000][21.088s][info][gc,phases   ] GC(14)   Post Evacuate Collection Set: 0.9ms
-[2025-12-24T04:35:16.270+0000][21.088s][info][gc,phases   ] GC(14)   Other: 0.4ms
-[2025-12-24T04:35:16.270+0000][21.088s][info][gc,heap     ] GC(14) Eden regions: 579->0(579)
-[2025-12-24T04:35:16.270+0000][21.088s][info][gc,heap     ] GC(14) Survivor regions: 28->28(76)
-[2025-12-24T04:35:16.270+0000][21.088s][info][gc,heap     ] GC(14) Old regions: 13->13
-[2025-12-24T04:35:16.270+0000][21.088s][info][gc,heap     ] GC(14) Archive regions: 2->2
-[2025-12-24T04:35:16.270+0000][21.088s][info][gc,heap     ] GC(14) Humongous regions: 27->22
-[2025-12-24T04:35:16.270+0000][21.088s][info][gc,metaspace] GC(14) Metaspace: 80398K(81344K)->80398K(81344K) NonClass: 69664K(70144K)->69664K(70144K) Class: 10734K(11200K)->10734K(11200K)
-[2025-12-24T04:35:16.270+0000][21.088s][info][gc          ] GC(14) Pause Young (Normal) (G1 Evacuation Pause) 646M->62M(1012M) 10.845ms
-[2025-12-24T04:35:16.270+0000][21.089s][info][gc,cpu      ] GC(14) User=0.02s Sys=0.01s Real=0.01s
-[2025-12-24T04:35:24.001+0000][28.819s][info][gc,start    ] GC(15) Pause Young (Normal) (G1 Evacuation Pause)
-[2025-12-24T04:35:24.002+0000][28.820s][info][gc,task     ] GC(15) Using 3 workers of 3 for evacuation
-[2025-12-24T04:35:24.010+0000][28.828s][info][gc,phases   ] GC(15)   Pre Evacuate Collection Set: 0.1ms
-[2025-12-24T04:35:24.010+0000][28.828s][info][gc,phases   ] GC(15)   Merge Heap Roots: 0.1ms
-[2025-12-24T04:35:24.010+0000][28.828s][info][gc,phases   ] GC(15)   Evacuate Collection Set: 6.9ms
-[2025-12-24T04:35:24.010+0000][28.829s][info][gc,phases   ] GC(15)   Post Evacuate Collection Set: 1.0ms
-[2025-12-24T04:35:24.010+0000][28.829s][info][gc,phases   ] GC(15)   Other: 1.4ms
-[2025-12-24T04:35:24.010+0000][28.829s][info][gc,heap     ] GC(15) Eden regions: 579->0(579)
-[2025-12-24T04:35:24.011+0000][28.829s][info][gc,heap     ] GC(15) Survivor regions: 28->28(76)
-[2025-12-24T04:35:24.011+0000][28.829s][info][gc,heap     ] GC(15) Old regions: 13->13
-[2025-12-24T04:35:24.011+0000][28.829s][info][gc,heap     ] GC(15) Archive regions: 2->2
-[2025-12-24T04:35:24.011+0000][28.829s][info][gc,heap     ] GC(15) Humongous regions: 22->22
-[2025-12-24T04:35:24.011+0000][28.829s][info][gc,metaspace] GC(15) Metaspace: 80560K(81472K)->80560K(81472K) NonClass: 69825K(70272K)->69825K(70272K) Class: 10735K(11200K)->10735K(11200K)
-[2025-12-24T04:35:24.011+0000][28.829s][info][gc          ] GC(15) Pause Young (Normal) (G1 Evacuation Pause) 641M->62M(1012M) 10.494ms
-[2025-12-24T04:35:24.011+0000][28.829s][info][gc,cpu      ] GC(15) User=0.02s Sys=0.00s Real=0.01s
-[2025-12-24T04:35:31.158+0000][35.977s][info][gc,start    ] GC(16) Pause Young (Normal) (G1 Evacuation Pause)
-[2025-12-24T04:35:31.159+0000][35.977s][info][gc,task     ] GC(16) Using 3 workers of 3 for evacuation
-[2025-12-24T04:35:31.169+0000][35.988s][info][gc,phases   ] GC(16)   Pre Evacuate Collection Set: 0.1ms
-[2025-12-24T04:35:31.169+0000][35.988s][info][gc,phases   ] GC(16)   Merge Heap Roots: 0.1ms
-[2025-12-24T04:35:31.170+0000][35.988s][info][gc,phases   ] GC(16)   Evacuate Collection Set: 9.1ms
-[2025-12-24T04:35:31.170+0000][35.988s][info][gc,phases   ] GC(16)   Post Evacuate Collection Set: 1.0ms
-[2025-12-24T04:35:31.170+0000][35.988s][info][gc,phases   ] GC(16)   Other: 0.7ms
-[2025-12-24T04:35:31.170+0000][35.988s][info][gc,heap     ] GC(16) Eden regions: 579->0(579)
-[2025-12-24T04:35:31.170+0000][35.988s][info][gc,heap     ] GC(16) Survivor regions: 28->28(76)
-[2025-12-24T04:35:31.170+0000][35.988s][info][gc,heap     ] GC(16) Old regions: 13->13
-[2025-12-24T04:35:31.170+0000][35.988s][info][gc,heap     ] GC(16) Archive regions: 2->2
-[2025-12-24T04:35:31.170+0000][35.988s][info][gc,heap     ] GC(16) Humongous regions: 27->25
-[2025-12-24T04:35:31.170+0000][35.989s][info][gc,metaspace] GC(16) Metaspace: 80675K(81600K)->80675K(81600K) NonClass: 69939K(70400K)->69939K(70400K) Class: 10735K(11200K)->10735K(11200K)
-[2025-12-24T04:35:31.170+0000][35.989s][info][gc          ] GC(16) Pause Young (Normal) (G1 Evacuation Pause) 646M->65M(1012M) 12.125ms
-[2025-12-24T04:35:31.171+0000][35.989s][info][gc,cpu      ] GC(16) User=0.03s Sys=0.00s Real=0.02s
-[2025-12-24T04:35:38.075+0000][42.894s][info][gc,start    ] GC(17) Pause Young (Normal) (G1 Evacuation Pause)
-[2025-12-24T04:35:38.076+0000][42.894s][info][gc,task     ] GC(17) Using 3 workers of 3 for evacuation
-[2025-12-24T04:35:38.086+0000][42.904s][info][gc,phases   ] GC(17)   Pre Evacuate Collection Set: 0.1ms
-[2025-12-24T04:35:38.086+0000][42.904s][info][gc,phases   ] GC(17)   Merge Heap Roots: 0.1ms
-[2025-12-24T04:35:38.086+0000][42.904s][info][gc,phases   ] GC(17)   Evacuate Collection Set: 8.8ms
-[2025-12-24T04:35:38.086+0000][42.904s][info][gc,phases   ] GC(17)   Post Evacuate Collection Set: 1.0ms
-[2025-12-24T04:35:38.086+0000][42.905s][info][gc,phases   ] GC(17)   Other: 0.5ms
-[2025-12-24T04:35:38.086+0000][42.905s][info][gc,heap     ] GC(17) Eden regions: 579->0(579)
-[2025-12-24T04:35:38.086+0000][42.905s][info][gc,heap     ] GC(17) Survivor regions: 28->28(76)
-[2025-12-24T04:35:38.086+0000][42.905s][info][gc,heap     ] GC(17) Old regions: 13->13
-[2025-12-24T04:35:38.087+0000][42.905s][info][gc,heap     ] GC(17) Archive regions: 2->2
-[2025-12-24T04:35:38.087+0000][42.905s][info][gc,heap     ] GC(17) Humongous regions: 30->27
-[2025-12-24T04:35:38.087+0000][42.905s][info][gc,metaspace] GC(17) Metaspace: 80875K(81792K)->80875K(81792K) NonClass: 70139K(70592K)->70139K(70592K) Class: 10735K(11200K)->10735K(11200K)
-[2025-12-24T04:35:38.087+0000][42.905s][info][gc          ] GC(17) Pause Young (Normal) (G1 Evacuation Pause) 649M->67M(1012M) 11.424ms
-[2025-12-24T04:35:38.087+0000][42.905s][info][gc,cpu      ] GC(17) User=0.03s Sys=0.00s Real=0.01s
-[2025-12-24T04:35:45.992+0000][50.810s][info][gc,start    ] GC(18) Pause Young (Normal) (G1 Evacuation Pause)
-[2025-12-24T04:35:45.992+0000][50.811s][info][gc,task     ] GC(18) Using 3 workers of 3 for evacuation
-[2025-12-24T04:35:46.004+0000][50.822s][info][gc,phases   ] GC(18)   Pre Evacuate Collection Set: 0.2ms
-[2025-12-24T04:35:46.004+0000][50.822s][info][gc,phases   ] GC(18)   Merge Heap Roots: 0.1ms
-[2025-12-24T04:35:46.004+0000][50.822s][info][gc,phases   ] GC(18)   Evacuate Collection Set: 9.7ms
-[2025-12-24T04:35:46.004+0000][50.822s][info][gc,phases   ] GC(18)   Post Evacuate Collection Set: 1.2ms
-[2025-12-24T04:35:46.004+0000][50.822s][info][gc,phases   ] GC(18)   Other: 0.6ms
-[2025-12-24T04:35:46.004+0000][50.822s][info][gc,heap     ] GC(18) Eden regions: 579->0(579)
-[2025-12-24T04:35:46.004+0000][50.823s][info][gc,heap     ] GC(18) Survivor regions: 28->28(76)
-[2025-12-24T04:35:46.004+0000][50.823s][info][gc,heap     ] GC(18) Old regions: 13->13
-[2025-12-24T04:35:46.004+0000][50.823s][info][gc,heap     ] GC(18) Archive regions: 2->2
-[2025-12-24T04:35:46.005+0000][50.823s][info][gc,heap     ] GC(18) Humongous regions: 27->27
-[2025-12-24T04:35:46.005+0000][50.823s][info][gc,metaspace] GC(18) Metaspace: 81000K(81920K)->81000K(81920K) NonClass: 70263K(70720K)->70263K(70720K) Class: 10736K(11200K)->10736K(11200K)
-[2025-12-24T04:35:46.005+0000][50.823s][info][gc          ] GC(18) Pause Young (Normal) (G1 Evacuation Pause) 646M->67M(1012M) 12.677ms
-[2025-12-24T04:35:46.005+0000][50.823s][info][gc,cpu      ] GC(18) User=0.03s Sys=0.00s Real=0.01s
-[2025-12-24T04:35:52.096+0000][56.914s][info][gc,start    ] GC(19) Pause Young (Normal) (G1 Evacuation Pause)
-[2025-12-24T04:35:52.097+0000][56.915s][info][gc,task     ] GC(19) Using 3 workers of 3 for evacuation
-[2025-12-24T04:35:52.106+0000][56.924s][info][gc,phases   ] GC(19)   Pre Evacuate Collection Set: 0.1ms
-[2025-12-24T04:35:52.106+0000][56.924s][info][gc,phases   ] GC(19)   Merge Heap Roots: 0.1ms
-[2025-12-24T04:35:52.106+0000][56.925s][info][gc,phases   ] GC(19)   Evacuate Collection Set: 7.8ms
-[2025-12-24T04:35:52.106+0000][56.925s][info][gc,phases   ] GC(19)   Post Evacuate Collection Set: 1.3ms
-[2025-12-24T04:35:52.106+0000][56.925s][info][gc,phases   ] GC(19)   Other: 0.6ms
-[2025-12-24T04:35:52.107+0000][56.925s][info][gc,heap     ] GC(19) Eden regions: 579->0(579)
-[2025-12-24T04:35:52.107+0000][56.925s][info][gc,heap     ] GC(19) Survivor regions: 28->28(76)
-[2025-12-24T04:35:52.107+0000][56.925s][info][gc,heap     ] GC(19) Old regions: 13->13
-[2025-12-24T04:35:52.107+0000][56.925s][info][gc,heap     ] GC(19) Archive regions: 2->2
-[2025-12-24T04:35:52.107+0000][56.925s][info][gc,heap     ] GC(19) Humongous regions: 37->32
-[2025-12-24T04:35:52.107+0000][56.925s][info][gc,metaspace] GC(19) Metaspace: 81100K(81984K)->81100K(81984K) NonClass: 70363K(70784K)->70363K(70784K) Class: 10736K(11200K)->10736K(11200K)
-[2025-12-24T04:35:52.107+0000][56.925s][info][gc          ] GC(19) Pause Young (Normal) (G1 Evacuation Pause) 656M->72M(1012M) 10.833ms
-[2025-12-24T04:35:52.107+0000][56.925s][info][gc,cpu      ] GC(19) User=0.03s Sys=0.00s Real=0.01s
-[2025-12-24T04:35:59.803+0000][64.621s][info][gc,start    ] GC(20) Pause Young (Normal) (G1 Evacuation Pause)
-[2025-12-24T04:35:59.803+0000][64.622s][info][gc,task     ] GC(20) Using 3 workers of 3 for evacuation
-[2025-12-24T04:35:59.815+0000][64.634s][info][gc,phases   ] GC(20)   Pre Evacuate Collection Set: 0.1ms
-[2025-12-24T04:35:59.816+0000][64.634s][info][gc,phases   ] GC(20)   Merge Heap Roots: 0.1ms
-[2025-12-24T04:35:59.816+0000][64.634s][info][gc,phases   ] GC(20)   Evacuate Collection Set: 10.3ms
-[2025-12-24T04:35:59.816+0000][64.634s][info][gc,phases   ] GC(20)   Post Evacuate Collection Set: 1.2ms
-[2025-12-24T04:35:59.816+0000][64.634s][info][gc,phases   ] GC(20)   Other: 0.7ms
-[2025-12-24T04:35:59.816+0000][64.634s][info][gc,heap     ] GC(20) Eden regions: 579->0(578)
-[2025-12-24T04:35:59.816+0000][64.634s][info][gc,heap     ] GC(20) Survivor regions: 28->29(76)
-[2025-12-24T04:35:59.816+0000][64.634s][info][gc,heap     ] GC(20) Old regions: 13->13
-[2025-12-24T04:35:59.816+0000][64.635s][info][gc,heap     ] GC(20) Archive regions: 2->2
-[2025-12-24T04:35:59.816+0000][64.635s][info][gc,heap     ] GC(20) Humongous regions: 32->32
-[2025-12-24T04:35:59.817+0000][64.635s][info][gc,metaspace] GC(20) Metaspace: 83174K(84096K)->83174K(84096K) NonClass: 72234K(72704K)->72234K(72704K) Class: 10939K(11392K)->10939K(11392K)
-[2025-12-24T04:35:59.817+0000][64.635s][info][gc          ] GC(20) Pause Young (Normal) (G1 Evacuation Pause) 651M->73M(1012M) 13.649ms
-[2025-12-24T04:35:59.817+0000][64.635s][info][gc,cpu      ] GC(20) User=0.03s Sys=0.00s Real=0.01s
-[2025-12-24T04:36:05.975+0000][70.793s][info][gc,start    ] GC(21) Pause Young (Normal) (G1 Evacuation Pause)
-[2025-12-24T04:36:05.975+0000][70.794s][info][gc,task     ] GC(21) Using 3 workers of 3 for evacuation
-[2025-12-24T04:36:05.986+0000][70.805s][info][gc,phases   ] GC(21)   Pre Evacuate Collection Set: 0.1ms
-[2025-12-24T04:36:05.987+0000][70.805s][info][gc,phases   ] GC(21)   Merge Heap Roots: 0.1ms
-[2025-12-24T04:36:05.987+0000][70.805s][info][gc,phases   ] GC(21)   Evacuate Collection Set: 9.1ms
-[2025-12-24T04:36:05.987+0000][70.805s][info][gc,phases   ] GC(21)   Post Evacuate Collection Set: 1.6ms
-[2025-12-24T04:36:05.987+0000][70.805s][info][gc,phases   ] GC(21)   Other: 1.0ms
-[2025-12-24T04:36:05.987+0000][70.805s][info][gc,heap     ] GC(21) Eden regions: 578->0(578)
-[2025-12-24T04:36:05.987+0000][70.805s][info][gc,heap     ] GC(21) Survivor regions: 29->29(76)
-[2025-12-24T04:36:05.987+0000][70.806s][info][gc,heap     ] GC(21) Old regions: 13->13
-[2025-12-24T04:36:05.987+0000][70.806s][info][gc,heap     ] GC(21) Archive regions: 2->2
-[2025-12-24T04:36:05.987+0000][70.806s][info][gc,heap     ] GC(21) Humongous regions: 42->37
-[2025-12-24T04:36:05.988+0000][70.806s][info][gc,metaspace] GC(21) Metaspace: 83351K(84224K)->83351K(84224K) NonClass: 72411K(72832K)->72411K(72832K) Class: 10939K(11392K)->10939K(11392K)
-[2025-12-24T04:36:05.988+0000][70.806s][info][gc          ] GC(21) Pause Young (Normal) (G1 Evacuation Pause) 661M->78M(1012M) 13.081ms
-[2025-12-24T04:36:05.988+0000][70.806s][info][gc,cpu      ] GC(21) User=0.03s Sys=0.00s Real=0.01s
-[2025-12-24T04:36:14.275+0000][79.094s][info][gc,start    ] GC(22) Pause Young (Normal) (G1 Evacuation Pause)
-[2025-12-24T04:36:14.276+0000][79.095s][info][gc,task     ] GC(22) Using 3 workers of 3 for evacuation
-[2025-12-24T04:36:14.297+0000][79.115s][info][gc,phases   ] GC(22)   Pre Evacuate Collection Set: 0.2ms
-[2025-12-24T04:36:14.297+0000][79.115s][info][gc,phases   ] GC(22)   Merge Heap Roots: 0.1ms
-[2025-12-24T04:36:14.297+0000][79.115s][info][gc,phases   ] GC(22)   Evacuate Collection Set: 18.7ms
-[2025-12-24T04:36:14.297+0000][79.116s][info][gc,phases   ] GC(22)   Post Evacuate Collection Set: 1.3ms
-[2025-12-24T04:36:14.297+0000][79.116s][info][gc,phases   ] GC(22)   Other: 1.3ms
-[2025-12-24T04:36:14.297+0000][79.116s][info][gc,heap     ] GC(22) Eden regions: 578->0(581)
-[2025-12-24T04:36:14.297+0000][79.116s][info][gc,heap     ] GC(22) Survivor regions: 29->26(76)
-[2025-12-24T04:36:14.298+0000][79.116s][info][gc,heap     ] GC(22) Old regions: 13->15
-[2025-12-24T04:36:14.298+0000][79.116s][info][gc,heap     ] GC(22) Archive regions: 2->2
-[2025-12-24T04:36:14.298+0000][79.116s][info][gc,heap     ] GC(22) Humongous regions: 37->37
-[2025-12-24T04:36:14.298+0000][79.116s][info][gc,metaspace] GC(22) Metaspace: 83412K(84352K)->83412K(84352K) NonClass: 72472K(72960K)->72472K(72960K) Class: 10939K(11392K)->10939K(11392K)
-[2025-12-24T04:36:14.298+0000][79.116s][info][gc          ] GC(22) Pause Young (Normal) (G1 Evacuation Pause) 656M->78M(1012M) 22.437ms
-[2025-12-24T04:36:14.298+0000][79.116s][info][gc,cpu      ] GC(22) User=0.06s Sys=0.00s Real=0.02s
-[2025-12-24T04:36:18.976+0000][83.794s][info][gc,start    ] GC(23) Pause Young (Normal) (G1 Evacuation Pause)
-[2025-12-24T04:36:18.977+0000][83.796s][info][gc,task     ] GC(23) Using 3 workers of 3 for evacuation
-[2025-12-24T04:36:19.026+0000][83.844s][info][gc,phases   ] GC(23)   Pre Evacuate Collection Set: 0.5ms
-[2025-12-24T04:36:19.026+0000][83.844s][info][gc,phases   ] GC(23)   Merge Heap Roots: 0.6ms
-[2025-12-24T04:36:19.026+0000][83.844s][info][gc,phases   ] GC(23)   Evacuate Collection Set: 39.5ms
-[2025-12-24T04:36:19.026+0000][83.844s][info][gc,phases   ] GC(23)   Post Evacuate Collection Set: 6.8ms
-[2025-12-24T04:36:19.026+0000][83.844s][info][gc,phases   ] GC(23)   Other: 3.1ms
-[2025-12-24T04:36:19.026+0000][83.844s][info][gc,heap     ] GC(23) Eden regions: 581->0(568)
-[2025-12-24T04:36:19.026+0000][83.844s][info][gc,heap     ] GC(23) Survivor regions: 26->39(76)
-[2025-12-24T04:36:19.026+0000][83.844s][info][gc,heap     ] GC(23) Old regions: 15->16
-[2025-12-24T04:36:19.026+0000][83.844s][info][gc,heap     ] GC(23) Archive regions: 2->2
-[2025-12-24T04:36:19.026+0000][83.844s][info][gc,heap     ] GC(23) Humongous regions: 37->37
-[2025-12-24T04:36:19.026+0000][83.845s][info][gc,metaspace] GC(23) Metaspace: 95297K(96576K)->95297K(96576K) NonClass: 82362K(83008K)->82362K(83008K) Class: 12935K(13568K)->12935K(13568K)
-[2025-12-24T04:36:19.026+0000][83.845s][info][gc          ] GC(23) Pause Young (Normal) (G1 Evacuation Pause) 659M->92M(1012M) 50.541ms
-[2025-12-24T04:36:19.027+0000][83.845s][info][gc,cpu      ] GC(23) User=0.05s Sys=0.01s Real=0.05s
-[2025-12-24T04:36:22.289+0000][87.107s][info][gc,start    ] GC(24) Pause Young (Normal) (G1 Evacuation Pause)
-[2025-12-24T04:36:22.290+0000][87.108s][info][gc,task     ] GC(24) Using 3 workers of 3 for evacuation
-[2025-12-24T04:36:22.351+0000][87.169s][info][gc,phases   ] GC(24)   Pre Evacuate Collection Set: 4.0ms
-[2025-12-24T04:36:22.354+0000][87.172s][info][gc,phases   ] GC(24)   Merge Heap Roots: 0.1ms
-[2025-12-24T04:36:22.354+0000][87.172s][info][gc,phases   ] GC(24)   Evacuate Collection Set: 39.9ms
-[2025-12-24T04:36:22.354+0000][87.172s][info][gc,phases   ] GC(24)   Post Evacuate Collection Set: 12.0ms
-[2025-12-24T04:36:22.354+0000][87.172s][info][gc,phases   ] GC(24)   Other: 6.2ms
-[2025-12-24T04:36:22.355+0000][87.173s][info][gc,heap     ] GC(24) Eden regions: 568->0(567)
-[2025-12-24T04:36:22.355+0000][87.173s][info][gc,heap     ] GC(24) Survivor regions: 39->40(76)
-[2025-12-24T04:36:22.355+0000][87.173s][info][gc,heap     ] GC(24) Old regions: 16->18
-[2025-12-24T04:36:22.355+0000][87.173s][info][gc,heap     ] GC(24) Archive regions: 2->2
-[2025-12-24T04:36:22.355+0000][87.173s][info][gc,heap     ] GC(24) Humongous regions: 38->38
-[2025-12-24T04:36:22.355+0000][87.173s][info][gc,metaspace] GC(24) Metaspace: 95893K(97152K)->95893K(97152K) NonClass: 82958K(83584K)->82958K(83584K) Class: 12935K(13568K)->12935K(13568K)
-[2025-12-24T04:36:22.355+0000][87.174s][info][gc          ] GC(24) Pause Young (Normal) (G1 Evacuation Pause) 661M->95M(1012M) 66.918ms
-[2025-12-24T04:36:22.356+0000][87.174s][info][gc,cpu      ] GC(24) User=0.04s Sys=0.00s Real=0.07s
-[2025-12-24T04:36:32.856+0000][97.675s][info][gc,start    ] GC(25) Pause Young (Normal) (G1 Evacuation Pause)
-[2025-12-24T04:36:32.864+0000][97.683s][info][gc,task     ] GC(25) Using 3 workers of 3 for evacuation
-[2025-12-24T04:36:33.080+0000][97.899s][info][gc,mmu      ] GC(25) MMU target violated: 201.0ms (200.0ms/201.0ms)
-[2025-12-24T04:36:33.093+0000][97.911s][info][gc,phases   ] GC(25)   Pre Evacuate Collection Set: 4.4ms
-[2025-12-24T04:36:33.096+0000][97.914s][info][gc,phases   ] GC(25)   Merge Heap Roots: 0.8ms
-[2025-12-24T04:36:33.096+0000][97.915s][info][gc,phases   ] GC(25)   Evacuate Collection Set: 139.6ms
-[2025-12-24T04:36:33.097+0000][97.915s][info][gc,phases   ] GC(25)   Post Evacuate Collection Set: 59.1ms
-[2025-12-24T04:36:33.098+0000][97.916s][info][gc,phases   ] GC(25)   Other: 35.0ms
-[2025-12-24T04:36:33.100+0000][97.918s][info][gc,heap     ] GC(25) Eden regions: 567->0(572)
-[2025-12-24T04:36:33.101+0000][97.919s][info][gc,heap     ] GC(25) Survivor regions: 40->35(76)
-[2025-12-24T04:36:33.101+0000][97.919s][info][gc,heap     ] GC(25) Old regions: 18->26
-[2025-12-24T04:36:33.101+0000][97.919s][info][gc,heap     ] GC(25) Archive regions: 2->2
-[2025-12-24T04:36:33.101+0000][97.920s][info][gc,heap     ] GC(25) Humongous regions: 40->40
-[2025-12-24T04:36:33.103+0000][97.921s][info][gc,metaspace] GC(25) Metaspace: 96186K(97408K)->96186K(97408K) NonClass: 83250K(83840K)->83250K(83840K) Class: 12936K(13568K)->12936K(13568K)
-[2025-12-24T04:36:33.109+0000][97.927s][info][gc          ] GC(25) Pause Young (Normal) (G1 Evacuation Pause) 664M->101M(1012M) 251.700ms
-[2025-12-24T04:36:33.111+0000][97.929s][info][gc,cpu      ] GC(25) User=0.08s Sys=0.03s Real=0.26s
+[2025-12-25T04:20:22.827+0000][0.006s][info][gc] Using Serial
+[2025-12-25T04:20:22.831+0000][0.010s][info][gc,init] Version: 17.0.14+7 (release)
+[2025-12-25T04:20:22.831+0000][0.010s][info][gc,init] CPUs: 8 total, 4 available
+[2025-12-25T04:20:22.831+0000][0.010s][info][gc,init] Memory: 1536M
+[2025-12-25T04:20:22.831+0000][0.010s][info][gc,init] Large Page Support: Disabled
+[2025-12-25T04:20:22.832+0000][0.011s][info][gc,init] NUMA Support: Disabled
+[2025-12-25T04:20:22.832+0000][0.011s][info][gc,init] Compressed Oops: Enabled (32-bit)
+[2025-12-25T04:20:22.832+0000][0.011s][info][gc,init] Heap Min Capacity: 288M
+[2025-12-25T04:20:22.832+0000][0.011s][info][gc,init] Heap Initial Capacity: 288M
+[2025-12-25T04:20:22.832+0000][0.011s][info][gc,init] Heap Max Capacity: 288M
+[2025-12-25T04:20:22.832+0000][0.011s][info][gc,init] Pre-touch: Disabled
+[2025-12-25T04:20:22.886+0000][0.065s][info][gc,metaspace] CDS archive(s) mapped at: [0x0000004000000000-0x0000004000a70000-0x0000004000a70000), size 10944512, SharedBaseAddress: 0x0000004000000000, ArchiveRelocationMode: 1.
+[2025-12-25T04:20:22.886+0000][0.065s][info][gc,metaspace] Compressed class space mapped at: 0x0000004001000000-0x000000400e000000, reserved size: 218103808
+[2025-12-25T04:20:22.886+0000][0.065s][info][gc,metaspace] Narrow klass base: 0x0000004000000000, Narrow klass shift: 0, Narrow klass range: 0x100000000
+[2025-12-25T04:20:23.423+0000][0.602s][info][gc,start    ] GC(0) Pause Young (Allocation Failure)
+[2025-12-25T04:20:23.440+0000][0.619s][info][gc,heap     ] GC(0) DefNew: 78720K(88512K)->9792K(88512K) Eden: 78720K(78720K)->0K(78720K) From: 0K(9792K)->9792K(9792K)
+[2025-12-25T04:20:23.440+0000][0.619s][info][gc,heap     ] GC(0) Tenured: 0K(196608K)->6530K(196608K)
+[2025-12-25T04:20:23.440+0000][0.619s][info][gc,metaspace] GC(0) Metaspace: 17050K(17216K)->17050K(17216K) NonClass: 14878K(14976K)->14878K(14976K) Class: 2172K(2240K)->2172K(2240K)
+[2025-12-25T04:20:23.440+0000][0.619s][info][gc          ] GC(0) Pause Young (Allocation Failure) 76M->15M(278M) 17.628ms
+[2025-12-25T04:20:23.440+0000][0.619s][info][gc,cpu      ] GC(0) User=0.01s Sys=0.01s Real=0.02s
+[2025-12-25T04:20:23.730+0000][0.909s][info][gc,start    ] GC(1) Pause Young (Allocation Failure)
+[2025-12-25T04:20:23.752+0000][0.931s][info][gc,heap     ] GC(1) DefNew: 88512K(88512K)->4631K(88512K) Eden: 78720K(78720K)->0K(78720K) From: 9792K(9792K)->4631K(9792K)
+[2025-12-25T04:20:23.752+0000][0.931s][info][gc,heap     ] GC(1) Tenured: 6530K(196608K)->16292K(196608K)
+[2025-12-25T04:20:23.752+0000][0.931s][info][gc,metaspace] GC(1) Metaspace: 19727K(19968K)->19727K(19968K) NonClass: 17209K(17344K)->17209K(17344K) Class: 2517K(2624K)->2517K(2624K)
+[2025-12-25T04:20:23.753+0000][0.932s][info][gc          ] GC(1) Pause Young (Allocation Failure) 92M->20M(278M) 22.450ms
+[2025-12-25T04:20:23.753+0000][0.932s][info][gc,cpu      ] GC(1) User=0.02s Sys=0.01s Real=0.02s
+[2025-12-25T04:20:23.840+0000][1.019s][info][gc,start    ] GC(2) Pause Full (Metadata GC Threshold)
+[2025-12-25T04:20:23.840+0000][1.019s][info][gc,phases,start] GC(2) Phase 1: Mark live objects
+[2025-12-25T04:20:23.846+0000][1.025s][info][gc,phases      ] GC(2) Phase 1: Mark live objects 5.618ms
+[2025-12-25T04:20:23.846+0000][1.025s][info][gc,phases,start] GC(2) Phase 2: Compute new object addresses
+[2025-12-25T04:20:23.852+0000][1.031s][info][gc,phases      ] GC(2) Phase 2: Compute new object addresses 5.285ms
+[2025-12-25T04:20:23.852+0000][1.031s][info][gc,phases,start] GC(2) Phase 3: Adjust pointers
+[2025-12-25T04:20:23.856+0000][1.035s][info][gc,phases      ] GC(2) Phase 3: Adjust pointers 4.516ms
+[2025-12-25T04:20:23.856+0000][1.035s][info][gc,phases,start] GC(2) Phase 4: Move objects
+[2025-12-25T04:20:23.859+0000][1.038s][info][gc,phases      ] GC(2) Phase 4: Move objects 2.974ms
+[2025-12-25T04:20:23.860+0000][1.039s][info][gc,heap        ] GC(2) DefNew: 41554K(88512K)->0K(88512K) Eden: 36922K(78720K)->0K(78720K) From: 4631K(9792K)->0K(9792K)
+[2025-12-25T04:20:23.860+0000][1.039s][info][gc,heap        ] GC(2) Tenured: 16292K(196608K)->21427K(196608K)
+[2025-12-25T04:20:23.860+0000][1.039s][info][gc,metaspace   ] GC(2) Metaspace: 21243K(21504K)->21243K(21504K) NonClass: 18512K(18624K)->18512K(18624K) Class: 2730K(2880K)->2730K(2880K)
+[2025-12-25T04:20:23.860+0000][1.039s][info][gc             ] GC(2) Pause Full (Metadata GC Threshold) 56M->20M(278M) 19.689ms
+[2025-12-25T04:20:23.860+0000][1.039s][info][gc,cpu         ] GC(2) User=0.02s Sys=0.01s Real=0.02s
+[2025-12-25T04:20:24.164+0000][1.343s][info][gc,start       ] GC(3) Pause Young (Allocation Failure)
+[2025-12-25T04:20:24.169+0000][1.348s][info][gc,heap        ] GC(3) DefNew: 78720K(88512K)->4396K(88512K) Eden: 78720K(78720K)->0K(78720K) From: 0K(9792K)->4396K(9792K)
+[2025-12-25T04:20:24.169+0000][1.348s][info][gc,heap        ] GC(3) Tenured: 21427K(196608K)->21427K(196608K)
+[2025-12-25T04:20:24.169+0000][1.348s][info][gc,metaspace   ] GC(3) Metaspace: 30347K(30656K)->30347K(30656K) NonClass: 26392K(26560K)->26392K(26560K) Class: 3954K(4096K)->3954K(4096K)
+[2025-12-25T04:20:24.169+0000][1.348s][info][gc             ] GC(3) Pause Young (Allocation Failure) 97M->25M(278M) 4.892ms
+[2025-12-25T04:20:24.169+0000][1.348s][info][gc,cpu         ] GC(3) User=0.00s Sys=0.00s Real=0.01s
+[2025-12-25T04:20:24.497+0000][1.676s][info][gc,start       ] GC(4) Pause Full (Metadata GC Threshold)
+[2025-12-25T04:20:24.497+0000][1.676s][info][gc,phases,start] GC(4) Phase 1: Mark live objects
+[2025-12-25T04:20:24.513+0000][1.692s][info][gc,phases      ] GC(4) Phase 1: Mark live objects 15.882ms
+[2025-12-25T04:20:24.514+0000][1.693s][info][gc,phases,start] GC(4) Phase 2: Compute new object addresses
+[2025-12-25T04:20:24.520+0000][1.699s][info][gc,phases      ] GC(4) Phase 2: Compute new object addresses 6.493ms
+[2025-12-25T04:20:24.520+0000][1.699s][info][gc,phases,start] GC(4) Phase 3: Adjust pointers
+[2025-12-25T04:20:24.528+0000][1.707s][info][gc,phases      ] GC(4) Phase 3: Adjust pointers 7.668ms
+[2025-12-25T04:20:24.528+0000][1.707s][info][gc,phases,start] GC(4) Phase 4: Move objects
+[2025-12-25T04:20:24.542+0000][1.721s][info][gc,phases      ] GC(4) Phase 4: Move objects 14.046ms
+[2025-12-25T04:20:24.544+0000][1.723s][info][gc,heap        ] GC(4) DefNew: 33317K(88512K)->0K(88512K) Eden: 28920K(78720K)->0K(78720K) From: 4396K(9792K)->0K(9792K)
+[2025-12-25T04:20:24.544+0000][1.723s][info][gc,heap        ] GC(4) Tenured: 21427K(196608K)->26471K(196608K)
+[2025-12-25T04:20:24.545+0000][1.724s][info][gc,metaspace   ] GC(4) Metaspace: 35561K(35840K)->35549K(35840K) NonClass: 30900K(31040K)->30889K(31040K) Class: 4660K(4800K)->4659K(4800K)
+[2025-12-25T04:20:24.545+0000][1.724s][info][gc             ] GC(4) Pause Full (Metadata GC Threshold) 53M->25M(278M) 48.403ms
+[2025-12-25T04:20:24.546+0000][1.725s][info][gc,cpu         ] GC(4) User=0.09s Sys=0.01s Real=0.05s
+[2025-12-25T04:20:24.809+0000][1.988s][info][gc,start       ] GC(5) Pause Young (Allocation Failure)
+[2025-12-25T04:20:24.813+0000][1.992s][info][gc,heap        ] GC(5) DefNew: 78720K(88512K)->2138K(88512K) Eden: 78720K(78720K)->0K(78720K) From: 0K(9792K)->2138K(9792K)
+[2025-12-25T04:20:24.813+0000][1.992s][info][gc,heap        ] GC(5) Tenured: 26471K(196608K)->26471K(196608K)
+[2025-12-25T04:20:24.813+0000][1.992s][info][gc,metaspace   ] GC(5) Metaspace: 42485K(42816K)->42485K(42816K) NonClass: 36703K(36864K)->36703K(36864K) Class: 5781K(5952K)->5781K(5952K)
+[2025-12-25T04:20:24.813+0000][1.992s][info][gc             ] GC(5) Pause Young (Allocation Failure) 102M->27M(278M) 3.691ms
+[2025-12-25T04:20:24.813+0000][1.992s][info][gc,cpu         ] GC(5) User=0.00s Sys=0.00s Real=0.00s
+[2025-12-25T04:20:25.123+0000][2.302s][info][gc,start       ] GC(6) Pause Young (Allocation Failure)
+[2025-12-25T04:20:25.130+0000][2.309s][info][gc,heap        ] GC(6) DefNew: 80858K(88512K)->4591K(88512K) Eden: 78720K(78720K)->0K(78720K) From: 2138K(9792K)->4591K(9792K)
+[2025-12-25T04:20:25.130+0000][2.309s][info][gc,heap        ] GC(6) Tenured: 26471K(196608K)->26471K(196608K)
+[2025-12-25T04:20:25.130+0000][2.309s][info][gc,metaspace   ] GC(6) Metaspace: 50405K(50816K)->50405K(50816K) NonClass: 43480K(43712K)->43480K(43712K) Class: 6924K(7104K)->6924K(7104K)
+[2025-12-25T04:20:25.130+0000][2.309s][info][gc             ] GC(6) Pause Young (Allocation Failure) 104M->30M(278M) 6.709ms
+[2025-12-25T04:20:25.130+0000][2.309s][info][gc,cpu         ] GC(6) User=0.01s Sys=0.00s Real=0.01s
+[2025-12-25T04:21:26.247+0000][63.426s][info][gc,start       ] GC(7) Pause Young (Allocation Failure)
+[2025-12-25T04:21:26.297+0000][63.476s][info][gc,heap        ] GC(7) DefNew: 82519K(88512K)->9791K(88512K) Eden: 77928K(78720K)->0K(78720K) From: 4591K(9792K)->9791K(9792K)
+[2025-12-25T04:21:26.297+0000][63.476s][info][gc,heap        ] GC(7) Tenured: 26471K(196608K)->28090K(196608K)
+[2025-12-25T04:21:26.297+0000][63.476s][info][gc,metaspace   ] GC(7) Metaspace: 58773K(59264K)->58773K(59264K) NonClass: 50795K(51072K)->50795K(51072K) Class: 7977K(8192K)->7977K(8192K)
+[2025-12-25T04:21:26.297+0000][63.476s][info][gc             ] GC(7) Pause Young (Allocation Failure) 106M->36M(278M) 49.812ms
+[2025-12-25T04:21:26.297+0000][63.476s][info][gc,cpu         ] GC(7) User=0.04s Sys=0.01s Real=0.05s
+[2025-12-25T04:22:16.210+0000][113.389s][info][gc,start       ] GC(8) Pause Full (Metadata GC Threshold)
+[2025-12-25T04:22:16.212+0000][113.391s][info][gc,phases,start] GC(8) Phase 1: Mark live objects
+[2025-12-25T04:22:16.252+0000][113.431s][info][gc,phases      ] GC(8) Phase 1: Mark live objects 40.339ms
+[2025-12-25T04:22:16.252+0000][113.431s][info][gc,phases,start] GC(8) Phase 2: Compute new object addresses
+[2025-12-25T04:22:16.258+0000][113.437s][info][gc,phases      ] GC(8) Phase 2: Compute new object addresses 6.277ms
+[2025-12-25T04:22:16.259+0000][113.438s][info][gc,phases,start] GC(8) Phase 3: Adjust pointers
+[2025-12-25T04:22:16.267+0000][113.446s][info][gc,phases      ] GC(8) Phase 3: Adjust pointers 8.508ms
+[2025-12-25T04:22:16.267+0000][113.446s][info][gc,phases,start] GC(8) Phase 4: Move objects
+[2025-12-25T04:22:16.281+0000][113.460s][info][gc,phases      ] GC(8) Phase 4: Move objects 13.297ms
+[2025-12-25T04:22:16.283+0000][113.462s][info][gc,heap        ] GC(8) DefNew: 29990K(88512K)->0K(88512K) Eden: 20198K(78720K)->0K(78720K) From: 9791K(9792K)->0K(9792K)
+[2025-12-25T04:22:16.284+0000][113.463s][info][gc,heap        ] GC(8) Tenured: 28090K(196608K)->33344K(196608K)
+[2025-12-25T04:22:16.284+0000][113.463s][info][gc,metaspace   ] GC(8) Metaspace: 59303K(59776K)->59299K(59776K) NonClass: 51250K(51456K)->51247K(51456K) Class: 8053K(8320K)->8052K(8320K)
+[2025-12-25T04:22:16.284+0000][113.463s][info][gc             ] GC(8) Pause Full (Metadata GC Threshold) 56M->32M(278M) 73.553ms
+[2025-12-25T04:22:16.284+0000][113.463s][info][gc,cpu         ] GC(8) User=0.10s Sys=0.02s Real=0.07s
+[2025-12-25T04:22:16.349+0000][113.528s][info][gc,heap,exit   ] Heap
+[2025-12-25T04:22:16.349+0000][113.528s][info][gc,heap,exit   ]  def new generation   total 88512K, used 11571K [0x00000000ee000000, 0x00000000f4000000, 0x00000000f4000000)
+[2025-12-25T04:22:16.349+0000][113.528s][info][gc,heap,exit   ]   eden space 78720K,  14% used [0x00000000ee000000, 0x00000000eeb4cf90, 0x00000000f2ce0000)
+[2025-12-25T04:22:16.350+0000][113.529s][info][gc,heap,exit   ]   from space 9792K,   0% used [0x00000000f2ce0000, 0x00000000f2ce0000, 0x00000000f3670000)
+[2025-12-25T04:22:16.350+0000][113.529s][info][gc,heap,exit   ]   to   space 9792K,   0% used [0x00000000f3670000, 0x00000000f3670000, 0x00000000f4000000)
+[2025-12-25T04:22:16.350+0000][113.529s][info][gc,heap,exit   ]  tenured generation   total 196608K, used 33344K [0x00000000f4000000, 0x0000000100000000, 0x0000000100000000)
+[2025-12-25T04:22:16.350+0000][113.529s][info][gc,heap,exit   ]    the space 196608K,  16% used [0x00000000f4000000, 0x00000000f60903b0, 0x00000000f6090400, 0x0000000100000000)
+[2025-12-25T04:22:16.350+0000][113.529s][info][gc,heap,exit   ]  Metaspace       used 59965K, committed 60480K, reserved 278528K
+[2025-12-25T04:22:16.350+0000][113.529s][info][gc,heap,exit   ]   class space    used 8256K, committed 8512K, reserved 212992K
