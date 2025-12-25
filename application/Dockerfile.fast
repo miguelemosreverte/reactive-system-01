@@ -1,0 +1,40 @@
+# Build stage
+FROM maven:3.9-eclipse-temurin-21 AS builder
+
+WORKDIR /build
+
+# Copy platform module first (dependency)
+COPY platform/pom.xml platform/pom.xml
+COPY platform/src platform/src
+
+# Install platform to local repo
+WORKDIR /build/platform
+RUN mvn clean install -DskipTests -q
+
+# Copy application module
+WORKDIR /build
+COPY application/pom.xml application/pom.xml
+COPY application/src application/src
+
+# Build application
+WORKDIR /build/application
+RUN mvn clean package -DskipTests -q
+
+# Runtime stage
+FROM eclipse-temurin:21-jre
+
+WORKDIR /app
+
+# Copy the jar
+COPY --from=builder /build/application/target/*.jar app.jar
+
+# Environment
+ENV JAVA_OPTS="-XX:+UseG1GC -XX:MaxGCPauseMillis=8 -Xms512m -Xmx512m -XX:+AlwaysPreTouch"
+ENV SERVER_PORT=3000
+ENV KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+ENV EVENTS_TOPIC=counter-events
+
+EXPOSE 3000
+
+# Start FastCounterApplication using Spring Boot's PropertiesLauncher (no OTel agent for max performance)
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -Dloader.main=com.reactive.counter.FastCounterApplication -cp app.jar org.springframework.boot.loader.launch.PropertiesLauncher"]
