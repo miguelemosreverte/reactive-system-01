@@ -32,12 +32,12 @@ services:
       - "13133:13133" # Health check
     environment:
       - OTEL_FEATURE_ENABLED=${OTEL_FEATURE_ENABLED:-true}
-      - GOMEMLIMIT=400MiB   # Go runtime memory limit
+      - GOMEMLIMIT=600MiB   # Increased: was hitting memory limit and refusing data
     deploy:
       resources:
         limits:
-          memory: 512M  # Increased for sustained high-throughput load
-          cpus: '2.0'  # Increased: was at 56% with 1.5 cores
+          memory: 768M  # Increased: 74% utilization hitting soft limits
+          cpus: '2.5'  # More CPU for trace processing
     depends_on:
       jaeger:
         condition: service_healthy
