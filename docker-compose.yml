@@ -374,7 +374,7 @@ services:
         taskmanager.network.memory.buffer-debloat.enabled: true
         taskmanager.network.memory.buffer-debloat.target: 50ms
         taskmanager.network.memory.buffer-debloat.period: 25ms
-        execution.buffer-timeout: 1ms
+        execution.buffer-timeout: 0ms
         taskmanager.memory.process.size: 1280m
         env.java.opts.taskmanager: -XX:+UseG1GC -XX:MaxGCPauseMillis=20 -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/tmp/diagnostics/heapdump.hprof -Xlog:gc*:file=/tmp/diagnostics/gc.log:time,uptime,level,tags -XX:NativeMemoryTracking=summary --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED
       # System-wide latency bounds (CQRS snapshot evaluation)
