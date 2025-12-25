@@ -400,7 +400,7 @@ services:
       resources:
         limits:
           memory: 1536M  # process.size=1280m + overhead
-          cpus: '4.0'
+          cpus: '5.0'  # Increased: was at 134% CPU (33% of 4 cores)
     networks:
       - reactive-network
 
