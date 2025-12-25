@@ -26,8 +26,11 @@ DIAGNOSTICS
 
 BENCHMARKING
   bench <target>      Run benchmark (http, kafka, flink, drools, gateway, full, all)
+    bench servers     Benchmark HTTP server implementations
+    bench microbatch  Benchmark adaptive microbatching gateway
     bench doctor      Validate observability chain
-    bench history     Manage benchmark history (save, list, show, compare)
+    bench history     Manage benchmark history
+    bench help        Detailed benchmark guide
 
 TESTING
   e2e                 Run end-to-end tests

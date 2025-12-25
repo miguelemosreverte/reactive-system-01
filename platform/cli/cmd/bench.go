@@ -24,6 +24,7 @@ var benchCmd = &cobra.Command{
 	Use:   "bench <target>",
 	Short: "Run performance benchmark",
 	Long: `Run benchmark against:
+
   ISOLATION BENCHMARKS (component theoretical max):
   - http:           HTTP endpoint latency only (health check)
   - kafka-producer: Kafka producer throughput (fire-and-forget, no acks)
@@ -35,18 +36,31 @@ var benchCmd = &cobra.Command{
   - gateway: HTTP + Kafka publish (fire-and-forget)
   - full:    Complete E2E pipeline (HTTP → Kafka → Flink → Drools)
 
+  SUBCOMMANDS:
+  - servers:    Benchmark HTTP server implementations (see tiers below)
+  - microbatch: Benchmark adaptive microbatching gateway
+  - help:       Detailed benchmark guide
+
+  HTTP SERVER TIERS:
+  - MAXIMUM_THROUGHPUT  (600K+ req/s)   - ROCKET, BOSS_WORKER, IO_URING
+  - HIGH_THROUGHPUT     (500-600K req/s) - HYPER, RAW, TURBO
+  - SPECIALIZED         (300-500K req/s) - ULTRA, ZERO_COPY, ULTRA_FAST
+  - FRAMEWORK           (<300K req/s)    - FAST, NETTY, SPRING_BOOT
+
   AGGREGATE:
   - all:     Run all benchmarks sequentially
 
 Examples:
   reactive bench kafka-producer      # Kafka producer theoretical max
   reactive bench http                # HTTP layer theoretical max
-  reactive bench drools              # 60s benchmark
-  reactive bench full -d 30          # 30s benchmark
+  reactive bench servers --list      # List all HTTP servers with tiers
+  reactive bench servers             # Benchmark all HTTP servers
+  reactive bench microbatch          # Test adaptive microbatching
+  reactive bench full -d 30          # 30s full pipeline benchmark
   reactive bench full --quick        # 5s quick benchmark
   reactive bench all                 # Run all components
-  reactive bench drools -c 16        # 16 concurrent workers`,
-	Args: cobra.ExactArgs(1),
+  reactive bench help                # Detailed guide`,
+	Args: cobra.MaximumNArgs(1),
 	Run:  runBench,
 }
 
@@ -59,9 +73,26 @@ func init() {
 }
 
 func runBench(cmd *cobra.Command, args []string) {
+	// If no target specified, show help
+	if len(args) == 0 {
+		cmd.Help()
+		return
+	}
+
 	target := args[0]
 
+	// Valid benchmark targets (subcommands are handled separately by Cobra)
 	validTargets := []string{"http", "kafka-producer", "kafka", "flink", "drools", "gateway", "full", "all"}
+
+	// Check if this is a subcommand (handled by Cobra, don't validate here)
+	subcommands := []string{"servers", "microbatch", "help", "doctor", "history", "gateway-server", "gateway-compare"}
+	for _, sub := range subcommands {
+		if target == sub {
+			// Let Cobra handle subcommand routing
+			return
+		}
+	}
+
 	valid := false
 	for _, t := range validTargets {
 		if t == target {
@@ -72,6 +103,7 @@ func runBench(cmd *cobra.Command, args []string) {
 	if !valid {
 		printError(fmt.Sprintf("Invalid target: %s", target))
 		printInfo("Valid targets: http, kafka-producer, kafka, flink, drools, gateway, full, all")
+		printInfo("Or use subcommands: servers, microbatch, help, doctor, history")
 		return
 	}
 
