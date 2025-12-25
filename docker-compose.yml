@@ -494,7 +494,7 @@ services:
       resources:
         limits:
           memory: 2560M  # was at 92% (1.8G/2G), now 2.5GB for headroom
-          cpus: '5.0'  # Increased: was at 240% CPU (60% of 4 cores)
+          cpus: '6.0'  # Increased: was at 240% CPU (48% of 5 cores)
     depends_on:
       kafka:
         condition: service_healthy
