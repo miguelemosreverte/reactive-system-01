@@ -90,8 +90,8 @@ services:
     deploy:
       resources:
         limits:
-          memory: 384M  # Increased: was at 98% (251M/256M)
-          cpus: '1.0'  # Increased for log processing
+          memory: 512M  # Increased: was at 91% (352M/384M)
+          cpus: '1.0'  # for log processing
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:3100/ready"]
       interval: 10s
@@ -135,7 +135,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 640M  # Increased: was at 77% (394M/512M), now 640M for headroom
+          memory: 768M  # Increased: was at 60% (389M/640M)
           cpus: '1.0'
     depends_on:
       otel-collector:
