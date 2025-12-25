@@ -489,7 +489,7 @@ services:
       - OTEL_SERVICE_NAME=counter-application
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
       # JVM tuning - G1GC optimized for throughput
-      - JAVA_OPTS=-XX:+UseG1GC -XX:MaxGCPauseMillis=20 -Xms1536m -Xmx1536m -XX:+AlwaysPreTouch -XX:ParallelGCThreads=4 -XX:ConcGCThreads=2 -XX:G1HeapRegionSize=4m
+      - JAVA_OPTS=-XX:+UseG1GC -XX:MaxGCPauseMillis=10 -Xms1536m -Xmx1536m -XX:+AlwaysPreTouch -XX:ParallelGCThreads=4 -XX:ConcGCThreads=2 -XX:G1HeapRegionSize=4m -XX:+UseStringDeduplication
     deploy:
       resources:
         limits:
