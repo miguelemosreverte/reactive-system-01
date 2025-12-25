@@ -135,7 +135,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512M  # Increased: was at 76% utilization
+          memory: 640M  # Increased: was at 77% (394M/512M), now 640M for headroom
           cpus: '1.0'
     depends_on:
       otel-collector:
@@ -233,7 +233,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1792M  # Increased: was at 82% utilization
+          memory: 2048M  # Increased: was at 72% (1.27G/1.79G), now 2GB for headroom
     networks:
       - reactive-network
 
@@ -399,8 +399,8 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1536M  # Increased for better Flink processing
-          cpus: '4.0'  # Increased: was at 148% CPU during load
+          memory: 1536M  # process.size=1280m + overhead
+          cpus: '4.0'
     networks:
       - reactive-network
 
@@ -488,12 +488,12 @@ services:
       - OTEL_ENABLED=${OTEL_FEATURE_ENABLED:-true}
       - OTEL_SERVICE_NAME=counter-application
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
-      # JVM tuning - G1GC optimized for throughput (memory-efficient config)
+      # JVM tuning - G1GC optimized for throughput
       - JAVA_OPTS=-XX:+UseG1GC -XX:MaxGCPauseMillis=20 -Xms1536m -Xmx1536m -XX:+AlwaysPreTouch -XX:ParallelGCThreads=4 -XX:ConcGCThreads=2 -XX:G1HeapRegionSize=4m
     deploy:
       resources:
         limits:
-          memory: 2048M  # Increased: was at 88% utilization
+          memory: 2560M  # Increased: was at 92% (1.8G/2G), now 2.5GB for headroom
           cpus: '4.0'
     depends_on:
       kafka:
