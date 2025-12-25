@@ -36,8 +36,8 @@ services:
     deploy:
       resources:
         limits:
-          memory: 768M  # Increased: 74% utilization hitting soft limits
-          cpus: '2.5'  # More CPU for trace processing
+          memory: 768M  # 74% utilization hitting soft limits
+          cpus: '3.0'  # Increased: was at 97% CPU during load
     depends_on:
       jaeger:
         condition: service_healthy
@@ -90,7 +90,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 192M  # Reduced to make room for otel-collector
+          memory: 256M  # Increased: was at 92% (177M/192M)
           cpus: '0.5'
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:3100/ready"]
