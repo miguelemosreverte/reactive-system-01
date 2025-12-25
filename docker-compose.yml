@@ -36,8 +36,8 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1024M  # Increased: was refusing data at soft limit
-          cpus: '3.0'  # was at 97% CPU during load
+          memory: 1024M  # was refusing data at soft limit
+          cpus: '4.0'  # Increased: was at 114% CPU during load
     depends_on:
       jaeger:
         condition: service_healthy
