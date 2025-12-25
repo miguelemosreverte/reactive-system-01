@@ -4,7 +4,7 @@ server:
   netty:
     connection-timeout: 5000
   http2:
-    enabled: false  # HTTP/1.1 for compatibility
+    enabled: false  # HTTP/1.1 (HTTP/2 caused regression with ab)
 
 spring:
   reactor:
