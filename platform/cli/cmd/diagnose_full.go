@@ -884,7 +884,56 @@ func collectConsumerGroups(container string, report *KafkaReport) {
 }
 
 func calculatePartitionBalance(report *KafkaReport) {
-	// Find the main events topic
+	// Check ALL topics for partition skew and add actionable recommendations
+	var totalMessages int64
+
+	for i := range report.Topics {
+		topic := &report.Topics[i]
+		if len(topic.PartitionStats) == 0 {
+			continue
+		}
+
+		// Calculate per-topic distribution
+		var maxOffset, minOffset int64 = 0, int64(^uint64(0) >> 1)
+		var hotPartition, coldPartition int = -1, -1
+		var topicTotal int64
+
+		for _, ps := range topic.PartitionStats {
+			topicTotal += ps.EndOffset
+			if ps.EndOffset > maxOffset {
+				maxOffset = ps.EndOffset
+				hotPartition = ps.Partition
+			}
+			if ps.EndOffset < minOffset {
+				minOffset = ps.EndOffset
+				coldPartition = ps.Partition
+			}
+		}
+		totalMessages += topicTotal
+
+		// Check for skew: if one partition has >50% of all messages
+		if topicTotal > 0 && maxOffset > 0 {
+			hotRatio := float64(maxOffset) / float64(topicTotal)
+			if hotRatio > 0.5 { // More than 50% on one partition = severe skew
+				report.Issues = append(report.Issues,
+					fmt.Sprintf("CRITICAL: Topic '%s' partition %d has %.0f%% of all messages (%d/%d). "+
+						"Check Kafka producer partition key - likely using a constant key (e.g., sessionId) "+
+						"instead of a distributed key (e.g., eventId/UUID).",
+						topic.Name, hotPartition, hotRatio*100, maxOffset, topicTotal))
+			} else if minOffset > 0 {
+				ratio := float64(maxOffset) / float64(minOffset)
+				if ratio > 2.0 {
+					report.Issues = append(report.Issues,
+						fmt.Sprintf("WARNING: Topic '%s' has partition imbalance (partition %d: %d, partition %d: %d, ratio: %.1fx)",
+							topic.Name, hotPartition, maxOffset, coldPartition, minOffset, ratio))
+				}
+			}
+		}
+	}
+
+	report.TotalMessages = totalMessages
+
+	// Calculate balance for main events topic (for the summary)
 	var eventsTopic *TopicInfo
 	for i := range report.Topics {
 		if strings.Contains(report.Topics[i].Name, "events") {
@@ -901,15 +950,13 @@ func calculatePartitionBalance(report *KafkaReport) {
 		TotalPartitions: len(eventsTopic.PartitionStats),
 	}
 
-	// Calculate message distribution using EndOffset (total messages ever written)
-	// This is more accurate than MessageCount which only shows pending messages
 	var counts []int64
 	var sum int64
-	balance.MinMessagesOnPart = int64(^uint64(0) >> 1) // Max int64
+	balance.MinMessagesOnPart = int64(^uint64(0) >> 1)
 	balance.MaxMessagesOnPart = 0
 
 	for _, ps := range eventsTopic.PartitionStats {
-		written := ps.EndOffset // Use EndOffset as total written
+		written := ps.EndOffset
 		counts = append(counts, written)
 		sum += written
 		if written > balance.MaxMessagesOnPart {
@@ -920,15 +967,12 @@ func calculatePartitionBalance(report *KafkaReport) {
 		}
 	}
 
-	report.TotalMessages = sum
-
 	if sum == 0 {
 		balance.BalanceScore = 1.0
 		report.PartitionBalance = balance
 		return
 	}
 
-	// Calculate standard deviation
 	mean := float64(sum) / float64(len(counts))
 	var variance float64
 	for _, c := range counts {
@@ -938,19 +982,15 @@ func calculatePartitionBalance(report *KafkaReport) {
 	variance /= float64(len(counts))
 	balance.StdDeviation = math.Sqrt(variance)
 
-	// Calculate balance score (1.0 = perfect, lower = worse)
-	// Using coefficient of variation (CV)
 	if mean > 0 {
 		cv := balance.StdDeviation / mean
-		balance.BalanceScore = 1.0 / (1.0 + cv) // Transform CV to 0-1 score
+		balance.BalanceScore = 1.0 / (1.0 + cv)
 	}
 
-	// Determine if skewed (balance score < 0.7 or max/min ratio > 2)
 	if balance.MinMessagesOnPart > 0 {
 		ratio := float64(balance.MaxMessagesOnPart) / float64(balance.MinMessagesOnPart)
 		if ratio > 2.0 || balance.BalanceScore < 0.7 {
 			balance.Skewed = true
-			report.Issues = append(report.Issues, fmt.Sprintf("Partition imbalance detected (score: %.2f, max/min ratio: %.1fx)", balance.BalanceScore, ratio))
 		}
 	}
 
