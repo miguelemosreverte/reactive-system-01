@@ -63,9 +63,9 @@ public class TracingCounterResultSerializer implements KafkaRecordSerializationS
                         result.tracestate().getBytes(StandardCharsets.UTF_8)));
             }
 
-            // Use sessionId as key for Kafka partitioning
-            byte[] key = !result.sessionId().isEmpty()
-                    ? result.sessionId().getBytes(StandardCharsets.UTF_8)
+            // Use eventId as key for Kafka partitioning (better distribution than sessionId)
+            byte[] key = !result.eventId().isEmpty()
+                    ? result.eventId().getBytes(StandardCharsets.UTF_8)
                     : null;
 
             return new ProducerRecord<>(topic, null, timestamp, key, value, headers);
