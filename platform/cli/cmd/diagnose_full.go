@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"os"
 	"os/exec"
@@ -66,6 +67,7 @@ type DiagnosticReport struct {
 	OverallHealth    string                       `json:"overallHealth"`
 	HealthScore      int                          `json:"healthScore"`
 	Components       map[string]*ComponentReport  `json:"components"`
+	Kafka            *KafkaReport                 `json:"kafka,omitempty"`
 	Bottlenecks      []Bottleneck                 `json:"bottlenecks"`
 	OOMEvents        []OOMEvent                   `json:"oomEvents"`
 	Recommendations  []Recommendation             `json:"recommendations"`
@@ -73,6 +75,73 @@ type DiagnosticReport struct {
 	LastBenchmark    *BenchmarkSummary            `json:"lastBenchmark,omitempty"`
 	Optimizations    []Optimization               `json:"optimizations,omitempty"`
 	Summary          string                       `json:"summary"`
+}
+
+// ============================================================================
+// KAFKA DIAGNOSTICS
+// ============================================================================
+
+type KafkaReport struct {
+	Brokers           []BrokerInfo           `json:"brokers"`
+	Topics            []TopicInfo            `json:"topics"`
+	ConsumerGroups    []ConsumerGroupInfo    `json:"consumerGroups"`
+	PartitionBalance  *PartitionBalance      `json:"partitionBalance,omitempty"`
+	TotalMessages     int64                  `json:"totalMessages"`
+	MessagesPerSecond float64                `json:"messagesPerSecond"`
+	BytesInPerSecond  float64                `json:"bytesInPerSecond"`
+	BytesOutPerSecond float64                `json:"bytesOutPerSecond"`
+	Issues            []string               `json:"issues"`
+}
+
+type BrokerInfo struct {
+	ID          int    `json:"id"`
+	Host        string `json:"host"`
+	Port        int    `json:"port"`
+	IsController bool  `json:"isController"`
+}
+
+type TopicInfo struct {
+	Name            string          `json:"name"`
+	Partitions      int             `json:"partitions"`
+	ReplicationFactor int           `json:"replicationFactor"`
+	MessageCount    int64           `json:"messageCount"`
+	PartitionStats  []PartitionStat `json:"partitionStats"`
+}
+
+type PartitionStat struct {
+	Partition    int   `json:"partition"`
+	Leader       int   `json:"leader"`
+	Replicas     []int `json:"replicas"`
+	ISR          []int `json:"isr"`
+	BeginOffset  int64 `json:"beginOffset"`
+	EndOffset    int64 `json:"endOffset"`
+	MessageCount int64 `json:"messageCount"`
+}
+
+type ConsumerGroupInfo struct {
+	GroupID      string               `json:"groupId"`
+	State        string               `json:"state"`
+	Members      int                  `json:"members"`
+	TotalLag     int64                `json:"totalLag"`
+	PartitionLag []PartitionLagInfo   `json:"partitionLag"`
+}
+
+type PartitionLagInfo struct {
+	Topic        string `json:"topic"`
+	Partition    int    `json:"partition"`
+	CurrentOffset int64 `json:"currentOffset"`
+	LogEndOffset int64  `json:"logEndOffset"`
+	Lag          int64  `json:"lag"`
+	Consumer     string `json:"consumer"`
+}
+
+type PartitionBalance struct {
+	TotalPartitions   int     `json:"totalPartitions"`
+	BalanceScore      float64 `json:"balanceScore"` // 1.0 = perfect, 0.0 = all on one
+	MaxMessagesOnPart int64   `json:"maxMessagesOnPartition"`
+	MinMessagesOnPart int64   `json:"minMessagesOnPartition"`
+	StdDeviation      float64 `json:"stdDeviation"`
+	Skewed            bool    `json:"skewed"`
 }
 
 type BenchmarkSummary struct {
@@ -205,6 +274,9 @@ func runDiagnoseFull(cmd *cobra.Command, args []string) {
 			report.Components[comp] = compReport
 		}
 	}
+
+	// Collect Kafka diagnostics
+	report.Kafka = collectKafkaDiagnostics()
 
 	// Analyze GC logs if available
 	analyzeGCLogs(report)
@@ -562,6 +634,345 @@ func collectKafkaTiming(client *http.Client, report *ComponentReport) {
 	// Kafka broker metrics
 	if val := queryPrometheus(client, `sum(rate(kafka_server_brokertopicmetrics_messagesin_total[1m]))`); val > 0 {
 		report.Timing.RequestsPerSec = val
+	}
+}
+
+// ============================================================================
+// KAFKA DIAGNOSTICS COLLECTION
+// ============================================================================
+
+func collectKafkaDiagnostics() *KafkaReport {
+	report := &KafkaReport{
+		Brokers:        []BrokerInfo{},
+		Topics:         []TopicInfo{},
+		ConsumerGroups: []ConsumerGroupInfo{},
+		Issues:         []string{},
+	}
+
+	// Find Kafka container
+	kafkaContainer := findContainerByComponent("kafka")
+	if kafkaContainer == "" {
+		report.Issues = append(report.Issues, "Kafka container not found")
+		return report
+	}
+
+	// Collect topic information with partition details
+	collectTopicInfo(kafkaContainer, report)
+
+	// Collect consumer group lag
+	collectConsumerGroups(kafkaContainer, report)
+
+	// Calculate partition balance
+	calculatePartitionBalance(report)
+
+	// Collect throughput metrics from Prometheus
+	collectKafkaMetrics(report)
+
+	return report
+}
+
+func collectTopicInfo(container string, report *KafkaReport) {
+	// Get list of topics
+	topicsCmd := exec.Command("docker", "exec", container, "kafka-topics",
+		"--bootstrap-server", "localhost:9092", "--list")
+	topicsOutput, err := topicsCmd.Output()
+	if err != nil {
+		report.Issues = append(report.Issues, "Failed to list Kafka topics")
+		return
+	}
+
+	topics := strings.Split(strings.TrimSpace(string(topicsOutput)), "\n")
+
+	// Filter to relevant topics (counter-events, counter-results, counter-alerts)
+	relevantTopics := []string{}
+	for _, t := range topics {
+		t = strings.TrimSpace(t)
+		if t != "" && (strings.Contains(t, "counter-") || strings.Contains(t, "events") || strings.Contains(t, "results") || strings.Contains(t, "alerts")) {
+			relevantTopics = append(relevantTopics, t)
+		}
+	}
+
+	for _, topic := range relevantTopics {
+		topicInfo := TopicInfo{
+			Name:           topic,
+			PartitionStats: []PartitionStat{},
+		}
+
+		// Get topic description (partitions, replication)
+		descCmd := exec.Command("docker", "exec", container, "kafka-topics",
+			"--bootstrap-server", "localhost:9092", "--describe", "--topic", topic)
+		descOutput, err := descCmd.Output()
+		if err != nil {
+			continue
+		}
+
+		// Parse topic description
+		lines := strings.Split(string(descOutput), "\n")
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+
+			// Parse topic header line (Topic: counter-events PartitionCount: 8 ReplicationFactor: 1)
+			if strings.HasPrefix(line, "Topic:") && strings.Contains(line, "PartitionCount:") {
+				parts := strings.Fields(line)
+				for i, part := range parts {
+					if part == "PartitionCount:" && i+1 < len(parts) {
+						topicInfo.Partitions, _ = strconv.Atoi(parts[i+1])
+					}
+					if part == "ReplicationFactor:" && i+1 < len(parts) {
+						topicInfo.ReplicationFactor, _ = strconv.Atoi(parts[i+1])
+					}
+				}
+			}
+
+			// Parse partition lines (Topic: counter-events Partition: 0 Leader: 1 Replicas: 1 Isr: 1)
+			if strings.Contains(line, "Partition:") && strings.Contains(line, "Leader:") {
+				stat := PartitionStat{}
+				parts := strings.Fields(line)
+				for i, part := range parts {
+					if part == "Partition:" && i+1 < len(parts) {
+						stat.Partition, _ = strconv.Atoi(parts[i+1])
+					}
+					if part == "Leader:" && i+1 < len(parts) {
+						stat.Leader, _ = strconv.Atoi(parts[i+1])
+					}
+				}
+				topicInfo.PartitionStats = append(topicInfo.PartitionStats, stat)
+			}
+		}
+
+		// Get partition offsets to calculate message counts
+		getPartitionOffsets(container, topic, &topicInfo)
+
+		report.Topics = append(report.Topics, topicInfo)
+	}
+}
+
+func getPartitionOffsets(container string, topic string, topicInfo *TopicInfo) {
+	// Get earliest offsets
+	earliestCmd := exec.Command("docker", "exec", container, "kafka-run-class",
+		"kafka.tools.GetOffsetShell",
+		"--broker-list", "localhost:9092",
+		"--topic", topic,
+		"--time", "-2") // -2 = earliest
+	earliestOutput, _ := earliestCmd.Output()
+
+	earliestOffsets := parseOffsetOutput(string(earliestOutput))
+
+	// Get latest offsets
+	latestCmd := exec.Command("docker", "exec", container, "kafka-run-class",
+		"kafka.tools.GetOffsetShell",
+		"--broker-list", "localhost:9092",
+		"--topic", topic,
+		"--time", "-1") // -1 = latest
+	latestOutput, _ := latestCmd.Output()
+
+	latestOffsets := parseOffsetOutput(string(latestOutput))
+
+	// Update partition stats with offsets
+	var totalMessages int64
+	for i := range topicInfo.PartitionStats {
+		partition := topicInfo.PartitionStats[i].Partition
+		if begin, ok := earliestOffsets[partition]; ok {
+			topicInfo.PartitionStats[i].BeginOffset = begin
+		}
+		if end, ok := latestOffsets[partition]; ok {
+			topicInfo.PartitionStats[i].EndOffset = end
+		}
+		msgCount := topicInfo.PartitionStats[i].EndOffset - topicInfo.PartitionStats[i].BeginOffset
+		topicInfo.PartitionStats[i].MessageCount = msgCount
+		totalMessages += msgCount
+	}
+	topicInfo.MessageCount = totalMessages
+}
+
+func parseOffsetOutput(output string) map[int]int64 {
+	offsets := make(map[int]int64)
+	lines := strings.Split(output, "\n")
+	for _, line := range lines {
+		// Format: topic:partition:offset
+		parts := strings.Split(strings.TrimSpace(line), ":")
+		if len(parts) >= 3 {
+			partition, _ := strconv.Atoi(parts[1])
+			offset, _ := strconv.ParseInt(parts[2], 10, 64)
+			offsets[partition] = offset
+		}
+	}
+	return offsets
+}
+
+func collectConsumerGroups(container string, report *KafkaReport) {
+	// List consumer groups
+	listCmd := exec.Command("docker", "exec", container, "kafka-consumer-groups",
+		"--bootstrap-server", "localhost:9092", "--list")
+	listOutput, err := listCmd.Output()
+	if err != nil {
+		report.Issues = append(report.Issues, "Failed to list consumer groups")
+		return
+	}
+
+	groups := strings.Split(strings.TrimSpace(string(listOutput)), "\n")
+
+	for _, group := range groups {
+		group = strings.TrimSpace(group)
+		if group == "" {
+			continue
+		}
+
+		groupInfo := ConsumerGroupInfo{
+			GroupID:      group,
+			PartitionLag: []PartitionLagInfo{},
+		}
+
+		// Describe consumer group
+		descCmd := exec.Command("docker", "exec", container, "kafka-consumer-groups",
+			"--bootstrap-server", "localhost:9092", "--describe", "--group", group)
+		descOutput, err := descCmd.Output()
+		if err != nil {
+			continue
+		}
+
+		lines := strings.Split(string(descOutput), "\n")
+		memberSet := make(map[string]bool)
+
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+			if line == "" || strings.HasPrefix(line, "GROUP") || strings.HasPrefix(line, "Consumer group") {
+				continue
+			}
+
+			// Parse line: GROUP TOPIC PARTITION CURRENT-OFFSET LOG-END-OFFSET LAG CONSUMER-ID HOST CLIENT-ID
+			fields := strings.Fields(line)
+			if len(fields) >= 6 {
+				lagInfo := PartitionLagInfo{}
+
+				// Different output formats - try to parse
+				if len(fields) >= 7 {
+					lagInfo.Topic = fields[1]
+					lagInfo.Partition, _ = strconv.Atoi(fields[2])
+					lagInfo.CurrentOffset, _ = strconv.ParseInt(fields[3], 10, 64)
+					lagInfo.LogEndOffset, _ = strconv.ParseInt(fields[4], 10, 64)
+					lagInfo.Lag, _ = strconv.ParseInt(fields[5], 10, 64)
+					if len(fields) > 6 && fields[6] != "-" {
+						lagInfo.Consumer = fields[6]
+						memberSet[fields[6]] = true
+					}
+				}
+
+				if lagInfo.Topic != "" {
+					groupInfo.PartitionLag = append(groupInfo.PartitionLag, lagInfo)
+					groupInfo.TotalLag += lagInfo.Lag
+				}
+			}
+		}
+
+		groupInfo.Members = len(memberSet)
+
+		// Determine state based on lag
+		if groupInfo.TotalLag == 0 {
+			groupInfo.State = "CAUGHT_UP"
+		} else if groupInfo.TotalLag < 1000 {
+			groupInfo.State = "LOW_LAG"
+		} else if groupInfo.TotalLag < 10000 {
+			groupInfo.State = "MODERATE_LAG"
+		} else {
+			groupInfo.State = "HIGH_LAG"
+			report.Issues = append(report.Issues, fmt.Sprintf("Consumer group '%s' has high lag: %d", group, groupInfo.TotalLag))
+		}
+
+		report.ConsumerGroups = append(report.ConsumerGroups, groupInfo)
+	}
+}
+
+func calculatePartitionBalance(report *KafkaReport) {
+	// Find the main events topic
+	var eventsTopic *TopicInfo
+	for i := range report.Topics {
+		if strings.Contains(report.Topics[i].Name, "events") {
+			eventsTopic = &report.Topics[i]
+			break
+		}
+	}
+
+	if eventsTopic == nil || len(eventsTopic.PartitionStats) == 0 {
+		return
+	}
+
+	balance := &PartitionBalance{
+		TotalPartitions: len(eventsTopic.PartitionStats),
+	}
+
+	// Calculate message distribution using EndOffset (total messages ever written)
+	// This is more accurate than MessageCount which only shows pending messages
+	var counts []int64
+	var sum int64
+	balance.MinMessagesOnPart = int64(^uint64(0) >> 1) // Max int64
+	balance.MaxMessagesOnPart = 0
+
+	for _, ps := range eventsTopic.PartitionStats {
+		written := ps.EndOffset // Use EndOffset as total written
+		counts = append(counts, written)
+		sum += written
+		if written > balance.MaxMessagesOnPart {
+			balance.MaxMessagesOnPart = written
+		}
+		if written < balance.MinMessagesOnPart {
+			balance.MinMessagesOnPart = written
+		}
+	}
+
+	report.TotalMessages = sum
+
+	if sum == 0 {
+		balance.BalanceScore = 1.0
+		report.PartitionBalance = balance
+		return
+	}
+
+	// Calculate standard deviation
+	mean := float64(sum) / float64(len(counts))
+	var variance float64
+	for _, c := range counts {
+		diff := float64(c) - mean
+		variance += diff * diff
+	}
+	variance /= float64(len(counts))
+	balance.StdDeviation = math.Sqrt(variance)
+
+	// Calculate balance score (1.0 = perfect, lower = worse)
+	// Using coefficient of variation (CV)
+	if mean > 0 {
+		cv := balance.StdDeviation / mean
+		balance.BalanceScore = 1.0 / (1.0 + cv) // Transform CV to 0-1 score
+	}
+
+	// Determine if skewed (balance score < 0.7 or max/min ratio > 2)
+	if balance.MinMessagesOnPart > 0 {
+		ratio := float64(balance.MaxMessagesOnPart) / float64(balance.MinMessagesOnPart)
+		if ratio > 2.0 || balance.BalanceScore < 0.7 {
+			balance.Skewed = true
+			report.Issues = append(report.Issues, fmt.Sprintf("Partition imbalance detected (score: %.2f, max/min ratio: %.1fx)", balance.BalanceScore, ratio))
+		}
+	}
+
+	report.PartitionBalance = balance
+}
+
+func collectKafkaMetrics(report *KafkaReport) {
+	client := &http.Client{Timeout: 5 * time.Second}
+
+	// Messages per second
+	if val := queryPrometheus(client, `sum(rate(kafka_server_brokertopicmetrics_messagesin_total[1m]))`); val > 0 {
+		report.MessagesPerSecond = val
+	}
+
+	// Bytes in per second
+	if val := queryPrometheus(client, `sum(rate(kafka_server_brokertopicmetrics_bytesin_total[1m]))`); val > 0 {
+		report.BytesInPerSecond = val
+	}
+
+	// Bytes out per second
+	if val := queryPrometheus(client, `sum(rate(kafka_server_brokertopicmetrics_bytesout_total[1m]))`); val > 0 {
+		report.BytesOutPerSecond = val
 	}
 }
 
@@ -1427,6 +1838,127 @@ func outputHumanReadable(report *DiagnosticReport) {
 			}
 		}
 		fmt.Println()
+	}
+
+	// Kafka Diagnostics
+	if report.Kafka != nil {
+		printHeader("KAFKA DIAGNOSTICS")
+		cyan := "\033[36m"
+
+		// Throughput metrics
+		fmt.Printf("  %sThroughput:%s %.0f msg/s in, %.1f KB/s in, %.1f KB/s out\n",
+			cyan, resetColor, report.Kafka.MessagesPerSecond,
+			report.Kafka.BytesInPerSecond/1024, report.Kafka.BytesOutPerSecond/1024)
+		fmt.Printf("  %sTotal Messages:%s %d across all topics\n\n", cyan, resetColor, report.Kafka.TotalMessages)
+
+		// Topics with partition distribution
+		if len(report.Kafka.Topics) > 0 {
+			fmt.Println("  ── Topics & Partition Distribution ──")
+			for _, topic := range report.Kafka.Topics {
+				fmt.Printf("\n  %s%s%s (partitions: %d, replication: %d, messages: %d)\n",
+					cyan, topic.Name, resetColor, topic.Partitions, topic.ReplicationFactor, topic.MessageCount)
+
+				if len(topic.PartitionStats) > 0 {
+					// Calculate total written for balance detection
+					var totalWritten int64
+					for _, ps := range topic.PartitionStats {
+						totalWritten += ps.EndOffset
+					}
+					avgWritten := float64(totalWritten) / float64(len(topic.PartitionStats))
+
+					fmt.Printf("  %-12s %15s %12s %12s\n", "PARTITION", "TOTAL WRITTEN", "PENDING", "BALANCE")
+					fmt.Println("  " + strings.Repeat("-", 55))
+					for _, ps := range topic.PartitionStats {
+						// Color-code based on message distribution (using EndOffset which is total written)
+						balanceStr := "OK"
+						balanceColor := ""
+						if avgWritten > 0 {
+							ratio := float64(ps.EndOffset) / avgWritten
+							if ratio > 1.3 {
+								balanceColor = "\033[33m" // Yellow for hot partition
+								balanceStr = fmt.Sprintf("HOT (+%.0f%%)", (ratio-1)*100)
+							} else if ratio < 0.7 && ps.EndOffset > 0 {
+								balanceColor = "\033[36m" // Cyan for cold partition
+								balanceStr = fmt.Sprintf("COLD (-%.0f%%)", (1-ratio)*100)
+							}
+						}
+						pending := ps.EndOffset - ps.BeginOffset
+						fmt.Printf("  %-12d %15d %12d %s%12s%s\n",
+							ps.Partition, ps.EndOffset, pending, balanceColor, balanceStr, resetColor)
+					}
+				}
+			}
+			fmt.Println()
+		}
+
+		// Partition balance summary
+		if report.Kafka.PartitionBalance != nil {
+			pb := report.Kafka.PartitionBalance
+			balanceColor := "\033[32m" // Green
+			balanceStatus := "BALANCED"
+			if pb.Skewed {
+				balanceColor = "\033[33m" // Yellow
+				balanceStatus = "SKEWED"
+			}
+			if pb.BalanceScore < 0.5 {
+				balanceColor = "\033[31m" // Red
+				balanceStatus = "HEAVILY SKEWED"
+			}
+
+			fmt.Println("  ── Partition Balance ──")
+			fmt.Printf("  Status: %s%s%s (score: %.2f)\n", balanceColor, balanceStatus, resetColor, pb.BalanceScore)
+			fmt.Printf("  Distribution: min=%d, max=%d, stddev=%.0f\n",
+				pb.MinMessagesOnPart, pb.MaxMessagesOnPart, pb.StdDeviation)
+			if pb.MinMessagesOnPart > 0 {
+				ratio := float64(pb.MaxMessagesOnPart) / float64(pb.MinMessagesOnPart)
+				fmt.Printf("  Max/Min Ratio: %.1fx\n", ratio)
+			}
+			fmt.Println()
+		}
+
+		// Consumer Groups
+		if len(report.Kafka.ConsumerGroups) > 0 {
+			fmt.Println("  ── Consumer Groups ──")
+			fmt.Printf("  %-25s %-15s %10s %12s\n", "GROUP", "STATE", "MEMBERS", "TOTAL LAG")
+			fmt.Println("  " + strings.Repeat("-", 65))
+			for _, cg := range report.Kafka.ConsumerGroups {
+				stateColor := "\033[32m" // Green
+				if cg.State == "HIGH_LAG" {
+					stateColor = "\033[31m" // Red
+				} else if cg.State == "MODERATE_LAG" {
+					stateColor = "\033[33m" // Yellow
+				}
+				fmt.Printf("  %-25s %s%-15s%s %10d %12d\n",
+					cg.GroupID, stateColor, cg.State, resetColor, cg.Members, cg.TotalLag)
+
+				// Show partition-level lag if there's any
+				if cg.TotalLag > 0 && len(cg.PartitionLag) > 0 {
+					fmt.Println("    Partition lag breakdown:")
+					for _, pl := range cg.PartitionLag {
+						if pl.Lag > 0 {
+							lagColor := ""
+							if pl.Lag > 1000 {
+								lagColor = "\033[31m" // Red
+							} else if pl.Lag > 100 {
+								lagColor = "\033[33m" // Yellow
+							}
+							fmt.Printf("      %s partition %d: %sLAG=%d%s (offset: %d/%d)\n",
+								pl.Topic, pl.Partition, lagColor, pl.Lag, resetColor, pl.CurrentOffset, pl.LogEndOffset)
+						}
+					}
+				}
+			}
+			fmt.Println()
+		}
+
+		// Kafka Issues
+		if len(report.Kafka.Issues) > 0 {
+			fmt.Println("  ── Kafka Issues ──")
+			for _, issue := range report.Kafka.Issues {
+				fmt.Printf("  \033[33m⚠\033[0m %s\n", issue)
+			}
+			fmt.Println()
+		}
 	}
 
 	// Trace Analysis (from Jaeger)
