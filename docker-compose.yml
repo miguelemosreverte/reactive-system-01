@@ -491,7 +491,7 @@ services:
       - OTEL_ENABLED=${OTEL_FEATURE_ENABLED:-true}
       - OTEL_SERVICE_NAME=counter-application
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
-      # JVM tuning - G1GC (iter-39: heap increase caused 9% regression, keeping 1.5GB)
+      # JVM tuning - G1GC (iter-43: StringDeduplication tested, no clear benefit)
       - JAVA_OPTS=-XX:+UseG1GC -XX:MaxGCPauseMillis=10 -Xms1536m -Xmx1536m -XX:+AlwaysPreTouch -XX:ParallelGCThreads=6 -XX:ConcGCThreads=3 -XX:G1HeapRegionSize=4m -XX:+UseStringDeduplication
     deploy:
       resources:
