@@ -32,12 +32,12 @@ services:
       - "13133:13133" # Health check
     environment:
       - OTEL_FEATURE_ENABLED=${OTEL_FEATURE_ENABLED:-true}
-      - GOMEMLIMIT=600MiB   # Increased: was hitting memory limit and refusing data
+      - GOMEMLIMIT=900MiB   # Increased: was refusing data at soft limit
     deploy:
       resources:
         limits:
-          memory: 768M  # 74% utilization hitting soft limits
-          cpus: '3.0'  # Increased: was at 97% CPU during load
+          memory: 1024M  # Increased: was refusing data at soft limit
+          cpus: '3.0'  # was at 97% CPU during load
     depends_on:
       jaeger:
         condition: service_healthy
@@ -90,8 +90,8 @@ services:
     deploy:
       resources:
         limits:
-          memory: 256M  # Increased: was at 92% (177M/192M)
-          cpus: '0.5'
+          memory: 384M  # Increased: was at 98% (251M/256M)
+          cpus: '1.0'  # Increased for log processing
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:3100/ready"]
       interval: 10s
