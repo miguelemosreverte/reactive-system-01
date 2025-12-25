@@ -7,8 +7,15 @@ import com.reactive.platform.http.HttpServer.*;
 import com.reactive.platform.http.NettyHttpServer;
 import com.reactive.platform.id.IdGenerator;
 import com.reactive.platform.kafka.KafkaPublisher;
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.serialization.ByteArraySerializer;
+import org.apache.kafka.common.serialization.StringSerializer;
 
+import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * High-performance Counter Application using FastHttpServer.
@@ -21,6 +28,9 @@ import java.util.concurrent.CompletableFuture;
 public class FastCounterApplication {
 
     private static final IdGenerator idGenerator = IdGenerator.getInstance();
+    private static KafkaProducer<String, byte[]> rawProducer;
+    private static final AtomicLong sendCount = new AtomicLong(0);
+    private static final byte[] STATIC_RESPONSE = "{\"success\":true,\"status\":\"raw\"}".getBytes();
 
     public static void main(String[] args) throws Exception {
         int port = Integer.parseInt(System.getenv().getOrDefault("SERVER_PORT", "3000"));
@@ -40,11 +50,29 @@ public class FastCounterApplication {
                 .keyExtractor(CounterEvent::eventId)
                 .fireAndForget());
 
+        // Create raw Kafka producer for minimal overhead testing
+        Properties props = new Properties();
+        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaBootstrap);
+        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class.getName());
+        props.put(ProducerConfig.ACKS_CONFIG, "0");
+        props.put(ProducerConfig.LINGER_MS_CONFIG, 5);  // Batch for 5ms
+        props.put(ProducerConfig.BATCH_SIZE_CONFIG, 65536);
+        props.put(ProducerConfig.BUFFER_MEMORY_CONFIG, 67108864L);
+        props.put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, 100);
+        rawProducer = new KafkaProducer<>(props);
+        String rawTopic = topic;
+
         // Create HTTP server with routes - use Netty for better ab compatibility
         HttpServer server = NettyHttpServer.createNetty()
                 .get("/health", Handler.sync(req -> Response.ok("{\"status\":\"UP\"}")))
                 .post("/api/counter", Handler.sync(req -> handleCounterSync(req, publisher)))
-                .post("/api/counter/fast", Handler.sync(req -> handleCounterSync(req, publisher)));
+                .post("/api/counter/fast", Handler.sync(req -> handleCounterSync(req, publisher)))
+                // Diagnostic endpoints to isolate bottlenecks
+                .post("/api/counter/no-kafka", Handler.sync(req -> handleCounterNoKafka(req)))
+                .post("/api/counter/no-avro", Handler.sync(req -> handleCounterNoAvro(req, publisher)))
+                // Raw Kafka - minimal overhead (no Avro, no callback, static response)
+                .post("/api/counter/raw", Handler.sync(req -> handleCounterRaw(req, rawTopic)));
 
         // Start server
         try (Handle handle = server.start(port)) {
@@ -84,6 +112,83 @@ public class FastCounterApplication {
 
             return Response.accepted(responseJson);
 
+        } catch (Exception e) {
+            return Response.serverError(e.getMessage());
+        }
+    }
+
+    /**
+     * Raw Kafka - absolute minimum overhead
+     * - No Avro encoding (just pass raw bytes)
+     * - No callback (fire-and-forget truly)
+     * - Static response (no string building)
+     * - With linger.ms=5 for batching
+     */
+    private static Response handleCounterRaw(Request request, String topic) {
+        byte[] body = request.body();
+        rawProducer.send(new ProducerRecord<>(topic, "key", body));
+        sendCount.incrementAndGet();
+        return new Response(202, java.util.Map.of("Content-Type", "application/json"), STATIC_RESPONSE);
+    }
+
+    /**
+     * Diagnostic: Everything except Kafka - isolates HTTP + parsing + ID + event creation
+     */
+    private static Response handleCounterNoKafka(Request request) {
+        try {
+            byte[] body = request.body();
+            ActionRequest actionReq = parseActionRequestFast(body);
+
+            String sessionId = actionReq.sessionId != null ? actionReq.sessionId : "default";
+            String requestId = idGenerator.generateRequestId();
+            String eventId = idGenerator.generateEventId();
+
+            // Create event but DON'T publish
+            CounterEvent event = CounterEvent.create(
+                    requestId, "", eventId, sessionId,
+                    actionReq.action, actionReq.value);
+
+            // Simulate Avro encoding overhead
+            AvroCounterEventCodec.create().encode(event);
+
+            String responseJson = new StringBuilder(160)
+                    .append("{\"success\":true,\"requestId\":\"").append(requestId)
+                    .append("\",\"customerId\":\"\",\"eventId\":\"").append(eventId)
+                    .append("\",\"otelTraceId\":\"\",\"status\":\"no-kafka\"}")
+                    .toString();
+
+            return Response.accepted(responseJson);
+        } catch (Exception e) {
+            return Response.serverError(e.getMessage());
+        }
+    }
+
+    /**
+     * Diagnostic: Skip Avro encoding - raw string to Kafka
+     */
+    private static Response handleCounterNoAvro(Request request, KafkaPublisher<CounterEvent> publisher) {
+        try {
+            byte[] body = request.body();
+            ActionRequest actionReq = parseActionRequestFast(body);
+
+            String sessionId = actionReq.sessionId != null ? actionReq.sessionId : "default";
+            String requestId = idGenerator.generateRequestId();
+            String eventId = idGenerator.generateEventId();
+
+            // Create event and publish (Avro encoding happens inside publisher)
+            CounterEvent event = CounterEvent.create(
+                    requestId, "", eventId, sessionId,
+                    actionReq.action, actionReq.value);
+
+            publisher.publishFireAndForget(event);
+
+            String responseJson = new StringBuilder(160)
+                    .append("{\"success\":true,\"requestId\":\"").append(requestId)
+                    .append("\",\"customerId\":\"\",\"eventId\":\"").append(eventId)
+                    .append("\",\"otelTraceId\":\"\",\"status\":\"accepted\"}")
+                    .toString();
+
+            return Response.accepted(responseJson);
         } catch (Exception e) {
             return Response.serverError(e.getMessage());
         }
