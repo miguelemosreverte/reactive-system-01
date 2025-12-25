@@ -32,12 +32,12 @@ services:
       - "13133:13133" # Health check
     environment:
       - OTEL_FEATURE_ENABLED=${OTEL_FEATURE_ENABLED:-true}
-      - GOMEMLIMIT=900MiB   # Increased: was refusing data at soft limit
+      - GOMEMLIMIT=1200MiB  # Increased: was refusing data at soft limit
     deploy:
       resources:
         limits:
-          memory: 1024M  # was refusing data at soft limit
-          cpus: '5.0'  # Increased: was at 86% CPU during load
+          memory: 1536M  # Increased: was refusing data at soft limit
+          cpus: '5.0'  # was at 86% CPU during load
     depends_on:
       jaeger:
         condition: service_healthy
@@ -453,7 +453,7 @@ services:
       "
     environment:
       # Parallelism matches taskmanager slots (8 slots, parallelism 4 = 8 total tasks)
-      - FLINK_PARALLELISM=8  # Increased: 2 taskmanagers × 8 slots = 16 slots, parallelism 8 uses 16 (2 operator chains)
+      - FLINK_PARALLELISM=4  # Match task slots: 1 taskmanager × 4 slots (iter-12 optimization)
       - ASYNC_CAPACITY=250
       # Kafka consumer tuning for high throughput
       - KAFKA_FETCH_MAX_WAIT_MS=1
