@@ -279,7 +279,7 @@ services:
     ports:
       - "8180:8080"
     environment:
-      - JAVA_OPTS=-Xmx512m -XX:+UseG1GC -XX:MaxGCPauseMillis=10
+      - JAVA_OPTS=-Xmx768m -XX:+UseG1GC -XX:MaxGCPauseMillis=10 -XX:ParallelGCThreads=2
       - SERVICE_VERSION=1.0.0
       # OpenTelemetry Configuration
       # Sampling controlled at application level via X-Debug header
@@ -293,8 +293,8 @@ services:
     deploy:
       resources:
         limits:
-          memory: 768M  # 512MB heap + JVM overhead
-          cpus: '2.0'
+          memory: 1024M  # 768MB heap + JVM overhead
+          cpus: '2.5'
     depends_on:
       otel-collector:
         condition: service_healthy
