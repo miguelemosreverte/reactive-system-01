@@ -323,7 +323,7 @@ services:
       - |
         FLINK_PROPERTIES=
         jobmanager.rpc.address: flink-jobmanager
-        parallelism.default: 8
+        parallelism.default: 4
       # OpenTelemetry Configuration
       # Sampling controlled at application level via X-Debug header
       - OTEL_ENABLED=${OTEL_FEATURE_ENABLED:-true}
@@ -367,8 +367,8 @@ services:
       - |
         FLINK_PROPERTIES=
         jobmanager.rpc.address: flink-jobmanager
-        taskmanager.numberOfTaskSlots: 8
-        parallelism.default: 8
+        taskmanager.numberOfTaskSlots: 4
+        parallelism.default: 4
         metrics.reporter.prom.factory.class: org.apache.flink.metrics.prometheus.PrometheusReporterFactory
         metrics.reporter.prom.port: 9249
         taskmanager.network.memory.buffer-debloat.enabled: true
