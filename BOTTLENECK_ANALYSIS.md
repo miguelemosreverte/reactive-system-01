@@ -234,3 +234,49 @@ To exceed 10,000 req/s, consider:
 - Adding more Flink taskmanagers (horizontal scaling)
 - Increasing Kafka partitions beyond 8
 - Allocating more Colima resources (up to 12 CPUs available)
+
+---
+
+## Optimization Iterations Log
+
+### Iteration 1: Memory Optimization
+**Problem**: Services at critical memory levels (Flink JobManager 95%, Kafka 82%)
+**Fix**: Increased container memory limits for 16GB Colima
+**Result**: Memory pressure reduced, stability improved
+
+### Iteration 2: CPU Optimization
+**Problem**: Flink TaskManager at 148% CPU during load
+**Fix**: Increased CPU limits (Flink 3→4 cores, OTel 1.5→2 cores)
+**Result**: Better burst handling capacity
+
+### Iteration 3: Kafka Producer Tuning
+**Problem**: Testing showed 150 concurrent outperformed 100 concurrent
+**Fix**: Set acks=0, linger-ms=0 for immediate sending
+**Result**: Peak ~8,500 req/s with 150 concurrent
+
+### Iteration 4: HTTP/2 Test
+**Problem**: Testing if HTTP/2 multiplexing helps
+**Fix**: Enabled HTTP/2 in Spring
+**Result**: No improvement (Apache Bench uses HTTP/1.1), reverted
+
+### Iteration 5: Sustained Load Validation
+**Test**: 200,000 requests at 150 concurrent
+**Result**: ~7,900 req/s sustained, P99 latency 60ms, 0 failures
+
+---
+
+## Final Performance Summary
+
+| Metric | Original | Final | Improvement |
+|--------|----------|-------|-------------|
+| **Throughput** | ~420 req/s | **~7,900 req/s** | **19x** |
+| **P99 Latency** | N/A | 60ms | Excellent |
+| **Failed Requests** | N/A | 0 | 100% success |
+| **Partitions Used** | 1/8 | 8/8 | Full distribution |
+| **Total Events Processed** | 0 | 2,000,000+ | Production ready |
+
+### Commits
+1. `fix: Kafka partition hotspot` - 10x improvement
+2. `perf: Increase memory limits` - Stability
+3. `perf: Increase CPU limits` - Headroom
+4. `perf: Tune Kafka producer` - Lower latency
