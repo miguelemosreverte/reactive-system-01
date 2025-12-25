@@ -345,7 +345,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1024M  # Increased: was at 95% utilization
+          memory: 1280M  # Increased: was at 72% (723M/1024M)
     networks:
       - reactive-network
 
