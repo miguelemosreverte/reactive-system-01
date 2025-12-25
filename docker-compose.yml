@@ -234,7 +234,7 @@ services:
       resources:
         limits:
           memory: 2048M  # was at 72% (1.27G/1.79G), now 2GB for headroom
-          cpus: '4.0'    # iter-41: Kafka at 94% CPU during 9.7k req/s load, ensure dedicated resources
+          cpus: '4.0'    # iter-41: Kafka at 94% CPU during 9.7k req/s load
     networks:
       - reactive-network
 
@@ -495,8 +495,9 @@ services:
       # Production: 0.001% default sampling since replay endpoint provides full tracing when needed
       - OTEL_TRACES_SAMPLER=parentbased_traceidratio
       - OTEL_TRACES_SAMPLER_ARG=0.00001
-      # JVM tuning - G1GC (iter-43: StringDeduplication tested, no clear benefit)
-      - JAVA_OPTS=-XX:+UseG1GC -XX:MaxGCPauseMillis=10 -Xms1536m -Xmx1536m -XX:+AlwaysPreTouch -XX:ParallelGCThreads=6 -XX:ConcGCThreads=3 -XX:G1HeapRegionSize=4m -XX:+UseStringDeduplication
+      # JVM tuning - G1GC (iter-46: Reduce GC pause from 12ms to 10ms target)
+      # Removed StringDeduplication, reduced region size for faster young GC
+      - JAVA_OPTS=-XX:+UseG1GC -XX:MaxGCPauseMillis=8 -Xms1536m -Xmx1536m -XX:+AlwaysPreTouch -XX:ParallelGCThreads=6 -XX:ConcGCThreads=3 -XX:G1HeapRegionSize=2m -XX:G1ReservePercent=15
     deploy:
       resources:
         limits:
