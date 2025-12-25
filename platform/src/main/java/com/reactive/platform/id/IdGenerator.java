@@ -41,9 +41,12 @@ public final class IdGenerator {
         return INSTANCE;
     }
 
+    // Hex lookup table for fast conversion
+    private static final char[] HEX = "0123456789abcdef".toCharArray();
+
     /**
      * Generate a unique 128-bit request ID as a 32-character hex string.
-     * Thread-safe and lock-free.
+     * Thread-safe and lock-free. Optimized to avoid String.format() overhead.
      */
     public String generateRequestId() {
         long timestamp = System.currentTimeMillis();
@@ -55,18 +58,40 @@ public final class IdGenerator {
         long high = ((timestamp - EPOCH) << 16) | (nodeId & 0xFFFF);
         long low = seq;
 
-        return String.format("%016x%016x", high, low);
+        // Fast hex encoding (avoids String.format overhead)
+        char[] chars = new char[32];
+        for (int i = 15; i >= 0; i--) {
+            chars[i] = HEX[(int)(high & 0xF)];
+            high >>>= 4;
+        }
+        for (int i = 31; i >= 16; i--) {
+            chars[i] = HEX[(int)(low & 0xF)];
+            low >>>= 4;
+        }
+        return new String(chars);
     }
 
     /**
      * Generate a unique event ID (shorter format for internal use).
+     * Optimized to avoid String.format() overhead.
      */
     public String generateEventId() {
         long timestamp = System.currentTimeMillis();
         long seq = getNextSequence(timestamp);
 
-        // Use lower 48 bits of timestamp + 16 bits of sequence
-        return String.format("%012x%04x", timestamp & 0xFFFFFFFFFFFFL, seq & 0xFFFF);
+        // Fast hex encoding (16 chars: 12 for timestamp + 4 for sequence)
+        char[] chars = new char[16];
+        long ts = timestamp & 0xFFFFFFFFFFFFL;
+        for (int i = 11; i >= 0; i--) {
+            chars[i] = HEX[(int)(ts & 0xF)];
+            ts >>>= 4;
+        }
+        int s = (int)(seq & 0xFFFF);
+        for (int i = 15; i >= 12; i--) {
+            chars[i] = HEX[s & 0xF];
+            s >>>= 4;
+        }
+        return new String(chars);
     }
 
     private long getNextSequence(long currentTimestamp) {

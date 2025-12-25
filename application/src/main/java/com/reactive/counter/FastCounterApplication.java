@@ -72,7 +72,9 @@ public class FastCounterApplication {
                 .post("/api/counter/no-kafka", Handler.sync(req -> handleCounterNoKafka(req)))
                 .post("/api/counter/no-avro", Handler.sync(req -> handleCounterNoAvro(req, publisher)))
                 // Raw Kafka - minimal overhead (no Avro, no callback, static response)
-                .post("/api/counter/raw", Handler.sync(req -> handleCounterRaw(req, rawTopic)));
+                .post("/api/counter/raw", Handler.sync(req -> handleCounterRaw(req, rawTopic)))
+                // Timed endpoint - measures each step precisely
+                .post("/api/counter/timed", Handler.sync(req -> handleCounterTimed(req, publisher)));
 
         // Start server
         try (Handle handle = server.start(port)) {
@@ -115,6 +117,77 @@ public class FastCounterApplication {
         } catch (Exception e) {
             return Response.serverError(e.getMessage());
         }
+    }
+
+    // Timing accumulators for diagnostics
+    private static final AtomicLong totalParseNs = new AtomicLong(0);
+    private static final AtomicLong totalIdGenNs = new AtomicLong(0);
+    private static final AtomicLong totalEventCreateNs = new AtomicLong(0);
+    private static final AtomicLong totalAvroEncodeNs = new AtomicLong(0);
+    private static final AtomicLong totalKafkaSendNs = new AtomicLong(0);
+    private static final AtomicLong totalResponseNs = new AtomicLong(0);
+    private static final AtomicLong timedRequestCount = new AtomicLong(0);
+
+    /**
+     * Timed handler - measures each step precisely for diagnostics
+     */
+    private static Response handleCounterTimed(Request request, KafkaPublisher<CounterEvent> publisher) {
+        long t0 = System.nanoTime();
+
+        // Step 1: Parse request
+        byte[] body = request.body();
+        ActionRequest actionReq = parseActionRequestFast(body);
+        long t1 = System.nanoTime();
+        totalParseNs.addAndGet(t1 - t0);
+
+        // Step 2: Generate IDs
+        String sessionId = actionReq.sessionId != null ? actionReq.sessionId : "default";
+        String requestId = idGenerator.generateRequestId();
+        String eventId = idGenerator.generateEventId();
+        long t2 = System.nanoTime();
+        totalIdGenNs.addAndGet(t2 - t1);
+
+        // Step 3: Create event
+        CounterEvent event = CounterEvent.create(requestId, "", eventId, sessionId, actionReq.action, actionReq.value);
+        long t3 = System.nanoTime();
+        totalEventCreateNs.addAndGet(t3 - t2);
+
+        // Step 4a: Avro encoding (separate measurement)
+        byte[] encoded = AvroCounterEventCodec.create().encode(event).getOrThrow();
+        long t3a = System.nanoTime();
+        totalAvroEncodeNs.addAndGet(t3a - t3);
+
+        // Step 4b: Kafka send (raw send, Avro already done)
+        publisher.publishFireAndForget(event);  // Note: This still re-encodes inside, but we can see Avro cost
+        long t4 = System.nanoTime();
+        totalKafkaSendNs.addAndGet(t4 - t3a);
+
+        // Step 5: Build response
+        String responseJson = new StringBuilder(160)
+                .append("{\"success\":true,\"requestId\":\"").append(requestId)
+                .append("\",\"customerId\":\"\",\"eventId\":\"").append(eventId)
+                .append("\",\"otelTraceId\":\"\",\"status\":\"accepted\"}")
+                .toString();
+        long t5 = System.nanoTime();
+        totalResponseNs.addAndGet(t5 - t4);
+
+        long count = timedRequestCount.incrementAndGet();
+
+        // Log every 10000 requests
+        if (count % 10000 == 0) {
+            double parseUs = totalParseNs.get() / count / 1000.0;
+            double idGenUs = totalIdGenNs.get() / count / 1000.0;
+            double eventUs = totalEventCreateNs.get() / count / 1000.0;
+            double avroUs = totalAvroEncodeNs.get() / count / 1000.0;
+            double kafkaUs = totalKafkaSendNs.get() / count / 1000.0;
+            double respUs = totalResponseNs.get() / count / 1000.0;
+            double totalUs = parseUs + idGenUs + eventUs + avroUs + kafkaUs + respUs;
+
+            System.out.printf("[TIMING] After %d requests - Parse: %.1fµs, IDGen: %.1fµs, Event: %.1fµs, Avro: %.1fµs, Kafka: %.1fµs, Response: %.1fµs, Total: %.1fµs%n",
+                    count, parseUs, idGenUs, eventUs, avroUs, kafkaUs, respUs, totalUs);
+        }
+
+        return Response.accepted(responseJson);
     }
 
     /**
