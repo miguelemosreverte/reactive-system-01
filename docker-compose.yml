@@ -233,7 +233,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 2048M  # Increased: was at 72% (1.27G/1.79G), now 2GB for headroom
+          memory: 2048M  # was at 72% (1.27G/1.79G), now 2GB for headroom
     networks:
       - reactive-network
 
@@ -376,7 +376,7 @@ services:
         taskmanager.network.memory.buffer-debloat.period: 25ms
         execution.buffer-timeout: 1ms
         taskmanager.memory.process.size: 1280m
-        env.java.opts.taskmanager: -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/tmp/diagnostics/heapdump.hprof -Xlog:gc*:file=/tmp/diagnostics/gc.log:time,uptime,level,tags -XX:NativeMemoryTracking=summary --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED
+        env.java.opts.taskmanager: -XX:+UseG1GC -XX:MaxGCPauseMillis=20 -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/tmp/diagnostics/heapdump.hprof -Xlog:gc*:file=/tmp/diagnostics/gc.log:time,uptime,level,tags -XX:NativeMemoryTracking=summary --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED
       # System-wide latency bounds (CQRS snapshot evaluation)
       - LATENCY_MIN_MS=${LATENCY_MIN_MS:-50}
       - LATENCY_MAX_MS=${LATENCY_MAX_MS:-200}
