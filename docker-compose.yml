@@ -472,6 +472,8 @@ services:
   # Application Service (Counter Domain)
   # ============================================
 
+  # iter-40: Docker port-forwarding adds 44% overhead (5.4k→9.7k req/s inside container)
+  # For max throughput in production, consider: network_mode: host
   gateway:
     build:
       context: .
