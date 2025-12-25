@@ -491,6 +491,10 @@ services:
       - OTEL_ENABLED=${OTEL_FEATURE_ENABLED:-true}
       - OTEL_SERVICE_NAME=counter-application
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      # iter-44: Minimal trace sampling - use on-demand replay endpoint for debugging
+      # Production: 0.001% default sampling since replay endpoint provides full tracing when needed
+      - OTEL_TRACES_SAMPLER=parentbased_traceidratio
+      - OTEL_TRACES_SAMPLER_ARG=0.00001
       # JVM tuning - G1GC (iter-43: StringDeduplication tested, no clear benefit)
       - JAVA_OPTS=-XX:+UseG1GC -XX:MaxGCPauseMillis=10 -Xms1536m -Xmx1536m -XX:+AlwaysPreTouch -XX:ParallelGCThreads=6 -XX:ConcGCThreads=3 -XX:G1HeapRegionSize=4m -XX:+UseStringDeduplication
     deploy:
