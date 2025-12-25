@@ -24,15 +24,23 @@ var benchCmd = &cobra.Command{
 	Use:   "bench <target>",
 	Short: "Run performance benchmark",
 	Long: `Run benchmark against:
-  - http:    HTTP endpoint latency (health check)
-  - kafka:   Kafka produce/consume round-trip
+  ISOLATION BENCHMARKS (component theoretical max):
+  - http:           HTTP endpoint latency only (health check)
+  - kafka-producer: Kafka producer throughput (fire-and-forget, no acks)
+  - drools:         Direct Drools rule evaluation
+
+  INTEGRATION BENCHMARKS (end-to-end paths):
+  - kafka:   Kafka produce/consume round-trip (includes Flink)
   - flink:   Flink stream processing throughput
-  - drools:  Direct Drools rule evaluation
   - gateway: HTTP + Kafka publish (fire-and-forget)
   - full:    Complete E2E pipeline (HTTP → Kafka → Flink → Drools)
+
+  AGGREGATE:
   - all:     Run all benchmarks sequentially
 
 Examples:
+  reactive bench kafka-producer      # Kafka producer theoretical max
+  reactive bench http                # HTTP layer theoretical max
   reactive bench drools              # 60s benchmark
   reactive bench full -d 30          # 30s benchmark
   reactive bench full --quick        # 5s quick benchmark
@@ -53,7 +61,7 @@ func init() {
 func runBench(cmd *cobra.Command, args []string) {
 	target := args[0]
 
-	validTargets := []string{"http", "kafka", "flink", "drools", "gateway", "full", "all"}
+	validTargets := []string{"http", "kafka-producer", "kafka", "flink", "drools", "gateway", "full", "all"}
 	valid := false
 	for _, t := range validTargets {
 		if t == target {
@@ -63,7 +71,7 @@ func runBench(cmd *cobra.Command, args []string) {
 	}
 	if !valid {
 		printError(fmt.Sprintf("Invalid target: %s", target))
-		printInfo("Valid targets: http, kafka, flink, drools, gateway, full, all")
+		printInfo("Valid targets: http, kafka-producer, kafka, flink, drools, gateway, full, all")
 		return
 	}
 
@@ -162,7 +170,8 @@ func runSingleBenchmark(projectRoot, target string) {
 }
 
 func runAllBenchmarks(projectRoot string) {
-	targets := []string{"http", "kafka", "flink", "drools", "gateway", "full"}
+	// Run isolation benchmarks first (theoretical max), then integration benchmarks
+	targets := []string{"http", "kafka-producer", "drools", "kafka", "flink", "gateway", "full"}
 	start := time.Now()
 
 	printHeader("Running All Benchmarks")
@@ -185,10 +194,13 @@ func runAllBenchmarks(projectRoot string) {
 
 func getBenchmarkConfig(target string) (module, testClass string) {
 	configs := map[string][2]string{
-		"http":    {"platform/deployment/docker/gateway", "com.reactive.gateway.benchmark.HttpBenchmark"},
+		// Isolation benchmarks (component theoretical max)
+		"http":           {"platform/deployment/docker/gateway", "com.reactive.gateway.benchmark.HttpBenchmark"},
+		"kafka-producer": {"platform", "com.reactive.platform.benchmark.KafkaProducerBenchmark"},
+		"drools":         {"platform/deployment/docker/drools", "com.reactive.drools.benchmark.DroolsBenchmark"},
+		// Integration benchmarks
 		"kafka":   {"application", "com.reactive.counter.benchmark.KafkaBenchmark"},
 		"flink":   {"application", "com.reactive.counter.benchmark.FlinkBenchmark"},
-		"drools":  {"platform/deployment/docker/drools", "com.reactive.drools.benchmark.DroolsBenchmark"},
 		"gateway": {"platform/deployment/docker/gateway", "com.reactive.gateway.benchmark.GatewayBenchmark"},
 		"full":    {"application", "com.reactive.counter.benchmark.FullBenchmark"},
 	}
@@ -338,7 +350,7 @@ func generateHTMLReport(reportsDir, target string) {
 }
 
 func generateDashboard(reportsDir string) {
-	components := []string{"http", "kafka", "flink", "drools", "gateway", "full"}
+	components := []string{"http", "kafka-producer", "kafka", "flink", "drools", "gateway", "full"}
 	var dashboardData []map[string]interface{}
 
 	for _, comp := range components {
