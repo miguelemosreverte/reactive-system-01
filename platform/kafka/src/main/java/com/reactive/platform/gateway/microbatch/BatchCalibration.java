@@ -33,29 +33,52 @@ import java.util.concurrent.locks.ReentrantLock;
 public final class BatchCalibration implements AutoCloseable {
 
     /**
-     * Pressure levels based on requests per 10 seconds.
-     * Boundaries are the ONLY hardcoded values - everything else is learned.
+     * Pressure levels with human-readable thresholds.
      *
-     * The system learns optimal config for each level through experimentation.
-     * No hardcoded batch sizes or intervals - purely adaptive.
+     * Each level defines:
+     * - Request rate range (when this bucket activates)
+     * - Target latency (what users should expect)
+     * - Use case description
+     *
+     * The system learns optimal batch/interval config for each level.
      */
     public enum PressureLevel {
-        IDLE(0, 100),
-        LOW(100, 1_000),
-        MEDIUM(1_000, 10_000),
-        HIGH(10_000, 100_000),
-        EXTREME(100_000, 1_000_000),
-        OVERLOAD(1_000_000, 10_000_000),
-        MEGA(10_000_000, 100_000_000),
-        HTTP_30S(100_000_000, 1_000_000_000),
-        HTTP_60S(1_000_000_000, Long.MAX_VALUE);
+        // Level          min/10s       max/10s        targetLatencyMs  description
+        IDLE(             0,            100,           1,    "< 10 req/s",       "Development/testing"),
+        LOW(              100,          1_000,         2,    "10-100 req/s",     "Light traffic"),
+        MEDIUM(           1_000,        10_000,        5,    "100-1K req/s",     "Normal load"),
+        HIGH(             10_000,       100_000,       10,   "1K-10K req/s",     "High traffic"),
+        EXTREME(          100_000,      1_000_000,     20,   "10K-100K req/s",   "Peak load"),
+        OVERLOAD(         1_000_000,    10_000_000,    50,   "100K-1M req/s",    "Stress test"),
+        MEGA(             10_000_000,   100_000_000,   100,  "1M-10M req/s",     "Benchmark"),
+        HTTP_30S(         100_000_000,  1_000_000_000, 1000, "10M-100M req/s",   "Max throughput"),
+        HTTP_60S(         1_000_000_000,Long.MAX_VALUE,5000, "> 100M req/s",     "Theoretical max");
 
         public final long minReqPer10s;
         public final long maxReqPer10s;
+        public final int targetLatencyMs;
+        public final String rateRange;
+        public final String description;
 
-        PressureLevel(long min, long max) {
+        PressureLevel(long min, long max, int targetLatencyMs, String rateRange, String description) {
             this.minReqPer10s = min;
             this.maxReqPer10s = max;
+            this.targetLatencyMs = targetLatencyMs;
+            this.rateRange = rateRange;
+            this.description = description;
+        }
+
+        /** Get min requests per SECOND (more intuitive than per 10s). */
+        public long minReqPerSec() { return minReqPer10s / 10; }
+
+        /** Get max requests per SECOND. */
+        public long maxReqPerSec() { return maxReqPer10s / 10; }
+
+        /** Format target latency for display. */
+        public String latencyDisplay() {
+            if (targetLatencyMs < 1) return "<1ms";
+            if (targetLatencyMs >= 1000) return (targetLatencyMs / 1000) + "s";
+            return targetLatencyMs + "ms";
         }
 
         public static PressureLevel fromRequestRate(long requestsPer10Seconds) {
@@ -67,10 +90,13 @@ public final class BatchCalibration implements AutoCloseable {
             return HTTP_60S;
         }
 
+        /** Create from requests per second (convenience method). */
+        public static PressureLevel fromReqPerSec(long reqPerSec) {
+            return fromRequestRate(reqPerSec * 10);
+        }
+
         /** Ordinal-based bootstrap config - will be replaced by learned values. */
         public Config bootstrapConfig() {
-            // Start with minimal assumptions - let the system learn
-            // Only use ordinal to scale initial exploration range
             int ord = ordinal();
             int batchHint = 1 << (4 + ord);  // 16, 32, 64, 128, 256, 512, 1024, 2048, 4096
             int intervalHint = 500 << ord;    // 500µs, 1ms, 2ms, 4ms, 8ms, 16ms, 32ms, 64ms, 128ms
@@ -372,24 +398,133 @@ public final class BatchCalibration implements AutoCloseable {
         return Config.bootstrap(newBatch, newInterval);
     }
 
-    /** Get stats for all pressure levels */
+    /** Get stats for all pressure levels - human-readable CLI output */
     public String getStatsReport() {
         StringBuilder sb = new StringBuilder();
-        sb.append("Calibration Status by Pressure Level:\n");
-        sb.append("─".repeat(90)).append("\n");
-        sb.append(String.format("%-12s %10s %10s %15s %15s %12s%n",
-            "Level", "BatchSize", "Interval", "Throughput", "Expected", "Status"));
-        sb.append("─".repeat(90)).append("\n");
+        sb.append("\n");
+        sb.append("╔══════════════════════════════════════════════════════════════════════════════════════════════════════╗\n");
+        sb.append("║                              ADAPTIVE MICROBATCH CALIBRATION                                         ║\n");
+        sb.append("╚══════════════════════════════════════════════════════════════════════════════════════════════════════╝\n\n");
+
+        // Header
+        sb.append(String.format("%-10s │ %-15s │ %-8s │ %-10s │ %-8s │ %-12s │ %-10s │ %s%n",
+            "Bucket", "Activates At", "Latency", "Batch", "Interval", "Throughput", "Status", "Trend"));
+        sb.append("─".repeat(105)).append("\n");
+
+        long prevThroughput = 0;
+        for (PressureLevel level : PressureLevel.values()) {
+            Config cfg = getBestConfigForPressure(level);
+            boolean calibrated = cfg.isCalibrated();
+
+            // Status with icon
+            String status = calibrated ? "✓ learned" : "○ default";
+
+            // Trend indicator (regression detection)
+            String trend = "";
+            if (calibrated && cfg.expectedThroughput() > 0) {
+                double ratio = (double) cfg.throughputPerSec() / cfg.expectedThroughput();
+                if (ratio < 0.9) {
+                    trend = "⚠ -" + Math.round((1 - ratio) * 100) + "%";
+                } else if (ratio > 1.1) {
+                    trend = "↑ +" + Math.round((ratio - 1) * 100) + "%";
+                } else {
+                    trend = "→ stable";
+                }
+            }
+
+            // Format throughput
+            String throughput = calibrated
+                ? formatThroughput(cfg.throughputPerSec())
+                : "—";
+
+            // Format interval
+            String interval = formatInterval(cfg.flushIntervalMicros());
+
+            sb.append(String.format("%-10s │ %-15s │ %-8s │ %-10d │ %-8s │ %-12s │ %-10s │ %s%n",
+                level.name(),
+                level.rateRange,
+                level.latencyDisplay(),
+                cfg.batchSize(),
+                interval,
+                throughput,
+                status,
+                trend));
+
+            prevThroughput = cfg.throughputPerSec();
+        }
+
+        sb.append("─".repeat(105)).append("\n");
+        sb.append("\n");
+
+        // Legend
+        sb.append("Legend:\n");
+        sb.append("  • Activates At: Request rate that triggers this bucket\n");
+        sb.append("  • Latency: Target end-to-end latency for this load level\n");
+        sb.append("  • Batch: Number of events batched together\n");
+        sb.append("  • Interval: Max time before flushing a partial batch\n");
+        sb.append("  • Trend: ⚠ regression | → stable | ↑ improvement\n");
+        sb.append("\n");
+
+        // Current state
+        sb.append("Current pressure: ").append(currentPressure.name());
+        sb.append(" (").append(currentPressure.rateRange).append(")\n");
+
+        return sb.toString();
+    }
+
+    /** Format throughput for display (e.g., "9.8M/s") */
+    private static String formatThroughput(long throughput) {
+        if (throughput >= 1_000_000_000) return String.format("%.1fB/s", throughput / 1_000_000_000.0);
+        if (throughput >= 1_000_000) return String.format("%.1fM/s", throughput / 1_000_000.0);
+        if (throughput >= 1_000) return String.format("%.1fK/s", throughput / 1_000.0);
+        return throughput + "/s";
+    }
+
+    /** Format interval for display */
+    private static String formatInterval(int micros) {
+        if (micros >= 1_000_000) return String.format("%.1fs", micros / 1_000_000.0);
+        if (micros >= 1_000) return String.format("%.1fms", micros / 1_000.0);
+        return micros + "µs";
+    }
+
+    /** Get Markdown report for documentation */
+    public String getMarkdownReport() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("# Adaptive Microbatch Calibration\n\n");
+        sb.append("The system learns optimal batching configurations for each load level.\n\n");
+
+        sb.append("## Bucket Configurations\n\n");
+        sb.append("| Bucket | Activates At | Target Latency | Batch Size | Interval | Throughput | Status |\n");
+        sb.append("|--------|--------------|----------------|------------|----------|------------|--------|\n");
 
         for (PressureLevel level : PressureLevel.values()) {
             Config cfg = getBestConfigForPressure(level);
-            String status = cfg.isCalibrated() ? "calibrated" : "bootstrap";
-            sb.append(String.format("%-12s %10d %8dµs %,13d/s %,13d/s %12s%n",
-                level.name(), cfg.batchSize(), cfg.flushIntervalMicros(),
-                cfg.throughputPerSec(), cfg.expectedThroughput(), status));
+            boolean calibrated = cfg.isCalibrated();
+            String status = calibrated ? "Learned" : "Default";
+            String throughput = calibrated ? formatThroughput(cfg.throughputPerSec()) : "—";
+
+            sb.append(String.format("| %s | %s | %s | %d | %s | %s | %s |\n",
+                level.name(),
+                level.rateRange,
+                level.latencyDisplay(),
+                cfg.batchSize(),
+                formatInterval(cfg.flushIntervalMicros()),
+                throughput,
+                status));
         }
-        sb.append("─".repeat(90)).append("\n");
-        sb.append("Current pressure: ").append(currentPressure.name()).append("\n");
+
+        sb.append("\n## How It Works\n\n");
+        sb.append("1. **Pressure Detection**: System monitors request rate over 10-second windows\n");
+        sb.append("2. **Bucket Selection**: Selects appropriate bucket based on observed load\n");
+        sb.append("3. **Config Application**: Applies learned batch size and flush interval\n");
+        sb.append("4. **Continuous Learning**: Records performance and updates optimal configs\n\n");
+
+        sb.append("## Bucket Descriptions\n\n");
+        for (PressureLevel level : PressureLevel.values()) {
+            sb.append(String.format("- **%s** (%s): %s - target latency %s\n",
+                level.name(), level.rateRange, level.description, level.latencyDisplay()));
+        }
+
         return sb.toString();
     }
 

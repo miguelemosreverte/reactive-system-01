@@ -1,0 +1,45 @@
+name: "Calibration - All Buckets"
+description: |
+  Benchmarks all pressure level buckets to learn optimal configurations.
+  Tests EXTREME, MEGA, and HTTP_30S levels which are relevant for production.
+  Each bucket runs for 30 seconds to allow the system to converge.
+
+component: calibration
+duration: 30000  # 30 seconds per bucket
+concurrency: 100
+
+config:
+  # Buckets to benchmark (subset of all levels for faster runs)
+  buckets:
+    - EXTREME     # 10K-100K req/s - Peak load
+    - MEGA        # 1M-10M req/s - Benchmark
+    - HTTP_30S    # 10M-100M req/s - Max throughput
+
+  # Learning parameters
+  learningRounds: 5           # Exploration rounds per bucket
+  explorationRate: 0.15       # 15% random exploration
+  targetLatencyWeight: 0.3    # Latency penalty weight in scoring
+
+  # Regression detection
+  regressionThreshold: 0.10   # Alert if throughput drops 10%+
+
+  # Database location
+  calibrationDb: ~/.reactive/calibration.db
+
+# Expected baseline results (for regression detection)
+baseline:
+  EXTREME:
+    throughput: 7000000       # 7M/s baseline
+    latencyMs: 20
+  MEGA:
+    throughput: 9000000       # 9M/s baseline
+    latencyMs: 100
+  HTTP_30S:
+    throughput: 9000000       # 9M/s baseline
+    latencyMs: 1000
+
+# Output artifacts
+outputs:
+  - results.json              # Raw benchmark data
+  - calibration-status.md     # Markdown report
+  - index.html                # Visual report
