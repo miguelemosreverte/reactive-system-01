@@ -5,7 +5,6 @@ import com.reactive.platform.gateway.microbatch.BatchCalibration.PressureLevel;
 import com.reactive.platform.gateway.microbatch.MicrobatchCollector;
 import org.apache.kafka.clients.producer.*;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
-import org.apache.kafka.common.serialization.ByteBufferSerializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 
 import java.nio.ByteBuffer;
@@ -470,88 +469,6 @@ public class AdaptiveVsBulkBenchmark {
     }
 
     /**
-     * Zero-copy adaptive test using ByteBuffer pool.
-     * Eliminates allocation in the hot path by using pooled direct ByteBuffers.
-     */
-    static Result runAdaptiveZeroCopy(String bootstrap, int durationSec, PressureLevel forcedLevel) throws Exception {
-        System.out.println("═══════════════════════════════════════════════════════════════════════");
-        System.out.printf("ADAPTIVE ZERO-COPY %s: ByteBuffer pool, no allocation%n", forcedLevel);
-        System.out.println("═══════════════════════════════════════════════════════════════════════");
-
-        Path calibPath = Files.createTempFile("calib", ".db");
-        BatchCalibration calibration = BatchCalibration.create(calibPath, 5000.0);
-        calibration.updatePressure(forcedLevel.minReqPer10s + 1);
-
-        var config = calibration.getBestConfig();
-        System.out.printf("Using config: batchSize=%d, flushInterval=%dµs%n",
-            config.batchSize(), config.flushIntervalMicros());
-
-        Properties props = new Properties();
-        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrap);
-        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, ByteBufferSerializer.class.getName());
-        props.put(ProducerConfig.ACKS_CONFIG, "1");
-        props.put(ProducerConfig.LINGER_MS_CONFIG, "5");
-        props.put(ProducerConfig.BATCH_SIZE_CONFIG, String.valueOf(1024 * 1024));
-        props.put(ProducerConfig.BUFFER_MEMORY_CONFIG, String.valueOf(256 * 1024 * 1024));
-        props.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, "lz4");
-
-        try (KafkaProducer<String, ByteBuffer> producer = new KafkaProducer<>(props)) {
-            LongAdder kafkaSends = new LongAdder();
-
-            MicrobatchCollector<byte[]> collector = MicrobatchCollector.create(
-                batch -> {
-                    // Zero-copy: serialize to pooled ByteBuffer, send directly
-                    ByteBuffer buf = serializeBatchToByteBuffer(batch);
-                    producer.send(new ProducerRecord<>(TOPIC, buf));
-                    kafkaSends.increment();
-                },
-                calibration
-            );
-
-            System.out.printf("Running for %d seconds with zero-copy ByteBuffer...%n", durationSec);
-            long start = System.currentTimeMillis();
-            long deadline = start + (durationSec * 1000L);
-
-            int threads = Runtime.getRuntime().availableProcessors();
-            ExecutorService exec = Executors.newFixedThreadPool(threads);
-            LongAdder submitted = new LongAdder();
-
-            byte[] event = new byte[100];
-
-            for (int t = 0; t < threads; t++) {
-                exec.submit(() -> {
-                    while (System.currentTimeMillis() < deadline) {
-                        collector.submitFireAndForget(event);
-                        submitted.increment();
-                    }
-                });
-            }
-
-            exec.shutdown();
-            exec.awaitTermination(durationSec + 5, TimeUnit.SECONDS);
-            producer.flush();
-
-            long elapsed = System.currentTimeMillis() - start;
-            var metrics = collector.getMetrics();
-            double throughput = metrics.throughputPerSec();
-
-            System.out.printf("Submitted: %,d | Flushed: %,d | Kafka sends: %,d%n",
-                submitted.sum(), metrics.totalRequests(), kafkaSends.sum());
-            System.out.printf("Avg batch: %.1f | Avg flush: %.1fµs%n",
-                metrics.avgBatchSize(), metrics.avgFlushTimeMicros());
-            System.out.printf("Result: %,.0f msg/s%n", throughput);
-            System.out.println();
-
-            collector.close();
-            calibration.close();
-
-            return new Result("ADAPTIVE_ZEROCOPY", metrics.totalRequests(), elapsed, throughput,
-                "ByteBuffer pool, batch=" + config.batchSize());
-        }
-    }
-
-    /**
      * Adaptive test with configurable flush thread count.
      * Fewer flush threads = less Kafka contention.
      */
@@ -638,52 +555,10 @@ public class AdaptiveVsBulkBenchmark {
     private static final int MAX_BATCH_ITEMS = 4_096;  // Practical max for 400KB batches
     private static final int MAX_BATCH_BYTES = 4 + MAX_BATCH_ITEMS * 100;  // ~410KB per buffer
 
-    /**
-     * Direct ByteBuffer pool for zero-copy serialization.
-     * Uses off-heap memory to avoid GC pressure.
-     * Pool size = 128 to handle Kafka's async in-flight batches safely.
-     */
-    private static final int POOL_SIZE = 128;
-    private static final ThreadLocal<ByteBuffer[]> BYTEBUFFER_POOL = ThreadLocal.withInitial(() -> {
-        ByteBuffer[] pool = new ByteBuffer[POOL_SIZE];
-        for (int i = 0; i < POOL_SIZE; i++) {
-            pool[i] = ByteBuffer.allocateDirect(MAX_BATCH_BYTES);
-        }
-        return pool;
-    });
-    private static final ThreadLocal<int[]> POOL_INDEX = ThreadLocal.withInitial(() -> new int[1]);
-
     /** Create bulk message for BULK baseline. */
     static byte[] createBulkMessage(int count) {
         byte[] buf = new byte[4 + count * 100];
         ByteBuffer.wrap(buf).putInt(count);
-        return buf;
-    }
-
-    /**
-     * Serialize batch to pooled ByteBuffer - minimal allocation.
-     * Returns a sliced view of the used portion.
-     */
-    static ByteBuffer serializeBatchToByteBuffer(List<byte[]> batch) {
-        ByteBuffer[] pool = BYTEBUFFER_POOL.get();
-        int[] idx = POOL_INDEX.get();
-        ByteBuffer buf = pool[idx[0] & (POOL_SIZE - 1)];
-        idx[0]++;
-
-        buf.clear();
-        int count = Math.min(batch.size(), MAX_BATCH_ITEMS);
-
-        // Write count (4 bytes)
-        buf.putInt(count);
-
-        // Copy items directly to direct buffer
-        for (int i = 0; i < count; i++) {
-            byte[] item = batch.get(i);
-            if (buf.remaining() < item.length) break;
-            buf.put(item);
-        }
-
-        buf.flip();
         return buf;
     }
 
