@@ -1,8 +1,6 @@
 package com.reactive.platform.gateway.microbatch;
 
-import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.LongAdder;
@@ -15,9 +13,11 @@ import java.util.function.Consumer;
  * Adapts batch parameters based on observed pressure level.
  *
  * Performance targets (based on BULK benchmark: 131.8M msg/s):
- * - Submit: 1 array store (no queue overhead for byte[] items)
+ * - Submit: 1 array store via MPSC ring buffer (zero allocation)
  * - Flush: Direct array handoff to consumer (no ArrayList copy)
  * - Goal: Reach 70%+ of BULK throughput
+ *
+ * v2: Replaced ConcurrentLinkedQueue with MpscRingBuffer for zero-allocation submit.
  *
  * @param <T> The type of items being collected
  */
@@ -52,9 +52,9 @@ public final class MicrobatchCollector<T> implements AutoCloseable {
     private volatile int targetBatchSize;
     private volatile int flushIntervalMicros;
 
-    // Partitioned queues - each flush thread owns one queue
+    // Partitioned ring buffers - zero allocation on submit
     private final int partitionCount;
-    private final ConcurrentLinkedQueue<T>[] queues;
+    private final FastRingBuffer<T>[] ringBuffers;
 
     // Metrics (only updated at flush time - no contention on submit)
     private final LongAdder totalItems = new LongAdder();
@@ -89,11 +89,11 @@ public final class MicrobatchCollector<T> implements AutoCloseable {
         this.targetBatchSize = config.batchSize();
         this.flushIntervalMicros = config.flushIntervalMicros();
 
-        // Queues match CPU cores for submit distribution, but fewer flush threads
+        // Ring buffers match CPU cores for submit distribution
         this.partitionCount = Runtime.getRuntime().availableProcessors();
-        this.queues = new ConcurrentLinkedQueue[partitionCount];
+        this.ringBuffers = new FastRingBuffer[partitionCount];
         for (int i = 0; i < partitionCount; i++) {
-            queues[i] = new ConcurrentLinkedQueue<>();
+            ringBuffers[i] = new FastRingBuffer<>(65536); // 64K slots per partition
         }
 
         // Configurable flush thread count (fewer = less Kafka contention)
@@ -117,7 +117,8 @@ public final class MicrobatchCollector<T> implements AutoCloseable {
 
     /** Create collector with default settings. Batch size is dynamic based on calibration. */
     public static <T> MicrobatchCollector<T> create(Consumer<List<T>> batchConsumer, BatchCalibration calibration) {
-        return new MicrobatchCollector<>(batchConsumer, calibration, 32768);
+        // Default to 2 flush threads - fewer threads = less Kafka contention
+        return new MicrobatchCollector<>(batchConsumer, calibration, 32768, 2);
     }
 
     /**
@@ -130,12 +131,12 @@ public final class MicrobatchCollector<T> implements AutoCloseable {
 
     /**
      * Submit item for batching. Fire-and-forget, returns immediately.
-     * This is the hot path - ONE queue operation, no atomics.
+     * This is the hot path - ONE array store, ZERO allocation.
      */
     public void submitFireAndForget(T item) {
         // Thread ID gives stable partition - no atomic counter needed
         int partition = (int) (Thread.currentThread().threadId() & (partitionCount - 1));
-        queues[partition].offer(item);
+        ringBuffers[partition].offerSpin(item); // Spin on full (rare)
     }
 
     /**
@@ -154,7 +155,7 @@ public final class MicrobatchCollector<T> implements AutoCloseable {
 
     /** Flush loop for one partition. Optimized for maximum throughput. */
     private void flushLoop(int partition) {
-        var queue = queues[partition];
+        var ringBuffer = ringBuffers[partition];
         @SuppressWarnings("unchecked")
         T[] batchArray = (T[]) new Object[maxBatchSize];
         var batchList = new ArrayBackedList<>(batchArray);
@@ -163,7 +164,7 @@ public final class MicrobatchCollector<T> implements AutoCloseable {
 
         while (running) {
             int target = targetBatchSize;
-            int count = drainToArray(queue, batchArray, target);
+            int count = ringBuffer.drain(batchArray, target);
 
             if (count > 0) {
                 lastDrainNanos = System.nanoTime();
@@ -201,7 +202,7 @@ public final class MicrobatchCollector<T> implements AutoCloseable {
 
             // Drain from all assigned partitions into single batch
             for (int p = startPartition; p < partitionCount && totalCount < target; p += step) {
-                int count = drainToArray(queues[p], batchArray, target - totalCount, totalCount);
+                int count = ringBuffers[p].drain(batchArray, target - totalCount, totalCount);
                 totalCount += count;
             }
 
@@ -233,21 +234,6 @@ public final class MicrobatchCollector<T> implements AutoCloseable {
         void setSize(int size) { this.size = size; }
         @Override public E get(int index) { return array[index]; }
         @Override public int size() { return size; }
-    }
-
-    /** Drain directly to array - faster than ArrayList. */
-    private int drainToArray(ConcurrentLinkedQueue<T> queue, T[] array, int maxItems) {
-        return drainToArray(queue, array, maxItems, 0);
-    }
-
-    /** Drain to array with offset - for multi-partition draining. */
-    private int drainToArray(ConcurrentLinkedQueue<T> queue, T[] array, int maxItems, int offset) {
-        int count = 0;
-        T item;
-        while (count < maxItems && (item = queue.poll()) != null) {
-            array[offset + count++] = item;
-        }
-        return count;
     }
 
     /** Pressure monitoring loop - checks every 10 seconds. */
@@ -302,12 +288,12 @@ public final class MicrobatchCollector<T> implements AutoCloseable {
         }
     }
 
-    /** Force flush all queues. */
+    /** Force flush all ring buffers. */
     public void flush() {
         var all = new ArrayList<T>();
-        for (var queue : queues) {
+        for (var ringBuffer : ringBuffers) {
             T item;
-            while ((item = queue.poll()) != null) {
+            while ((item = ringBuffer.poll()) != null) {
                 all.add(item);
             }
         }
