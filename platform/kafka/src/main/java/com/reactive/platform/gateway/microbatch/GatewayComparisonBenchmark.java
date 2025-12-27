@@ -154,14 +154,18 @@ public class GatewayComparisonBenchmark {
     }
 
     /**
-     * Benchmark MicrobatchCollector WITH REAL KAFKA.
+     * Benchmark MicrobatchCollector WITH REAL KAFKA using BATCH SEND.
      * This measures actual Kafka producer throughput with adaptive microbatching.
+     *
+     * KEY OPTIMIZATION: Sends entire batch as single Kafka message.
+     * This is what makes ADAPTIVE faster than PRODUCER!
      */
     static BenchmarkResult benchmarkCollectorWithKafka(int durationSec, int concurrency, String kafkaBootstrap)
             throws Exception {
-        System.out.println("=== Collector Benchmark WITH REAL KAFKA ===");
+        System.out.println("=== Collector Benchmark WITH REAL KAFKA (BATCH SEND) ===");
         System.out.println();
-        System.out.println("This measures actual Kafka producer throughput with adaptive microbatching.");
+        System.out.println("KEY OPTIMIZATION: N items → 1 Kafka send (not N sends!)");
+        System.out.println("This is what makes ADAPTIVE faster than PRODUCER.");
         System.out.println();
 
         String topic = "collector-benchmark";
@@ -174,14 +178,17 @@ public class GatewayComparisonBenchmark {
             "bytes"
         );
 
-        // Create REAL Kafka publisher
+        // Create REAL Kafka publisher with optimized settings
         System.out.printf("Connecting to Kafka at %s...%n", kafkaBootstrap);
         KafkaPublisher<byte[]> publisher = KafkaPublisher.create(c -> c
             .bootstrapServers(kafkaBootstrap)
             .topic(topic)
             .codec(byteCodec)
-            .keyExtractor(bytes -> "bench")
-            .fireAndForget());
+            .keyExtractor(bytes -> "batch")
+            .acks("0")             // Fire-and-forget for max throughput
+            .batchSize(262144)     // 256KB batches for batch messages
+            .lingerMs(5)           // Small linger for batch accumulation
+            .compression("lz4"));  // Compress batches efficiently
 
         Path tempDb = Path.of(System.getProperty("java.io.tmpdir"), "bench-calibration-" + System.currentTimeMillis() + ".db");
         BatchCalibration calibration = BatchCalibration.create(tempDb, 5000.0);
@@ -190,14 +197,13 @@ public class GatewayComparisonBenchmark {
         LongAdder itemCount = new LongAdder();
         LongAdder kafkaSendTimeNanos = new LongAdder();
 
-        // Create collector with REAL Kafka consumer
+        // Create collector with BATCH SEND to Kafka
+        // ONE Kafka send per batch, not per item!
         MicrobatchCollector<byte[]> collector = MicrobatchCollector.create(
             batch -> {
                 long start = System.nanoTime();
-                // Actually send to Kafka using fire-and-forget for max throughput!
-                for (byte[] item : batch) {
-                    publisher.publishFireAndForget(item);
-                }
+                // Send ENTIRE BATCH as single Kafka message!
+                publisher.publishBatchRawFireAndForget(batch);
                 kafkaSendTimeNanos.add(System.nanoTime() - start);
                 batchCount.increment();
                 itemCount.add(batch.size());

@@ -12,7 +12,11 @@ import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import static com.reactive.platform.observe.Log.error;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicLong;
@@ -189,6 +193,116 @@ public class KafkaPublisher<A> implements AutoCloseable {
         } catch (Exception e) {
             errorCount.incrementAndGet();
             throw new RuntimeException("Publish failed", e);
+        }
+    }
+
+    /**
+     * Publish an entire batch as a single Kafka message.
+     * This is the key optimization: N items → 1 Kafka send instead of N sends.
+     *
+     * Format: [count:4 bytes][len1:4][data1][len2:4][data2]...
+     *
+     * Benefits:
+     * - Reduces Kafka producer.send() calls from N to 1
+     * - Reduces serialization overhead (single buffer allocation)
+     * - With acks>0, waits for one ack instead of N
+     * - Leverages Kafka's compression on larger payloads
+     *
+     * @param messages List of messages to batch
+     * @return Number of messages sent
+     */
+    public int publishBatchFireAndForget(List<A> messages) {
+        if (messages.isEmpty()) return 0;
+
+        try {
+            // Pre-size buffer based on expected message size
+            int estimatedSize = messages.size() * 64 + 4;
+            ByteArrayOutputStream baos = new ByteArrayOutputStream(estimatedSize);
+            DataOutputStream dos = new DataOutputStream(baos);
+
+            // Write batch header: message count
+            dos.writeInt(messages.size());
+
+            // Write each message with length prefix
+            for (A message : messages) {
+                byte[] bytes = codec.encode(message).getOrThrow();
+                dos.writeInt(bytes.length);
+                dos.write(bytes);
+            }
+
+            dos.flush();
+            byte[] batchPayload = baos.toByteArray();
+
+            // Send as single Kafka message
+            ProducerRecord<String, byte[]> record = new ProducerRecord<>(
+                topic,
+                "batch",  // Use fixed key for batch ordering
+                batchPayload
+            );
+
+            // Add header to indicate this is a batch
+            record.headers().add(new RecordHeader("batch-count",
+                String.valueOf(messages.size()).getBytes(StandardCharsets.UTF_8)));
+
+            producer.send(record);
+
+            int count = messages.size();
+            publishedCount.addAndGet(count);
+            return count;
+
+        } catch (IOException e) {
+            errorCount.incrementAndGet();
+            throw new RuntimeException("Batch publish failed", e);
+        }
+    }
+
+    /**
+     * Publish batch using raw byte arrays (no codec needed).
+     * Even faster for pre-serialized data.
+     */
+    public int publishBatchRawFireAndForget(List<byte[]> messages) {
+        if (messages.isEmpty()) return 0;
+
+        try {
+            // Calculate exact size needed
+            int totalSize = 4; // count header
+            for (byte[] msg : messages) {
+                totalSize += 4 + msg.length; // length + data
+            }
+
+            ByteArrayOutputStream baos = new ByteArrayOutputStream(totalSize);
+            DataOutputStream dos = new DataOutputStream(baos);
+
+            // Write batch header: message count
+            dos.writeInt(messages.size());
+
+            // Write each message with length prefix
+            for (byte[] bytes : messages) {
+                dos.writeInt(bytes.length);
+                dos.write(bytes);
+            }
+
+            dos.flush();
+            byte[] batchPayload = baos.toByteArray();
+
+            ProducerRecord<String, byte[]> record = new ProducerRecord<>(
+                topic,
+                "batch",
+                batchPayload
+            );
+
+            record.headers().add(new RecordHeader("batch-count",
+                String.valueOf(messages.size()).getBytes(StandardCharsets.UTF_8)));
+
+            producer.send(record);
+
+            int count = messages.size();
+            publishedCount.addAndGet(count);
+            return count;
+
+        } catch (IOException e) {
+            errorCount.incrementAndGet();
+            throw new RuntimeException("Batch publish failed", e);
         }
     }
 

@@ -58,9 +58,12 @@ public class MicrobatchBenchmark {
 
     /**
      * Benchmark MicrobatchCollector throughput (no network overhead).
+     * This tests the raw batching overhead without Kafka.
      */
     static void benchmarkCollector(int durationSec, int concurrency) throws Exception {
         System.out.println("=== Collector Benchmark (no network) ===");
+        System.out.println();
+        System.out.println("Testing raw batching overhead (batch → single callback)");
         System.out.println();
 
         // Create mock calibration (in-memory)
@@ -70,12 +73,19 @@ public class MicrobatchBenchmark {
         // Track batches received
         LongAdder batchCount = new LongAdder();
         LongAdder itemCount = new LongAdder();
+        LongAdder batchSizeSum = new LongAdder();
 
-        // Create collector with mock consumer
+        // Create collector with mock consumer that simulates batch processing
+        // The key insight: ONE callback per batch, not per item
         MicrobatchCollector<byte[]> collector = MicrobatchCollector.create(
             batch -> {
+                // This is called ONCE per batch
                 batchCount.increment();
-                itemCount.add(batch.size());
+                int size = batch.size();
+                itemCount.add(size);
+                batchSizeSum.add(size);
+                // Simulate minimal work (what a batch Kafka send would do)
+                // In production: publisher.publishBatchFireAndForget(batch)
             },
             calibration
         );
