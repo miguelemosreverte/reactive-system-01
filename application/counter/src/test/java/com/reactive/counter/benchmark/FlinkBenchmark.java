@@ -2,13 +2,16 @@ package com.reactive.counter.benchmark;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.reactive.platform.benchmark.BaseBenchmark;
 import com.reactive.platform.benchmark.BenchmarkResult;
 import com.reactive.platform.benchmark.BenchmarkTypes.*;
+import com.reactive.counter.domain.CounterEvent;
+import com.reactive.counter.serialization.AvroCounterEventCodec;
+import com.reactive.platform.serialization.Codec;
 import org.apache.kafka.clients.consumer.*;
 import org.apache.kafka.clients.producer.*;
+import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.slf4j.Logger;
@@ -42,6 +45,9 @@ public class FlinkBenchmark extends BaseBenchmark {
     private static final String EVENTS_TOPIC = "counter-events";  // Gateway sends here
     private static final String RESULTS_TOPIC = "counter-results";
 
+    // Avro codec for CounterEvent serialization - same as gateway uses
+    private static final Codec<CounterEvent> avroCodec = AvroCounterEventCodec.create();
+
     // ========================================================================
     // Static Factories
     // ========================================================================
@@ -67,11 +73,11 @@ public class FlinkBenchmark extends BaseBenchmark {
         // Track in-flight messages for latency calculation
         Map<String, Long> inFlight = new ConcurrentHashMap<>();
 
-        // Kafka producer - optimized for throughput
+        // Kafka producer - Avro binary, optimized for throughput
         Properties producerProps = new Properties();
         producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaUrl);
         producerProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-        producerProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+        producerProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class.getName());
         producerProps.put(ProducerConfig.ACKS_CONFIG, "1");
         producerProps.put(ProducerConfig.LINGER_MS_CONFIG, 10);
         producerProps.put(ProducerConfig.BATCH_SIZE_CONFIG, 65536);
@@ -87,7 +93,7 @@ public class FlinkBenchmark extends BaseBenchmark {
         consumerProps.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true");
         consumerProps.put(ConsumerConfig.FETCH_MIN_BYTES_CONFIG, 1024);
 
-        KafkaProducer<String, String> producer = new KafkaProducer<>(producerProps);
+        KafkaProducer<String, byte[]> producer = new KafkaProducer<>(producerProps);
         KafkaConsumer<String, String> consumer = new KafkaConsumer<>(consumerProps);
         consumer.subscribe(Collections.singletonList(RESULTS_TOPIC));
 
@@ -205,34 +211,35 @@ public class FlinkBenchmark extends BaseBenchmark {
         }
     }
 
-    private void runProducer(int workerId, KafkaProducer<String, String> producer,
+    private void runProducer(int workerId, KafkaProducer<String, byte[]> producer,
                              Map<String, Long> inFlight) {
         long counter = 0;
         while (isRunning()) {
             long now = System.currentTimeMillis();
             String eventId = "flink_" + workerId + "_" + (counter++);
             String requestId = "flink_req_" + workerId + "_" + now;
+            String sessionId = "flink-bench-" + workerId;
 
             try {
-                // Build message matching Gateway's CounterCommand format exactly
-                ObjectNode timing = mapper.createObjectNode();
-                timing.put("gatewayReceivedAt", now);
-                timing.put("gatewayPublishedAt", now);
+                // Create domain CounterEvent (same as gateway)
+                CounterEvent.Timing timing = CounterEvent.Timing.complete(now, now);
+                CounterEvent event = new CounterEvent(
+                        requestId,
+                        "",  // customerId
+                        eventId,
+                        sessionId,
+                        "increment",
+                        1,
+                        now,
+                        timing
+                );
 
-                ObjectNode command = mapper.createObjectNode();
-                command.put("requestId", requestId);
-                command.putNull("customerId");
-                command.put("eventId", eventId);
-                command.put("sessionId", "flink-bench-" + workerId);
-                command.put("action", "increment");  // lowercase
-                command.put("value", 1);
-                command.put("timestamp", now);
-                command.set("timing", timing);
-                command.put("source", "flink-benchmark");
+                // Serialize to Avro binary using the same codec as gateway
+                byte[] avroBytes = avroCodec.encode(event).getOrThrow();
 
                 inFlight.put(eventId, now);
 
-                producer.send(new ProducerRecord<>(EVENTS_TOPIC, "flink-bench-" + workerId, command.toString()),
+                producer.send(new ProducerRecord<>(EVENTS_TOPIC, sessionId, avroBytes),
                         (metadata, exception) -> {
                             if (exception != null) {
                                 inFlight.remove(eventId);
