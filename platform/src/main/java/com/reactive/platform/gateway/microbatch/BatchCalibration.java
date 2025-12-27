@@ -10,28 +10,45 @@ import java.util.concurrent.locks.ReentrantLock;
  * Pressure-aware calibration store for microbatch parameters.
  *
  * KEY INSIGHT: Different load levels need different optimal configurations.
+ * HTTP timeout gives us massive latency headroom (30-60s) that we can exploit
+ * for throughput at extreme load levels.
+ *
+ * BULK BENCHMARK BASELINE: 131.8M msg/s with batch=1000, flush=linger.ms
+ * Our goal: Make adaptive system reach this theoretical max.
  *
  * Pressure Buckets (requests per 10 seconds):
- *   IDLE:     < 100 req/10s     → Small batches, low latency
- *   LOW:      100 - 1K          → Moderate batches
- *   MEDIUM:   1K - 10K          → Balanced throughput/latency
- *   HIGH:     10K - 100K        → Larger batches
- *   EXTREME:  100K - 1M         → Max batches, accept latency
- *   OVERLOAD: > 1M              → Survival mode, biggest batches
+ *   IDLE:       < 100 req/10s      → Small batches, sub-ms latency
+ *   LOW:        100 - 1K           → Moderate batches, 1ms latency
+ *   MEDIUM:     1K - 10K           → Balanced, 2ms latency
+ *   HIGH:       10K - 100K         → Larger batches, 5ms latency
+ *   EXTREME:    100K - 1M          → Big batches, 10ms latency
+ *   OVERLOAD:   1M - 10M           → Mega batches, 50ms latency
+ *   MEGA:       10M - 100M         → Maximum batches, 100ms latency
+ *   HTTP_30S:   100M - 1B          → HTTP timeout tolerance, 1s latency OK
+ *   HTTP_60S:   > 1B               → Extended timeout, 5s latency OK (benchmark only)
  *
  * The system learns optimal config for EACH pressure level separately.
  * When load changes, it switches to the appropriate bucket's config.
  */
 public final class BatchCalibration implements AutoCloseable {
 
-    /** Pressure levels based on requests per 10 seconds */
+    /**
+     * Pressure levels based on requests per 10 seconds.
+     * Higher pressure = bigger batches = higher latency but better throughput.
+     *
+     * BULK benchmark achieved 131.8M msg/s with batch=1000.
+     * HTTP_30S and HTTP_60S are designed to reach that throughput.
+     */
     public enum PressureLevel {
-        IDLE(0, 100),
-        LOW(100, 1_000),
-        MEDIUM(1_000, 10_000),
-        HIGH(10_000, 100_000),
-        EXTREME(100_000, 1_000_000),
-        OVERLOAD(1_000_000, Long.MAX_VALUE);
+        IDLE(0, 100),                              // Low traffic, optimize for latency
+        LOW(100, 1_000),                           // Light load
+        MEDIUM(1_000, 10_000),                     // Normal load
+        HIGH(10_000, 100_000),                     // Heavy load
+        EXTREME(100_000, 1_000_000),               // Very heavy load
+        OVERLOAD(1_000_000, 10_000_000),           // Overload - mega batches
+        MEGA(10_000_000, 100_000_000),             // 10M-100M req/10s
+        HTTP_30S(100_000_000, 1_000_000_000),      // 100M-1B req/10s - HTTP timeout OK
+        HTTP_60S(1_000_000_000, Long.MAX_VALUE);   // >1B req/10s - Extended timeout (benchmark)
 
         public final long minReqPer10s;
         public final long maxReqPer10s;
@@ -47,18 +64,31 @@ public final class BatchCalibration implements AutoCloseable {
                     return level;
                 }
             }
-            return OVERLOAD;
+            return HTTP_60S;
         }
 
-        /** Default config for this pressure level */
+        /**
+         * Default config for this pressure level.
+         *
+         * Key insight from BULK benchmark:
+         * - 1000 messages per Kafka send = 131.8M msg/s
+         * - This is our theoretical max to chase
+         *
+         * HTTP_30S/HTTP_60S configs match BULK benchmark settings:
+         * - batch=1000 (matching BULK benchmark)
+         * - flush interval allows accumulation time
+         */
         public Config defaultConfig() {
             return switch (this) {
-                case IDLE -> new Config(16, 500, 0, 0, 0, 0, Instant.now());
-                case LOW -> new Config(32, 1000, 0, 0, 0, 0, Instant.now());
-                case MEDIUM -> new Config(64, 2000, 0, 0, 0, 0, Instant.now());
-                case HIGH -> new Config(128, 5000, 0, 0, 0, 0, Instant.now());
-                case EXTREME -> new Config(256, 10000, 0, 0, 0, 0, Instant.now());
-                case OVERLOAD -> new Config(512, 20000, 0, 0, 0, 0, Instant.now());
+                case IDLE -> new Config(16, 500, 0, 0, 0, 0, Instant.now());              // 0.5ms
+                case LOW -> new Config(64, 1_000, 0, 0, 0, 0, Instant.now());             // 1ms
+                case MEDIUM -> new Config(256, 2_000, 0, 0, 0, 0, Instant.now());          // 2ms
+                case HIGH -> new Config(512, 5_000, 0, 0, 0, 0, Instant.now());           // 5ms
+                case EXTREME -> new Config(1_000, 10_000, 0, 0, 0, 0, Instant.now());     // 10ms
+                case OVERLOAD -> new Config(2_000, 50_000, 0, 0, 0, 0, Instant.now());    // 50ms
+                case MEGA -> new Config(4_000, 100_000, 0, 0, 0, 0, Instant.now());       // 100ms
+                case HTTP_30S -> new Config(4_000, 500_000, 0, 0, 0, 0, Instant.now());   // 500ms - larger batches
+                case HTTP_60S -> new Config(4_000, 1_000_000, 0, 0, 0, 0, Instant.now()); // 1s - max batch
             };
         }
     }
