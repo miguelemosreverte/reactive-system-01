@@ -114,6 +114,97 @@ Use arrow keys to navigate menus:
 | `show [sha]` | Show results for current or specific commit |
 | `compare [sha]` | Compare current with previous or specific commit |
 
+### Benchmark Queue (Multi-Developer Workflow)
+
+When multiple developers need to run benchmarks, use the queue to avoid collisions:
+
+```bash
+# Developer A (on feature branch)
+reactive bench queue add gateway-netty-microbatch
+
+# Developer B (on different branch)
+reactive bench queue add flink-stream
+
+# Runner machine (or CI) processes jobs sequentially
+reactive bench queue run --daemon
+```
+
+| Command | Description |
+|---------|-------------|
+| `bench queue add <brochure>` | Add benchmark job to queue |
+| `bench queue list` | Show pending/running/completed jobs |
+| `bench queue run` | Run next pending job |
+| `bench queue run --daemon` | Run continuously (for CI/runner) |
+| `bench queue cancel <id>` | Cancel a pending job |
+| `bench queue results <id>` | Show detailed results for a job |
+
+**Queue Features:**
+- Jobs track git commit SHA and branch automatically
+- Developer name captured from git config
+- Results stored with throughput, p50, p99 latencies
+- Queue persisted in `~/.reactive/benchmark-queue.db` (SQLite)
+
+**Example workflow:**
+```bash
+# Check current queue
+$ reactive bench queue list
+
+⏳ Pending:
+  1. [d664190a] flink-stream @ fa4bd150 by miguel_lemos
+  2. [278bd83e] gateway-netty-microbatch @ fa4bd150 by miguel_lemos
+
+Total: 2 pending, 0 running, 0 completed
+
+# Run next job
+$ reactive bench queue run
+▶ Running job d664190a: flink-stream @ fa4bd15
+✓ Job d664190a completed: 1635.00 ops/s
+
+# View results
+$ reactive bench queue results d664190a
+{
+  "id": "d664190a",
+  "brochure": "flink-stream",
+  "commit": "fa4bd150...",
+  "throughput": 1635.00,
+  "p50Ms": 12,
+  "p99Ms": 45
+}
+```
+
+### Benchmark Brochures
+
+Brochures are pre-configured benchmark profiles for testing different implementation strategies:
+
+```bash
+# List available brochures
+reactive bench brochure list
+
+# Run a specific brochure
+reactive bench brochure run gateway-netty-microbatch
+
+# Run all brochures (marathon mode)
+reactive bench brochure run-all
+
+# Quick smoke test (10s each)
+reactive bench brochure run-all --quick
+
+# Generate comparison report
+reactive bench brochure compare
+```
+
+**Available brochure categories:**
+
+| Category | Examples |
+|----------|----------|
+| HTTP Servers | `http-rocket`, `http-netty`, `http-spring`, `http-turbo` |
+| Kafka | `kafka-fast`, `kafka-tuned`, `microbatch-collector` |
+| Gateway | `gateway-netty-microbatch`, `gateway-spring`, `gateway-rocket` |
+| Full Pipeline | `full-netty-microbatch`, `full-spring` |
+| Stream Processing | `flink-stream` |
+
+Brochures are defined in YAML files under `platform/*/brochures/` and `reports/brochures/`.
+
 ### Testing
 
 | Command | Description |
