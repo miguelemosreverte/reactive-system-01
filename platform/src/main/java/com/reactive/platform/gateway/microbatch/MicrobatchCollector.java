@@ -115,10 +115,15 @@ public final class MicrobatchCollector<T> implements AutoCloseable {
             .start(this::pressureLoop);
     }
 
-    /** Create collector with default settings. Batch size is dynamic based on calibration. */
+    /**
+     * Create collector with default settings.
+     * Max batch size is dynamic based on calibration's current pressure level.
+     */
     public static <T> MicrobatchCollector<T> create(Consumer<List<T>> batchConsumer, BatchCalibration calibration) {
+        // Max batch size based on pressure level's latency budget
         // Default to 2 flush threads - fewer threads = less Kafka contention
-        return new MicrobatchCollector<>(batchConsumer, calibration, 32768, 2);
+        int maxBatch = calibration.getCurrentPressure().maxBatchSize();
+        return new MicrobatchCollector<>(batchConsumer, calibration, Math.max(maxBatch, 65536), 2);
     }
 
     /**
@@ -126,7 +131,16 @@ public final class MicrobatchCollector<T> implements AutoCloseable {
      * Fewer threads = less Kafka contention, potentially higher throughput.
      */
     public static <T> MicrobatchCollector<T> create(Consumer<List<T>> batchConsumer, BatchCalibration calibration, int flushThreadCount) {
-        return new MicrobatchCollector<>(batchConsumer, calibration, 32768, flushThreadCount);
+        return new MicrobatchCollector<>(batchConsumer, calibration, 65536, flushThreadCount);
+    }
+
+    /**
+     * Create collector with full customization.
+     * Use for benchmarking and exploring optimal configurations.
+     */
+    public static <T> MicrobatchCollector<T> create(Consumer<List<T>> batchConsumer, BatchCalibration calibration,
+                                                     int maxBatchSize, int flushThreadCount) {
+        return new MicrobatchCollector<>(batchConsumer, calibration, maxBatchSize, flushThreadCount);
     }
 
     /**

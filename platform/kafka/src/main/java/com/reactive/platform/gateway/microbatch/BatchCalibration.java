@@ -95,15 +95,53 @@ public final class BatchCalibration implements AutoCloseable {
             return fromRequestRate(reqPerSec * 10);
         }
 
-        /** Ordinal-based bootstrap config - will be replaced by learned values. */
+        /**
+         * Bootstrap config based on latency budget.
+         *
+         * Key insight: We can batch up to targetLatency worth of events.
+         * Bigger batches = better Kafka throughput.
+         *
+         * No artificial limits - the only constraint is the latency budget.
+         */
         public Config bootstrapConfig() {
-            int ord = ordinal();
-            int batchHint = 1 << (4 + ord);  // 16, 32, 64, 128, 256, 512, 1024, 2048, 4096
-            int intervalHint = 500 << ord;    // 500µs, 1ms, 2ms, 4ms, 8ms, 16ms, 32ms, 64ms, 128ms
+            // Scale batch size based on latency budget
+            // At 1ms latency budget: small batches (64)
+            // At 30s latency budget: huge batches (1M+)
+            //
+            // Formula: batch_hint = latency_ms * 1000 (at 1K events/ms production rate)
+            // This is just a starting point - system will learn the real optimum
+            int batchHint = targetLatencyMs * 1000;
+
+            // Interval is proportional to latency budget
+            // At low latency: flush often (1ms)
+            // At high latency: batch aggressively (up to latency budget)
+            int intervalHint = targetLatencyMs * 1000; // microseconds
+
+            // No artificial caps - let the system explore freely
+            // The only real limits are memory and the latency budget
             return Config.bootstrap(
-                Math.min(batchHint, 4096),
-                Math.min(intervalHint, 1_000_000)
+                Math.max(16, batchHint),           // At least 16
+                Math.max(500, intervalHint)        // At least 500µs
             );
+        }
+
+        /**
+         * Maximum batch size allowed for this pressure level.
+         * Based on: 100 bytes/event, targeting ~10MB max batch.
+         */
+        public int maxBatchSize() {
+            // More latency budget = bigger allowed batches
+            // At 30s budget: could theoretically batch millions
+            // Practical limit: ~100K events (10MB at 100 bytes/event)
+            return Math.min(targetLatencyMs * 10_000, 1_000_000);
+        }
+
+        /**
+         * Maximum flush interval (microseconds) for this level.
+         * Equals the latency budget converted to microseconds.
+         */
+        public int maxFlushIntervalMicros() {
+            return targetLatencyMs * 1000;
         }
     }
 
@@ -365,35 +403,43 @@ public final class BatchCalibration implements AutoCloseable {
 
     /**
      * Suggest next config to try for current pressure level.
-     * Uses UCB1-inspired exploration: explore more when uncertain.
+     * Uses UCB1-inspired exploration with latency-budget-based limits.
+     *
+     * No artificial limits - exploration bounded only by latency budget.
      */
     public Config suggestNext(java.util.random.RandomGenerator rng) {
         Config best = getBestConfig();
+        PressureLevel level = currentPressure;
 
-        // If not yet calibrated, explore more aggressively
+        // Dynamic limits based on pressure level's latency budget
+        int maxBatch = level.maxBatchSize();
+        int maxInterval = level.maxFlushIntervalMicros();
+
+        // If not yet calibrated, explore the full range aggressively
         if (!best.isCalibrated()) {
-            // Wide random exploration for uncalibrated levels
+            // Wide random exploration - use latency budget
             return Config.bootstrap(
-                rng.nextInt(16, 8192),
-                rng.nextInt(100, 500_000)
+                rng.nextInt(16, maxBatch),
+                rng.nextInt(500, maxInterval)
             );
         }
 
-        // 15% random exploration to escape local optima
-        if (rng.nextDouble() < 0.15) {
+        // 20% random exploration to escape local optima
+        // Use wider exploration for high-latency-budget levels
+        if (rng.nextDouble() < 0.20) {
             return Config.bootstrap(
-                rng.nextInt(16, 8192),
-                rng.nextInt(100, 500_000)
+                rng.nextInt(16, maxBatch),
+                rng.nextInt(500, maxInterval)
             );
         }
 
-        // 85% local exploration around best known config
+        // 80% local exploration around best known config
         // Scale delta by current values for proportional exploration
-        double batchScale = Math.max(0.1, rng.nextGaussian() * 0.2); // ±20%
-        double intervalScale = Math.max(0.1, rng.nextGaussian() * 0.2);
+        double batchScale = rng.nextGaussian() * 0.3; // ±30%
+        double intervalScale = rng.nextGaussian() * 0.3;
 
-        int newBatch = (int) Math.max(1, Math.min(16384, best.batchSize() * (1 + batchScale)));
-        int newInterval = (int) Math.max(100, Math.min(1_000_000, best.flushIntervalMicros() * (1 + intervalScale)));
+        int newBatch = (int) Math.max(16, Math.min(maxBatch, best.batchSize() * (1 + batchScale)));
+        int newInterval = (int) Math.max(500, Math.min(maxInterval, best.flushIntervalMicros() * (1 + intervalScale)));
 
         return Config.bootstrap(newBatch, newInterval);
     }
