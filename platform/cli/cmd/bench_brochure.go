@@ -316,7 +316,7 @@ func runHttpBrochure(projectRoot, network string, brochure *Brochure, outDir str
 		"-v", fmt.Sprintf("%s:/app", projectRoot),
 		"-v", "maven-repo:/root/.m2",
 		"-w", "/app/platform",
-		"maven:3.9-eclipse-temurin-21",
+		"maven:3.9-eclipse-temurin-22",
 		"java", "--enable-native-access=ALL-UNNAMED",
 		"-cp", "target/classes:target/dependency/*",
 		"com.reactive.platform.benchmark.UnifiedHttpBenchmark",
@@ -361,7 +361,7 @@ func runKafkaBrochure(projectRoot, network string, brochure *Brochure, outDir st
 		"-v", "maven-repo:/root/.m2",
 		"-w", "/app",
 		"-e", "KAFKA_BOOTSTRAP_SERVERS=kafka:29092",
-		"maven:3.9-eclipse-temurin-21",
+		"maven:3.9-eclipse-temurin-22",
 		"java", "-cp", "platform/target/classes:platform/target/dependency/*",
 		"com.reactive.platform.benchmark.KafkaProducerBenchmark",
 		fmt.Sprintf("%d", durationSec*1000),                        // durationMs
@@ -394,7 +394,7 @@ func runFlinkBrochure(projectRoot, network string, brochure *Brochure, outDir st
 		"-v", fmt.Sprintf("%s:/app", projectRoot),
 		"-v", "maven-repo:/root/.m2",
 		"-w", "/app/application",
-		"maven:3.9-eclipse-temurin-21",
+		"maven:3.9-eclipse-temurin-22",
 		"mvn", "-q", "test-compile", "-DskipTests",
 	}
 	compileCmd := exec.Command("docker", compileArgs...)
@@ -415,7 +415,7 @@ func runFlinkBrochure(projectRoot, network string, brochure *Brochure, outDir st
 		"-v", "maven-repo:/root/.m2",
 		"-w", "/app",
 		"-e", "KAFKA_BOOTSTRAP_SERVERS=kafka:29092",
-		"maven:3.9-eclipse-temurin-21",
+		"maven:3.9-eclipse-temurin-22",
 		"java", "-cp", "application/target/test-classes:application/target/classes:platform/target/classes:platform/target/dependency/*",
 		"com.reactive.counter.benchmark.FlinkBenchmark",
 		fmt.Sprintf("%d", durationSec*1000),                    // durationMs
@@ -455,7 +455,7 @@ func runCollectorBrochure(projectRoot, network string, brochure *Brochure, outDi
 		"-v", fmt.Sprintf("%s:/app", projectRoot),
 		"-v", "maven-repo:/root/.m2",
 		"-w", "/app/platform",
-		"maven:3.9-eclipse-temurin-21",
+		"maven:3.9-eclipse-temurin-22",
 		"java",
 		"--enable-native-access=ALL-UNNAMED",
 		"-cp", "target/classes:target/dependency/*",
@@ -486,7 +486,7 @@ func runMavenCompileWithDeps(projectRoot, network, module string) bool {
 		"-v", fmt.Sprintf("%s:/app", projectRoot),
 		"-v", "maven-repo:/root/.m2",
 		"-w", fmt.Sprintf("/app/%s", module),
-		"maven:3.9-eclipse-temurin-21",
+		"maven:3.9-eclipse-temurin-22",
 		"mvn", "-q", "compile", "dependency:copy-dependencies", "-DskipTests",
 	}
 
@@ -523,7 +523,7 @@ func runGatewayBrochure(projectRoot, network string, brochure *Brochure, outDir 
 			"-v", fmt.Sprintf("%s:/app", projectRoot),
 			"-v", "maven-repo:/root/.m2",
 			"-w", "/app/platform",
-			"maven:3.9-eclipse-temurin-21",
+			"maven:3.9-eclipse-temurin-22",
 			"java",
 			"--enable-native-access=ALL-UNNAMED",
 			"-cp", "target/classes:target/dependency/*",
@@ -649,7 +649,7 @@ func runFullBrochure(projectRoot, network string, brochure *Brochure, outDir str
 			"-v", fmt.Sprintf("%s:/app", projectRoot),
 			"-v", "maven-repo:/root/.m2",
 			"-w", "/app/platform",
-			"maven:3.9-eclipse-temurin-21",
+			"maven:3.9-eclipse-temurin-22",
 			"java",
 			"--enable-native-access=ALL-UNNAMED",
 			"-cp", "target/classes:target/dependency/*",

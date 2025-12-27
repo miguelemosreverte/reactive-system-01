@@ -7,7 +7,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.2.0</version>
+        <version>3.3.0</version>
         <relativePath/>
     </parent>
 
@@ -18,7 +18,7 @@
     <description>Business Rules Engine with Drools</description>
 
     <properties>
-        <java.version>21</java.version>
+        <java.version>22</java.version>
         <drools.version>8.44.0.Final</drools.version>
     </properties>
 

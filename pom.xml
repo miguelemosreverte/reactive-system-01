@@ -13,12 +13,22 @@
     <description>High-performance reactive system with HTTP, Kafka, and Flink</description>
 
     <modules>
+        <!-- Platform foundation modules (must be built first) -->
+        <module>platform/base</module>
+        <module>platform/http-server</module>
+        <module>platform/kafka</module>
+        <module>platform/flink</module>
+        <!-- Platform core (depends on foundation modules) -->
         <module>platform</module>
+        <!-- Platform services -->
+        <module>platform/gateway</module>
+        <module>platform/integration</module>
+        <!-- Application layer -->
         <module>application</module>
     </modules>
 
     <properties>
-        <java.version>21</java.version>
+        <java.version>22</java.version>
         <maven.compiler.source>${java.version}</maven.compiler.source>
         <maven.compiler.target>${java.version}</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -34,7 +44,7 @@
         <typesafe-config.version>1.4.3</typesafe-config.version>
         <netty.version>4.1.101.Final</netty.version>
         <flink.version>1.18.0</flink.version>
-        <spring-boot.version>3.2.0</spring-boot.version>
+        <spring-boot.version>3.3.0</spring-boot.version>
         <testcontainers.version>1.19.3</testcontainers.version>
         <aspectj.version>1.9.21</aspectj.version>
         <sqlite.version>3.44.1.0</sqlite.version>

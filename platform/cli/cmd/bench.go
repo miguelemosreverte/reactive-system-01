@@ -165,10 +165,10 @@ func runSingleBenchmark(projectRoot, target string) {
 		fmt.Printf("✗ Could not copy assets: %v\n", err)
 	}
 
-	// Step 1: Install platform module (so other modules can depend on it)
-	printInfo("Installing platform module...")
-	if !runMavenCompile(projectRoot, network, "platform", true) {
-		printError("Failed to install platform module")
+	// Step 1: Install all modules from root (ensures parent pom and all modules are available)
+	printInfo("Installing modules from root pom...")
+	if !runMavenCompile(projectRoot, network, ".", true) {
+		printError("Failed to install modules")
 		return
 	}
 
@@ -245,7 +245,8 @@ func getBenchmarkConfig(target string) (module, testClass string) {
 func runMavenCompile(projectRoot, network, module string, install bool) bool {
 	var goals []string
 	if install {
-		goals = []string{"install", "-q", "-DskipTests"}
+		// -U forces update of snapshots and releases, ensuring reproducible builds
+		goals = []string{"install", "-q", "-DskipTests", "-U"}
 	} else {
 		goals = []string{"compile", "test-compile", "-q", "-DskipTests", "-Pbenchmark"}
 	}
@@ -256,7 +257,7 @@ func runMavenCompile(projectRoot, network, module string, install bool) bool {
 		"-v", fmt.Sprintf("%s:/app", projectRoot),
 		"-v", "maven-repo:/root/.m2",
 		"-w", "/app",
-		"maven:3.9-eclipse-temurin-21",
+		"maven:3.9-eclipse-temurin-22",
 		"mvn", "-f", fmt.Sprintf("%s/pom.xml", module),
 	}
 	args = append(args, goals...)
@@ -279,7 +280,7 @@ func runJavaBenchmark(projectRoot, network, module, testClass, target string, du
 		"-v", fmt.Sprintf("%s:/app", projectRoot),
 		"-v", "maven-repo:/root/.m2",
 		"-w", "/app",
-		"maven:3.9-eclipse-temurin-21",
+		"maven:3.9-eclipse-temurin-22",
 		"mvn", "-f", fmt.Sprintf("%s/pom.xml", module),
 		"dependency:build-classpath", "-Dmdep.outputFile=/dev/stdout", "-q", "-Pbenchmark",
 	}
@@ -311,7 +312,7 @@ func runJavaBenchmark(projectRoot, network, module, testClass, target string, du
 		"-w", "/app",
 		"-e", fmt.Sprintf("JAEGER_QUERY_URL=http://jaeger:16686"),
 		"-e", fmt.Sprintf("LOKI_URL=http://loki:3100"),
-		"maven:3.9-eclipse-temurin-21",
+		"maven:3.9-eclipse-temurin-22",
 		"java", "-cp", fullCP,
 		testClass,
 		fmt.Sprintf("%d", duration*1000), // durationMs
