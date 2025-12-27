@@ -140,17 +140,21 @@ public final class MicrobatchingGateway<E> implements AutoCloseable {
                 : Path.of(System.getProperty("user.home"), ".reactive", "calibration.db");
             BatchCalibration calibration = BatchCalibration.create(calPath, targetLatencyMicros);
 
-            // Create Kafka publisher (batch mode)
+            // Create Kafka publisher (batch mode with larger batches)
             KafkaPublisher<E> publisher = KafkaPublisher.create(c -> c
                 .bootstrapServers(kafkaBootstrap)
                 .topic(topic)
                 .codec(codec)
                 .keyExtractor(e -> "")  // Single partition for ordering
-                .fireAndForget());
+                .acks("0")              // Fire-and-forget for max throughput
+                .batchSize(262144)      // 256KB batches for batch messages
+                .lingerMs(5)            // Small linger for batch accumulation
+                .compression("lz4"));   // Compress batches efficiently
 
-            // Create microbatch collector that sends batches to Kafka
+            // Create microbatch collector that sends batches to Kafka as SINGLE MESSAGE
+            // This is the key optimization: N items → 1 Kafka send
             MicrobatchCollector<E> collector = MicrobatchCollector.create(
-                batch -> sendBatchToKafka(publisher, batch),
+                batch -> publisher.publishBatchFireAndForget(batch),
                 calibration
             );
 
@@ -178,12 +182,6 @@ public final class MicrobatchingGateway<E> implements AutoCloseable {
             printStartupInfo(port, reactors, calibration.getBestConfig());
 
             return gateway;
-        }
-
-        private void sendBatchToKafka(KafkaPublisher<E> publisher, List<E> batch) {
-            for (E event : batch) {
-                publisher.publishFireAndForget(event);
-            }
         }
 
         private void printStartupInfo(int port, int reactors, BatchCalibration.Config config) {

@@ -74,6 +74,11 @@ public final class MicrobatchCollector<T> implements AutoCloseable {
 
     @SuppressWarnings("unchecked")
     private MicrobatchCollector(Consumer<List<T>> batchConsumer, BatchCalibration calibration, int maxBatchSize) {
+        this(batchConsumer, calibration, maxBatchSize, Runtime.getRuntime().availableProcessors());
+    }
+
+    @SuppressWarnings("unchecked")
+    private MicrobatchCollector(Consumer<List<T>> batchConsumer, BatchCalibration calibration, int maxBatchSize, int flushThreadCount) {
         this.batchConsumer = batchConsumer;
         this.calibration = calibration;
         this.maxBatchSize = maxBatchSize;
@@ -84,21 +89,23 @@ public final class MicrobatchCollector<T> implements AutoCloseable {
         this.targetBatchSize = config.batchSize();
         this.flushIntervalMicros = config.flushIntervalMicros();
 
-        // One queue per CPU core for maximum throughput
+        // Queues match CPU cores for submit distribution, but fewer flush threads
         this.partitionCount = Runtime.getRuntime().availableProcessors();
         this.queues = new ConcurrentLinkedQueue[partitionCount];
         for (int i = 0; i < partitionCount; i++) {
             queues[i] = new ConcurrentLinkedQueue<>();
         }
 
-        // One flush thread per queue
-        this.flushThreads = new Thread[partitionCount];
-        for (int i = 0; i < partitionCount; i++) {
-            final int idx = i;
+        // Configurable flush thread count (fewer = less Kafka contention)
+        int actualFlushThreads = Math.min(flushThreadCount, partitionCount);
+        this.flushThreads = new Thread[actualFlushThreads];
+        for (int i = 0; i < actualFlushThreads; i++) {
+            final int startPartition = i;
+            final int step = actualFlushThreads;
             flushThreads[i] = Thread.ofPlatform()
                 .name("flush-" + i)
                 .daemon(true)
-                .start(() -> flushLoop(idx));
+                .start(() -> flushLoopMultiPartition(startPartition, step));
         }
 
         // Pressure monitoring thread
@@ -110,8 +117,15 @@ public final class MicrobatchCollector<T> implements AutoCloseable {
 
     /** Create collector with default settings. Batch size is dynamic based on calibration. */
     public static <T> MicrobatchCollector<T> create(Consumer<List<T>> batchConsumer, BatchCalibration calibration) {
-        // Use max possible batch size from calibration (HTTP_60S = 20000)
         return new MicrobatchCollector<>(batchConsumer, calibration, 32768);
+    }
+
+    /**
+     * Create collector with custom flush thread count.
+     * Fewer threads = less Kafka contention, potentially higher throughput.
+     */
+    public static <T> MicrobatchCollector<T> create(Consumer<List<T>> batchConsumer, BatchCalibration calibration, int flushThreadCount) {
+        return new MicrobatchCollector<>(batchConsumer, calibration, 32768, flushThreadCount);
     }
 
     /**
@@ -143,36 +157,67 @@ public final class MicrobatchCollector<T> implements AutoCloseable {
         var queue = queues[partition];
         @SuppressWarnings("unchecked")
         T[] batchArray = (T[]) new Object[maxBatchSize];
-        // Reusable list wrapper - ZERO ALLOCATION per batch
         var batchList = new ArrayBackedList<>(batchArray);
         long lastDrainNanos = System.nanoTime();
         int emptySpins = 0;
 
         while (running) {
             int target = targetBatchSize;
-
-            // FAST DRAIN: Direct to array, no ArrayList overhead
             int count = drainToArray(queue, batchArray, target);
 
             if (count > 0) {
-                // Got items - flush immediately using reusable list
                 lastDrainNanos = System.nanoTime();
                 emptySpins = 0;
                 batchList.setSize(count);
                 flush(batchList);
             } else {
-                // Queue empty - wait strategy based on recent activity
                 long sinceLastDrain = System.nanoTime() - lastDrainNanos;
-
                 if (sinceLastDrain < 1_000_000) {
-                    // Drained within 1ms - hot path, just spin
                     Thread.onSpinWait();
                 } else if (sinceLastDrain < 10_000_000) {
-                    // 1-10ms since drain - yield occasionally
                     if (++emptySpins % 100 == 0) Thread.yield();
                     else Thread.onSpinWait();
                 } else {
-                    // >10ms since drain - cold path, brief sleep
+                    try { Thread.sleep(0, 10_000); } catch (InterruptedException e) { break; }
+                }
+            }
+        }
+    }
+
+    /**
+     * Flush loop that drains from multiple partitions (for fewer flush threads).
+     * Round-robins across assigned partitions to balance load.
+     */
+    private void flushLoopMultiPartition(int startPartition, int step) {
+        @SuppressWarnings("unchecked")
+        T[] batchArray = (T[]) new Object[maxBatchSize];
+        var batchList = new ArrayBackedList<>(batchArray);
+        long lastDrainNanos = System.nanoTime();
+        int emptySpins = 0;
+
+        while (running) {
+            int target = targetBatchSize;
+            int totalCount = 0;
+
+            // Drain from all assigned partitions into single batch
+            for (int p = startPartition; p < partitionCount && totalCount < target; p += step) {
+                int count = drainToArray(queues[p], batchArray, target - totalCount, totalCount);
+                totalCount += count;
+            }
+
+            if (totalCount > 0) {
+                lastDrainNanos = System.nanoTime();
+                emptySpins = 0;
+                batchList.setSize(totalCount);
+                flush(batchList);
+            } else {
+                long sinceLastDrain = System.nanoTime() - lastDrainNanos;
+                if (sinceLastDrain < 1_000_000) {
+                    Thread.onSpinWait();
+                } else if (sinceLastDrain < 10_000_000) {
+                    if (++emptySpins % 100 == 0) Thread.yield();
+                    else Thread.onSpinWait();
+                } else {
                     try { Thread.sleep(0, 10_000); } catch (InterruptedException e) { break; }
                 }
             }
@@ -192,10 +237,15 @@ public final class MicrobatchCollector<T> implements AutoCloseable {
 
     /** Drain directly to array - faster than ArrayList. */
     private int drainToArray(ConcurrentLinkedQueue<T> queue, T[] array, int maxItems) {
+        return drainToArray(queue, array, maxItems, 0);
+    }
+
+    /** Drain to array with offset - for multi-partition draining. */
+    private int drainToArray(ConcurrentLinkedQueue<T> queue, T[] array, int maxItems, int offset) {
         int count = 0;
         T item;
         while (count < maxItems && (item = queue.poll()) != null) {
-            array[count++] = item;
+            array[offset + count++] = item;
         }
         return count;
     }
