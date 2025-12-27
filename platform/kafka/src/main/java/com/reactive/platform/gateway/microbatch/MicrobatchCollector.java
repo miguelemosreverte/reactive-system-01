@@ -341,7 +341,7 @@ public final class MicrobatchCollector<T> implements AutoCloseable {
 
     /** Get current config. */
     public BatchCalibration.Config getCurrentConfig() {
-        return new BatchCalibration.Config(targetBatchSize, flushIntervalMicros, 0, 0, 0, 0, Instant.now());
+        return BatchCalibration.Config.bootstrap(targetBatchSize, flushIntervalMicros);
     }
 
     /** No backpressure in this design - returns 0. */
