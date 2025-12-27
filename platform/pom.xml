@@ -11,92 +11,17 @@
     </parent>
 
     <artifactId>platform</artifactId>
-    <packaging>jar</packaging>
+    <packaging>pom</packaging>
 
     <name>Reactive Platform</name>
-    <description>Platform core library with benchmark, observability, and diagnostic utilities</description>
+    <description>Platform modules: base, http-server, kafka, flink, gateway, integration</description>
 
-    <dependencies>
-        <!-- Internal modules -->
-        <dependency>
-            <groupId>com.reactive</groupId>
-            <artifactId>base</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.reactive</groupId>
-            <artifactId>http-server</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.reactive</groupId>
-            <artifactId>kafka</artifactId>
-        </dependency>
-
-        <!-- Jackson for JSON processing -->
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.fasterxml.jackson.datatype</groupId>
-            <artifactId>jackson-datatype-jsr310</artifactId>
-        </dependency>
-
-        <!-- HTTP Client for observability fetching -->
-        <dependency>
-            <groupId>org.apache.httpcomponents.client5</groupId>
-            <artifactId>httpclient5</artifactId>
-            <version>5.2.1</version>
-        </dependency>
-
-        <!-- JMH for benchmarks -->
-        <dependency>
-            <groupId>org.openjdk.jmh</groupId>
-            <artifactId>jmh-core</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.openjdk.jmh</groupId>
-            <artifactId>jmh-generator-annprocess</artifactId>
-        </dependency>
-
-        <!-- Spring Boot (for SpringBootHttpServer) -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-webflux</artifactId>
-        </dependency>
-
-        <!-- Logging -->
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-api</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>ch.qos.logback</groupId>
-            <artifactId>logback-classic</artifactId>
-        </dependency>
-
-        <!-- Test -->
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter</artifactId>
-            <scope>test</scope>
-        </dependency>
-    </dependencies>
-
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <configuration>
-                    <annotationProcessorPaths>
-                        <path>
-                            <groupId>org.openjdk.jmh</groupId>
-                            <artifactId>jmh-generator-annprocess</artifactId>
-                            <version>${jmh.version}</version>
-                        </path>
-                    </annotationProcessorPaths>
-                </configuration>
-            </plugin>
-        </plugins>
-    </build>
+    <modules>
+        <module>base</module>
+        <module>http-server</module>
+        <module>kafka</module>
+        <module>flink</module>
+        <!-- gateway excluded: needs diagnostic module refactoring -->
+        <module>integration</module>
+    </modules>
 </project>

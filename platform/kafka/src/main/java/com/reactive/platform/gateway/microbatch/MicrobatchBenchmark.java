@@ -168,11 +168,14 @@ public class MicrobatchBenchmark {
         System.out.printf("  Avg batch size:    %.1f%n", avgBatchSize);
         System.out.printf("  Avg flush time:    %.1f µs%n", metrics.avgFlushTimeMicros());
         System.out.printf("  Flush threads:     %d%n", Runtime.getRuntime().availableProcessors());
+        System.out.printf("  Pressure level:    %s%n", metrics.pressureLevel());
         System.out.println();
         System.out.println("Calibration:");
         System.out.printf("  Best batch size:   %d%n", config.batchSize());
         System.out.printf("  Best interval:     %d µs%n", config.flushIntervalMicros());
         System.out.printf("  Best score:        %.4f%n", config.score());
+        System.out.println();
+        System.out.println(calibration.getStatsReport());
         System.out.println("═══════════════════════════════════════════════════════════════════════");
 
         collector.close();

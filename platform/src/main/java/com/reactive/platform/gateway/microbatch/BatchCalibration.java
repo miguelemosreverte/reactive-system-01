@@ -4,25 +4,66 @@ import java.io.*;
 import java.nio.file.*;
 import java.sql.*;
 import java.time.Instant;
-import java.util.Optional;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
- * SQLite-backed calibration store for microbatch parameters.
+ * Pressure-aware calibration store for microbatch parameters.
  *
- * Persists learned optimal batch configuration across restarts.
- * Uses a scoring function to evaluate throughput vs latency trade-offs.
+ * KEY INSIGHT: Different load levels need different optimal configurations.
  *
- * Functional design:
- * - Immutable configuration records
- * - Pure scoring functions
- * - Side effects isolated to persistence layer
+ * Pressure Buckets (requests per 10 seconds):
+ *   IDLE:     < 100 req/10s     → Small batches, low latency
+ *   LOW:      100 - 1K          → Moderate batches
+ *   MEDIUM:   1K - 10K          → Balanced throughput/latency
+ *   HIGH:     10K - 100K        → Larger batches
+ *   EXTREME:  100K - 1M         → Max batches, accept latency
+ *   OVERLOAD: > 1M              → Survival mode, biggest batches
+ *
+ * The system learns optimal config for EACH pressure level separately.
+ * When load changes, it switches to the appropriate bucket's config.
  */
 public final class BatchCalibration implements AutoCloseable {
 
-    /**
-     * Calibration configuration - immutable snapshot of optimal parameters.
-     */
+    /** Pressure levels based on requests per 10 seconds */
+    public enum PressureLevel {
+        IDLE(0, 100),
+        LOW(100, 1_000),
+        MEDIUM(1_000, 10_000),
+        HIGH(10_000, 100_000),
+        EXTREME(100_000, 1_000_000),
+        OVERLOAD(1_000_000, Long.MAX_VALUE);
+
+        public final long minReqPer10s;
+        public final long maxReqPer10s;
+
+        PressureLevel(long min, long max) {
+            this.minReqPer10s = min;
+            this.maxReqPer10s = max;
+        }
+
+        public static PressureLevel fromRequestRate(long requestsPer10Seconds) {
+            for (PressureLevel level : values()) {
+                if (requestsPer10Seconds >= level.minReqPer10s && requestsPer10Seconds < level.maxReqPer10s) {
+                    return level;
+                }
+            }
+            return OVERLOAD;
+        }
+
+        /** Default config for this pressure level */
+        public Config defaultConfig() {
+            return switch (this) {
+                case IDLE -> new Config(16, 500, 0, 0, 0, 0, Instant.now());
+                case LOW -> new Config(32, 1000, 0, 0, 0, 0, Instant.now());
+                case MEDIUM -> new Config(64, 2000, 0, 0, 0, 0, Instant.now());
+                case HIGH -> new Config(128, 5000, 0, 0, 0, 0, Instant.now());
+                case EXTREME -> new Config(256, 10000, 0, 0, 0, 0, Instant.now());
+                case OVERLOAD -> new Config(512, 20000, 0, 0, 0, 0, Instant.now());
+            };
+        }
+    }
+
+    /** Immutable calibration config */
     public record Config(
         int batchSize,
         int flushIntervalMicros,
@@ -33,40 +74,18 @@ public final class BatchCalibration implements AutoCloseable {
         Instant calibratedAt
     ) {
         public static Config initial() {
-            return new Config(
-                64,      // Start with reasonable batch size
-                1000,    // 1ms flush interval
-                0.0,
-                0L,
-                0.0,
-                0.0,
-                Instant.now()
-            );
+            return new Config(64, 1000, 0, 0, 0, 0, Instant.now());
         }
 
-        /**
-         * Calculate score balancing throughput and latency.
-         * Higher is better.
-         *
-         * Score = throughput / (1 + latencyPenalty)
-         * where latencyPenalty grows exponentially above target latency.
-         */
-        public static double calculateScore(
-            long throughputPerSec,
-            double avgLatencyMicros,
-            double targetLatencyMicros
-        ) {
-            double latencyRatio = avgLatencyMicros / targetLatencyMicros;
-            double latencyPenalty = latencyRatio > 1.0
-                ? Math.pow(latencyRatio, 2) - 1  // Quadratic penalty above target
-                : 0.0;
-            return throughputPerSec / (1.0 + latencyPenalty);
+        /** Score = throughput / (1 + latencyPenalty) */
+        public static double calculateScore(long throughput, double avgLatency, double targetLatency) {
+            double ratio = avgLatency / targetLatency;
+            double penalty = ratio > 1.0 ? Math.pow(ratio, 2) - 1 : 0.0;
+            return throughput / (1.0 + penalty);
         }
     }
 
-    /**
-     * Observation from a calibration run.
-     */
+    /** Observation from a calibration run */
     public record Observation(
         int batchSize,
         int flushIntervalMicros,
@@ -82,22 +101,19 @@ public final class BatchCalibration implements AutoCloseable {
     private final ReentrantLock writeLock = new ReentrantLock();
     private final double targetLatencyMicros;
 
+    private volatile PressureLevel currentPressure = PressureLevel.MEDIUM;
+    private volatile long lastPressureUpdateNanos = System.nanoTime();
+    private volatile long requestCountInWindow = 0;
+
     private BatchCalibration(Path dbPath, double targetLatencyMicros) throws SQLException {
         this.dbPath = dbPath;
         this.targetLatencyMicros = targetLatencyMicros;
 
-        // Initialize SQLite
         String url = "jdbc:sqlite:" + dbPath.toAbsolutePath();
         this.conn = DriverManager.getConnection(url);
         initializeSchema();
     }
 
-    /**
-     * Create calibration store.
-     *
-     * @param dbPath Path to SQLite database file
-     * @param targetLatencyMicros Target latency in microseconds (e.g., 5000 for 5ms)
-     */
     public static BatchCalibration create(Path dbPath, double targetLatencyMicros) {
         try {
             Files.createDirectories(dbPath.getParent());
@@ -107,20 +123,18 @@ public final class BatchCalibration implements AutoCloseable {
         }
     }
 
-    /**
-     * Create with default path and target latency.
-     */
     public static BatchCalibration createDefault() {
         Path home = Path.of(System.getProperty("user.home"));
-        Path dbPath = home.resolve(".reactive/calibration.db");
-        return create(dbPath, 5000.0); // 5ms target latency
+        return create(home.resolve(".reactive/calibration.db"), 5000.0);
     }
 
     private void initializeSchema() throws SQLException {
         try (Statement stmt = conn.createStatement()) {
+            // Observations table with pressure level
             stmt.execute("""
                 CREATE TABLE IF NOT EXISTS observations (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    pressure_level TEXT NOT NULL,
                     batch_size INTEGER NOT NULL,
                     flush_interval_micros INTEGER NOT NULL,
                     throughput_per_sec INTEGER NOT NULL,
@@ -132,9 +146,10 @@ public final class BatchCalibration implements AutoCloseable {
                 )
                 """);
 
+            // Best config PER PRESSURE LEVEL
             stmt.execute("""
                 CREATE TABLE IF NOT EXISTS best_config (
-                    id INTEGER PRIMARY KEY CHECK (id = 1),
+                    pressure_level TEXT PRIMARY KEY,
                     batch_size INTEGER NOT NULL,
                     flush_interval_micros INTEGER NOT NULL,
                     score REAL NOT NULL,
@@ -145,21 +160,43 @@ public final class BatchCalibration implements AutoCloseable {
                 )
                 """);
 
-            stmt.execute("""
-                CREATE INDEX IF NOT EXISTS idx_observations_score
-                ON observations(score DESC)
-                """);
+            stmt.execute("CREATE INDEX IF NOT EXISTS idx_obs_pressure ON observations(pressure_level)");
+            stmt.execute("CREATE INDEX IF NOT EXISTS idx_obs_score ON observations(score DESC)");
         }
     }
 
     /**
-     * Get the best known configuration.
+     * Update pressure level based on observed request rate.
+     * Call this with number of requests in the last 10 seconds.
+     */
+    public void updatePressure(long requestsPer10Seconds) {
+        this.currentPressure = PressureLevel.fromRequestRate(requestsPer10Seconds);
+        this.requestCountInWindow = requestsPer10Seconds;
+        this.lastPressureUpdateNanos = System.nanoTime();
+    }
+
+    /** Get current pressure level */
+    public PressureLevel getCurrentPressure() {
+        return currentPressure;
+    }
+
+    /**
+     * Get best config for CURRENT pressure level.
      */
     public Config getBestConfig() {
+        return getBestConfigForPressure(currentPressure);
+    }
+
+    /**
+     * Get best config for specific pressure level.
+     */
+    public Config getBestConfigForPressure(PressureLevel pressure) {
         try (PreparedStatement stmt = conn.prepareStatement(
             "SELECT batch_size, flush_interval_micros, score, throughput_per_sec, " +
-            "avg_latency_micros, p99_latency_micros, calibrated_at FROM best_config WHERE id = 1"
+            "avg_latency_micros, p99_latency_micros, calibrated_at " +
+            "FROM best_config WHERE pressure_level = ?"
         )) {
+            stmt.setString(1, pressure.name());
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) {
                 return new Config(
@@ -175,54 +212,59 @@ public final class BatchCalibration implements AutoCloseable {
         } catch (SQLException e) {
             // Fall through to default
         }
-        return Config.initial();
+        return pressure.defaultConfig();
     }
 
     /**
-     * Record an observation and update best config if improved.
+     * Record observation for CURRENT pressure level.
      */
     public void recordObservation(Observation obs) {
-        double score = Config.calculateScore(
-            obs.throughputPerSec(),
-            obs.avgLatencyMicros(),
-            targetLatencyMicros
-        );
+        recordObservation(obs, currentPressure);
+    }
+
+    /**
+     * Record observation for specific pressure level.
+     */
+    public void recordObservation(Observation obs, PressureLevel pressure) {
+        double score = Config.calculateScore(obs.throughputPerSec(), obs.avgLatencyMicros(), targetLatencyMicros);
 
         writeLock.lock();
         try {
             // Insert observation
             try (PreparedStatement stmt = conn.prepareStatement(
-                "INSERT INTO observations (batch_size, flush_interval_micros, throughput_per_sec, " +
-                "avg_latency_micros, p99_latency_micros, sample_count, score, observed_at) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+                "INSERT INTO observations (pressure_level, batch_size, flush_interval_micros, " +
+                "throughput_per_sec, avg_latency_micros, p99_latency_micros, sample_count, score, observed_at) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
             )) {
-                stmt.setInt(1, obs.batchSize());
-                stmt.setInt(2, obs.flushIntervalMicros());
-                stmt.setLong(3, obs.throughputPerSec());
-                stmt.setDouble(4, obs.avgLatencyMicros());
-                stmt.setDouble(5, obs.p99LatencyMicros());
-                stmt.setLong(6, obs.sampleCount());
-                stmt.setDouble(7, score);
-                stmt.setString(8, obs.observedAt().toString());
+                stmt.setString(1, pressure.name());
+                stmt.setInt(2, obs.batchSize());
+                stmt.setInt(3, obs.flushIntervalMicros());
+                stmt.setLong(4, obs.throughputPerSec());
+                stmt.setDouble(5, obs.avgLatencyMicros());
+                stmt.setDouble(6, obs.p99LatencyMicros());
+                stmt.setLong(7, obs.sampleCount());
+                stmt.setDouble(8, score);
+                stmt.setString(9, obs.observedAt().toString());
                 stmt.executeUpdate();
             }
 
-            // Update best config if improved
-            Config current = getBestConfig();
+            // Update best config if improved FOR THIS PRESSURE LEVEL
+            Config current = getBestConfigForPressure(pressure);
             if (score > current.score()) {
                 try (PreparedStatement stmt = conn.prepareStatement(
                     "INSERT OR REPLACE INTO best_config " +
-                    "(id, batch_size, flush_interval_micros, score, throughput_per_sec, " +
+                    "(pressure_level, batch_size, flush_interval_micros, score, throughput_per_sec, " +
                     "avg_latency_micros, p99_latency_micros, calibrated_at) " +
-                    "VALUES (1, ?, ?, ?, ?, ?, ?, ?)"
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
                 )) {
-                    stmt.setInt(1, obs.batchSize());
-                    stmt.setInt(2, obs.flushIntervalMicros());
-                    stmt.setDouble(3, score);
-                    stmt.setLong(4, obs.throughputPerSec());
-                    stmt.setDouble(5, obs.avgLatencyMicros());
-                    stmt.setDouble(6, obs.p99LatencyMicros());
-                    stmt.setString(7, Instant.now().toString());
+                    stmt.setString(1, pressure.name());
+                    stmt.setInt(2, obs.batchSize());
+                    stmt.setInt(3, obs.flushIntervalMicros());
+                    stmt.setDouble(4, score);
+                    stmt.setLong(5, obs.throughputPerSec());
+                    stmt.setDouble(6, obs.avgLatencyMicros());
+                    stmt.setDouble(7, obs.p99LatencyMicros());
+                    stmt.setString(8, Instant.now().toString());
                     stmt.executeUpdate();
                 }
             }
@@ -234,22 +276,17 @@ public final class BatchCalibration implements AutoCloseable {
     }
 
     /**
-     * Suggest next configuration to try based on exploration strategy.
-     *
-     * Uses gradient-free optimization:
-     * - Start from best known config
-     * - Explore nearby batch sizes and intervals
-     * - Occasionally explore randomly for global optima
+     * Suggest next config to try for current pressure level.
      */
     public Config suggestNext(java.util.random.RandomGenerator rng) {
         Config best = getBestConfig();
 
-        // 10% chance of random exploration
+        // 10% random exploration
         if (rng.nextDouble() < 0.1) {
             return new Config(
                 rng.nextInt(16, 512),
                 rng.nextInt(100, 10000),
-                0.0, 0L, 0.0, 0.0, Instant.now()
+                0, 0, 0, 0, Instant.now()
             );
         }
 
@@ -260,12 +297,32 @@ public final class BatchCalibration implements AutoCloseable {
         int newBatch = Math.max(1, Math.min(1024, best.batchSize() + batchDelta));
         int newInterval = Math.max(100, Math.min(50000, best.flushIntervalMicros() + intervalDelta));
 
-        return new Config(newBatch, newInterval, 0.0, 0L, 0.0, 0.0, Instant.now());
+        return new Config(newBatch, newInterval, 0, 0, 0, 0, Instant.now());
     }
 
-    /**
-     * Get statistics about calibration history.
-     */
+    /** Get stats for all pressure levels */
+    public String getStatsReport() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Calibration Status by Pressure Level:\n");
+        sb.append("─".repeat(70)).append("\n");
+        sb.append(String.format("%-12s %10s %10s %15s %12s%n",
+            "Level", "BatchSize", "Interval", "Throughput", "Score"));
+        sb.append("─".repeat(70)).append("\n");
+
+        for (PressureLevel level : PressureLevel.values()) {
+            Config cfg = getBestConfigForPressure(level);
+            sb.append(String.format("%-12s %10d %8dµs %,13d/s %12.0f%n",
+                level.name(), cfg.batchSize(), cfg.flushIntervalMicros(),
+                cfg.throughputPerSec(), cfg.score()));
+        }
+        sb.append("─".repeat(70)).append("\n");
+        sb.append("Current pressure: ").append(currentPressure.name()).append("\n");
+        return sb.toString();
+    }
+
+    public record CalibrationStats(int totalObservations, double maxScore, double avgThroughput) {}
+
+    /** Get calibration statistics. */
     public CalibrationStats getStats() {
         try (Statement stmt = conn.createStatement()) {
             ResultSet rs = stmt.executeQuery(
@@ -285,12 +342,8 @@ public final class BatchCalibration implements AutoCloseable {
         return new CalibrationStats(0, 0.0, 0.0);
     }
 
-    public record CalibrationStats(int totalObservations, double maxScore, double avgThroughput) {}
-
     @Override
     public void close() {
-        try {
-            conn.close();
-        } catch (SQLException ignored) {}
+        try { conn.close(); } catch (SQLException ignored) {}
     }
 }

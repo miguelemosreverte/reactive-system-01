@@ -8,18 +8,22 @@ import java.util.concurrent.atomic.LongAdder;
 import java.util.function.Consumer;
 
 /**
- * High-throughput microbatch collector.
+ * High-throughput microbatch collector with pressure-aware calibration.
  *
  * Design: Minimal overhead on submit path, batch at flush time.
+ * Adapts batch parameters based on observed pressure level.
  *
  * Performance characteristics:
  * - Submit: 1 queue.offer() call (no atomics, no allocation)
  * - Flush: Batch processing with single Kafka call per batch
  * - Metrics: Tracked at flush time only
+ * - Pressure: Updated every 10 seconds, config reloads on level change
  *
  * @param <T> The type of items being collected
  */
 public final class MicrobatchCollector<T> implements AutoCloseable {
+
+    private static final long PRESSURE_WINDOW_NANOS = 10_000_000_000L; // 10 seconds
 
     /** Result of batch flush. */
     public record BatchResult(int batchSize, long flushTimeNanos, boolean success, String errorMessage) {
@@ -31,7 +35,8 @@ public final class MicrobatchCollector<T> implements AutoCloseable {
     public record Metrics(
         long totalRequests, long totalBatches, long totalFlushTimeNanos,
         int currentBatchSize, int currentFlushIntervalMicros,
-        double avgBatchSize, double avgFlushTimeMicros, double throughputPerSec, long lastFlushAtNanos
+        double avgBatchSize, double avgFlushTimeMicros, double throughputPerSec, long lastFlushAtNanos,
+        BatchCalibration.PressureLevel pressureLevel
     ) {
         public double avgLatencyMicros() {
             return totalBatches > 0 ? (totalFlushTimeNanos / totalBatches) / 1000.0 : 0.0;
@@ -43,7 +48,7 @@ public final class MicrobatchCollector<T> implements AutoCloseable {
     private final BatchCalibration calibration;
     private final int maxBatchSize;
 
-    // Calibrated parameters
+    // Calibrated parameters (updated on pressure change)
     private volatile int targetBatchSize;
     private volatile int flushIntervalMicros;
 
@@ -57,8 +62,14 @@ public final class MicrobatchCollector<T> implements AutoCloseable {
     private final LongAdder totalFlushNanos = new LongAdder();
     private final long startTimeNanos = System.nanoTime();
 
-    // Flush threads
+    // Pressure tracking (updated from flush metrics, no hot path overhead)
+    private volatile long windowStartNanos;
+    private volatile long windowItemCount;
+    private volatile BatchCalibration.PressureLevel currentPressure = BatchCalibration.PressureLevel.MEDIUM;
+
+    // Threads
     private final Thread[] flushThreads;
+    private final Thread pressureThread;
     private volatile boolean running = true;
 
     @SuppressWarnings("unchecked")
@@ -66,13 +77,14 @@ public final class MicrobatchCollector<T> implements AutoCloseable {
         this.batchConsumer = batchConsumer;
         this.calibration = calibration;
         this.maxBatchSize = maxBatchSize;
+        this.windowStartNanos = System.nanoTime();
 
-        // Load calibration
+        // Load calibration for initial pressure level
         var config = calibration.getBestConfig();
         this.targetBatchSize = config.batchSize();
         this.flushIntervalMicros = config.flushIntervalMicros();
 
-        // One queue per CPU core - sweet spot for throughput
+        // One queue per CPU core
         this.partitionCount = Runtime.getRuntime().availableProcessors();
         this.queues = new ConcurrentLinkedQueue[partitionCount];
         for (int i = 0; i < partitionCount; i++) {
@@ -88,6 +100,12 @@ public final class MicrobatchCollector<T> implements AutoCloseable {
                 .daemon(true)
                 .start(() -> flushLoop(idx));
         }
+
+        // Pressure monitoring thread
+        this.pressureThread = Thread.ofPlatform()
+            .name("pressure-monitor")
+            .daemon(true)
+            .start(this::pressureLoop);
     }
 
     /** Create collector with default settings. */
@@ -149,6 +167,40 @@ public final class MicrobatchCollector<T> implements AutoCloseable {
         }
     }
 
+    /** Pressure monitoring loop - checks every 10 seconds. */
+    private void pressureLoop() {
+        while (running) {
+            try {
+                Thread.sleep(10_000); // Check every 10 seconds
+            } catch (InterruptedException e) {
+                break;
+            }
+
+            long now = System.nanoTime();
+            long itemsInWindow = totalItems.sum() - windowItemCount;
+            long elapsed = now - windowStartNanos;
+
+            // Calculate requests per 10 seconds
+            long reqPer10Sec = elapsed > 0 ? (itemsInWindow * PRESSURE_WINDOW_NANOS) / elapsed : 0;
+
+            // Update pressure level
+            var oldPressure = currentPressure;
+            currentPressure = BatchCalibration.PressureLevel.fromRequestRate(reqPer10Sec);
+            calibration.updatePressure(reqPer10Sec);
+
+            // Reload config if pressure level changed
+            if (currentPressure != oldPressure) {
+                var config = calibration.getBestConfig();
+                this.targetBatchSize = config.batchSize();
+                this.flushIntervalMicros = config.flushIntervalMicros();
+            }
+
+            // Reset window
+            windowStartNanos = now;
+            windowItemCount = totalItems.sum();
+        }
+    }
+
     /** Flush a batch to the consumer. */
     private void flush(List<T> batch) {
         long start = System.nanoTime();
@@ -194,8 +246,14 @@ public final class MicrobatchCollector<T> implements AutoCloseable {
             batches > 0 ? (double) items / batches : 0,
             batches > 0 ? flushNanos / batches / 1000.0 : 0,
             elapsed > 0 ? items * 1_000_000_000.0 / elapsed : 0,
-            System.nanoTime()
+            System.nanoTime(),
+            currentPressure
         );
+    }
+
+    /** Get current pressure level. */
+    public BatchCalibration.PressureLevel getPressureLevel() {
+        return currentPressure;
     }
 
     /** Get current config. */
@@ -209,7 +267,9 @@ public final class MicrobatchCollector<T> implements AutoCloseable {
     @Override
     public void close() {
         running = false;
+        pressureThread.interrupt();
         for (Thread t : flushThreads) t.interrupt();
+        try { pressureThread.join(1000); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
         for (Thread t : flushThreads) {
             try { t.join(1000); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
         }
