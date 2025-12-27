@@ -1,0 +1,20 @@
+name: "HTTP - Hyper"
+description: "Lock-free multi-core with HTTP pipelining support"
+component: http
+duration: 60000  # 1 minute
+concurrency: 500
+
+# Expected throughput from documented benchmarks (HTTP_SERVER_BENCHMARKS.md)
+# Sequential mode: 47,230 req/s (4 workers)
+# Note: Pipelining support exists but is NOT realistic for production traffic
+expectedThroughput: 47230
+expectedThroughputNote: "Sequential mode, 4 workers"
+
+config:
+  httpServer: HYPER
+  microbatching: false
+  microbatchSize: 0
+  microbatchTimeoutMs: 0
+  kafkaAcks: "1"
+  kafkaBatchSize: 16384
+  kafkaLingerMs: 0

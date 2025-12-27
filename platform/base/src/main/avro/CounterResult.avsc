@@ -1,0 +1,32 @@
+{
+  "type": "record",
+  "name": "CounterResult",
+  "namespace": "com.reactive.platform.schema",
+  "doc": "Result after processing a counter event",
+  "fields": [
+    {"name": "eventId", "type": "string", "doc": "Original event identifier"},
+    {"name": "sessionId", "type": "string", "doc": "Session identifier"},
+    {"name": "previousValue", "type": "int", "doc": "Value before action"},
+    {"name": "newValue", "type": "int", "doc": "Value after action"},
+    {"name": "alert", "type": "string", "doc": "Alert level: NONE, NORMAL, LOW_RISK, MEDIUM_RISK, HIGH_RISK, CRITICAL"},
+    {"name": "message", "type": "string", "doc": "Human-readable message"},
+    {"name": "processingTimeMs", "type": "long", "doc": "Processing time in milliseconds"},
+    {"name": "traceId", "type": ["null", "string"], "default": null},
+    {
+      "name": "timing",
+      "type": ["null", {
+        "type": "record",
+        "name": "ResultTiming",
+        "fields": [
+          {"name": "gatewayReceivedAt", "type": ["null", "long"], "default": null},
+          {"name": "gatewayPublishedAt", "type": ["null", "long"], "default": null},
+          {"name": "flinkReceivedAt", "type": ["null", "long"], "default": null},
+          {"name": "flinkProcessedAt", "type": ["null", "long"], "default": null},
+          {"name": "droolsStartAt", "type": ["null", "long"], "default": null},
+          {"name": "droolsEndAt", "type": ["null", "long"], "default": null}
+        ]
+      }],
+      "default": null
+    }
+  ]
+}

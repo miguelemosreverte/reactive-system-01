@@ -1,0 +1,31 @@
+{
+  "brochure": "kafka-tuned",
+  "name": "Kafka - Tuned Batching",
+  "startTime": "2025-12-26T21:20:54.040558-03:00",
+  "endTime": "2025-12-26T21:22:58.880027-03:00",
+  "durationMs": 124839,
+  "throughput": 4625.94,
+  "p50Ms": 3.457,
+  "p99Ms": 0.438,
+  "totalOps": 280850,
+  "successOps": 280850,
+  "failedOps": 0,
+  "rawResults": {
+    "avgThroughput": 4625.94,
+    "component": "kafka-producer",
+    "durationMs": 60712,
+    "failedOperations": 0,
+    "latency": {
+      "avg": 3.457,
+      "max": 0.526,
+      "p50": 3.457,
+      "p95": 5.186,
+      "p99": 0.438
+    },
+    "name": "Kafka Producer Benchmark",
+    "notes": "Fire-and-forget Kafka producer throughput (acks=0). This is the theoretical maximum for Kafka publishing.",
+    "status": "completed",
+    "successfulOperations": 280850,
+    "totalOperations": 280850
+  }
+}

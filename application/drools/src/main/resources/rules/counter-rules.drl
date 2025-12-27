@@ -1,0 +1,48 @@
+package com.reactive.drools.rules
+
+import com.reactive.drools.model.Counter
+
+// Rule: No alert for normal range (1-10)
+rule "Counter Normal"
+    salience 1
+    when
+        $counter : Counter(value > 0, value <= 10, alert == null)
+    then
+        $counter.setAlert("NORMAL");
+end
+
+// Rule: Warning for moderate values (11-100)
+rule "Counter Warning"
+    salience 2
+    when
+        $counter : Counter(value > 10, value <= 100, alert == null)
+    then
+        $counter.setAlert("WARNING");
+end
+
+// Rule: Critical for high values (>100)
+rule "Counter Critical"
+    salience 3
+    when
+        $counter : Counter(value > 100, alert == null)
+    then
+        $counter.setAlert("CRITICAL");
+end
+
+// Rule: Reset notification
+rule "Counter Reset"
+    salience 4
+    when
+        $counter : Counter(value == 0, alert == null)
+    then
+        $counter.setAlert("RESET");
+end
+
+// Rule: Negative values are invalid
+rule "Counter Negative"
+    salience 5
+    when
+        $counter : Counter(value < 0, alert == null)
+    then
+        $counter.setAlert("INVALID");
+end

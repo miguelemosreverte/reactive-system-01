@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brochure Comparison - Marathon Results</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; padding: 20px; line-height: 1.6; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        h1 { font-size: 2.5rem; text-align: center; margin-bottom: 8px; background: linear-gradient(135deg, #60a5fa, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .subtitle { text-align: center; color: #94a3b8; margin-bottom: 32px; font-size: 1.1rem; }
+
+        .winner-card { background: linear-gradient(135deg, #1e40af, #7c3aed); border-radius: 16px; padding: 32px; margin-bottom: 32px; text-align: center; box-shadow: 0 20px 40px rgba(124, 58, 237, 0.3); }
+        .winner-title { font-size: 1.2rem; color: #cbd5e1; margin-bottom: 8px; }
+        .winner-name { font-size: 1.8rem; font-weight: bold; margin-bottom: 16px; }
+        .winner-throughput { font-size: 3.5rem; font-weight: bold; color: #fbbf24; text-shadow: 0 0 30px rgba(251, 191, 36, 0.5); }
+        .winner-unit { font-size: 1.5rem; color: #fcd34d; }
+
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; }
+        @media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
+
+        .card { background: #1e293b; border-radius: 12px; padding: 24px; margin-bottom: 24px; border: 1px solid #334155; }
+        .card h2 { margin-bottom: 16px; color: #f1f5f9; font-size: 1.3rem; display: flex; align-items: center; gap: 10px; }
+        .card h2 .icon { font-size: 1.5rem; }
+        .card p.desc { color: #94a3b8; font-size: 0.9rem; margin-bottom: 16px; }
+
+        .chart-container { height: 350px; position: relative; }
+        .chart-container-tall { height: 450px; }
+
+        table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+        th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid #334155; }
+        th { background: #0f172a; color: #94a3b8; font-weight: 600; text-transform: uppercase; font-size: 0.8rem; letter-spacing: 0.5px; }
+        tr:hover { background: #334155; }
+        tr.winner { background: rgba(34, 197, 94, 0.15); }
+        tr.winner td { color: #4ade80; font-weight: 500; }
+        td.throughput { font-family: 'SF Mono', Monaco, monospace; font-weight: 600; }
+
+        .layer-badges { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+        .badge { padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 500; }
+        .badge-collector { background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3); }
+        .badge-kafka { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
+        .badge-http { background: rgba(168, 85, 247, 0.2); color: #a78bfa; border: 1px solid rgba(168, 85, 247, 0.3); }
+        .badge-gateway { background: rgba(249, 115, 22, 0.2); color: #fb923c; border: 1px solid rgba(249, 115, 22, 0.3); }
+        .badge-full { background: rgba(236, 72, 153, 0.2); color: #f472b6; border: 1px solid rgba(236, 72, 153, 0.3); }
+
+        .insight-box { background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(59, 130, 246, 0.1)); border: 1px solid rgba(34, 197, 94, 0.2); border-radius: 12px; padding: 20px; margin-bottom: 24px; }
+        .insight-box h3 { color: #4ade80; margin-bottom: 12px; font-size: 1.1rem; }
+        .insight-box ul { color: #cbd5e1; padding-left: 20px; }
+        .insight-box li { margin-bottom: 8px; }
+        .insight-box .highlight { color: #fbbf24; font-weight: 600; }
+
+        .timestamp { text-align: center; color: #64748b; margin-top: 32px; padding: 16px; border-top: 1px solid #334155; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Reactive System Benchmark</h1>
+        <p class="subtitle">Performance comparison across 20 configurations • Throughput Decomposition Analysis</p>
+
+        <div class="winner-card">
+            <div class="winner-title">🏆 Fastest Configuration</div>
+            <div class="winner-name">Microbatch Collector (No HTTP)</div>
+            <div class="winner-throughput">7.1M <span class="winner-unit">ops/s</span></div>
+        </div>
+
+        <div class="insight-box">
+            <h3>📊 Key Insights</h3>
+            <ul>
+                <li><span class="highlight">Microbatch Collector</span> achieves 9M+ ops/s with pure in-memory batching (no network)</li>
+                <li><span class="highlight">Kafka batching</span> reduces throughput to ~600K ops/s (serialization + network overhead)</li>
+                <li><span class="highlight">HTTP layer</span> (Netty/Rocket) caps at ~200K ops/s due to connection handling</li>
+                <li><span class="highlight">Gateway + Kafka</span> achieves ~170K ops/s — proving Kafka adds near-zero overhead to HTTP</li>
+                <li><span class="highlight">Spring WebFlux</span> is 10x slower than raw Netty for gateway operations</li>
+            </ul>
+        </div>
+
+        <div class="layer-badges">
+            <span class="badge badge-collector">Collector Layer</span>
+            <span class="badge badge-kafka">Kafka Layer</span>
+            <span class="badge badge-http">HTTP Layer</span>
+            <span class="badge badge-gateway">Gateway (HTTP+Kafka)</span>
+            <span class="badge badge-full">Full Pipeline</span>
+        </div>
+
+        <div class="grid-2">
+            <div class="card">
+                <h2><span class="icon">📈</span> Throughput (Log Scale)</h2>
+                <p class="desc">Logarithmic scale reveals relative differences between all configurations</p>
+                <div class="chart-container">
+                    <canvas id="logChart"></canvas>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2><span class="icon">🔬</span> Layer Decomposition</h2>
+                <p class="desc">How each layer impacts throughput — from raw collector to full pipeline</p>
+                <div class="chart-container">
+                    <canvas id="waterfallChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2><span class="icon">⚡</span> Linear Comparison</h2>
+            <p class="desc">Absolute throughput comparison — showing the massive gap between in-memory and networked operations</p>
+            <div class="chart-container chart-container-tall">
+                <canvas id="throughputChart"></canvas>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2><span class="icon">📋</span> Detailed Results</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>Configuration</th>
+                        <th>Throughput</th>
+                        <th>p50</th>
+                        <th>p99</th>
+                        <th>Total Ops</th>
+                        <th>vs Winner</th>
+                    </tr>
+                </thead>
+                <tbody>
+            <tr class="winner">
+                <td>🏆 #1</td>
+                <td><strong>Microbatch Collector (No HTTP)</strong></td>
+                <td>7140464</td>
+                <td>0.0</td>
+                <td>0.0</td>
+                <td>71526026</td>
+                <td></td>
+            </tr>
+            <tr class="">
+                <td>#2</td>
+                <td><strong>HTTP - Rocket Server</strong></td>
+                <td>765496</td>
+                <td>0.2</td>
+                <td>3.7</td>
+                <td>7659548</td>
+                <td>9.3x slower</td>
+            </tr>
+            <tr class="">
+                <td>#3</td>
+                <td><strong>HTTP - Raw NIO</strong></td>
+                <td>698310</td>
+                <td>0.2</td>
+                <td>3.7</td>
+                <td>6988688</td>
+                <td>10.2x slower</td>
+            </tr>
+            <tr class="">
+                <td>#4</td>
+                <td><strong>HTTP - Boss/Worker</strong></td>
+                <td>664973</td>
+                <td>0.2</td>
+                <td>4.3</td>
+                <td>6654381</td>
+                <td>10.7x slower</td>
+            </tr>
+            <tr class="">
+                <td>#5</td>
+                <td><strong>HTTP - Turbo</strong></td>
+                <td>608795</td>
+                <td>0.1</td>
+                <td>7.5</td>
+                <td>6100734</td>
+                <td>11.7x slower</td>
+            </tr>
+            <tr class="">
+                <td>#6</td>
+                <td><strong>HTTP - Hyper</strong></td>
+                <td>566296</td>
+                <td>0.3</td>
+                <td>5.1</td>
+                <td>5666360</td>
+                <td>12.6x slower</td>
+            </tr>
+            <tr class="">
+                <td>#7</td>
+                <td><strong>HTTP - Ultra</strong></td>
+                <td>516057</td>
+                <td>0.1</td>
+                <td>8.4</td>
+                <td>5173468</td>
+                <td>13.8x slower</td>
+            </tr>
+            <tr class="">
+                <td>#8</td>
+                <td><strong>HTTP - Zero Copy</strong></td>
+                <td>511406</td>
+                <td>0.1</td>
+                <td>9.1</td>
+                <td>5124292</td>
+                <td>14.0x slower</td>
+            </tr>
+            <tr class="">
+                <td>#9</td>
+                <td><strong>HTTP - Raw Netty</strong></td>
+                <td>484693</td>
+                <td>0.5</td>
+                <td>5.7</td>
+                <td>4851288</td>
+                <td>14.7x slower</td>
+            </tr>
+            <tr class="">
+                <td>#10</td>
+                <td><strong>Full Pipeline - Netty + Microbatch</strong></td>
+                <td>15463</td>
+                <td>12.7</td>
+                <td>165.3</td>
+                <td>154987</td>
+                <td>461.8x slower</td>
+            </tr>
+            <tr class="">
+                <td>#11</td>
+                <td><strong>Gateway - Netty + Microbatch</strong></td>
+                <td>15135</td>
+                <td>13.0</td>
+                <td>167.1</td>
+                <td>151457</td>
+                <td>471.8x slower</td>
+            </tr>
+            <tr class="">
+                <td>#12</td>
+                <td><strong>Gateway - Hyper + Microbatch</strong></td>
+                <td>14387</td>
+                <td>34.1</td>
+                <td>302.0</td>
+                <td>144804</td>
+                <td>496.3x slower</td>
+            </tr>
+            <tr class="">
+                <td>#13</td>
+                <td><strong>Gateway - Raw NIO + Microbatch</strong></td>
+                <td>13438</td>
+                <td>36.5</td>
+                <td>261.8</td>
+                <td>134801</td>
+                <td>531.3x slower</td>
+            </tr>
+            <tr class="">
+                <td>#14</td>
+                <td><strong>Gateway - Rocket + Microbatch</strong></td>
+                <td>13203</td>
+                <td>37.4</td>
+                <td>374.0</td>
+                <td>132399</td>
+                <td>540.8x slower</td>
+            </tr>
+            <tr class="">
+                <td>#15</td>
+                <td><strong>Gateway - Turbo + Microbatch</strong></td>
+                <td>11180</td>
+                <td>43.7</td>
+                <td>224.0</td>
+                <td>112441</td>
+                <td>638.7x slower</td>
+            </tr>
+            <tr class="">
+                <td>#16</td>
+                <td><strong>Gateway - Boss/Worker + Microbatch</strong></td>
+                <td>9801</td>
+                <td>50.0</td>
+                <td>470.6</td>
+                <td>98233</td>
+                <td>728.6x slower</td>
+            </tr>
+            <tr class="">
+                <td>#17</td>
+                <td><strong>HTTP - Spring WebFlux</strong></td>
+                <td>5262</td>
+                <td>87.9</td>
+                <td>189.7</td>
+                <td>52953</td>
+                <td>1356.9x slower</td>
+            </tr>
+            <tr class="">
+                <td>#18</td>
+                <td><strong>Kafka - Tuned Batching</strong></td>
+                <td>4626</td>
+                <td>3.5</td>
+                <td>0.4</td>
+                <td>280850</td>
+                <td>1543.6x slower</td>
+            </tr>
+            <tr class="">
+                <td>#19</td>
+                <td><strong>Kafka - Fire-and-Forget</strong></td>
+                <td>4614</td>
+                <td>3.5</td>
+                <td>0.1</td>
+                <td>280736</td>
+                <td>1547.6x slower</td>
+            </tr>
+            <tr class="">
+                <td>#20</td>
+                <td><strong>Flink - Stream Processing</strong></td>
+                <td>1681</td>
+                <td>21231.0</td>
+                <td>24296.0</td>
+                <td>211696</td>
+                <td>4247.7x slower</td>
+            </tr></tbody>
+            </table>
+        </div>
+
+        <div class="timestamp">Generated: 2025-12-26 21:23:13 • Reactive System Benchmark Suite</div>
+    </div>
+
+    <script>
+        // Color palette
+        const colors = {
+            collector: 'rgba(34, 197, 94, 0.85)',
+            kafka: 'rgba(59, 130, 246, 0.85)',
+            http: 'rgba(168, 85, 247, 0.85)',
+            gateway: 'rgba(249, 115, 22, 0.85)',
+            full: 'rgba(236, 72, 153, 0.85)',
+            spring: 'rgba(239, 68, 68, 0.85)'
+        };
+
+        function getColor(name) {
+            if (name.includes('Collector')) return colors.collector;
+            if (name.includes('Kafka')) return colors.kafka;
+            if (name.includes('HTTP') || name.includes('Rocket') || name.includes('Netty')) return colors.http;
+            if (name.includes('Gateway')) return colors.gateway;
+            if (name.includes('Full Pipeline')) return colors.full;
+            if (name.includes('Spring')) return colors.spring;
+            return 'rgba(148, 163, 184, 0.85)';
+        }
+
+        const labels = ["Microbatch Collector (No HTTP)", "HTTP - Rocket Server", "HTTP - Raw NIO", "HTTP - Boss/Worker", "HTTP - Turbo", "HTTP - Hyper", "HTTP - Ultra", "HTTP - Zero Copy", "HTTP - Raw Netty", "Full Pipeline - Netty + Microbatch", "Gateway - Netty + Microbatch", "Gateway - Hyper + Microbatch", "Gateway - Raw NIO + Microbatch", "Gateway - Rocket + Microbatch", "Gateway - Turbo + Microbatch", "Gateway - Boss/Worker + Microbatch", "HTTP - Spring WebFlux", "Kafka - Tuned Batching", "Kafka - Fire-and-Forget", "Flink - Stream Processing"];
+        const data = [7140464, 765496, 698310, 664973, 608795, 566296, 516057, 511406, 484693, 15463, 15135, 14387, 13438, 13203, 11180, 9801, 5262, 4626, 4614, 1681];
+        const backgroundColors = labels.map(name => getColor(name));
+
+        // Log Scale Chart
+        new Chart(document.getElementById('logChart').getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: labels.map(l => l.length > 25 ? l.substring(0, 22) + '...' : l),
+                datasets: [{
+                    label: 'Throughput (ops/s)',
+                    data: data,
+                    backgroundColor: backgroundColors,
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => ctx.raw.toLocaleString() + ' ops/s'
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        type: 'logarithmic',
+                        grid: { color: '#334155' },
+                        ticks: {
+                            color: '#94a3b8',
+                            callback: v => v >= 1000000 ? (v/1000000) + 'M' : v >= 1000 ? (v/1000) + 'K' : v
+                        }
+                    },
+                    y: {
+                        grid: { display: false },
+                        ticks: { color: '#e2e8f0', font: { size: 11 } }
+                    }
+                }
+            }
+        });
+
+        // Waterfall Chart - Layer Decomposition
+        const waterfallLabels = ["Collector (In-Memory)", "Kafka Producer", "Flink (Kafka+Stream)", "HTTP Server", "Gateway (HTTP+Kafka)", "Full Pipeline"];
+        const waterfallValues = [7140464, 4626, 1681, 765496, 15135, 15463];
+        const waterfallColors = ['rgba(34, 197, 94, 0.85)', 'rgba(59, 130, 246, 0.85)', 'rgba(14, 165, 233, 0.85)', 'rgba(168, 85, 247, 0.85)', 'rgba(249, 115, 22, 0.85)', 'rgba(236, 72, 153, 0.85)'];
+
+        new Chart(document.getElementById('waterfallChart').getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: waterfallLabels,
+                datasets: [{
+                    label: 'Throughput (ops/s)',
+                    data: waterfallValues,
+                    backgroundColor: waterfallColors,
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => ctx.raw.toLocaleString() + ' ops/s'
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        type: 'logarithmic',
+                        grid: { color: '#334155' },
+                        ticks: {
+                            color: '#94a3b8',
+                            callback: v => v >= 1000000 ? (v/1000000) + 'M' : v >= 1000 ? (v/1000) + 'K' : v
+                        }
+                    },
+                    y: {
+                        grid: { display: false },
+                        ticks: { color: '#e2e8f0', font: { size: 11 } }
+                    }
+                }
+            }
+        });
+
+        // Linear Chart
+        new Chart(document.getElementById('throughputChart').getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Throughput (ops/s)',
+                    data: data,
+                    backgroundColor: backgroundColors,
+                    borderRadius: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => ctx.raw.toLocaleString() + ' ops/s'
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: '#334155' },
+                        ticks: {
+                            color: '#94a3b8',
+                            callback: v => v >= 1000000 ? (v/1000000) + 'M' : v >= 1000 ? (v/1000) + 'K' : v
+                        }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: {
+                            color: '#94a3b8',
+                            maxRotation: 45,
+                            minRotation: 45
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

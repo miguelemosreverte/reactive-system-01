@@ -1,0 +1,14 @@
+name: "Kafka - Tuned Batching"
+description: "Kafka producer with optimized batch settings (acks=1, large batches)"
+component: kafka
+duration: 60000  # 5 minutes
+concurrency: 16
+
+config:
+  httpServer: ""
+  microbatching: false
+  microbatchSize: 0
+  microbatchTimeoutMs: 0
+  kafkaAcks: "1"
+  kafkaBatchSize: 131072
+  kafkaLingerMs: 10

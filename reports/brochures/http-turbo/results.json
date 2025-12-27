@@ -1,0 +1,30 @@
+{
+  "brochure": "http-turbo",
+  "name": "HTTP - Turbo",
+  "startTime": "2025-12-27T00:44:47.103751-03:00",
+  "endTime": "2025-12-27T00:45:56.820633-03:00",
+  "durationMs": 69715,
+  "throughput": 661052.11,
+  "p50Ms": 0.1,
+  "p99Ms": 6.88,
+  "totalOps": 39680314,
+  "successOps": 39680314,
+  "failedOps": 0,
+  "rawResults": {
+    "avgLatencyMs": 0.6184,
+    "brochure": "TURBO",
+    "concurrency": 500,
+    "durationMs": 60000,
+    "endTime": "2025-12-27T03:45:56.705285035",
+    "failedOps": 0,
+    "name": "TurboHttpServer",
+    "p50Ms": 0.1,
+    "p99Ms": 6.88,
+    "startTime": "2025-12-27T03:45:56.70054794",
+    "successOps": 39680314,
+    "technology": "NIO + selectNow",
+    "throughput": 661052.11,
+    "tier": "500-600K req/s",
+    "totalOps": 39680314
+  }
+}

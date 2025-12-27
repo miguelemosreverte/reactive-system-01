@@ -1,0 +1,31 @@
+{
+  "brochure": "gateway-rocket",
+  "name": "Gateway - Rocket + Microbatch",
+  "startTime": "2025-12-26T21:10:58.033579-03:00",
+  "endTime": "2025-12-26T21:13:17.817908-03:00",
+  "durationMs": 139783,
+  "throughput": 13202.83,
+  "p50Ms": 37.396,
+  "p99Ms": 374.005,
+  "totalOps": 132399,
+  "successOps": 132398,
+  "failedOps": 1,
+  "rawResults": {
+    "avgThroughput": 13202.83,
+    "component": "microbatch-gateway",
+    "durationMs": 10028,
+    "failedOperations": 1,
+    "latency": {
+      "avg": 37.396,
+      "max": 411.406,
+      "p50": 37.396,
+      "p95": 44.875,
+      "p99": 374.005
+    },
+    "name": "microbatch-gateway Benchmark",
+    "notes": "Batch size: 64; Flush interval: 1000 µs; Collector throughput: 242708 events/sec",
+    "status": "completed",
+    "successfulOperations": 132398,
+    "totalOperations": 132399
+  }
+}

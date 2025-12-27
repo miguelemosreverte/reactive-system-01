@@ -1,0 +1,31 @@
+{
+  "brochure": "gateway-netty-microbatch",
+  "name": "Gateway - Netty + Microbatch",
+  "startTime": "2025-12-26T21:06:15.819434-03:00",
+  "endTime": "2025-12-26T21:08:38.028911-03:00",
+  "durationMs": 142208,
+  "throughput": 15135.11,
+  "p50Ms": 13.028,
+  "p99Ms": 167.09,
+  "totalOps": 151457,
+  "successOps": 151457,
+  "failedOps": 0,
+  "rawResults": {
+    "avgThroughput": 15135.11,
+    "component": "microbatch-gateway",
+    "durationMs": 10007,
+    "failedOperations": 0,
+    "latency": {
+      "avg": 13.028,
+      "max": 183.799,
+      "p50": 13.028,
+      "p95": 15.634,
+      "p99": 167.09
+    },
+    "name": "microbatch-gateway Benchmark",
+    "notes": "Batch size: 64; Flush interval: 1000 µs; Collector throughput: 43335 events/sec",
+    "status": "completed",
+    "successfulOperations": 151457,
+    "totalOperations": 151457
+  }
+}

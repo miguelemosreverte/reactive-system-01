@@ -1,0 +1,10 @@
+name: "Microbatch Collector (No HTTP)"
+description: "Raw event collection throughput without HTTP overhead - shows theoretical maximum batching capacity"
+component: collector
+duration: 10000  # 10 seconds
+concurrency: 200
+config:
+  httpServer: NONE
+  microbatching: true
+  microbatchSize: 128
+  microbatchTimeoutMs: 2000

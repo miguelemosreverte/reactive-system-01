@@ -77,13 +77,17 @@ public class KafkaProducerBenchmark {
             }
         };
 
-        // Create publisher with fire-and-forget settings
+        // Create publisher with optimized settings for throughput
+        // Using linger.ms=10 for batching instead of immediate send
         KafkaPublisher<String> publisher = KafkaPublisher.create(c -> c
                 .bootstrapServers(bootstrapServers)
                 .topic(topic)
                 .codec(codec)
                 .keyExtractor(s -> "bench-key")
-                .fireAndForget());
+                .acks("0")
+                .lingerMs(10)
+                .batchSize(131072)
+                .compression("lz4"));
 
         AtomicLong messageCount = new AtomicLong(0);
         AtomicLong errorCount = new AtomicLong(0);

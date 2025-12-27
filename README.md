@@ -1,108 +1,142 @@
 # Reactive System
 
-A Docker-first microservices architecture demonstrating real-time stream processing with React, Kafka, Flink, and Drools.
+A high-performance stream processing platform with benchmarking infrastructure as a first-class concern.
 
-![Benchmark Report](assets/benchmark-report.png)
+## What This Project Is
 
-## Beyond the Stack
+This is a **performance engineering laboratory** built around a real-time counter application. The counter itself is simple - the value lies in the systematic approach to measuring and optimizing each layer:
 
-This project is more than a technology demonstration. The emphasis is on **benchmarking methodology** and **observability infrastructure** as first-class concerns in system development.
+- **HTTP Server Layer** - 9 implementations from Spring WebFlux baseline to custom NIO servers achieving 700K+ req/s
+- **Gateway Layer** - Adaptive microbatching that combines HTTP ingestion with Kafka publishing at 150K+ ops/s
+- **Stream Processing** - Flink jobs consuming from Kafka, applying Drools business rules
+- **End-to-End Pipelines** - Full request flow from HTTP to Kafka to Flink with distributed tracing
 
-Key principles applied:
+Each component is independently benchmarkable, allowing targeted optimization without guesswork.
 
-- **Platform/Application separation** - Infrastructure concerns (Kafka, OTel, benchmarks) live in the platform layer; domain logic (Flink state machines, business rules) lives in the application layer. This enables fast compile cycles during domain development.
-- **Component-level benchmarking** - Each layer (HTTP, Gateway, Kafka, Drools, full E2E) is benchmarked independently to identify bottlenecks directly rather than guessing from aggregate metrics.
-- **Observability from day one** - Grafana dashboards, Loki log aggregation, Jaeger distributed tracing, and Prometheus metrics are integrated before optimization begins.
-- **Continuous measurement** - Performance work is iterative. Each optimization shifts the bottleneck elsewhere. The benchmark infrastructure supports regression testing across changes.
+## Project Structure
 
-For a detailed discussion of the system design choices and benchmarking approach, see [PRESENTATION.md](PRESENTATION.md).
+```
+reactive-system-01/
+├── platform/                    # Infrastructure (reusable)
+│   ├── base/                    # Shared utilities (logging, tracing, serialization)
+│   ├── http-server/             # 9 HTTP server implementations
+│   ├── kafka/                   # Kafka producer, consumer, microbatching
+│   ├── flink/                   # Stream processing jobs
+│   ├── gateway/                 # HTTP + Kafka gateway service
+│   └── integration/             # Combinatorial benchmarks
+├── application/                 # Business logic (counter-specific)
+│   ├── counter/                 # Counter application (Spring Boot)
+│   ├── drools/                  # Business rules engine
+│   └── ui/                      # React frontend
+├── cli/                         # Go CLI for benchmarking
+└── reports/                     # GitHub Pages benchmark results
+```
+
+This is a **Maven multi-module monorepo**. Each platform module can be developed and benchmarked independently:
+
+```bash
+cd platform/http-server && mvn test -Pbenchmark  # Benchmark HTTP servers
+cd platform/kafka && mvn test -Pbenchmark        # Benchmark Kafka
+mvn install                                       # Build everything from root
+```
+
+## Quick Start
+
+### Run the Full System
+
+```bash
+./cli.sh start          # Start all Docker services
+./cli.sh doctor         # Verify all services are healthy
+open http://localhost:3000  # Open the counter UI
+```
+
+### Run Benchmarks
+
+```bash
+./reactive bench brochure list              # List all available benchmarks
+./reactive bench brochure run http-rocket   # Run a specific benchmark
+./reactive bench brochure run-all           # Run the full benchmark marathon
+```
+
+### Smoke Test
+
+```bash
+./scripts/smoke-test.sh      # Quick validation (5s per test)
+./scripts/smoke-test.sh 3    # Faster validation (3s per test)
+```
+
+## The Brochure System
+
+Benchmarks are defined as **brochures** - YAML files that specify what to run, how to run it, and how to report results. Each module contains its own brochures:
+
+| Module | Brochures | Focus |
+|--------|-----------|-------|
+| platform/http-server | 9 | HTTP server implementations |
+| platform/kafka | 3 | Kafka producer + microbatch collector |
+| platform/flink | 1 | Stream processing throughput |
+| platform/integration | 9 | Gateway combinations + full E2E pipelines |
+
+Run `./reactive bench brochure list` to see all 22 benchmarks with descriptions.
+
+## Current Performance
+
+Measured on Apple M-series, same-container benchmarking:
+
+| Component | Implementation | Throughput |
+|-----------|---------------|------------|
+| HTTP Server | Rocket (NIO + SO_REUSEPORT) | 777K req/s |
+| HTTP Server | Spring WebFlux (baseline) | 180K req/s |
+| Gateway | Netty + Adaptive Microbatch | 191K ops/s |
+| Gateway | Spring WebFlux (baseline) | 15K ops/s |
+| Kafka Producer | Fire-and-Forget | 1.2M msgs/s |
 
 ## Architecture
 
 ```
-┌─────────────┐    WebSocket    ┌─────────────────┐
-│   React UI  │◄───────────────►│  Gateway (Node) │
-│  (Counter)  │                 │                 │
-└─────────────┘                 └────────┬────────┘
-                                         │
-                    ┌────────────────────┼────────────────────┐
-                    │                    │                    │
-                    ▼                    ▼                    ▼
-              ┌──────────┐        ┌──────────┐        ┌──────────┐
-              │  Kafka   │◄──────►│  Flink   │◄──────►│  Drools  │
-              │          │        │          │        │          │
-              └──────────┘        └──────────┘        └──────────┘
+┌─────────────┐    HTTP/WS    ┌─────────────────┐
+│   React UI  │◄─────────────►│     Gateway     │
+│  (Counter)  │               │  (HTTP+Kafka)   │
+└─────────────┘               └────────┬────────┘
+                                       │
+                   ┌───────────────────┼───────────────────┐
+                   │                   │                   │
+                   ▼                   ▼                   ▼
+             ┌──────────┐       ┌──────────┐       ┌──────────┐
+             │  Kafka   │◄─────►│  Flink   │◄─────►│  Drools  │
+             │          │       │          │       │          │
+             └──────────┘       └──────────┘       └──────────┘
 ```
 
 ### Data Flow
 
-1. User clicks increment/decrement in React UI
-2. WebSocket sends event to Gateway
-3. Gateway publishes to Kafka topic `counter-events`
-4. Flink job consumes events, maintains state, calls Drools
-5. Drools evaluates business rules
-6. Flink publishes result to Kafka topic `counter-results`
-7. Gateway consumes results, pushes via WebSocket to UI
-8. UI displays updated counter with alert level
+1. User action in React UI
+2. Gateway receives HTTP request
+3. Adaptive microbatcher collects events
+4. Batch published to Kafka `counter-events`
+5. Flink consumes, maintains state, calls Drools
+6. Drools evaluates business rules
+7. Result published to `counter-results`
+8. Gateway pushes update to UI
 
-### Business Rules (Drools)
+## CLI Reference
 
-| Counter Value | Alert Level |
-|--------------|-------------|
-| 0 | RESET |
-| 1-10 | NORMAL |
-| 11-100 | WARNING |
-| > 100 | CRITICAL |
-| < 0 | INVALID |
-
-## Quick Start
-
-```bash
-# Start all services
-./cli.sh start
-
-# Check health of all services
-./cli.sh doctor
-
-# Open UI in browser
-open http://localhost:3000
-```
-
-## CLI Commands
+### Docker Operations (cli.sh)
 
 ```bash
 ./cli.sh start [service]      # Start all or specific service
 ./cli.sh stop [service]       # Stop all or specific service
-./cli.sh restart [service]    # Restart all or specific service
-./cli.sh build [service]      # Build Docker images
-./cli.sh logs [service]       # View logs (follows)
-./cli.sh status               # Show running services
-./cli.sh shell <service>      # Enter container shell
+./cli.sh logs [service]       # View logs
 ./cli.sh doctor               # Health check all services
-./cli.sh e2e                  # Run end-to-end test
-./cli.sh compile drools       # Recompile Drools rules
-./cli.sh up                   # Alias for 'start'
-./cli.sh down                 # Stop and remove all containers
-./cli.sh help                 # Show help message
+./cli.sh status               # Show running services
 ```
 
-### Examples
+### Benchmarking (reactive)
 
 ```bash
-# Start only the UI
-./cli.sh start ui
-
-# View Flink logs
-./cli.sh logs flink
-
-# Restart the gateway
-./cli.sh restart gateway
-
-# Enter Kafka container shell
-./cli.sh shell kafka
-
-# Run end-to-end tests
-./cli.sh e2e
+./reactive bench brochure list              # List benchmarks
+./reactive bench brochure run <name>        # Run single benchmark
+./reactive bench brochure run-all           # Run all benchmarks
+./reactive bench brochure run-all --quick   # Quick validation mode
 ```
 
 ## Services
@@ -110,217 +144,52 @@ open http://localhost:3000
 | Service | Port | Description |
 |---------|------|-------------|
 | UI | 3000 | React frontend |
-| Gateway | 8080 | WebSocket/REST API bridge |
-| Flink Dashboard | 8081 | Flink web interface |
+| Gateway | 8080 | HTTP + WebSocket API |
+| Flink | 8081 | Stream processing dashboard |
 | Drools | 8180 | Business rules engine |
 | Kafka | 9092 | Message broker |
-| Zookeeper | 2181 | Kafka coordination |
-
-## Project Structure
-
-```
-reactive-system-01/
-├── cli.sh                    # Main CLI
-├── docker-compose.yml        # Production stack
-├── docker-compose.dev.yml    # Development overrides
-├── .env                      # Environment variables
-│
-├── ui/                       # React Frontend
-│   ├── Dockerfile
-│   ├── src/
-│   │   ├── App.tsx
-│   │   ├── components/
-│   │   │   ├── Counter.tsx
-│   │   │   └── ConnectionStatus.tsx
-│   │   └── hooks/
-│   │       └── useWebSocket.ts
-│   └── vite.config.ts
-│
-├── gateway/                  # WebSocket Gateway
-│   ├── Dockerfile
-│   └── src/
-│       ├── index.ts
-│       ├── kafka.ts
-│       └── websocket.ts
-│
-├── flink/                    # Stream Processing
-│   ├── Dockerfile
-│   ├── pom.xml
-│   └── src/main/java/
-│       └── com/reactive/flink/
-│           ├── CounterJob.java
-│           ├── model/
-│           ├── processor/
-│           └── serialization/
-│
-├── drools/                   # Business Rules
-│   ├── Dockerfile
-│   ├── pom.xml
-│   └── src/main/
-│       ├── java/com/reactive/drools/
-│       └── resources/rules/
-│           └── counter-rules.drl
-│
-└── scripts/                  # CLI helpers
-    ├── utils.sh
-    ├── doctor.sh
-    └── e2e-test.sh
-```
+| Grafana | 3001 | Observability dashboards |
 
 ## Development
 
-### Hot Reload Mode
+### Module Independence
 
-For development with hot reload:
+Each module has:
+- Own `pom.xml` with dependencies
+- Own `src/` with implementation
+- Own `brochures/` with benchmark definitions
+- Own `Dockerfile` for deployment
 
-```bash
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up
-```
+Shared utilities live in `base/` and are inherited by all modules.
 
-This enables:
-- UI: Vite dev server with HMR
-- Gateway: ts-node-dev with auto-restart
-- Drools: Mounted rules directory
+### Adding a New Benchmark
 
-### Modifying Business Rules
+1. Create `<module>/brochures/<name>/brochure.yaml`
+2. Define benchmark class, duration, parameters
+3. Run `./reactive bench brochure list` to verify discovery
+4. Run `./reactive bench brochure run <name>` to execute
 
-1. Edit `drools/src/main/resources/rules/counter-rules.drl`
-2. Run `./cli.sh compile drools` or restart the drools service
-
-### Adding New Kafka Topics
-
-Topics are auto-created, but for explicit creation:
+### Running Tests
 
 ```bash
-./cli.sh shell kafka
-kafka-topics --create --topic my-topic --bootstrap-server localhost:9092
-```
-
-## API Reference
-
-### Gateway REST API
-
-#### POST /api/counter
-Send a counter action.
-
-```bash
-curl -X POST http://localhost:8080/api/counter \
-  -H "Content-Type: application/json" \
-  -d '{"action": "increment", "value": 1}'
-```
-
-Actions: `increment`, `decrement`, `set`
-
-#### GET /api/counter/status
-Get current counter state.
-
-```bash
-curl http://localhost:8080/api/counter/status
-```
-
-#### GET /health
-Health check endpoint.
-
-```bash
-curl http://localhost:8080/health
-```
-
-### WebSocket API
-
-Connect to `ws://localhost:8080/ws`
-
-#### Messages from Client
-
-```json
-{"type": "counter-action", "action": "increment", "value": 1}
-{"type": "counter-action", "action": "set", "value": 50}
-{"type": "ping"}
-```
-
-#### Messages from Server
-
-```json
-{"type": "connected", "sessionId": "uuid", "clientId": "uuid"}
-{"type": "counter-update", "data": {"currentValue": 10, "alert": "NORMAL"}}
-{"type": "pong", "timestamp": 1234567890}
-```
-
-### Drools REST API
-
-#### POST /api/evaluate
-Evaluate rules for a counter value.
-
-```bash
-curl -X POST http://localhost:8180/api/evaluate \
-  -H "Content-Type: application/json" \
-  -d '{"value": 50}'
-```
-
-Response:
-```json
-{
-  "value": 50,
-  "alert": "WARNING",
-  "message": "Counter value is elevated",
-  "timestamp": 1234567890
-}
+mvn test                           # Run all tests
+mvn test -pl http-server           # Test specific module
+./scripts/smoke-test.sh            # Quick platform validation
 ```
 
 ## Technology Stack
 
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| React | 18.x | Frontend UI |
-| Vite | 5.x | Build tool |
-| Node.js | 20 LTS | Gateway runtime |
-| Apache Flink | 1.18.x | Stream processing |
-| Apache Kafka | 3.6.x | Message broker |
-| Drools | 8.x | Business rules |
-| Java | 17 | JVM services |
-| Docker Compose | v2 | Orchestration |
-
-## Troubleshooting
-
-### Services not starting
-
-```bash
-# Check Docker is running
-docker info
-
-# View all logs
-./cli.sh logs
-
-# Check specific service
-./cli.sh logs kafka
-```
-
-### Kafka connection issues
-
-Kafka may take up to 30 seconds to become ready. Run:
-
-```bash
-./cli.sh doctor
-```
-
-### Flink job not running
-
-Check if the job was submitted:
-
-```bash
-# Open Flink dashboard
-open http://localhost:8081
-
-# Or check logs
-./cli.sh logs flink
-```
-
-### WebSocket not connecting
-
-Ensure the gateway is healthy:
-
-```bash
-curl http://localhost:8080/health
-```
+| Technology | Purpose |
+|------------|---------|
+| Java 21 | Platform runtime |
+| Maven | Multi-module build |
+| Netty/NIO | High-performance HTTP |
+| Apache Kafka | Message streaming |
+| Apache Flink | Stream processing |
+| Drools | Business rules |
+| React + Vite | Frontend UI |
+| Docker Compose | Local orchestration |
+| Go | CLI tooling |
 
 ## License
 

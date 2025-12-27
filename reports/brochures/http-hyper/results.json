@@ -1,0 +1,30 @@
+{
+  "brochure": "http-hyper",
+  "name": "HTTP - Hyper",
+  "startTime": "2025-12-27T00:38:54.438846-03:00",
+  "endTime": "2025-12-27T00:40:04.287811-03:00",
+  "durationMs": 69847,
+  "throughput": 717700.69,
+  "p50Ms": 0.2,
+  "p99Ms": 3.85,
+  "totalOps": 43067783,
+  "successOps": 43067783,
+  "failedOps": 0,
+  "rawResults": {
+    "avgLatencyMs": 0.5426,
+    "brochure": "HYPER",
+    "concurrency": 500,
+    "durationMs": 60000,
+    "endTime": "2025-12-27T03:40:04.20756417",
+    "failedOps": 0,
+    "name": "HyperHttpServer",
+    "p50Ms": 0.2,
+    "p99Ms": 3.85,
+    "startTime": "2025-12-27T03:40:04.204661331",
+    "successOps": 43067783,
+    "technology": "NIO + Pipelining",
+    "throughput": 717700.69,
+    "tier": "500-600K req/s",
+    "totalOps": 43067783
+  }
+}

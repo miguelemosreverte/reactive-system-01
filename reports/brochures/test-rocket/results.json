@@ -1,0 +1,17 @@
+{
+  "brochure": "ROCKET",
+  "name": "RocketHttpServer",
+  "technology": "NIO + SO_REUSEPORT",
+  "tier": "600K+ req/s",
+  "startTime": "2025-12-26T22:55:12.037351485",
+  "endTime": "2025-12-26T22:55:12.039497544",
+  "durationMs": 10000,
+  "throughput": 823516.09,
+  "p50Ms": 0.05,
+  "p99Ms": 1.96,
+  "totalOps": 8238455,
+  "successOps": 8238455,
+  "failedOps": 0,
+  "avgLatencyMs": 0.1941,
+  "concurrency": 200
+}

@@ -1,0 +1,19 @@
+name: "Gateway - Turbo + Microbatch"
+description: "Turbo HTTP Server + Kafka microbatching gateway"
+component: gateway
+duration: 60000  # 1 minute
+concurrency: 500
+
+# Expected throughput: HTTP bottleneck with near-zero Kafka overhead
+# HTTP Turbo: 550,000 req/s target → Gateway should be ~500K
+expectedThroughput: 500000
+expectedThroughputNote: "HTTP Turbo (550K) - Kafka overhead"
+
+config:
+  httpServer: TURBO
+  microbatching: true
+  microbatchSize: 128
+  microbatchTimeoutMs: 5
+  kafkaAcks: "1"
+  kafkaBatchSize: 65536
+  kafkaLingerMs: 5

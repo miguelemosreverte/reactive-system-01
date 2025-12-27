@@ -1,0 +1,19 @@
+name: "Gateway - Boss/Worker + Microbatch"
+description: "Boss/Worker HTTP Server + Kafka microbatching gateway"
+component: gateway
+duration: 60000  # 1 minute
+concurrency: 500
+
+# Expected throughput: HTTP bottleneck with near-zero Kafka overhead
+# HTTP Boss/Worker: 73,559 req/s → Gateway should be ~70K
+expectedThroughput: 70000
+expectedThroughputNote: "HTTP Boss/Worker (74K) - Kafka overhead"
+
+config:
+  httpServer: BOSS_WORKER
+  microbatching: true
+  microbatchSize: 128
+  microbatchTimeoutMs: 5
+  kafkaAcks: "1"
+  kafkaBatchSize: 65536
+  kafkaLingerMs: 5

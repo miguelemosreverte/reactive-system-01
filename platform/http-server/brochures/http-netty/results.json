@@ -1,0 +1,30 @@
+{
+  "brochure": "http-netty",
+  "name": "HTTP - Raw Netty",
+  "startTime": "2025-12-26T21:16:47.532256-03:00",
+  "endTime": "2025-12-26T21:17:05.695378-03:00",
+  "durationMs": 18162,
+  "throughput": 484692.58,
+  "p50Ms": 0.52,
+  "p99Ms": 5.65,
+  "totalOps": 4851288,
+  "successOps": 4851288,
+  "failedOps": 0,
+  "rawResults": {
+    "avgLatencyMs": 0.929,
+    "brochure": "NETTY",
+    "concurrency": 500,
+    "durationMs": 10000,
+    "endTime": "2025-12-27T00:17:03.585198756",
+    "failedOps": 0,
+    "name": "NettyHttpServer",
+    "p50Ms": 0.52,
+    "p99Ms": 5.65,
+    "startTime": "2025-12-27T00:17:03.583906794",
+    "successOps": 4851288,
+    "technology": "Netty NIO",
+    "throughput": 484692.58,
+    "tier": "\u003c300K req/s",
+    "totalOps": 4851288
+  }
+}

@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flink - Stream Processing - Benchmark Results</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; padding: 20px; }
+        .container { max-width: 900px; margin: 0 auto; }
+        .card { background: white; border-radius: 8px; padding: 24px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h1 { color: #1a1a1a; margin-bottom: 8px; }
+        .desc { color: #666; margin-bottom: 24px; }
+        .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; }
+        .metric { text-align: center; padding: 20px; background: #f8f9fa; border-radius: 8px; }
+        .metric-value { font-size: 36px; font-weight: bold; color: #2563eb; }
+        .metric-label { color: #666; margin-top: 4px; }
+        .config { margin-top: 24px; }
+        .config-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
+        .success { color: #22c55e; }
+        .failed { color: #ef4444; }
+        pre { background: #1e1e1e; color: #d4d4d4; padding: 16px; border-radius: 8px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>Flink - Stream Processing</h1>
+            <p class="desc">Flink stream processing benchmark - measures Kafka to Kafka via Flink job</p>
+
+            <div class="metrics">
+                <div class="metric">
+                    <div class="metric-value">1675</div>
+                    <div class="metric-label">ops/s</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value">64411.0</div>
+                    <div class="metric-label">p50 latency (ms)</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value">65355.0</div>
+                    <div class="metric-label">p99 latency (ms)</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value">211438</div>
+                    <div class="metric-label">total ops</div>
+                </div>
+            </div>
+
+            <div class="metrics" style="margin-top: 20px;">
+                <div class="metric">
+                    <div class="metric-value success">0</div>
+                    <div class="metric-label">successful</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value failed">211438</div>
+                    <div class="metric-label">failed</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Configuration</h2>
+            <div class="config">
+                <div class="config-row"><span>Component</span><span>flink</span></div>
+                <div class="config-row"><span>HTTP Server</span><span>NONE</span></div>
+                <div class="config-row"><span>Microbatching</span><span>false</span></div>
+                <div class="config-row"><span>Concurrency</span><span>100</span></div>
+                <div class="config-row"><span>Duration</span><span>1m0s</span></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Raw Results</h2>
+            <pre>{
+  "avgCpu": 33.778889973958336,
+  "avgMemory": 3.001420738522817,
+  "avgThroughput": 1675,
+  "component": "flink",
+  "componentTiming": {
+    "droolsMs": 0,
+    "flinkMs": 0,
+    "gatewayMs": 0,
+    "kafkaMs": 0
+  },
+  "cpuTimeline": [
+    29.82177734375,
+    29.82177734375,
+    29.82177734375,
+    29.82177734375,
+    34.442138671875,
+    34.442138671875,
+    34.442138671875,
+    34.442138671875,
+    34.442138671875,
+    39.697265625,
+    39.697265625,
+    39.697265625,
+    39.697265625,
+    39.697265625,
+    38.519287109375,
+    38.519287109375,
+    38.519287109375,
+    38.519287109375,
+    38.519287109375,
+    38.433837890625,
+    38.433837890625,
+    38.433837890625,
+    38.433837890625,
+    38.433837890625,
+    36.3525390625,
+    36.3525390625,
+    36.3525390625,
+    36.3525390625,
+    36.3525390625,
+    34.442138671875,
+    34.442138671875,
+    34.442138671875,
+    34.442138671875,
+    34.442138671875,
+    34.6923828125,
+    34.6923828125,
+    34.6923828125,
+    34.6923828125,
+    34.6923828125,
+    31.9091796875,
+    31.9091796875,
+    31.9091796875,
+    31.9091796875,
+    31.9091796875,
+    30.352783203125,
+    30.352783203125,
+    30.352783203125,
+    30.352783203125,
+    30.352783203125,
+    29.91943359375,
+    29.91943359375,
+    29.91943359375,
+    29.91943359375,
+    29.91943359375,
+    30.52978515625,
+    30.52978515625,
+    30.52978515625,
+    30.52978515625,
+    30.52978515625,
+    28.082275390625,
+    28.082275390625,
+    28.082275390625,
+    28.082275390625
+  ],
+  "description": "Tests Kafka + Flink processing",
+  "durationMs": 126183,
+  "endTime": "2025-12-27T14:13:30.899372353Z",
+  "errorMessage": "",
+  "failedOperations": 211438,
+  "latency": {
+    "avg": 64233,
+    "max": 65833,
+    "min": 63028,
+    "p50": 64411,
+    "p95": 65143,
+    "p99": 65355
+  },
+  "memoryTimeline": [
+    0.7528917891041079,
+    0.7528917891041079,
+    0.7528917891041079,
+    0.7620858787593985,
+    3.401568037525454,
+    4.2378940438865715,
+    4.271069672472196,
+    4.2950183227845,
+    4.310350155173089,
+    4.325861536470571,
+    4.3419819308402845,
+    4.359484220805921,
+    4.376324722940163,
+    4.392933092619243,
+    4.408934934993734,
+    4.425436607877114,
+    4.4420595097362545,
+    4.459557210592399,
+    4.475896352514587,
+    4.492684079889665,
+    4.507194079253309,
+    4.521536384907581,
+    4.536146771041373,
+    4.550481045754034,
+    4.565480741343104,
+    4.579811000584959,
+    2.1626922301481244,
+    2.1858006909975134,
+    2.2005414843260493,
+    2.2140791661159733,
+    2.2285012075476778,
+    2.2446143358273614,
+    2.258150487914121,
+    2.2725648808300045,
+    2.2907228398143795,
+    2.3045362505996434,
+    2.3180752708798362,
+    2.332495973821272,
+    2.3462967645554316,
+    2.3584026441837014,
+    2.370508332599076,
+    2.38492482885681,
+    2.3987326944681038,
+    2.4108397213737467,
+    2.4243839044021187,
+    2.4388135943496434,
+    2.4534803882876135,
+    2.4670173052259554,
+    2.4814330366321076,
+    2.495240711030506,
+    2.511088818236999,
+    2.5255049320689418,
+    2.539921810752467,
+    2.55285047947016,
+    2.5672675493665804,
+    2.5831152741472825,
+    2.59693193555177,
+    2.60904336035401,
+    2.6234610038891173,
+    2.6393096847342967,
+    2.651669877513608,
+    2.666085417706865,
+    2.6819419382807608
+  ],
+  "name": "Flink Benchmark",
+  "peakCpu": 39.697265625,
+  "peakMemory": 4.579811000584959,
+  "peakThroughput": 0,
+  "sampleEvents": [],
+  "startTime": "2025-12-27T14:11:24.716404823Z",
+  "status": "completed",
+  "success": false,
+  "successfulOperations": 0,
+  "throughputStability": 0,
+  "throughputTimeline": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "totalOperations": 211438
+}</pre>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,25 @@
+name: "HTTP - Rocket Server"
+description: "NIO + SO_REUSEPORT with kernel-level connection distribution"
+component: http
+duration: 60000  # 1 minute
+concurrency: 500
+
+# Expected throughput from documented benchmarks (HTTP_SERVER_BENCHMARKS.md)
+# Sequential mode: 52,486 req/s (realistic for production)
+# Pipelined mode: 3,733,623 req/s (NOT realistic - see note below)
+expectedThroughput: 52486
+expectedThroughputNote: "Sequential mode (no pipelining)"
+
+# IMPORTANT: HTTP pipelining (3.7M req/s) is NOT realistic for production.
+# In real-world scenarios, different users (citizens) make individual HTTP requests.
+# Pipelining batches multiple requests from the SAME client over a single connection,
+# which doesn't happen with diverse user traffic. Use microbatching instead.
+
+config:
+  httpServer: ROCKET
+  microbatching: false
+  microbatchSize: 0
+  microbatchTimeoutMs: 0
+  kafkaAcks: "1"
+  kafkaBatchSize: 16384
+  kafkaLingerMs: 0

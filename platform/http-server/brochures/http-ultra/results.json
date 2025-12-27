@@ -1,0 +1,30 @@
+{
+  "brochure": "http-ultra",
+  "name": "HTTP - Ultra",
+  "startTime": "2025-12-26T21:18:11.320767-03:00",
+  "endTime": "2025-12-26T21:18:27.92078-03:00",
+  "durationMs": 16599,
+  "throughput": 516056.66,
+  "p50Ms": 0.12,
+  "p99Ms": 8.43,
+  "totalOps": 5173468,
+  "successOps": 5173468,
+  "failedOps": 0,
+  "rawResults": {
+    "avgLatencyMs": 0.7941,
+    "brochure": "ULTRA",
+    "concurrency": 500,
+    "durationMs": 10000,
+    "endTime": "2025-12-27T00:18:27.585487373",
+    "failedOps": 0,
+    "name": "UltraHttpServer",
+    "p50Ms": 0.12,
+    "p99Ms": 8.43,
+    "startTime": "2025-12-27T00:18:27.576619298",
+    "successOps": 5173468,
+    "technology": "NIO Minimal",
+    "throughput": 516056.66,
+    "tier": "300-500K req/s",
+    "totalOps": 5173468
+  }
+}

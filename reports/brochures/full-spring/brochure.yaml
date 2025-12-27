@@ -1,0 +1,14 @@
+name: "Full Pipeline - Spring"
+description: "Complete E2E pipeline using Spring Boot gateway (baseline)"
+component: full
+duration: 60000  # 5 minutes
+concurrency: 100
+
+config:
+  httpServer: SPRING_BOOT
+  microbatching: false
+  microbatchSize: 0
+  microbatchTimeoutMs: 0
+  kafkaAcks: "1"
+  kafkaBatchSize: 16384
+  kafkaLingerMs: 0

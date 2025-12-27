@@ -1,0 +1,14 @@
+name: "Gateway - Spring WebFlux"
+description: "Gateway using Spring WebFlux with standard Kafka producer"
+component: gateway
+duration: 60000  # 5 minutes
+concurrency: 100
+
+config:
+  httpServer: SPRING_BOOT
+  microbatching: false
+  microbatchSize: 0
+  microbatchTimeoutMs: 0
+  kafkaAcks: "1"
+  kafkaBatchSize: 16384
+  kafkaLingerMs: 0

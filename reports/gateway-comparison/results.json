@@ -1,0 +1,18 @@
+{
+  "name": "MicrobatchingGateway (NIO Client)",
+  "component": "microbatch-gateway",
+  "status": "completed",
+  "totalOperations": 494258,
+  "successfulOperations": 494258,
+  "failedOperations": 0,
+  "avgThroughput": 164752.67,
+  "latency": {
+    "avg": 0.549,
+    "p50": 0.549,
+    "p95": 0.659,
+    "p99": 4.068,
+    "max": 4.475
+  },
+  "durationMs": 3000,
+  "notes": "Batch size: 86; Flush interval: 1042 µs; Collector throughput: 436063 events/sec"
+}

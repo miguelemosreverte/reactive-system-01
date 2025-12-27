@@ -1,0 +1,14 @@
+name: "Kafka - Fire-and-Forget"
+description: "Maximum Kafka producer throughput with acks=0, high concurrency, and batching"
+component: kafka
+duration: 60000
+concurrency: 128
+
+config:
+  httpServer: ""
+  microbatching: false
+  microbatchSize: 0
+  microbatchTimeoutMs: 0
+  kafkaAcks: "0"
+  kafkaBatchSize: 131072
+  kafkaLingerMs: 10

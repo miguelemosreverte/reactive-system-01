@@ -1,0 +1,30 @@
+{
+  "brochure": "http-boss-worker",
+  "name": "HTTP - Boss/Worker",
+  "startTime": "2025-12-27T00:37:44.576244-03:00",
+  "endTime": "2025-12-27T00:38:54.437569-03:00",
+  "durationMs": 69856,
+  "throughput": 740624.22,
+  "p50Ms": 0.19,
+  "p99Ms": 3.77,
+  "totalOps": 44441897,
+  "successOps": 44441897,
+  "failedOps": 0,
+  "rawResults": {
+    "avgLatencyMs": 0.5367,
+    "brochure": "BOSS_WORKER",
+    "concurrency": 500,
+    "durationMs": 60000,
+    "endTime": "2025-12-27T03:38:54.362078566",
+    "failedOps": 0,
+    "name": "BossWorkerHttpServer",
+    "p50Ms": 0.19,
+    "p99Ms": 3.77,
+    "startTime": "2025-12-27T03:38:54.358731976",
+    "successOps": 44441897,
+    "technology": "NIO Boss/Worker",
+    "throughput": 740624.22,
+    "tier": "600K+ req/s",
+    "totalOps": 44441897
+  }
+}

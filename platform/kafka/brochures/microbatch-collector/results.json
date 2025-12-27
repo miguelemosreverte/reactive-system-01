@@ -1,0 +1,31 @@
+{
+  "brochure": "microbatch-collector",
+  "name": "Microbatch Collector (No HTTP)",
+  "startTime": "2025-12-26T21:22:58.883392-03:00",
+  "endTime": "2025-12-26T21:23:13.184508-03:00",
+  "durationMs": 14301,
+  "throughput": 7140463.81,
+  "p50Ms": 0.001,
+  "p99Ms": 0.005,
+  "totalOps": 71526026,
+  "successOps": 71526026,
+  "failedOps": 0,
+  "rawResults": {
+    "avgThroughput": 7140463.81,
+    "component": "microbatch-collector",
+    "durationMs": 10017,
+    "failedOperations": 0,
+    "latency": {
+      "avg": 0.001,
+      "max": 0.006,
+      "p50": 0.001,
+      "p95": 0.001,
+      "p99": 0.005
+    },
+    "name": "MicrobatchCollector Throughput (no HTTP)",
+    "notes": "Submitted: 71,526,026 events; Queued: 71,526,026 events (100.0% accepted); Dropped: 0 events (backpressure); Batches: 1,009,325; Avg batch size: 70.9; Best config: batch=64, interval=1000µs",
+    "status": "completed",
+    "successfulOperations": 71526026,
+    "totalOperations": 71526026
+  }
+}

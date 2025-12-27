@@ -1,0 +1,19 @@
+name: "HTTP - Boss/Worker"
+description: "Classic Netty-style architecture with accept/worker thread separation"
+component: http
+duration: 60000  # 1 minute
+concurrency: 500
+
+# Expected throughput from documented benchmarks (Tier 1: 600K+ req/s)
+# Similar to NettyHttpServer architecture
+expectedThroughput: 73559
+expectedThroughputNote: "Netty-style boss/worker (documented baseline)"
+
+config:
+  httpServer: BOSS_WORKER
+  microbatching: false
+  microbatchSize: 0
+  microbatchTimeoutMs: 0
+  kafkaAcks: "1"
+  kafkaBatchSize: 16384
+  kafkaLingerMs: 0

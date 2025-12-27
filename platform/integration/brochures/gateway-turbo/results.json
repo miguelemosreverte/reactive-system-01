@@ -1,0 +1,31 @@
+{
+  "brochure": "gateway-turbo",
+  "name": "Gateway - Turbo + Microbatch",
+  "startTime": "2025-12-26T21:13:51.306919-03:00",
+  "endTime": "2025-12-26T21:16:15.185965-03:00",
+  "durationMs": 143877,
+  "throughput": 11180.37,
+  "p50Ms": 43.699,
+  "p99Ms": 223.955,
+  "totalOps": 112441,
+  "successOps": 112441,
+  "failedOps": 0,
+  "rawResults": {
+    "avgThroughput": 11180.37,
+    "component": "microbatch-gateway",
+    "durationMs": 10057,
+    "failedOperations": 0,
+    "latency": {
+      "avg": 43.699,
+      "max": 246.35,
+      "p50": 43.699,
+      "p95": 52.439,
+      "p99": 223.955
+    },
+    "name": "microbatch-gateway Benchmark",
+    "notes": "Batch size: 64; Flush interval: 1000 µs; Collector throughput: 27095 events/sec",
+    "status": "completed",
+    "successfulOperations": 112441,
+    "totalOperations": 112441
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "brochure": "kafka-fast",
+  "name": "Kafka - Fire-and-Forget",
+  "startTime": "2025-12-26T21:18:45.799279-03:00",
+  "endTime": "2025-12-26T21:20:54.039235-03:00",
+  "durationMs": 128271,
+  "throughput": 4613.8,
+  "p50Ms": 3.466,
+  "p99Ms": 0.071,
+  "totalOps": 280736,
+  "successOps": 280736,
+  "failedOps": 0,
+  "rawResults": {
+    "avgThroughput": 4613.8,
+    "component": "kafka-producer",
+    "durationMs": 60847,
+    "failedOperations": 0,
+    "latency": {
+      "avg": 3.466,
+      "max": 0.085,
+      "p50": 3.466,
+      "p95": 5.199,
+      "p99": 0.071
+    },
+    "name": "Kafka Producer Benchmark",
+    "notes": "Fire-and-forget Kafka producer throughput (acks=0). This is the theoretical maximum for Kafka publishing.",
+    "status": "completed",
+    "successfulOperations": 280736,
+    "totalOperations": 280736
+  }
+}

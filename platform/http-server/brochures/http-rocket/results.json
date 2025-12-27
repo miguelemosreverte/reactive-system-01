@@ -1,0 +1,30 @@
+{
+  "brochure": "http-rocket",
+  "name": "HTTP - Rocket Server",
+  "startTime": "2025-12-26T21:17:21.622222-03:00",
+  "endTime": "2025-12-26T21:17:37.987432-03:00",
+  "durationMs": 16365,
+  "throughput": 765495.5,
+  "p50Ms": 0.18,
+  "p99Ms": 3.69,
+  "totalOps": 7659548,
+  "successOps": 7659548,
+  "failedOps": 0,
+  "rawResults": {
+    "avgLatencyMs": 0.5205,
+    "brochure": "ROCKET",
+    "concurrency": 500,
+    "durationMs": 10000,
+    "endTime": "2025-12-27T00:17:37.955023701",
+    "failedOps": 0,
+    "name": "RocketHttpServer",
+    "p50Ms": 0.18,
+    "p99Ms": 3.69,
+    "startTime": "2025-12-27T00:17:37.953154277",
+    "successOps": 7659548,
+    "technology": "NIO + SO_REUSEPORT",
+    "throughput": 765495.5,
+    "tier": "600K+ req/s",
+    "totalOps": 7659548
+  }
+}

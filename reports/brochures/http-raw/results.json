@@ -1,0 +1,30 @@
+{
+  "brochure": "http-raw",
+  "name": "HTTP - Raw NIO",
+  "startTime": "2025-12-27T00:41:15.880367-03:00",
+  "endTime": "2025-12-27T00:42:25.56927-03:00",
+  "durationMs": 69687,
+  "throughput": 662642.1,
+  "p50Ms": 0.23,
+  "p99Ms": 4.02,
+  "totalOps": 39763827,
+  "successOps": 39763827,
+  "failedOps": 0,
+  "rawResults": {
+    "avgLatencyMs": 0.587,
+    "brochure": "RAW",
+    "concurrency": 500,
+    "durationMs": 60000,
+    "endTime": "2025-12-27T03:42:25.452786235",
+    "failedOps": 0,
+    "name": "RawHttpServer",
+    "p50Ms": 0.23,
+    "p99Ms": 4.02,
+    "startTime": "2025-12-27T03:42:25.450299688",
+    "successOps": 39763827,
+    "technology": "NIO Multi-EventLoop",
+    "throughput": 662642.1,
+    "tier": "500-600K req/s",
+    "totalOps": 39763827
+  }
+}

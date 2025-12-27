@@ -1,0 +1,31 @@
+{
+  "brochure": "microbatch-collector",
+  "name": "Microbatch Collector (No HTTP)",
+  "startTime": "2025-12-27T00:52:34.435262-03:00",
+  "endTime": "2025-12-27T01:02:45.032899-03:00",
+  "durationMs": 610565,
+  "throughput": 2612.36,
+  "p50Ms": 355.097,
+  "p99Ms": 710.194,
+  "totalOps": 218031679,
+  "successOps": 1256000,
+  "failedOps": 216775679,
+  "rawResults": {
+    "avgThroughput": 2612.36,
+    "component": "microbatch-collector-kafka",
+    "durationMs": 480791,
+    "failedOperations": 216775679,
+    "latency": {
+      "avg": 355.097,
+      "max": 781.213,
+      "p50": 355.097,
+      "p95": 426.116,
+      "p99": 710.194
+    },
+    "name": "MicrobatchCollector + Kafka",
+    "notes": "Submitted: 218,031,679 events; Sent to Kafka: 1,256,000 events; Dropped: 216,775,679 events (backpressure); Batches sent: 4,009; Avg batch size: 313.3; Avg Kafka batch time: 355.097 ms; Best config: batch=64, interval=1000µs",
+    "status": "completed",
+    "successfulOperations": 1256000,
+    "totalOperations": 218031679
+  }
+}

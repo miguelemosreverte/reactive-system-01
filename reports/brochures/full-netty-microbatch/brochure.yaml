@@ -1,0 +1,14 @@
+name: "Full Pipeline - Netty + Microbatch"
+description: "Optimized E2E pipeline with Rocket HTTP server and adaptive microbatching"
+component: full
+duration: 60000  # 5 minutes
+concurrency: 200
+
+config:
+  httpServer: ROCKET
+  microbatching: true
+  microbatchSize: 100
+  microbatchTimeoutMs: 10
+  kafkaAcks: "1"
+  kafkaBatchSize: 65536
+  kafkaLingerMs: 5

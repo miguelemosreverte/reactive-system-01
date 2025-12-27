@@ -1,0 +1,31 @@
+{
+  "brochure": "gateway-hyper",
+  "name": "Gateway - Hyper + Microbatch",
+  "startTime": "2025-12-27T00:15:47.725148-03:00",
+  "endTime": "2025-12-27T00:20:04.346363-03:00",
+  "durationMs": 256616,
+  "throughput": 208618.53,
+  "p50Ms": 2,
+  "p99Ms": 12.673,
+  "totalOps": 12517112,
+  "successOps": 12517112,
+  "failedOps": 0,
+  "rawResults": {
+    "avgThroughput": 208618.53,
+    "component": "microbatch-gateway",
+    "durationMs": 60000,
+    "failedOperations": 0,
+    "latency": {
+      "avg": 2,
+      "max": 13.94,
+      "p50": 2,
+      "p95": 2.4,
+      "p99": 12.673
+    },
+    "name": "MicrobatchingGateway (NIO Client)",
+    "notes": "Batch size: 83; Flush interval: 1078 µs; Collector throughput: 35739 events/sec",
+    "status": "completed",
+    "successfulOperations": 12517112,
+    "totalOperations": 12517112
+  }
+}

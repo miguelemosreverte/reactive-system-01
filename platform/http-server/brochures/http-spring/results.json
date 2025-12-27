@@ -1,0 +1,30 @@
+{
+  "brochure": "http-spring",
+  "name": "HTTP - Spring WebFlux",
+  "startTime": "2025-12-26T21:17:37.988157-03:00",
+  "endTime": "2025-12-26T21:17:53.447718-03:00",
+  "durationMs": 15459,
+  "throughput": 5262.15,
+  "p50Ms": 87.9,
+  "p99Ms": 189.71,
+  "totalOps": 52953,
+  "successOps": 52953,
+  "failedOps": 0,
+  "rawResults": {
+    "avgLatencyMs": 92.6253,
+    "brochure": "SPRING_BOOT",
+    "concurrency": 500,
+    "durationMs": 10000,
+    "endTime": "2025-12-27T00:17:53.207347169",
+    "failedOps": 0,
+    "name": "SpringBootHttpServer",
+    "p50Ms": 87.9,
+    "p99Ms": 189.71,
+    "startTime": "2025-12-27T00:17:53.202966694",
+    "successOps": 52953,
+    "technology": "Spring WebFlux",
+    "throughput": 5262.15,
+    "tier": "\u003c300K req/s",
+    "totalOps": 52953
+  }
+}

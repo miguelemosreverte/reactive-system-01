@@ -1,0 +1,13 @@
+{
+  "brochure": "gateway-spring",
+  "name": "Gateway - Spring WebFlux",
+  "startTime": "2025-12-27T10:35:41.887574-03:00",
+  "endTime": "2025-12-27T10:41:45.549052-03:00",
+  "durationMs": 363656,
+  "throughput": 827.37,
+  "p50Ms": 4,
+  "p99Ms": 83,
+  "totalOps": 300000,
+  "successOps": 300000,
+  "failedOps": 0
+}

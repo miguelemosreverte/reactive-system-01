@@ -1,0 +1,31 @@
+{
+  "brochure": "full-netty-microbatch",
+  "name": "Full Pipeline - Netty + Microbatch",
+  "startTime": "2025-12-27T00:06:43.315406-03:00",
+  "endTime": "2025-12-27T00:10:59.385751-03:00",
+  "durationMs": 256056,
+  "throughput": 205623.88,
+  "p50Ms": 0.857,
+  "p99Ms": 5.151,
+  "totalOps": 12337433,
+  "successOps": 12337433,
+  "failedOps": 0,
+  "rawResults": {
+    "avgThroughput": 205623.88,
+    "component": "microbatch-gateway",
+    "durationMs": 60000,
+    "failedOperations": 0,
+    "latency": {
+      "avg": 0.857,
+      "max": 5.666,
+      "p50": 0.857,
+      "p95": 1.028,
+      "p99": 5.151
+    },
+    "name": "MicrobatchingGateway (NIO Client)",
+    "notes": "Batch size: 81; Flush interval: 1035 µs; Collector throughput: 35764 events/sec",
+    "status": "completed",
+    "successfulOperations": 12337433,
+    "totalOperations": 12337433
+  }
+}

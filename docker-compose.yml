@@ -196,6 +196,10 @@ services:
       KAFKA_HEAP_OPTS: "-Xmx192m -Xms192m"
     ports:
       - "2181:2181"
+    user: root
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper/data
+      - zookeeper_log:/var/lib/zookeeper/log
     deploy:
       resources:
         limits:
@@ -273,7 +277,7 @@ services:
   drools:
     build:
       context: .
-      dockerfile: platform/deployment/docker/drools/Dockerfile
+      dockerfile: application/drools/Dockerfile
       args:
         SERVICE_VERSION: *version
     container_name: reactive-drools
@@ -315,7 +319,7 @@ services:
   flink-jobmanager:
     build:
       context: .
-      dockerfile: platform/deployment/docker/flink/Dockerfile
+      dockerfile: flink/Dockerfile
     container_name: reactive-flink-jobmanager
     ports:
       - "8081:8081"
@@ -353,7 +357,7 @@ services:
   flink-taskmanager:
     build:
       context: .
-      dockerfile: platform/deployment/docker/flink/Dockerfile
+      dockerfile: flink/Dockerfile
     # No container_name to allow scaling with: docker compose up -d --scale flink-taskmanager=2
     depends_on:
       flink-jobmanager:
@@ -408,7 +412,7 @@ services:
   flink-job-submitter:
     build:
       context: .
-      dockerfile: platform/deployment/docker/flink/Dockerfile
+      dockerfile: flink/Dockerfile
     container_name: reactive-flink-job-submitter
     depends_on:
       flink-jobmanager:
@@ -478,7 +482,7 @@ services:
   gateway:
     build:
       context: .
-      dockerfile: application/Dockerfile
+      dockerfile: application/counter/Dockerfile
     container_name: reactive-application
     ports:
       - "8080:3000"
@@ -582,3 +586,5 @@ volumes:
   prometheus-data:
   loki-data:
   jaeger-badger:
+  zookeeper_data:
+  zookeeper_log:

@@ -1,0 +1,17 @@
+{
+  "brochure": "ZERO_COPY",
+  "name": "ZeroCopyHttpServer",
+  "technology": "NIO + Busy-poll",
+  "tier": "300-500K req/s",
+  "startTime": "2025-12-26T22:55:41.665969227",
+  "endTime": "2025-12-26T22:55:41.668030994",
+  "durationMs": 10000,
+  "throughput": 793527.38,
+  "p50Ms": 0.03,
+  "p99Ms": 4.67,
+  "totalOps": 7940035,
+  "successOps": 7940035,
+  "failedOps": 0,
+  "avgLatencyMs": 0.2105,
+  "concurrency": 200
+}

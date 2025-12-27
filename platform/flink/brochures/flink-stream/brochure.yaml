@@ -1,0 +1,12 @@
+name: "Flink - Stream Processing"
+description: "Flink stream processing benchmark - measures Kafka to Kafka via Flink job"
+component: flink
+duration: 60000  # 1 minute
+concurrency: 100
+
+config:
+  httpServer: NONE
+  microbatching: false
+  kafkaAcks: "1"
+  kafkaBatchSize: 65536
+  kafkaLingerMs: 10

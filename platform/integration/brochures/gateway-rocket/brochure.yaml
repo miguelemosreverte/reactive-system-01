@@ -1,0 +1,19 @@
+name: "Gateway - Rocket + Microbatch"
+description: "Rocket HTTP Server + Kafka microbatching gateway"
+component: gateway
+duration: 60000  # 1 minute
+concurrency: 500
+
+# Expected throughput: HTTP bottleneck with near-zero Kafka overhead
+# HTTP Rocket: 52,486 req/s → Gateway should be ~50K (minimal Kafka overhead)
+expectedThroughput: 50000
+expectedThroughputNote: "HTTP Rocket (52K) - Kafka overhead"
+
+config:
+  httpServer: ROCKET
+  microbatching: true
+  microbatchSize: 128
+  microbatchTimeoutMs: 5
+  kafkaAcks: "1"
+  kafkaBatchSize: 65536
+  kafkaLingerMs: 5

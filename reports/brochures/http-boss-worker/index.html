@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTTP - Boss/Worker - Benchmark Results</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; padding: 20px; }
+        .container { max-width: 900px; margin: 0 auto; }
+        .card { background: white; border-radius: 8px; padding: 24px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h1 { color: #1a1a1a; margin-bottom: 8px; }
+        .desc { color: #666; margin-bottom: 24px; }
+        .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; }
+        .metric { text-align: center; padding: 20px; background: #f8f9fa; border-radius: 8px; }
+        .metric-value { font-size: 36px; font-weight: bold; color: #2563eb; }
+        .metric-label { color: #666; margin-top: 4px; }
+        .config { margin-top: 24px; }
+        .config-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
+        .success { color: #22c55e; }
+        .failed { color: #ef4444; }
+        pre { background: #1e1e1e; color: #d4d4d4; padding: 16px; border-radius: 8px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>HTTP - Boss/Worker</h1>
+            <p class="desc">Classic Netty-style architecture with accept/worker thread separation</p>
+
+            <div class="metrics">
+                <div class="metric">
+                    <div class="metric-value">740624</div>
+                    <div class="metric-label">ops/s</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value">0.2</div>
+                    <div class="metric-label">p50 latency (ms)</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value">3.8</div>
+                    <div class="metric-label">p99 latency (ms)</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value">44441897</div>
+                    <div class="metric-label">total ops</div>
+                </div>
+            </div>
+
+            <div class="metrics" style="margin-top: 20px;">
+                <div class="metric">
+                    <div class="metric-value success">44441897</div>
+                    <div class="metric-label">successful</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value failed">0</div>
+                    <div class="metric-label">failed</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Configuration</h2>
+            <div class="config">
+                <div class="config-row"><span>Component</span><span>http</span></div>
+                <div class="config-row"><span>HTTP Server</span><span>BOSS_WORKER</span></div>
+                <div class="config-row"><span>Microbatching</span><span>false</span></div>
+                <div class="config-row"><span>Concurrency</span><span>500</span></div>
+                <div class="config-row"><span>Duration</span><span>1m0s</span></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Raw Results</h2>
+            <pre>{
+  "avgLatencyMs": 0.5367,
+  "brochure": "BOSS_WORKER",
+  "concurrency": 500,
+  "durationMs": 60000,
+  "endTime": "2025-12-27T03:38:54.362078566",
+  "failedOps": 0,
+  "name": "BossWorkerHttpServer",
+  "p50Ms": 0.19,
+  "p99Ms": 3.77,
+  "startTime": "2025-12-27T03:38:54.358731976",
+  "successOps": 44441897,
+  "technology": "NIO Boss/Worker",
+  "throughput": 740624.22,
+  "tier": "600K+ req/s",
+  "totalOps": 44441897
+}</pre>
+        </div>
+    </div>
+</body>
+</html>

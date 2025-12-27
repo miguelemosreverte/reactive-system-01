@@ -1,0 +1,343 @@
+{
+  "component": "flink",
+  "instance_id": "flink-taskmanager-1",
+  "timestamp_ms": 1703462400000,
+  "uptime_ms": 259200000,
+  "version": "1.0.0",
+
+  "throughput": {
+    "events_per_second": 234.5,
+    "bytes_per_second": 46900,
+    "events_per_second_capacity": 5000,
+    "capacity_utilization_percent": 4.7,
+    "batch_size_avg": 12.3,
+    "batch_size_p99": 45,
+    "batches_per_second": 19.1,
+    "batch_efficiency_percent": 12.3,
+    "parallelism_active": 2,
+    "parallelism_max": 16,
+    "queue_depth": 8901,
+    "queue_capacity": 10000,
+    "rejected_count": 567,
+    "dropped_count": 23
+  },
+
+  "latency": {
+    "total_ms_p50": 345.6,
+    "total_ms_p95": 1234.5,
+    "total_ms_p99": 2345.6,
+    "total_ms_max": 5678.9,
+    "cpu_time_ms": 23.4,
+    "queue_wait_ms": 45.6,
+    "lock_wait_ms": 234.5,
+    "gc_pause_ms": 12.3,
+    "network_ms": 8.9,
+    "serialization_ms": 5.6,
+    "deserialization_ms": 4.5,
+    "dependency_wait_ms": 12.3,
+    "breakdown_percent": {
+      "lock_wait": 67.8,
+      "queue_wait": 13.2,
+      "cpu": 6.8,
+      "gc_pause": 3.6,
+      "dependency_wait": 3.6,
+      "network": 2.6,
+      "serialization": 1.6,
+      "deserialization": 1.3
+    }
+  },
+
+  "saturation": {
+    "cpu_percent": 12.3,
+    "heap_used_percent": 56.7,
+    "heap_used_bytes": 2415919104,
+    "heap_max_bytes": 4294967296,
+    "old_gen_percent": 45.6,
+    "old_gen_max_bytes": 3221225472,
+    "old_gen_bytes": 1469287628,
+    "thread_pool_active": 2,
+    "thread_pool_max": 16,
+    "thread_pool_queue_depth": 8901,
+    "connection_pool_active": 5,
+    "connection_pool_max": 50,
+    "buffer_pool_used_percent": 34.5,
+    "file_descriptors_used": 345,
+    "file_descriptors_max": 1024
+  },
+
+  "trends": {
+    "throughput_trend": -0.67,
+    "latency_trend": 0.89,
+    "heap_growth_bytes_per_sec": 20971,
+    "old_gen_growth_bytes_per_sec": 10485,
+    "queue_depth_trend": 0.78,
+    "error_rate_trend": 0.45,
+    "gc_frequency_trend": 0.02,
+    "estimated_heap_exhaustion_sec": -1,
+    "estimated_old_gen_exhaustion_sec": -1
+  },
+
+  "contention": {
+    "lock_contention_percent": 87.5,
+    "most_contended_locks": [
+      {"name": "CheckpointBarrierHandler.lock", "contention_percent": 78.9, "wait_count": 234567, "avg_wait_ms": 234.5},
+      {"name": "StateBackend.writeLock", "contention_percent": 67.8, "wait_count": 123456, "avg_wait_ms": 178.9},
+      {"name": "NetworkBufferPool.lock", "contention_percent": 56.7, "wait_count": 89012, "avg_wait_ms": 123.4},
+      {"name": "KeyedStateStore.lock", "contention_percent": 45.6, "wait_count": 67890, "avg_wait_ms": 89.0}
+    ],
+    "blocked_threads": 14,
+    "waiting_threads": 2,
+    "deadlock_detected": false,
+    "io_wait_percent": 5.6,
+    "queue_blocking_percent": 89.0
+  },
+
+  "memory": {
+    "heap_used_bytes": 2415919104,
+    "heap_committed_bytes": 3221225472,
+    "heap_max_bytes": 4294967296,
+    "non_heap_used_bytes": 201326592,
+    "direct_buffer_used_bytes": 134217728,
+    "direct_buffer_max_bytes": 536870912,
+    "allocation_rate_bytes_per_sec": 10485760,
+    "promotion_rate_bytes_per_sec": 524288,
+    "survivor_space_used_percent": 34.5,
+    "tenuring_threshold": 8,
+    "large_object_allocations_per_sec": 45,
+    "fragmentation_percent": 12.3,
+    "native_memory_used_bytes": 402653184,
+    "memory_pools": [
+      {"name": "Eden", "used_bytes": 268435456, "max_bytes": 536870912, "used_percent": 50.0},
+      {"name": "Survivor", "used_bytes": 67108864, "max_bytes": 134217728, "used_percent": 50.0},
+      {"name": "OldGen", "used_bytes": 1469287628, "max_bytes": 3221225472, "used_percent": 45.6},
+      {"name": "Metaspace", "used_bytes": 100663296, "max_bytes": 268435456, "used_percent": 37.5}
+    ]
+  },
+
+  "gc": {
+    "young_gc_count": 567,
+    "young_gc_time_ms": 3456,
+    "old_gc_count": 12,
+    "old_gc_time_ms": 1234,
+    "gc_overhead_percent": 1.2,
+    "avg_young_gc_pause_ms": 6.1,
+    "avg_old_gc_pause_ms": 102.8,
+    "max_gc_pause_ms": 234.5,
+    "gc_frequency_per_min": 3.4,
+    "time_since_last_gc_ms": 23456,
+    "consecutive_full_gcs": 0,
+    "gc_cpu_percent": 2.3,
+    "objects_promoted_per_gc": 567890,
+    "gc_algorithm": "G1",
+    "gc_cause_histogram": {
+      "G1 Evacuation Pause": 567,
+      "Metadata GC Threshold": 12
+    }
+  },
+
+  "stages": [
+    {
+      "name": "kafka_consume",
+      "events_processed": 234567,
+      "events_per_second": 2345.6,
+      "latency_ms_p50": 3.4,
+      "latency_ms_p99": 12.3,
+      "queue_depth": 123,
+      "is_bottleneck": false,
+      "saturation_percent": 12.3,
+      "error_count": 0,
+      "backpressure_applied": false
+    },
+    {
+      "name": "deserialization",
+      "events_processed": 234567,
+      "events_per_second": 2345.6,
+      "latency_ms_p50": 4.5,
+      "latency_ms_p99": 15.6,
+      "queue_depth": 234,
+      "is_bottleneck": false,
+      "saturation_percent": 18.9,
+      "error_count": 12,
+      "backpressure_applied": false
+    },
+    {
+      "name": "keyed_state_processing",
+      "events_processed": 234555,
+      "events_per_second": 234.5,
+      "latency_ms_p50": 234.5,
+      "latency_ms_p99": 1234.5,
+      "queue_depth": 8901,
+      "is_bottleneck": true,
+      "saturation_percent": 100.0,
+      "error_count": 567,
+      "backpressure_applied": true
+    },
+    {
+      "name": "checkpoint_barrier",
+      "events_processed": 233988,
+      "events_per_second": 234.0,
+      "latency_ms_p50": 89.0,
+      "latency_ms_p99": 567.8,
+      "queue_depth": 456,
+      "is_bottleneck": true,
+      "saturation_percent": 89.0,
+      "error_count": 23,
+      "backpressure_applied": true
+    },
+    {
+      "name": "kafka_produce",
+      "events_processed": 233965,
+      "events_per_second": 234.0,
+      "latency_ms_p50": 8.9,
+      "latency_ms_p99": 34.5,
+      "queue_depth": 56,
+      "is_bottleneck": false,
+      "saturation_percent": 23.4,
+      "error_count": 0,
+      "backpressure_applied": false
+    }
+  ],
+
+  "dependencies": [
+    {
+      "name": "kafka_source",
+      "type": "message_broker",
+      "latency_ms_p50": 3.4,
+      "latency_ms_p99": 12.3,
+      "calls_per_second": 2345.6,
+      "error_rate_percent": 0.0,
+      "circuit_breaker_state": "CLOSED",
+      "connection_pool_used": 3,
+      "connection_pool_max": 10,
+      "saturation_percent": 30.0,
+      "last_error": null,
+      "last_error_time_ms": 0
+    },
+    {
+      "name": "kafka_sink",
+      "type": "message_broker",
+      "latency_ms_p50": 8.9,
+      "latency_ms_p99": 34.5,
+      "calls_per_second": 234.0,
+      "error_rate_percent": 0.0,
+      "circuit_breaker_state": "CLOSED",
+      "connection_pool_used": 2,
+      "connection_pool_max": 10,
+      "saturation_percent": 20.0,
+      "last_error": null,
+      "last_error_time_ms": 0
+    },
+    {
+      "name": "rocksdb_state",
+      "type": "state_backend",
+      "latency_ms_p50": 12.3,
+      "latency_ms_p99": 89.0,
+      "calls_per_second": 4567.8,
+      "error_rate_percent": 0.1,
+      "circuit_breaker_state": "CLOSED",
+      "connection_pool_used": 1,
+      "connection_pool_max": 1,
+      "saturation_percent": 100.0,
+      "last_error": "RocksDBException: SST file write stall",
+      "last_error_time_ms": 1703462398000
+    }
+  ],
+
+  "errors": {
+    "total_error_count": 602,
+    "error_rate_percent": 0.26,
+    "errors_by_type": {
+      "ThreadStarvationException": 456,
+      "CheckpointDeclinedException": 89,
+      "BufferTimeoutException": 34,
+      "RocksDBException": 23
+    },
+    "recent_errors": [
+      {"type": "ThreadStarvationException", "message": "No threads available for task processing", "timestamp_ms": 1703462399500, "stack_trace_hash": "thread123"},
+      {"type": "CheckpointDeclinedException", "message": "Checkpoint barrier blocked by contention", "timestamp_ms": 1703462399000, "stack_trace_hash": "cp456"},
+      {"type": "BufferTimeoutException", "message": "Network buffer timeout after 30s", "timestamp_ms": 1703462398000, "stack_trace_hash": "buf789"}
+    ],
+    "crash_indicators": {
+      "oom_risk": false,
+      "oom_risk_percent": 0,
+      "gc_thrashing": false,
+      "memory_leak_suspected": false,
+      "thread_exhaustion_risk": true
+    }
+  },
+
+  "capacity": {
+    "current_throughput": 234.5,
+    "max_observed_throughput": 4567.8,
+    "theoretical_max_throughput": 5000,
+    "headroom_percent": 0,
+    "limiting_factors": [
+      {"factor": "lock_contention", "impact_percent": 87.5, "current_value": 87.5, "threshold_value": 20.0, "unit": "percent"},
+      {"factor": "checkpoint_barriers", "impact_percent": 78.9, "current_value": 78.9, "threshold_value": 30.0, "unit": "percent_cpu_blocked"},
+      {"factor": "rocksdb_write_stall", "impact_percent": 45.6, "current_value": 45.6, "threshold_value": 10.0, "unit": "percent_stalled"}
+    ]
+  },
+
+  "history": [
+    {
+      "bucket_start_ms": 1703462340000,
+      "bucket_duration_ms": 60000,
+      "avg_throughput": 456.7,
+      "avg_latency_ms": 234.5,
+      "max_latency_ms": 1234.5,
+      "error_count": 123,
+      "heap_used_avg_percent": 54.3
+    },
+    {
+      "bucket_start_ms": 1703462280000,
+      "bucket_duration_ms": 60000,
+      "avg_throughput": 678.9,
+      "avg_latency_ms": 178.9,
+      "max_latency_ms": 890.1,
+      "error_count": 89,
+      "heap_used_avg_percent": 52.1
+    },
+    {
+      "bucket_start_ms": 1703462220000,
+      "bucket_duration_ms": 60000,
+      "avg_throughput": 1234.5,
+      "avg_latency_ms": 89.0,
+      "max_latency_ms": 345.6,
+      "error_count": 34,
+      "heap_used_avg_percent": 48.9
+    }
+  ],
+
+  "sampled_requests": [
+    {
+      "trace_id": "contention-001",
+      "total_time_ms": 1234.5,
+      "time_breakdown": {
+        "lock_wait_keyed_state": 678.9,
+        "lock_wait_checkpoint": 234.5,
+        "kafka_consume": 3.4,
+        "deserialization": 4.5,
+        "state_access": 89.0,
+        "kafka_produce": 8.9,
+        "cpu": 23.4,
+        "other": 191.9
+      },
+      "gc_pauses_encountered": 1,
+      "retries": 0,
+      "final_status": "SUCCESS"
+    },
+    {
+      "trace_id": "contention-timeout-001",
+      "total_time_ms": 5678.9,
+      "time_breakdown": {
+        "lock_wait_keyed_state": 4567.8,
+        "lock_wait_checkpoint": 890.1,
+        "kafka_consume": 3.4,
+        "deserialization": 4.5
+      },
+      "gc_pauses_encountered": 2,
+      "retries": 3,
+      "final_status": "TIMEOUT"
+    }
+  ]
+}
