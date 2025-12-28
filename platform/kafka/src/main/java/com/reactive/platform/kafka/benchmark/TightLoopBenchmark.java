@@ -1,5 +1,6 @@
 package com.reactive.platform.kafka.benchmark;
 
+import com.reactive.platform.gateway.microbatch.DirectFlushBatcher;
 import com.reactive.platform.gateway.microbatch.FastBatcher;
 import com.reactive.platform.gateway.microbatch.InlineBatcher;
 import com.reactive.platform.gateway.microbatch.StripedBatcher;
@@ -81,24 +82,34 @@ public class TightLoopBenchmark {
 
         // Test 6: InlineBatcher
         System.out.println("═══════════════════════════════════════════════════════════════════════════════");
-        System.out.println("INLINE BATCHER - Maximum optimization");
+        System.out.println("INLINE BATCHER - Wraps StripedBatcher");
         long inlineResult = runBatcher(new InlineBatcher(d -> sink.add(d.length)), MESSAGES_PER_THREAD * threads);
         System.out.printf("  Throughput:    %,d msg/s  (%.2f ns/msg)%n",
             totalMessages * 1000 / inlineResult, (double) inlineResult * 1_000_000 / totalMessages);
         System.out.println();
 
+        // Test 7: DirectFlushBatcher
+        System.out.println("═══════════════════════════════════════════════════════════════════════════════");
+        System.out.println("DIRECT FLUSH BATCHER - No atomics, direct flush");
+        long directResult = runBatcher(new DirectFlushBatcher(d -> sink.add(d.length)), MESSAGES_PER_THREAD * threads);
+        System.out.printf("  Throughput:    %,d msg/s  (%.2f ns/msg)%n",
+            totalMessages * 1000 / directResult, (double) directResult * 1_000_000 / totalMessages);
+        System.out.println();
+
         // Summary
         System.out.println("═══════════════════════════════════════════════════════════════════════════════");
         System.out.println("SUMMARY (sorted by throughput):");
-        System.out.printf("  No-op loop:       %,12d msg/s%n", totalMessages * 1000 / noopResult);
-        System.out.printf("  Arraycopy only:   %,12d msg/s%n", totalMessages * 1000 / baselineResult);
-        System.out.printf("  InlineBatcher:    %,12d msg/s  (%.0f%% of baseline)%n",
-            totalMessages * 1000 / inlineResult, 100.0 * baselineResult / inlineResult);
-        System.out.printf("  FastBatcher:      %,12d msg/s  (%.0f%% of baseline)%n",
+        System.out.printf("  No-op loop:         %,12d msg/s%n", totalMessages * 1000 / noopResult);
+        System.out.printf("  Arraycopy only:     %,12d msg/s%n", totalMessages * 1000 / baselineResult);
+        System.out.printf("  DirectFlushBatcher: %,12d msg/s  (%.0f%% of baseline)%n",
+            totalMessages * 1000 / directResult, 100.0 * baselineResult / directResult);
+        System.out.printf("  FastBatcher:        %,12d msg/s  (%.0f%% of baseline)%n",
             totalMessages * 1000 / fastResult, 100.0 * baselineResult / fastResult);
-        System.out.printf("  StripedBatcher:   %,12d msg/s  (%.0f%% of baseline)%n",
+        System.out.printf("  InlineBatcher:      %,12d msg/s  (%.0f%% of baseline)%n",
+            totalMessages * 1000 / inlineResult, 100.0 * baselineResult / inlineResult);
+        System.out.printf("  StripedBatcher:     %,12d msg/s  (%.0f%% of baseline)%n",
             totalMessages * 1000 / stripedResult, 100.0 * baselineResult / stripedResult);
-        System.out.printf("  UltraFastBatcher: %,12d msg/s  (%.0f%% of baseline)%n",
+        System.out.printf("  UltraFastBatcher:   %,12d msg/s  (%.0f%% of baseline)%n",
             totalMessages * 1000 / ultraResult, 100.0 * baselineResult / ultraResult);
         System.out.println("═══════════════════════════════════════════════════════════════════════════════");
     }
