@@ -64,13 +64,20 @@ public class FlinkBenchmark extends BaseBenchmark {
     // Benchmark Implementation
     // ========================================================================
 
+    // Maximum in-flight messages to prevent memory exhaustion
+    // This provides backpressure when Flink is slower (e.g., with RocksDB checkpointing)
+    // 75K balances throughput (~15-20K ops/s) with reasonable drain time (~5s)
+    private static final int MAX_IN_FLIGHT = 75_000;
+
     @Override
     protected void runBenchmarkLoop(Config config) throws Exception {
         String kafkaUrl = getKafkaUrl();
-        Instant loopStart = Instant.now();
-        Instant warmupEnd = loopStart.plusMillis(config.warmupMs());
+        // Will be reset after probe phase
+        Instant[] benchTiming = new Instant[] { Instant.now(), null };
+        benchTiming[1] = benchTiming[0].plusMillis(config.warmupMs());
 
         // Track in-flight messages for latency calculation
+        // Limited to MAX_IN_FLIGHT to prevent OOM when Flink is slower than producers
         Map<String, Long> inFlight = new ConcurrentHashMap<>();
 
         // Kafka producer - Avro binary, optimized for throughput
@@ -83,7 +90,7 @@ public class FlinkBenchmark extends BaseBenchmark {
         producerProps.put(ProducerConfig.BATCH_SIZE_CONFIG, 65536);
         producerProps.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, "lz4");
 
-        // Kafka consumer
+        // Kafka consumer - optimized for high throughput
         Properties consumerProps = new Properties();
         consumerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaUrl);
         consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, "flink-benchmark-" + System.currentTimeMillis());
@@ -91,11 +98,77 @@ public class FlinkBenchmark extends BaseBenchmark {
         consumerProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
         consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
         consumerProps.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true");
-        consumerProps.put(ConsumerConfig.FETCH_MIN_BYTES_CONFIG, 1024);
+        // High throughput settings: fetch immediately, large batches
+        consumerProps.put(ConsumerConfig.FETCH_MIN_BYTES_CONFIG, 1);  // Don't wait for data
+        consumerProps.put(ConsumerConfig.FETCH_MAX_WAIT_MS_CONFIG, 1);  // 1ms max wait
+        consumerProps.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 10000);  // Large batches
+        consumerProps.put(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG, 600000);  // 10 min to avoid timeout
 
         KafkaProducer<String, byte[]> producer = new KafkaProducer<>(producerProps);
         KafkaConsumer<String, String> consumer = new KafkaConsumer<>(consumerProps);
         consumer.subscribe(Collections.singletonList(RESULTS_TOPIC));
+
+        // Force partition assignment before starting producers
+        // Keep polling until partitions are assigned (up to 10 seconds)
+        int waitMs = 0;
+        while (consumer.assignment().isEmpty() && waitMs < 10000) {
+            consumer.poll(Duration.ofMillis(500));
+            waitMs += 500;
+        }
+        log.info("Consumer subscribed to {} partitions after {}ms", consumer.assignment().size(), waitMs);
+
+        // === CRITICAL: Wait for Flink to be actively consuming ===
+        // Send probe messages until we receive a response, confirming Flink is ready
+        log.info("Waiting for Flink to be ready (sending probe messages)...");
+        String probeId = "probe_" + System.currentTimeMillis();
+        boolean flinkReady = false;
+        int probeAttempts = 0;
+        int maxProbeAttempts = 60;  // Up to 30 seconds (500ms * 60)
+
+        while (!flinkReady && probeAttempts < maxProbeAttempts) {
+            // Send a probe message
+            long probeTime = System.currentTimeMillis();
+            String probeEventId = probeId + "_" + probeAttempts;
+            CounterEvent.Timing timing = CounterEvent.Timing.complete(probeTime, probeTime);
+            CounterEvent probeEvent = new CounterEvent(
+                    "probe_req_" + probeAttempts,
+                    "",
+                    probeEventId,
+                    "probe-session",
+                    "increment",
+                    1,
+                    probeTime,
+                    timing
+            );
+            byte[] probeBytes = avroCodec.encode(probeEvent).getOrThrow();
+            producer.send(new ProducerRecord<>(EVENTS_TOPIC, "probe-session", probeBytes));
+            producer.flush();
+
+            // Poll for response
+            ConsumerRecords<String, String> probeRecords = consumer.poll(Duration.ofMillis(500));
+            if (!probeRecords.isEmpty()) {
+                for (ConsumerRecord<String, String> record : probeRecords) {
+                    String eventId = extractEventIdFast(record.value());
+                    if (eventId != null && eventId.startsWith(probeId)) {
+                        flinkReady = true;
+                        log.info("Flink is ready! Received probe response after {} attempts ({}ms)",
+                                probeAttempts + 1, (probeAttempts + 1) * 500);
+                        break;
+                    }
+                }
+            }
+            probeAttempts++;
+        }
+
+        if (!flinkReady) {
+            log.warn("Flink may not be ready after {}ms - proceeding anyway", probeAttempts * 500);
+        }
+
+        // === RESET TIMING after probe phase ===
+        // The probe phase can take several seconds, so reset the clock for accurate measurement
+        benchTiming[0] = Instant.now();
+        benchTiming[1] = benchTiming[0].plusMillis(config.warmupMs());
+        log.info("Timing reset after probe phase - actual benchmark starting now");
 
         // Use more workers for Flink benchmark to stress the stream processor
         int workerCount = Math.max(config.concurrency(), 16);
@@ -103,43 +176,56 @@ public class FlinkBenchmark extends BaseBenchmark {
         AtomicBoolean warmupComplete = new AtomicBoolean(false);
         AtomicLong lastOpsCount = new AtomicLong(0);
 
-        // Consumer thread - processes results
+        // Consumer threads - parallel processing for high throughput
+        AtomicLong totalRecordsReceived = new AtomicLong(0);
+        AtomicLong matchedRecords = new AtomicLong(0);
+        AtomicLong pollCount = new AtomicLong(0);
+
+        // Use a thread pool to process records in parallel
+        int consumerThreads = Math.max(8, Runtime.getRuntime().availableProcessors());
+        ExecutorService consumerExecutor = Executors.newFixedThreadPool(consumerThreads);
+
         Thread consumerThread = new Thread(() -> {
+            log.info("Consumer thread started, polling from {} partitions with {} processing threads",
+                    consumer.assignment().size(), consumerThreads);
             try {
                 while (isRunning()) {
                     ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(50));
+                    pollCount.incrementAndGet();
+                    if (records.isEmpty()) continue;
+
                     long now = System.currentTimeMillis();
+                    int batchSize = records.count();
+                    totalRecordsReceived.addAndGet(batchSize);
 
+                    // Process records in parallel using ForkJoinPool for better CPU utilization
                     for (ConsumerRecord<String, String> record : records) {
-                        try {
-                            var result = mapper.readTree(record.value());
-                            String eventId = result.path("eventId").asText(null);
+                        consumerExecutor.submit(() -> {
+                            try {
+                                // Fast eventId extraction using regex instead of full JSON parsing
+                                String value = record.value();
+                                String eventId = extractEventIdFast(value);
 
-                            if (eventId != null) {
-                                Long startTime = inFlight.remove(eventId);
-                                if (startTime != null) {
-                                    long latencyMs = now - startTime;
-                                    recordLatency(latencyMs);
-                                    recordSuccess();
+                                if (eventId != null) {
+                                    Long startTime = inFlight.remove(eventId);
+                                    if (startTime != null) {
+                                        matchedRecords.incrementAndGet();
+                                        long latencyMs = now - startTime;
+                                        recordLatency(latencyMs);
+                                        recordSuccess();
 
-                                    // Sample events after warmup
-                                    if (warmupComplete.get()) {
-                                        // Extract timing from result
-                                        long flinkProcessingMs = result.path("processingTimeMs").asLong(0);
-                                        ComponentTiming timing = new ComponentTiming(
-                                                0, // gateway
-                                                latencyMs - flinkProcessingMs, // kafka
-                                                flinkProcessingMs, // flink
-                                                0  // drools
-                                        );
-                                        addSampleEvent(SampleEvent.success("flink_" + eventId, null, null, latencyMs)
-                                                .withTiming(timing));
+                                        // Sample events after warmup (every 1000th to reduce overhead)
+                                        if (warmupComplete.get() && matchedRecords.get() % 1000 == 0) {
+                                            ComponentTiming timing = new ComponentTiming(0, latencyMs, 0, 0);
+                                            addSampleEvent(SampleEvent.success("flink_" + eventId, null, null, latencyMs)
+                                                    .withTiming(timing));
+                                        }
                                     }
                                 }
+                            } catch (Exception e) {
+                                // Ignore parse errors
                             }
-                        } catch (Exception e) {
-                            // Ignore parse errors
-                        }
+                        });
                     }
                 }
             } catch (Exception e) {
@@ -158,8 +244,9 @@ public class FlinkBenchmark extends BaseBenchmark {
                         long currentOps = getOperationCount();
                         long throughput = currentOps - lastOpsCount.getAndSet(currentOps);
                         recordThroughputSample(throughput);
-                        log.info("Progress: ops={}, throughput={}/s, in-flight={}",
-                                currentOps, throughput, inFlight.size());
+                        log.info("Progress: ops={}, throughput={}/s, in-flight={}, received={}, matched={}, polls={}",
+                                currentOps, throughput, inFlight.size(),
+                                totalRecordsReceived.get(), matchedRecords.get(), pollCount.get());
                     }
                 } catch (InterruptedException e) {
                     break;
@@ -177,7 +264,7 @@ public class FlinkBenchmark extends BaseBenchmark {
             }
 
             // Wait for warmup
-            long warmupRemaining = warmupEnd.toEpochMilli() - System.currentTimeMillis();
+            long warmupRemaining = benchTiming[1].toEpochMilli() - System.currentTimeMillis();
             if (warmupRemaining > 0) {
                 Thread.sleep(warmupRemaining);
             }
@@ -185,16 +272,26 @@ public class FlinkBenchmark extends BaseBenchmark {
             log.info("Warmup complete, starting measurements (workers={})", workerCount);
 
             // Wait for duration
-            long durationRemaining = loopStart.plusMillis(config.durationMs()).toEpochMilli() - System.currentTimeMillis();
+            long durationRemaining = benchTiming[0].plusMillis(config.durationMs()).toEpochMilli() - System.currentTimeMillis();
             if (durationRemaining > 0 && isRunning()) {
                 Thread.sleep(durationRemaining);
             }
 
-            // Drain remaining results
+            // Drain remaining results - wait for in-flight messages to complete
+            // With 100K max in-flight and ~15K ops/s processing rate, need ~7s to drain
             stop();
             producerExecutor.shutdown();
             producerExecutor.awaitTermination(5, TimeUnit.SECONDS);
-            Thread.sleep(3000);
+
+            // Extended drain period - wait until in-flight drops below threshold or timeout
+            log.info("Draining {} in-flight messages...", inFlight.size());
+            long drainStart = System.currentTimeMillis();
+            long maxDrainMs = 10_000; // 10 second max drain time
+            while (inFlight.size() > 1000 && (System.currentTimeMillis() - drainStart) < maxDrainMs) {
+                Thread.sleep(500);
+            }
+            log.info("Drain complete: {} messages remaining after {}ms",
+                    inFlight.size(), System.currentTimeMillis() - drainStart);
             consumerThread.interrupt();
 
             // Mark remaining in-flight as timeout
@@ -206,6 +303,7 @@ public class FlinkBenchmark extends BaseBenchmark {
         } finally {
             throughputSampler.interrupt();
             producerExecutor.shutdownNow();
+            consumerExecutor.shutdownNow();
             producer.close();
             consumer.close();
         }
@@ -215,6 +313,17 @@ public class FlinkBenchmark extends BaseBenchmark {
                              Map<String, Long> inFlight) {
         long counter = 0;
         while (isRunning()) {
+            // Backpressure: if too many messages in-flight, wait for Flink to catch up
+            // This prevents OOM when Flink is slower than producers (e.g., RocksDB checkpointing)
+            while (inFlight.size() >= MAX_IN_FLIGHT && isRunning()) {
+                try {
+                    Thread.sleep(1); // Brief pause to let consumer catch up
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+            }
+
             long now = System.currentTimeMillis();
             String eventId = "flink_" + workerId + "_" + (counter++);
             String requestId = "flink_req_" + workerId + "_" + now;
@@ -257,6 +366,22 @@ public class FlinkBenchmark extends BaseBenchmark {
     private String getKafkaUrl() {
         String url = System.getenv("KAFKA_BOOTSTRAP_SERVERS");
         return (url != null && !url.isEmpty()) ? url : "kafka:29092";
+    }
+
+    /**
+     * Fast eventId extraction using string parsing instead of full JSON parsing.
+     * Looks for "eventId":"value" pattern in the JSON string.
+     */
+    private String extractEventIdFast(String json) {
+        // Look for "eventId":" pattern
+        int idx = json.indexOf("\"eventId\":\"");
+        if (idx < 0) return null;
+
+        int start = idx + 11; // Length of "eventId":"
+        int end = json.indexOf('"', start);
+        if (end < 0) return null;
+
+        return json.substring(start, end);
     }
 
     // ========================================================================

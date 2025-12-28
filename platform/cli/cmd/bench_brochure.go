@@ -3,6 +3,7 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -15,31 +16,43 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// Runtime specifies the execution environment for benchmarks
+type Runtime string
+
+const (
+	RuntimeDocker Runtime = "docker" // Run benchmark inside Docker container
+	RuntimeNative Runtime = "native" // Run benchmark natively on the host
+)
+
 // Brochure represents a benchmark configuration profile
 type Brochure struct {
-	Name        string            `yaml:"name" json:"name"`
-	Description string            `yaml:"description" json:"description"`
-	Component   string            `yaml:"component" json:"component"`
-	Duration    int               `yaml:"duration" json:"duration"` // milliseconds
-	Concurrency int               `yaml:"concurrency" json:"concurrency"`
-	Config      BrochureConfig    `yaml:"config" json:"config"`
+	Name        string         `yaml:"name" json:"name"`
+	Description string         `yaml:"description" json:"description"`
+	Component   string         `yaml:"component" json:"component"`
+	Runtime     Runtime        `yaml:"runtime" json:"runtime"` // docker or native
+	Duration    int            `yaml:"duration" json:"duration"`     // milliseconds
+	Concurrency int            `yaml:"concurrency" json:"concurrency"`
+	Config      BrochureConfig `yaml:"config" json:"config"`
 }
 
 // BrochureConfig holds implementation choices
 type BrochureConfig struct {
-	HttpServer        string `yaml:"httpServer" json:"httpServer"`
-	Microbatching     bool   `yaml:"microbatching" json:"microbatching"`
-	MicrobatchSize    int    `yaml:"microbatchSize" json:"microbatchSize"`
-	MicrobatchTimeout int    `yaml:"microbatchTimeoutMs" json:"microbatchTimeoutMs"`
-	KafkaAcks         string `yaml:"kafkaAcks" json:"kafkaAcks"`
-	KafkaBatchSize    int    `yaml:"kafkaBatchSize" json:"kafkaBatchSize"`
-	KafkaLinger       int    `yaml:"kafkaLingerMs" json:"kafkaLingerMs"`
+	HttpServer        string                       `yaml:"httpServer" json:"httpServer"`
+	Microbatching     bool                         `yaml:"microbatching" json:"microbatching"`
+	MicrobatchSize    int                          `yaml:"microbatchSize" json:"microbatchSize"`
+	MicrobatchTimeout int                          `yaml:"microbatchTimeoutMs" json:"microbatchTimeoutMs"`
+	KafkaAcks         string                       `yaml:"kafkaAcks" json:"kafkaAcks"`
+	KafkaBatchSize    int                          `yaml:"kafkaBatchSize" json:"kafkaBatchSize"`
+	KafkaLinger       int                          `yaml:"kafkaLingerMs" json:"kafkaLingerMs"`
+	Env               map[string]string            `yaml:"env" json:"env"`      // Global env vars (deprecated, use services)
+	Services          map[string]map[string]string `yaml:"services" json:"services"` // Per-service env vars: services.flink-job-submitter.SKIP_DROOLS=true
 }
 
 // BrochureResult holds the result of running a brochure
 type BrochureResult struct {
 	Brochure   string                 `json:"brochure"`
 	Name       string                 `json:"name"`
+	Runtime    Runtime                `json:"runtime"` // docker or native
 	StartTime  time.Time              `json:"startTime"`
 	EndTime    time.Time              `json:"endTime"`
 	DurationMs int64                  `json:"durationMs"`
@@ -116,6 +129,7 @@ func init() {
 	benchCmd.AddCommand(benchBrochureCmd)
 
 	// Add --quick flag for smoke testing
+	brochureRunCmd.Flags().BoolVar(&quickMode, "quick", false, "Quick iteration mode (10s duration)")
 	brochureRunAllCmd.Flags().BoolVar(&quickMode, "quick", false, "Quick smoke test mode (10s per brochure)")
 }
 
@@ -136,6 +150,11 @@ func loadBrochure(name string) (*Brochure, error) {
 	var brochure Brochure
 	if err := yaml.Unmarshal(data, &brochure); err != nil {
 		return nil, fmt.Errorf("invalid brochure format: %v", err)
+	}
+
+	// Default runtime to docker if not specified
+	if brochure.Runtime == "" {
+		brochure.Runtime = RuntimeDocker
 	}
 
 	return &brochure, nil
@@ -225,14 +244,32 @@ func runBrochure(brochure *Brochure, name string) *BrochureResult {
 	projectRoot := findProjectRoot()
 	brochureDir := filepath.Join(projectRoot, "reports", "brochures", name)
 
-	duration := time.Duration(brochure.Duration) * time.Millisecond
+	// Quick mode: override duration to 10s for fast iteration
+	actualDuration := brochure.Duration
+	if quickMode {
+		actualDuration = 10000 // 10 seconds
+	}
+	duration := time.Duration(actualDuration) * time.Millisecond
+
+	// Load previous baseline for comparison
+	var baseline *BrochureResult
+	baselineFile := filepath.Join(brochureDir, "results.json")
+	if data, err := os.ReadFile(baselineFile); err == nil {
+		baseline = &BrochureResult{}
+		json.Unmarshal(data, baseline)
+	}
 
 	printHeader(fmt.Sprintf("Brochure: %s", brochure.Name))
 	fmt.Println()
 	printInfo(brochure.Description)
 	fmt.Println()
 	fmt.Printf("  Component:    %s\n", brochure.Component)
-	fmt.Printf("  Duration:     %v\n", duration)
+	fmt.Printf("  Runtime:      %s\n", brochure.Runtime)
+	fmt.Printf("  Duration:     %v", duration)
+	if quickMode {
+		fmt.Printf(" (quick mode)")
+	}
+	fmt.Println()
 	fmt.Printf("  Concurrency:  %d\n", brochure.Concurrency)
 	fmt.Printf("  HTTP Server:  %s\n", brochure.Config.HttpServer)
 	fmt.Printf("  Microbatch:   %v\n", brochure.Config.Microbatching)
@@ -240,43 +277,60 @@ func runBrochure(brochure *Brochure, name string) *BrochureResult {
 		fmt.Printf("  Batch Size:   %d\n", brochure.Config.MicrobatchSize)
 		fmt.Printf("  Batch Timeout: %dms\n", brochure.Config.MicrobatchTimeout)
 	}
+	if baseline != nil {
+		fmt.Printf("  Baseline:     %.0f ops/s\n", baseline.Throughput)
+	}
 	fmt.Println()
+
+	// Override brochure duration for this run
+	originalDuration := brochure.Duration
+	brochure.Duration = actualDuration
 
 	start := time.Now()
 	result := &BrochureResult{
 		Brochure:  name,
 		Name:      brochure.Name,
+		Runtime:   brochure.Runtime,
 		StartTime: start,
 	}
 
-	// Find Docker network
-	network := findDockerNetwork()
-	if network == "" {
-		printError("Docker network not found. Is the system running?")
-		return nil
-	}
+	// Check runtime and run accordingly
+	if brochure.Runtime == RuntimeNative {
+		// Native execution: run directly on host
+		runNativeBrochure(projectRoot, brochure, brochureDir, result)
+	} else {
+		// Docker execution (default)
+		network := findDockerNetwork()
+		if network == "" {
+			printError("Docker network not found. Is the system running?")
+			return nil
+		}
 
-	// Run based on component type and config
-	switch brochure.Component {
-	case "http":
-		runHttpBrochure(projectRoot, network, brochure, brochureDir, result)
-	case "kafka":
-		runKafkaBrochure(projectRoot, network, brochure, brochureDir, result)
-	case "flink":
-		runFlinkBrochure(projectRoot, network, brochure, brochureDir, result)
-	case "gateway":
-		runGatewayBrochure(projectRoot, network, brochure, brochureDir, result)
-	case "full":
-		runFullBrochure(projectRoot, network, brochure, brochureDir, result)
-	case "collector":
-		runCollectorBrochure(projectRoot, network, brochure, brochureDir, result)
-	default:
-		printError(fmt.Sprintf("Unknown component: %s", brochure.Component))
-		return nil
+		// Run based on component type and config
+		switch brochure.Component {
+		case "http":
+			runHttpBrochure(projectRoot, network, brochure, brochureDir, result)
+		case "kafka":
+			runKafkaBrochure(projectRoot, network, brochure, brochureDir, result)
+		case "flink":
+			runFlinkBrochure(projectRoot, network, brochure, brochureDir, result)
+		case "gateway":
+			runGatewayBrochure(projectRoot, network, brochure, brochureDir, result)
+		case "full":
+			runFullBrochure(projectRoot, network, brochure, brochureDir, result)
+		case "collector":
+			runCollectorBrochure(projectRoot, network, brochure, brochureDir, result)
+		default:
+			printError(fmt.Sprintf("Unknown component: %s", brochure.Component))
+			return nil
+		}
 	}
 
 	result.EndTime = time.Now()
 	result.DurationMs = result.EndTime.Sub(result.StartTime).Milliseconds()
+
+	// Restore original duration for saving
+	brochure.Duration = originalDuration
 
 	// Save result
 	saveResult(brochureDir, result)
@@ -284,7 +338,19 @@ func runBrochure(brochure *Brochure, name string) *BrochureResult {
 	generateBrochureMarkdown(brochureDir, brochure, result)
 
 	fmt.Println()
-	printSuccess(fmt.Sprintf("Brochure completed: %.2f ops/s", result.Throughput))
+
+	// Show comparison with baseline
+	if baseline != nil && baseline.Throughput > 0 {
+		delta := result.Throughput - baseline.Throughput
+		deltaPercent := (delta / baseline.Throughput) * 100
+		if delta >= 0 {
+			printSuccess(fmt.Sprintf("%.0f ops/s → %.0f ops/s (+%.1f%% ⬆)", baseline.Throughput, result.Throughput, deltaPercent))
+		} else {
+			printError(fmt.Sprintf("%.0f ops/s → %.0f ops/s (%.1f%% ⬇)", baseline.Throughput, result.Throughput, deltaPercent))
+		}
+	} else {
+		printSuccess(fmt.Sprintf("Brochure completed: %.0f ops/s", result.Throughput))
+	}
 	printInfo(fmt.Sprintf("Results: %s", brochureDir))
 
 	return result
@@ -382,32 +448,196 @@ func runKafkaBrochure(projectRoot, network string, brochure *Brochure, outDir st
 	loadResultsFromFile(filepath.Join(outDir, "results.json"), result)
 }
 
+// applyBrochureEnv applies environment variables from brochure config to Docker services.
+// It handles both the legacy 'env' field and the new 'services' field.
+// For the services field, it restarts containers with the new env vars using -e flags.
+func applyBrochureEnv(projectRoot string, brochure *Brochure) {
+	config := brochure.Config
+
+	// Merge legacy env into services if services not specified
+	if len(config.Services) == 0 && len(config.Env) > 0 {
+		// Infer services from component type
+		config.Services = inferServicesFromComponent(brochure.Component, config.Env)
+	}
+
+	if len(config.Services) == 0 {
+		return
+	}
+
+	printInfo("Applying brochure env vars to services...")
+
+	// Collect all env vars from all services into a single map
+	// (docker-compose uses shell env var substitution, not per-service vars)
+	allEnvVars := make(map[string]string)
+	allServices := []string{}
+
+	for service, envVars := range config.Services {
+		if len(envVars) == 0 {
+			continue
+		}
+
+		printInfo(fmt.Sprintf("  Service: %s", service))
+		for k, v := range envVars {
+			printInfo(fmt.Sprintf("    %s=%s", k, v))
+			allEnvVars[k] = v
+		}
+		allServices = append(allServices, service)
+	}
+
+	if len(allServices) == 0 {
+		return
+	}
+
+	// Build environment list with all brochure env vars
+	// Docker compose uses ${VAR:-default} syntax in docker-compose.yaml
+	// These env vars will be substituted when we run docker compose
+	envList := os.Environ()
+	for k, v := range allEnvVars {
+		envList = append(envList, fmt.Sprintf("%s=%s", k, v))
+	}
+
+	// Restart all affected services with new env vars
+	args := []string{"compose", "up", "-d", "--force-recreate"}
+	args = append(args, allServices...)
+
+	cmd := exec.Command("docker", args...)
+	cmd.Dir = projectRoot
+	cmd.Env = envList
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Run()
+
+	// Wait for services to be ready based on component type
+	waitForServicesReady(brochure.Component)
+}
+
+// inferServicesFromComponent maps component type to Docker service names
+func inferServicesFromComponent(component string, env map[string]string) map[string]map[string]string {
+	services := make(map[string]map[string]string)
+
+	switch component {
+	case "flink":
+		// Flink env vars go to the job submitter (which passes to the job)
+		services["flink-job-submitter"] = env
+		services["flink-taskmanager"] = env
+		services["flink-jobmanager"] = env
+	case "gateway":
+		services["gateway"] = env
+	case "kafka":
+		services["kafka"] = env
+	case "drools":
+		services["drools"] = env
+	case "full":
+		// Full benchmark - apply to all processing components
+		services["gateway"] = env
+		services["flink-job-submitter"] = env
+		services["flink-taskmanager"] = env
+		services["flink-jobmanager"] = env
+		services["drools"] = env
+	}
+
+	return services
+}
+
+// waitForServicesReady waits for services to be healthy based on component type
+func waitForServicesReady(component string) {
+	switch component {
+	case "flink":
+		printInfo("Waiting for Flink to be ready...")
+		for i := 0; i < 30; i++ {
+			resp, err := http.Get("http://localhost:8081/jobs")
+			if err == nil {
+				resp.Body.Close()
+				break
+			}
+			time.Sleep(time.Second)
+		}
+		// Extra time for job to start
+		time.Sleep(3 * time.Second)
+	case "gateway":
+		printInfo("Waiting for Gateway to be ready...")
+		for i := 0; i < 30; i++ {
+			resp, err := http.Get("http://localhost:3000/health")
+			if err == nil {
+				resp.Body.Close()
+				break
+			}
+			time.Sleep(time.Second)
+		}
+	default:
+		// Default wait
+		time.Sleep(3 * time.Second)
+	}
+}
+
 // runFlinkBrochure runs the Flink stream processing benchmark
 func runFlinkBrochure(projectRoot, network string, brochure *Brochure, outDir string, result *BrochureResult) {
+	// Apply brochure env vars to Flink containers
+	applyBrochureEnv(projectRoot, brochure)
+
 	printInfo("Running Flink stream processing benchmark...")
 
-	// Compile application module (contains FlinkBenchmark)
-	printInfo("Compiling application module...")
-	compileArgs := []string{
-		"run", "--rm",
-		"--network", network,
-		"-v", fmt.Sprintf("%s:/app", projectRoot),
-		"-v", "maven-repo:/root/.m2",
-		"-w", "/app/application",
-		"maven:3.9-eclipse-temurin-22",
-		"mvn", "-q", "test-compile", "-DskipTests",
-	}
-	compileCmd := exec.Command("docker", compileArgs...)
-	compileCmd.Dir = projectRoot
-	if output, err := compileCmd.CombinedOutput(); err != nil {
-		printError(fmt.Sprintf("Maven compile failed: %v\n%s", err, string(output)))
-		return
+	// Check if we can skip compilation in quick mode
+	benchmarkClass := filepath.Join(projectRoot, "application/counter/target/test-classes/com/reactive/counter/benchmark/FlinkBenchmark.class")
+	classpathCache := filepath.Join(projectRoot, ".cache/flink-classpath.txt")
+
+	if quickMode {
+		if _, err := os.Stat(benchmarkClass); err == nil {
+			printInfo("Quick mode: Skipping compilation (classes exist)")
+		} else {
+			printInfo("Quick mode: Classes missing, compiling...")
+			if !compileFlinkBenchmark(projectRoot, network) {
+				return
+			}
+		}
+	} else {
+		// Full mode: always compile
+		printInfo("Compiling application module...")
+		if !compileFlinkBenchmark(projectRoot, network) {
+			return
+		}
 	}
 
 	durationSec := brochure.Duration / 1000
 	brochureName := filepath.Base(outDir)
 
-	// Run FlinkBenchmark
+	// Try to use cached classpath in quick mode
+	var deps string
+	if quickMode {
+		if cached, err := os.ReadFile(classpathCache); err == nil {
+			deps = strings.TrimSpace(string(cached))
+			printInfo("Quick mode: Using cached classpath")
+		}
+	}
+
+	// Get classpath if not cached
+	if deps == "" {
+		printInfo("Resolving Maven classpath...")
+		cpArgs := []string{
+			"run", "--rm",
+			"--network", network,
+			"-v", fmt.Sprintf("%s:/app", projectRoot),
+			"-v", "maven-repo:/root/.m2",
+			"-w", "/app",
+			"maven:3.9-eclipse-temurin-22",
+			"sh", "-c", "mvn -f application/counter/pom.xml dependency:build-classpath -Dmdep.outputFile=/dev/stdout -q -Pbenchmark | tail -1",
+		}
+		cpCmd := exec.Command("docker", cpArgs...)
+		cpCmd.Dir = projectRoot
+		cpOutput, err := cpCmd.Output()
+		if err != nil {
+			printError(fmt.Sprintf("Failed to get classpath: %v", err))
+			return
+		}
+		deps = strings.TrimSpace(string(cpOutput))
+
+		// Cache the classpath for quick mode
+		os.MkdirAll(filepath.Dir(classpathCache), 0755)
+		os.WriteFile(classpathCache, []byte(deps), 0644)
+	}
+
+	// Run FlinkBenchmark with full classpath
+	classpath := fmt.Sprintf("platform/target/classes:platform/base/target/classes:application/counter/target/classes:application/counter/target/test-classes:%s", deps)
 	args := []string{
 		"run", "--rm",
 		"--network", network,
@@ -415,8 +645,9 @@ func runFlinkBrochure(projectRoot, network string, brochure *Brochure, outDir st
 		"-v", "maven-repo:/root/.m2",
 		"-w", "/app",
 		"-e", "KAFKA_BOOTSTRAP_SERVERS=kafka:29092",
+		"-m", "4g", // Limit container memory to 4GB
 		"maven:3.9-eclipse-temurin-22",
-		"java", "-cp", "application/target/test-classes:application/target/classes:platform/target/classes:platform/target/dependency/*",
+		"java", "-Xmx3g", "-Xms1g", "-cp", classpath, // Set Java heap to 3GB max
 		"com.reactive.counter.benchmark.FlinkBenchmark",
 		fmt.Sprintf("%d", durationSec*1000),                    // durationMs
 		fmt.Sprintf("%d", brochure.Concurrency),                // concurrency
@@ -499,6 +730,183 @@ func runMavenCompileWithDeps(projectRoot, network, module string) bool {
 	}
 
 	return true
+}
+
+// compileFlinkBenchmark compiles the Flink benchmark module
+func compileFlinkBenchmark(projectRoot, network string) bool {
+	args := []string{
+		"run", "--rm",
+		"--network", network,
+		"-v", fmt.Sprintf("%s:/app", projectRoot),
+		"-v", "maven-repo:/root/.m2",
+		"-w", "/app",
+		"maven:3.9-eclipse-temurin-22",
+		"mvn", "-q", "-f", "application/counter/pom.xml", "test-compile", "-DskipTests", "-Pbenchmark",
+	}
+	cmd := exec.Command("docker", args...)
+	cmd.Dir = projectRoot
+	if output, err := cmd.CombinedOutput(); err != nil {
+		printError(fmt.Sprintf("Maven compile failed: %v\n%s", err, string(output)))
+		return false
+	}
+	return true
+}
+
+// runNativeBrochure runs benchmarks directly on the host machine (native execution)
+// This enables comparison between Docker and native performance
+func runNativeBrochure(projectRoot string, brochure *Brochure, outDir string, result *BrochureResult) {
+	printInfo("Running in NATIVE mode (directly on host)...")
+
+	durationSec := brochure.Duration / 1000
+	brochureName := filepath.Base(outDir)
+
+	// Find Java - try brew paths first, then system
+	// Priority: openjdk (latest) > openjdk@21 > system java
+	javaPath := ""
+	javaHome := ""
+	brewJavaPaths := []string{
+		"/opt/homebrew/opt/openjdk",      // Latest (e.g., Java 25)
+		"/opt/homebrew/opt/openjdk@21",   // Java 21
+		"/opt/homebrew/opt/openjdk@17",   // Java 17
+	}
+	for _, brewPath := range brewJavaPaths {
+		testPath := filepath.Join(brewPath, "bin", "java")
+		if _, err := os.Stat(testPath); err == nil {
+			javaPath = testPath
+			javaHome = brewPath
+			break
+		}
+	}
+	if javaPath == "" {
+		javaPath = "java" // Fall back to system java
+	}
+
+	// Set environment variables from brochure config
+	env := os.Environ()
+	for k, v := range brochure.Config.Env {
+		env = append(env, fmt.Sprintf("%s=%s", k, v))
+	}
+	// Native mode: use localhost for Kafka (assuming Docker services expose ports)
+	env = append(env, "KAFKA_BOOTSTRAP_SERVERS=localhost:9092")
+	// Set JAVA_HOME for Maven
+	if javaHome != "" {
+		env = append(env, fmt.Sprintf("JAVA_HOME=%s", javaHome))
+		env = append(env, fmt.Sprintf("PATH=%s/bin:%s", javaHome, os.Getenv("PATH")))
+	}
+
+	// Compile first if needed (using native Maven)
+	printInfo("Compiling with native Maven...")
+	compileCmd := exec.Command("mvn", "-q", "compile", "test-compile", "-DskipTests", "-Pbenchmark")
+	compileCmd.Dir = projectRoot
+	compileCmd.Env = env
+	if output, err := compileCmd.CombinedOutput(); err != nil {
+		printError(fmt.Sprintf("Maven compile failed: %v\n%s", err, string(output)))
+		return
+	}
+
+	// Get classpath using native Maven
+	printInfo("Resolving classpath...")
+	cpCmd := exec.Command("mvn", "-f", "application/counter/pom.xml", "dependency:build-classpath", "-Dmdep.outputFile=/dev/stdout", "-q", "-Pbenchmark")
+	cpCmd.Dir = projectRoot
+	cpCmd.Env = env
+	cpOutput, err := cpCmd.Output()
+	if err != nil {
+		printError(fmt.Sprintf("Failed to get classpath: %v", err))
+		return
+	}
+	deps := strings.TrimSpace(string(cpOutput))
+	// Get last line (actual classpath)
+	lines := strings.Split(deps, "\n")
+	deps = lines[len(lines)-1]
+
+	// Build classpath
+	classpath := fmt.Sprintf("%s/platform/target/classes:%s/platform/base/target/classes:%s/application/counter/target/classes:%s/application/counter/target/test-classes:%s",
+		projectRoot, projectRoot, projectRoot, projectRoot, deps)
+
+	// Run based on component type
+	var benchmarkClass string
+	var benchArgs []string
+
+	switch brochure.Component {
+	case "flink":
+		benchmarkClass = "com.reactive.counter.benchmark.FlinkBenchmark"
+		benchArgs = []string{
+			fmt.Sprintf("%d", durationSec*1000),   // durationMs
+			fmt.Sprintf("%d", brochure.Concurrency), // concurrency
+			"http://localhost:3000",                 // gatewayUrl
+			"http://localhost:8080",                 // droolsUrl
+			outDir,                                  // reportsDir
+			"true",                                  // skipEnrichment
+		}
+	case "kafka":
+		benchmarkClass = "com.reactive.platform.benchmark.KafkaProducerBenchmark"
+		benchArgs = []string{
+			fmt.Sprintf("%d", durationSec*1000),
+			fmt.Sprintf("%d", brochure.Concurrency),
+			"http://localhost:3000",
+			"http://localhost:8080",
+			outDir,
+			"true",
+		}
+	case "http":
+		benchmarkClass = "com.reactive.platform.benchmark.UnifiedHttpBenchmark"
+		benchArgs = []string{
+			brochure.Config.HttpServer,
+			fmt.Sprintf("%d", durationSec),
+			fmt.Sprintf("%d", brochure.Concurrency),
+			outDir,
+		}
+	case "gateway", "full":
+		if brochure.Config.Microbatching {
+			benchmarkClass = "com.reactive.platform.gateway.microbatch.GatewayComparisonBenchmark"
+			benchArgs = []string{
+				"microbatch",
+				fmt.Sprintf("%d", durationSec),
+				fmt.Sprintf("%d", brochure.Concurrency),
+				"localhost:9092",
+				outDir,
+			}
+		} else {
+			printError("Native mode for non-microbatch gateway not implemented (requires external HTTP client)")
+			return
+		}
+	case "collector":
+		benchmarkClass = "com.reactive.platform.gateway.microbatch.GatewayComparisonBenchmark"
+		benchArgs = []string{
+			"collector",
+			fmt.Sprintf("%d", durationSec),
+			fmt.Sprintf("%d", brochure.Concurrency),
+			"localhost:9092",
+			outDir,
+		}
+	default:
+		printError(fmt.Sprintf("Native mode not supported for component: %s", brochure.Component))
+		return
+	}
+
+	printInfo(fmt.Sprintf("Running %s natively...", benchmarkClass))
+
+	// Build java command
+	javaArgs := []string{
+		"--enable-native-access=ALL-UNNAMED",
+		"-cp", classpath,
+		benchmarkClass,
+	}
+	javaArgs = append(javaArgs, benchArgs...)
+
+	cmd := exec.Command("java", javaArgs...)
+	cmd.Dir = projectRoot
+	cmd.Env = env
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Run(); err != nil {
+		printError(fmt.Sprintf("Benchmark failed: %v", err))
+		return
+	}
+
+	loadResultsFromFile(filepath.Join(outDir, "results.json"), result)
+	printInfo(fmt.Sprintf("Native benchmark completed - results: %s", brochureName))
 }
 
 func runGatewayBrochure(projectRoot, network string, brochure *Brochure, outDir string, result *BrochureResult) {

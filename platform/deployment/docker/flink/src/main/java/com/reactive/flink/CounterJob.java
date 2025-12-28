@@ -14,9 +14,12 @@ import org.apache.flink.connector.kafka.sink.KafkaRecordSerializationSchema;
 import org.apache.flink.connector.kafka.sink.KafkaSink;
 import org.apache.flink.connector.kafka.source.KafkaSource;
 import org.apache.flink.connector.kafka.source.enumerator.initializer.OffsetsInitializer;
+import org.apache.flink.contrib.streaming.state.EmbeddedRocksDBStateBackend;
+import org.apache.flink.streaming.api.CheckpointingMode;
 import org.apache.flink.streaming.api.datastream.AsyncDataStream;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
+import org.apache.flink.streaming.api.environment.CheckpointConfig;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -81,11 +84,46 @@ public class CounterJob {
     private static final boolean SKIP_DROOLS = Boolean.parseBoolean(
             System.getenv().getOrDefault("SKIP_DROOLS", "false"));
 
+    // Skip tracing spans (for maximum throughput benchmarks)
+    private static final boolean SKIP_TRACING = Boolean.parseBoolean(
+            System.getenv().getOrDefault("SKIP_TRACING", "false"));
+
+    // Skip checkpointing (for maximum throughput benchmarks - disables exactly-once semantics)
+    private static final boolean SKIP_CHECKPOINTING = Boolean.parseBoolean(
+            System.getenv().getOrDefault("SKIP_CHECKPOINTING", "false"));
+
+    // Benchmark mode: pure passthrough with NO state access (maximum theoretical throughput)
+    private static final boolean BENCHMARK_MODE = Boolean.parseBoolean(
+            System.getenv().getOrDefault("BENCHMARK_MODE", "false"));
+
+    // Checkpoint interval in ms (default 60s for high throughput - based on Flink production best practices)
+    // Research shows: longer intervals = higher throughput, shorter = less data loss on failure
+    // 60s is recommended for high-throughput applications per Apache Flink documentation
+    private static final long CHECKPOINT_INTERVAL_MS = Long.parseLong(
+            System.getenv().getOrDefault("CHECKPOINT_INTERVAL_MS", "60000"));
+
+    // Min pause between checkpoints (prevents checkpoint storms under backpressure)
+    private static final long CHECKPOINT_MIN_PAUSE_MS = Long.parseLong(
+            System.getenv().getOrDefault("CHECKPOINT_MIN_PAUSE_MS", "30000"));
+
+    // Checkpoint timeout (allow more time for large state)
+    private static final long CHECKPOINT_TIMEOUT_MS = Long.parseLong(
+            System.getenv().getOrDefault("CHECKPOINT_TIMEOUT_MS", "120000"));
+
+    // Enable unaligned checkpoints (better for backpressure scenarios)
+    private static final boolean UNALIGNED_CHECKPOINTS = Boolean.parseBoolean(
+            System.getenv().getOrDefault("UNALIGNED_CHECKPOINTS", "true"));
+
+    // Use RocksDB state backend for scalable state (required for incremental checkpoints)
+    private static final boolean USE_ROCKSDB = Boolean.parseBoolean(
+            System.getenv().getOrDefault("USE_ROCKSDB", "true"));
+
     public static void main(String[] args) throws Exception {
         LOG.info("Starting Counter Processing Job (CQRS mode)");
         LOG.info("Latency bounds: MIN={}ms, MAX={}ms", LATENCY_MIN_MS, LATENCY_MAX_MS);
         LOG.info("Parallelism: {}, Async capacity: {}", PARALLELISM, ASYNC_CAPACITY);
-        LOG.info("Skip Drools: {} (Layer 2 benchmark mode)", SKIP_DROOLS);
+        LOG.info("Skip Drools: {}, Skip Tracing: {}, Skip Checkpointing: {}, Benchmark Mode: {}",
+                SKIP_DROOLS, SKIP_TRACING, SKIP_CHECKPOINTING, BENCHMARK_MODE);
 
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
@@ -102,17 +140,61 @@ public class CounterJob {
         // Set buffer timeout
         env.setBufferTimeout(BUFFER_TIMEOUT_MS);
 
-        // Enable checkpointing for continuous consumption
-        // Without checkpointing, Kafka source may stop after initial batch
-        env.enableCheckpointing(10000); // Checkpoint every 10 seconds (reduced overhead)
-        LOG.info("Checkpointing enabled: 5000ms interval");
+        // Configure state backend and checkpointing
+        // Production-grade configuration based on Apache Flink best practices:
+        // - RocksDB enables incremental checkpoints (only deltas stored)
+        // - Unaligned checkpoints handle backpressure without blocking
+        // - Longer intervals reduce overhead for high-throughput apps
+        if (SKIP_CHECKPOINTING) {
+            LOG.info("Checkpointing DISABLED (benchmark mode - at-most-once semantics)");
+        } else {
+            // Use RocksDB state backend with incremental checkpoints
+            // RocksDB is recommended for production: scales beyond memory, supports incremental
+            if (USE_ROCKSDB) {
+                EmbeddedRocksDBStateBackend rocksDB = new EmbeddedRocksDBStateBackend(true); // enable incremental
+                env.setStateBackend(rocksDB);
+                LOG.info("RocksDB state backend enabled with INCREMENTAL checkpoints");
+            }
 
-        // Kafka consumer properties for continuous consumption
+            // Enable checkpointing with EXACTLY_ONCE semantics
+            env.enableCheckpointing(CHECKPOINT_INTERVAL_MS, CheckpointingMode.EXACTLY_ONCE);
+
+            // Get checkpoint config for fine-grained tuning
+            CheckpointConfig checkpointConfig = env.getCheckpointConfig();
+
+            // Min pause prevents checkpoint storms under load
+            checkpointConfig.setMinPauseBetweenCheckpoints(CHECKPOINT_MIN_PAUSE_MS);
+
+            // Timeout for checkpoint completion
+            checkpointConfig.setCheckpointTimeout(CHECKPOINT_TIMEOUT_MS);
+
+            // Only one checkpoint at a time for simplicity
+            checkpointConfig.setMaxConcurrentCheckpoints(1);
+
+            // Enable unaligned checkpoints for better backpressure handling
+            // Unaligned checkpoints skip barriers through in-flight data
+            if (UNALIGNED_CHECKPOINTS) {
+                checkpointConfig.enableUnalignedCheckpoints();
+                LOG.info("Unaligned checkpoints ENABLED (better backpressure handling)");
+            }
+
+            // Retain externalized checkpoints on cancellation (for recovery)
+            checkpointConfig.setExternalizedCheckpointCleanup(
+                    CheckpointConfig.ExternalizedCheckpointCleanup.RETAIN_ON_CANCELLATION);
+
+            LOG.info("Checkpointing enabled: interval={}ms, minPause={}ms, timeout={}ms, mode=EXACTLY_ONCE",
+                    CHECKPOINT_INTERVAL_MS, CHECKPOINT_MIN_PAUSE_MS, CHECKPOINT_TIMEOUT_MS);
+        }
+
+        // Kafka consumer properties - optimized for high throughput
         Properties kafkaProps = new Properties();
         kafkaProps.setProperty("fetch.max.wait.ms", KAFKA_FETCH_MAX_WAIT_MS);
-        kafkaProps.setProperty("fetch.min.bytes", "1");
+        kafkaProps.setProperty("fetch.min.bytes", "16384");        // 16KB min fetch for batching
+        kafkaProps.setProperty("fetch.max.bytes", "52428800");     // 50MB max fetch
+        kafkaProps.setProperty("max.partition.fetch.bytes", "5242880"); // 5MB per partition
         // Ensure consumer polls continuously - higher for throughput
-        kafkaProps.setProperty("max.poll.records", "1000");
+        // 10000 records per poll for high throughput mode
+        kafkaProps.setProperty("max.poll.records", "10000");
         kafkaProps.setProperty("max.poll.interval.ms", "300000");
         kafkaProps.setProperty("heartbeat.interval.ms", "3000");
         kafkaProps.setProperty("session.timeout.ms", "30000");
@@ -129,14 +211,15 @@ public class CounterJob {
                 .setProperties(kafkaProps)
                 .build();
 
-        // Kafka producer properties - balanced for latency + throughput
+        // Kafka producer properties - optimized for high throughput
         Properties producerProps = new Properties();
-        producerProps.setProperty("linger.ms", "1");            // 1ms delay for low latency
-        producerProps.setProperty("batch.size", "32768");       // 32KB batch size
+        producerProps.setProperty("linger.ms", "5");            // 5ms batching delay for throughput
+        producerProps.setProperty("batch.size", "131072");      // 128KB batch size (larger batches)
         producerProps.setProperty("acks", "1");                 // Leader acknowledgment only
         producerProps.setProperty("compression.type", "lz4");   // Fast compression
-        producerProps.setProperty("buffer.memory", "67108864"); // 64MB buffer
-        LOG.info("Producer config: linger.ms=1, batch.size=32KB, compression=lz4");
+        producerProps.setProperty("buffer.memory", "134217728"); // 128MB buffer (doubled)
+        producerProps.setProperty("max.in.flight.requests.per.connection", "5"); // Allow 5 in-flight
+        LOG.info("Producer config: linger.ms=5, batch.size=128KB, compression=lz4, buffer=128MB");
 
         // Sink for immediate results (counter-results topic) - with trace context propagation
         KafkaSink<CounterResult> resultsSink = KafkaSink.<CounterResult>builder()
@@ -167,7 +250,7 @@ public class CounterJob {
         // - Side output: PreDroolsResult for snapshot evaluation (bounded)
         SingleOutputStreamOperator<CounterResult> immediateResults = events
                 .keyBy(CounterEvent::sessionId)
-                .process(new CounterProcessor(LATENCY_MIN_MS, LATENCY_MAX_MS));
+                .process(new CounterProcessor(LATENCY_MIN_MS, LATENCY_MAX_MS, SKIP_TRACING, BENCHMARK_MODE));
 
         // Send immediate results to counter-results topic
         immediateResults.sinkTo(resultsSink);

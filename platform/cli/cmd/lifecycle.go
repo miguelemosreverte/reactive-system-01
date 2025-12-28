@@ -1,7 +1,10 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"os/exec"
 	"strings"
@@ -41,14 +44,19 @@ var restartCmd = &cobra.Command{
 	Run:   runRestart,
 }
 
+var rebuildNoCache bool
+
 var rebuildCmd = &cobra.Command{
 	Use:   "rebuild <service>",
 	Short: "Rebuild and restart a service",
 	Long: `Rebuild with Docker cache, then restart.
 
+Use --no-cache when source code has changed and you need a fresh build.
+
 Examples:
-  reactive rebuild gateway
-  reactive rebuild drools`,
+  reactive rebuild gateway           # Rebuild with cache
+  reactive rebuild flink             # Rebuild both flink-jobmanager and flink-taskmanager
+  reactive rebuild flink --no-cache  # Fresh rebuild (clears BuildKit cache first)`,
 	Args: cobra.ExactArgs(1),
 	Run:  runRebuild,
 }
@@ -101,6 +109,9 @@ func init() {
 	rootCmd.AddCommand(followCmd)
 	rootCmd.AddCommand(devCmd)
 	rootCmd.AddCommand(shellCmd)
+
+	// Add --no-cache flag for rebuild
+	rebuildCmd.Flags().BoolVar(&rebuildNoCache, "no-cache", false, "Clear BuildKit cache before building (use when source code changed)")
 }
 
 func runStart(cmd *cobra.Command, args []string) {
@@ -157,19 +168,165 @@ func runRebuild(cmd *cobra.Command, args []string) {
 	service := args[0]
 
 	printHeader(fmt.Sprintf("Rebuilding %s", service))
-	serviceName := mapServiceName(service)
 
-	// Build with cache
-	fmt.Println("Building...")
-	runDockerComposeEnv([]string{"DOCKER_BUILDKIT=1"}, "build", serviceName)
+	// Flink requires special handling - full cluster restart for clean state
+	if service == "flink" {
+		rebuildFlink()
+		printSuccess("Flink rebuilt and restarted with clean job state")
+		fmt.Println()
+		printInfo(fmt.Sprintf("Duration: %.2fs", time.Since(start).Seconds()))
+		return
+	}
 
-	// Recreate and start
-	fmt.Println("Starting...")
-	runDockerCompose("up", "-d", "--force-recreate", serviceName)
+	// Non-Flink services use standard rebuild
+	services := []string{mapServiceName(service)}
+
+	// If --no-cache, clear BuildKit cache first
+	if rebuildNoCache {
+		printInfo("Clearing BuildKit cache...")
+		c := exec.Command("docker", "builder", "prune", "-af")
+		c.Stdout = os.Stdout
+		c.Stderr = os.Stderr
+		c.Run()
+	}
+
+	// Build services
+	printInfo("Building...")
+	buildArgs := []string{"compose", "build"}
+	if rebuildNoCache {
+		buildArgs = append(buildArgs, "--no-cache")
+	}
+	buildArgs = append(buildArgs, services...)
+
+	c := exec.Command("docker", buildArgs...)
+	c.Env = append(os.Environ(), "DOCKER_BUILDKIT=1")
+	c.Stdout = os.Stdout
+	c.Stderr = os.Stderr
+	if err := c.Run(); err != nil {
+		printError(fmt.Sprintf("Build failed: %v", err))
+		return
+	}
+
+	// Recreate and start all services
+	printInfo("Starting...")
+	upArgs := append([]string{"up", "-d", "--force-recreate"}, services...)
+	runDockerCompose(upArgs...)
 
 	printSuccess(fmt.Sprintf("%s rebuilt and restarted", service))
 	fmt.Println()
 	printInfo(fmt.Sprintf("Duration: %.2fs", time.Since(start).Seconds()))
+}
+
+// rebuildFlink handles Flink cluster rebuild with proper job cleanup
+func rebuildFlink() {
+	// Step 1: Stop job-submitter to prevent new job submissions
+	printInfo("Stopping job-submitter...")
+	exec.Command("docker", "stop", "reactive-flink-job-submitter").Run()
+
+	// Step 2: Cancel ALL running jobs via REST API
+	printInfo("Cancelling all Flink jobs...")
+	cancelFlinkJobs()
+	time.Sleep(2 * time.Second) // Give jobs time to cancel
+
+	// Step 3: Stop entire Flink cluster
+	printInfo("Stopping Flink cluster...")
+	exec.Command("docker", "compose", "stop", "flink-taskmanager", "flink-jobmanager").Run()
+
+	// Step 4: Build if needed
+	if rebuildNoCache {
+		printInfo("Clearing BuildKit cache...")
+		c := exec.Command("docker", "builder", "prune", "-af")
+		c.Stdout = os.Stdout
+		c.Stderr = os.Stderr
+		c.Run()
+	}
+
+	printInfo("Building Flink images...")
+	buildArgs := []string{"compose", "build"}
+	if rebuildNoCache {
+		buildArgs = append(buildArgs, "--no-cache")
+	}
+	buildArgs = append(buildArgs, "flink-jobmanager", "flink-taskmanager", "flink-job-submitter")
+
+	c := exec.Command("docker", buildArgs...)
+	c.Env = append(os.Environ(), "DOCKER_BUILDKIT=1")
+	c.Stdout = os.Stdout
+	c.Stderr = os.Stderr
+	if err := c.Run(); err != nil {
+		printError(fmt.Sprintf("Build failed: %v", err))
+		return
+	}
+
+	// Step 5: Start jobmanager first
+	printInfo("Starting jobmanager...")
+	runDockerCompose("up", "-d", "--force-recreate", "flink-jobmanager")
+
+	// Step 6: Wait for jobmanager to be healthy
+	printInfo("Waiting for jobmanager to be ready...")
+	for i := 0; i < 30; i++ {
+		resp, err := http.Get("http://localhost:8081/overview")
+		if err == nil && resp.StatusCode == 200 {
+			resp.Body.Close()
+			break
+		}
+		if resp != nil {
+			resp.Body.Close()
+		}
+		time.Sleep(1 * time.Second)
+	}
+
+	// Step 7: Start taskmanager
+	printInfo("Starting taskmanager...")
+	runDockerCompose("up", "-d", "--force-recreate", "flink-taskmanager")
+
+	// Step 8: Wait for taskmanager to register
+	printInfo("Waiting for taskmanager to register...")
+	for i := 0; i < 30; i++ {
+		resp, err := http.Get("http://localhost:8081/taskmanagers")
+		if err == nil {
+			body, _ := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			if strings.Contains(string(body), `"taskmanagers":[{`) {
+				break
+			}
+		}
+		time.Sleep(1 * time.Second)
+	}
+
+	// Step 9: Start job-submitter (submits exactly one job)
+	printInfo("Starting job-submitter...")
+	runDockerCompose("up", "-d", "--force-recreate", "flink-job-submitter")
+
+	// Step 10: Verify exactly one job is running
+	time.Sleep(5 * time.Second)
+	printInfo("Verifying job state...")
+	resp, err := http.Get("http://localhost:8081/jobs")
+	if err == nil {
+		body, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		var jobsResp struct {
+			Jobs []struct {
+				ID     string `json:"id"`
+				Status string `json:"status"`
+			} `json:"jobs"`
+		}
+		if json.Unmarshal(body, &jobsResp) == nil {
+			running := 0
+			for _, job := range jobsResp.Jobs {
+				if job.Status == "RUNNING" {
+					running++
+					printInfo(fmt.Sprintf("Job %s: %s", job.ID[:8], job.Status))
+				}
+			}
+			if running == 1 {
+				printSuccess("Exactly 1 job running - cluster is healthy")
+			} else if running == 0 {
+				printWarning("No jobs running yet - job may still be starting")
+			} else {
+				printWarning(fmt.Sprintf("%d jobs running - expected 1", running))
+			}
+		}
+	}
 }
 
 func runDown(cmd *cobra.Command, args []string) {
@@ -312,4 +469,43 @@ func printError(msg string) {
 
 func printWarning(msg string) {
 	fmt.Printf("⚠ %s\n", msg)
+}
+
+// cancelFlinkJobs cancels all running Flink jobs via the REST API
+func cancelFlinkJobs() {
+	printInfo("Cancelling existing Flink jobs...")
+
+	// Get list of running jobs
+	resp, err := http.Get("http://localhost:8081/jobs")
+	if err != nil {
+		printWarning("Could not connect to Flink - may not be running yet")
+		return
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return
+	}
+
+	var jobsResp struct {
+		Jobs []struct {
+			ID     string `json:"id"`
+			Status string `json:"status"`
+		} `json:"jobs"`
+	}
+
+	if err := json.Unmarshal(body, &jobsResp); err != nil {
+		return
+	}
+
+	// Cancel each running job
+	for _, job := range jobsResp.Jobs {
+		if job.Status == "RUNNING" {
+			printInfo(fmt.Sprintf("Cancelling job %s...", job.ID[:8]))
+			req, _ := http.NewRequest("PATCH", fmt.Sprintf("http://localhost:8081/jobs/%s", job.ID), nil)
+			client := &http.Client{Timeout: 10 * time.Second}
+			client.Do(req)
+		}
+	}
 }

@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flink - Production Grade (High Throughput + Checkpointing) - Benchmark Results</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; padding: 20px; }
+        .container { max-width: 900px; margin: 0 auto; }
+        .card { background: white; border-radius: 8px; padding: 24px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h1 { color: #1a1a1a; margin-bottom: 8px; }
+        .desc { color: #666; margin-bottom: 24px; }
+        .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; }
+        .metric { text-align: center; padding: 20px; background: #f8f9fa; border-radius: 8px; }
+        .metric-value { font-size: 36px; font-weight: bold; color: #2563eb; }
+        .metric-label { color: #666; margin-top: 4px; }
+        .config { margin-top: 24px; }
+        .config-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
+        .success { color: #22c55e; }
+        .failed { color: #ef4444; }
+        pre { background: #1e1e1e; color: #d4d4d4; padding: 16px; border-radius: 8px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>Flink - Production Grade (High Throughput + Checkpointing)</h1>
+            <p class="desc">Production-grade Flink benchmark with RocksDB incremental checkpoints, exactly-once semantics, and optimized network buffers</p>
+
+            <div class="metrics">
+                <div class="metric">
+                    <div class="metric-value">6500</div>
+                    <div class="metric-label">ops/s</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value">2924.0</div>
+                    <div class="metric-label">p50 latency (ms)</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value">20738.0</div>
+                    <div class="metric-label">p99 latency (ms)</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value">202055</div>
+                    <div class="metric-label">total ops</div>
+                </div>
+            </div>
+
+            <div class="metrics" style="margin-top: 20px;">
+                <div class="metric">
+                    <div class="metric-value success">147174</div>
+                    <div class="metric-label">successful</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value failed">54881</div>
+                    <div class="metric-label">failed</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Configuration</h2>
+            <div class="config">
+                <div class="config-row"><span>Component</span><span>flink</span></div>
+                <div class="config-row"><span>HTTP Server</span><span>NONE</span></div>
+                <div class="config-row"><span>Microbatching</span><span>false</span></div>
+                <div class="config-row"><span>Concurrency</span><span>200</span></div>
+                <div class="config-row"><span>Duration</span><span>1m0s</span></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Raw Results</h2>
+            <pre>{
+  "avgCpu": 188.88262580422793,
+  "avgMemory": 7.072394998634563,
+  "avgThroughput": 6500,
+  "component": "flink",
+  "componentTiming": {
+    "droolsMs": 0,
+    "flinkMs": 0,
+    "gatewayMs": 0,
+    "kafkaMs": 0
+  },
+  "cpuTimeline": [
+    173.748779296875,
+    173.748779296875,
+    173.748779296875,
+    173.748779296875,
+    173.748779296875,
+    164.837646484375,
+    164.837646484375,
+    164.837646484375,
+    164.837646484375,
+    164.837646484375,
+    211.700439453125,
+    211.700439453125,
+    211.700439453125,
+    211.700439453125,
+    211.700439453125,
+    229.78515625,
+    229.78515625
+  ],
+  "description": "Tests Kafka + Flink processing",
+  "durationMs": 31083,
+  "endTime": "2025-12-28T16:46:33.382329205Z",
+  "errorMessage": "",
+  "failedOperations": 54881,
+  "latency": {
+    "avg": 5716,
+    "max": 21835,
+    "min": 9,
+    "p50": 2924,
+    "p95": 18708,
+    "p99": 20738
+  },
+  "memoryTimeline": [
+    1.3682539264361062,
+    1.3682539264361062,
+    1.3682539264361062,
+    1.4008060097694397,
+    1.2708182136217752,
+    1.2971706688404083,
+    1.2971706688404083,
+    0.8589424192905426,
+    2.7880050241947174,
+    15.067440271377563,
+    20.22746652364731,
+    32.38423715035121,
+    11.744104822476704,
+    4.434144496917725,
+    4.110109806060791,
+    15.062414606412252,
+    4.183122515678406
+  ],
+  "name": "Flink Benchmark",
+  "peakCpu": 229.78515625,
+  "peakMemory": 32.38423715035121,
+  "peakThroughput": 42816,
+  "sampleEvents": [
+    {
+      "componentTiming": {
+        "droolsMs": 0,
+        "flinkMs": 0,
+        "gatewayMs": 0,
+        "kafkaMs": 8846
+      },
+      "error": "",
+      "id": "flink_flink_81_964",
+      "latencyMs": 8846,
+      "otelTraceId": null,
+      "status": "success",
+      "timestamp": 1766940380055,
+      "traceData": {
+        "empty": true,
+        "logs": [],
+        "trace": {
+          "empty": true,
+          "processes": {},
+          "spans": [],
+          "traceId": ""
+        }
+      },
+      "traceId": null
+    },
+    {
+      "componentTiming": {
+        "droolsMs": 0,
+        "flinkMs": 0,
+        "gatewayMs": 0,
+        "kafkaMs": 1388
+      },
+      "error": "",
+      "id": "flink_flink_138_596",
+      "latencyMs": 1388,
+      "otelTraceId": null,
+      "status": "success",
+      "timestamp": 1766940380055,
+      "traceData": {
+        "empty": true,
+        "logs": [],
+        "trace": {
+          "empty": true,
+          "processes": {},
+          "spans": [],
+          "traceId": ""
+        }
+      },
+      "traceId": null
+    }
+  ],
+  "startTime": "2025-12-28T16:46:02.299302353Z",
+  "status": "completed",
+  "success": false,
+  "successfulOperations": 147174,
+  "throughputStability": 1.0457229269594732,
+  "throughputTimeline": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    3502,
+    12734,
+    25583,
+    42816,
+    12227,
+    11293,
+    15443,
+    16884,
+    16311,
+    15054,
+    15047,
+    15464,
+    6388,
+    7489,
+    2570,
+    4369,
+    23455
+  ],
+  "totalOperations": 202055
+}</pre>
+        </div>
+    </div>
+</body>
+</html>

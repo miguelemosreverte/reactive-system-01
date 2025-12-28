@@ -25,9 +25,12 @@ import static com.reactive.platform.Opt.or;
  *
  * INTERNAL: Receives events from deserializer where fields are already normalized.
  * Only Flink state access is a boundary (state.value() can return null).
+ *
+ * Feature flags (passed via constructor):
+ * - skipTracing: Disable trace span creation for maximum throughput benchmarks
  */
 public class CounterProcessor extends KeyedProcessFunction<String, CounterEvent, CounterResult> {
-    private static final long serialVersionUID = 3L;
+    private static final long serialVersionUID = 4L;  // Bumped for new field
     private static final Logger log = LoggerFactory.getLogger(CounterProcessor.class);
 
     public static final OutputTag<PreDroolsResult> SNAPSHOT_OUTPUT =
@@ -35,6 +38,8 @@ public class CounterProcessor extends KeyedProcessFunction<String, CounterEvent,
 
     private final long minLatencyMs;
     private final long maxLatencyMs;
+    private final boolean skipTracing;
+    private final boolean benchmarkMode;
 
     private transient ValueState<Integer> counterState;
     private transient ValueState<Long> lastEvaluationTime;
@@ -47,8 +52,18 @@ public class CounterProcessor extends KeyedProcessFunction<String, CounterEvent,
     private transient ValueState<String> lastTracestate;
 
     public CounterProcessor(long minLatencyMs, long maxLatencyMs) {
+        this(minLatencyMs, maxLatencyMs, false, false);
+    }
+
+    public CounterProcessor(long minLatencyMs, long maxLatencyMs, boolean skipTracing) {
+        this(minLatencyMs, maxLatencyMs, skipTracing, false);
+    }
+
+    public CounterProcessor(long minLatencyMs, long maxLatencyMs, boolean skipTracing, boolean benchmarkMode) {
         this.minLatencyMs = minLatencyMs;
         this.maxLatencyMs = maxLatencyMs;
+        this.skipTracing = skipTracing;
+        this.benchmarkMode = benchmarkMode;
     }
 
     @Override
@@ -63,21 +78,32 @@ public class CounterProcessor extends KeyedProcessFunction<String, CounterEvent,
         lastTraceparent = getRuntimeContext().getState(new ValueStateDescriptor<>("lastTraceparent", Types.STRING));
         lastTracestate = getRuntimeContext().getState(new ValueStateDescriptor<>("lastTracestate", Types.STRING));
 
-        log.info("CounterProcessor initialized (minLatency={}ms, maxLatency={}ms)", minLatencyMs, maxLatencyMs);
+        log.info("CounterProcessor initialized (minLatency={}ms, maxLatency={}ms, skipTracing={}, benchmarkMode={})",
+                minLatencyMs, maxLatencyMs, skipTracing, benchmarkMode);
     }
 
     @Override
     public void processElement(CounterEvent event, Context ctx, Collector<CounterResult> out) throws Exception {
-        // Creates span with parent context, auto-sets business IDs (requestId, customerId, eventId, session.id) and MDC
-        SpanHandle span = Log.asyncTracedConsume("flink.process_counter", event, Log.SpanType.CONSUMER);
-
-        try {
-            CounterResult result = processEvent(event, ctx, span);
+        if (benchmarkMode) {
+            // Ultra-fast path: no state, no tracing, pure passthrough
+            out.collect(processEventBenchmark(event));
+            return;
+        }
+        if (skipTracing) {
+            // Fast path: no tracing overhead
+            CounterResult result = processEventNoTrace(event, ctx);
             out.collect(result);
-            span.success();
-        } catch (Exception e) {
-            span.failure(e);
-            throw e;
+        } else {
+            // Normal path with tracing
+            SpanHandle span = Log.asyncTracedConsume("flink.process_counter", event, Log.SpanType.CONSUMER);
+            try {
+                CounterResult result = processEvent(event, ctx, span);
+                out.collect(result);
+                span.success();
+            } catch (Exception e) {
+                span.failure(e);
+                throw e;
+            }
         }
     }
 
@@ -113,7 +139,7 @@ public class CounterProcessor extends KeyedProcessFunction<String, CounterEvent,
 
         span.attr("counter.new_value", currentValue);
 
-        log.info("Processed: session={}, action={}, value={}", sessionId, effectiveAction, currentValue);
+        // Removed per-event logging for throughput (was: log.info("Processed: ..."))
 
         scheduleSnapshotEvaluation(ctx, arrivalTime);
 
@@ -122,6 +148,57 @@ public class CounterProcessor extends KeyedProcessFunction<String, CounterEvent,
                 event.requestId(), event.customerId(), event.eventId(), timing);
 
         return withTraceContext(result, span);
+    }
+
+    /**
+     * Ultra-fast benchmark path: pure passthrough with NO state access.
+     * Bypasses all Flink state, timers, and object creation.
+     * Used to measure maximum theoretical Flink throughput (Kafka-to-Kafka).
+     */
+    private CounterResult processEventBenchmark(CounterEvent event) {
+        return new CounterResult(
+                event.sessionId(),
+                event.value(),
+                "BENCHMARK",
+                "Benchmark mode - no state",
+                event.requestId(),
+                event.customerId(),
+                event.eventId(),
+                event.timing());
+    }
+
+    /**
+     * Fast path processing without any tracing overhead.
+     * Used for maximum throughput benchmark mode.
+     */
+    private CounterResult processEventNoTrace(CounterEvent event, Context ctx) throws Exception {
+        long arrivalTime = System.currentTimeMillis();
+
+        String sessionId = event.sessionId();
+        String action = event.action();
+
+        EventTiming timing = event.timing().withFlinkReceivedAt(arrivalTime);
+
+        int currentValue = or(counterState.value(), 0);
+
+        String effectiveAction = action.isEmpty() ? "increment" : action;
+        currentValue = applyAction(effectiveAction, currentValue, event.value());
+        timing = timing.withFlinkProcessedAt(System.currentTimeMillis());
+
+        // Update state
+        counterState.update(currentValue);
+        lastRequestId.update(event.requestId());
+        lastCustomerId.update(event.customerId());
+        lastEventId.update(event.eventId());
+        lastTiming.update(timing);
+        lastTraceparent.update(event.traceparent());
+        lastTracestate.update(event.tracestate());
+
+        scheduleSnapshotEvaluation(ctx, arrivalTime);
+
+        return new CounterResult(
+                sessionId, currentValue, "PENDING", "Alert evaluation pending",
+                event.requestId(), event.customerId(), event.eventId(), timing);
     }
 
     private int applyAction(String action, int currentValue, int delta) {

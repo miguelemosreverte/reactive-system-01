@@ -22,10 +22,17 @@
     </properties>
 
     <dependencies>
-        <!-- Reactive Platform - unified observability API -->
+        <!-- Reactive Platform Base - contains Avro schema classes -->
         <dependency>
             <groupId>com.reactive</groupId>
-            <artifactId>platform</artifactId>
+            <artifactId>base</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+
+        <!-- Reactive Platform Kafka - contains TracedKafka -->
+        <dependency>
+            <groupId>com.reactive</groupId>
+            <artifactId>kafka</artifactId>
             <version>1.0.0</version>
         </dependency>
 
@@ -48,6 +55,14 @@
             <groupId>org.apache.flink</groupId>
             <artifactId>flink-connector-kafka</artifactId>
             <version>3.0.2-1.18</version>
+        </dependency>
+
+        <!-- RocksDB State Backend for production-grade checkpointing -->
+        <!-- Enables incremental checkpoints which dramatically reduce checkpoint overhead -->
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-statebackend-rocksdb</artifactId>
+            <version>${flink.version}</version>
         </dependency>
 
         <!-- JSON Processing -->
@@ -90,12 +105,6 @@
             <version>1.32.0</version>
         </dependency>
 
-        <!-- Platform (shared infrastructure) -->
-        <dependency>
-            <groupId>com.reactive</groupId>
-            <artifactId>platform</artifactId>
-            <version>1.0.0</version>
-        </dependency>
     </dependencies>
 
     <build>
