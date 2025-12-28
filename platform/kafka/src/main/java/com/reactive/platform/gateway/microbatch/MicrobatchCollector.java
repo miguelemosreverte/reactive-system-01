@@ -65,7 +65,7 @@ public final class MicrobatchCollector<T> implements AutoCloseable {
     // Pressure tracking (updated from flush metrics, no hot path overhead)
     private volatile long windowStartNanos;
     private volatile long windowItemCount;
-    private volatile BatchCalibration.PressureLevel currentPressure = BatchCalibration.PressureLevel.MEDIUM;
+    private volatile BatchCalibration.PressureLevel currentPressure = BatchCalibration.PressureLevel.L5_BALANCED;
 
     // Threads
     private final Thread[] flushThreads;
@@ -167,75 +167,128 @@ public final class MicrobatchCollector<T> implements AutoCloseable {
         return future;
     }
 
-    /** Flush loop for one partition. Optimized for maximum throughput. */
+    /**
+     * Flush loop for one partition. Respects latency budget.
+     * Same logic as multi-partition but for single partition.
+     */
     private void flushLoop(int partition) {
         var ringBuffer = ringBuffers[partition];
         @SuppressWarnings("unchecked")
         T[] batchArray = (T[]) new Object[maxBatchSize];
         var batchList = new ArrayBackedList<>(batchArray);
-        long lastDrainNanos = System.nanoTime();
-        int emptySpins = 0;
+
+        long batchStartNanos = 0;
+        int batchCount = 0;
 
         while (running) {
             int target = targetBatchSize;
-            int count = ringBuffer.drain(batchArray, target);
+            long intervalNanos = flushIntervalMicros * 1000L;
 
-            if (count > 0) {
-                lastDrainNanos = System.nanoTime();
-                emptySpins = 0;
-                batchList.setSize(count);
-                flush(batchList);
-            } else {
-                long sinceLastDrain = System.nanoTime() - lastDrainNanos;
-                if (sinceLastDrain < 1_000_000) {
-                    Thread.onSpinWait();
-                } else if (sinceLastDrain < 10_000_000) {
-                    if (++emptySpins % 100 == 0) Thread.yield();
-                    else Thread.onSpinWait();
-                } else {
-                    try { Thread.sleep(0, 10_000); } catch (InterruptedException e) { break; }
+            int drained = ringBuffer.drain(batchArray, target - batchCount, batchCount);
+            if (drained > 0) {
+                if (batchCount == 0) {
+                    batchStartNanos = System.nanoTime();
+                }
+                batchCount += drained;
+            }
+
+            boolean shouldFlush = false;
+            if (batchCount >= target) {
+                shouldFlush = true;
+            } else if (batchCount > 0) {
+                long elapsed = System.nanoTime() - batchStartNanos;
+                if (elapsed >= intervalNanos) {
+                    shouldFlush = true;
                 }
             }
+
+            if (shouldFlush && batchCount > 0) {
+                batchList.setSize(batchCount);
+                flush(batchList);
+                batchCount = 0;
+            } else if (drained == 0) {
+                if (batchCount > 0) {
+                    Thread.onSpinWait();
+                } else {
+                    try { Thread.sleep(0, 100_000); } catch (InterruptedException e) { break; }
+                }
+            }
+        }
+
+        if (batchCount > 0) {
+            batchList.setSize(batchCount);
+            flush(batchList);
         }
     }
 
     /**
      * Flush loop that drains from multiple partitions (for fewer flush threads).
-     * Round-robins across assigned partitions to balance load.
+     *
+     * KEY INSIGHT: Respect the latency budget!
+     * - Flush when batch is FULL (target size reached), OR
+     * - Flush when INTERVAL has elapsed since first event in batch
+     *
+     * This allows aggressive batching within the latency budget.
      */
     private void flushLoopMultiPartition(int startPartition, int step) {
         @SuppressWarnings("unchecked")
         T[] batchArray = (T[]) new Object[maxBatchSize];
         var batchList = new ArrayBackedList<>(batchArray);
-        long lastDrainNanos = System.nanoTime();
-        int emptySpins = 0;
+
+        long batchStartNanos = 0;  // When first event was added to current batch
+        int batchCount = 0;        // Events accumulated in current batch
 
         while (running) {
             int target = targetBatchSize;
-            int totalCount = 0;
+            long intervalNanos = flushIntervalMicros * 1000L;  // Convert to nanos
 
-            // Drain from all assigned partitions into single batch
-            for (int p = startPartition; p < partitionCount && totalCount < target; p += step) {
-                int count = ringBuffers[p].drain(batchArray, target - totalCount, totalCount);
-                totalCount += count;
-            }
-
-            if (totalCount > 0) {
-                lastDrainNanos = System.nanoTime();
-                emptySpins = 0;
-                batchList.setSize(totalCount);
-                flush(batchList);
-            } else {
-                long sinceLastDrain = System.nanoTime() - lastDrainNanos;
-                if (sinceLastDrain < 1_000_000) {
-                    Thread.onSpinWait();
-                } else if (sinceLastDrain < 10_000_000) {
-                    if (++emptySpins % 100 == 0) Thread.yield();
-                    else Thread.onSpinWait();
-                } else {
-                    try { Thread.sleep(0, 10_000); } catch (InterruptedException e) { break; }
+            // Drain from all assigned partitions into batch buffer
+            int drainedThisRound = 0;
+            for (int p = startPartition; p < partitionCount && batchCount < target; p += step) {
+                int count = ringBuffers[p].drain(batchArray, target - batchCount, batchCount);
+                if (count > 0) {
+                    if (batchCount == 0) {
+                        batchStartNanos = System.nanoTime();  // Mark batch start time
+                    }
+                    batchCount += count;
+                    drainedThisRound += count;
                 }
             }
+
+            // Decide whether to flush
+            boolean shouldFlush = false;
+
+            if (batchCount >= target) {
+                // Batch is full - flush immediately
+                shouldFlush = true;
+            } else if (batchCount > 0) {
+                // Check if latency budget (interval) has elapsed
+                long elapsed = System.nanoTime() - batchStartNanos;
+                if (elapsed >= intervalNanos) {
+                    shouldFlush = true;
+                }
+            }
+
+            if (shouldFlush && batchCount > 0) {
+                batchList.setSize(batchCount);
+                flush(batchList);
+                batchCount = 0;  // Reset for next batch
+            } else if (drainedThisRound == 0) {
+                // Nothing drained - spin/wait
+                if (batchCount > 0) {
+                    // Have partial batch, spin to check interval
+                    Thread.onSpinWait();
+                } else {
+                    // Empty, sleep a bit
+                    try { Thread.sleep(0, 100_000); } catch (InterruptedException e) { break; }
+                }
+            }
+        }
+
+        // Flush remaining on shutdown
+        if (batchCount > 0) {
+            batchList.setSize(batchCount);
+            flush(batchList);
         }
     }
 

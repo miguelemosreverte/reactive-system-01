@@ -54,9 +54,9 @@ public class OnlineLearningBenchmark {
 
             // Run calibration rounds for each pressure level
             for (PressureLevel level : new PressureLevel[]{
-                PressureLevel.HTTP_30S,
-                PressureLevel.MEGA,
-                PressureLevel.EXTREME
+                PressureLevel.L10_MAX,
+                PressureLevel.L7_HIGH,
+                PressureLevel.L9_EXTREME
             }) {
                 System.out.printf("%n=== Calibrating %s ===%n", level);
                 runCalibrationRounds(bootstrap, calibration, level, rounds);
@@ -191,7 +191,7 @@ public class OnlineLearningBenchmark {
         System.out.println("BOTTLENECK ANALYSIS");
         System.out.println("═".repeat(80));
 
-        Config best = calibration.getBestConfigForPressure(PressureLevel.HTTP_30S);
+        Config best = calibration.getBestConfigForPressure(PressureLevel.L10_MAX);
         Properties props = createProducerProps(bootstrap);
 
         // Test 1: Pure producer (no collection, no serialization)
@@ -213,7 +213,7 @@ public class OnlineLearningBenchmark {
         System.out.print("2. Collector only (no Kafka)... ");
         Path tempDb = Files.createTempFile("bottle", ".db");
         try (BatchCalibration tempCal = BatchCalibration.create(tempDb, 5000.0)) {
-            tempCal.updatePressure(PressureLevel.HTTP_30S.minReqPer10s + 1);
+            tempCal.updatePressure(PressureLevel.L10_MAX.minReqPer10s + 1);
             LongAdder collected = new LongAdder();
 
             MicrobatchCollector<byte[]> collector = MicrobatchCollector.create(
@@ -268,7 +268,7 @@ public class OnlineLearningBenchmark {
         try (BatchCalibration tempCal = BatchCalibration.create(tempDb, 5000.0);
              KafkaProducer<String, byte[]> producer = new KafkaProducer<>(props)) {
 
-            tempCal.updatePressure(PressureLevel.HTTP_30S.minReqPer10s + 1);
+            tempCal.updatePressure(PressureLevel.L10_MAX.minReqPer10s + 1);
 
             MicrobatchCollector<byte[]> collector = MicrobatchCollector.create(
                 batch -> {

@@ -54,26 +54,26 @@ public class AdaptiveVsBulkBenchmark {
         // Test 2: Adaptive with auto pressure
         results.add(runAdaptiveAuto(bootstrap, durationSec));
 
-        // Test 3: Adaptive forced to HTTP_30S
-        results.add(runAdaptiveForced(bootstrap, durationSec, PressureLevel.HTTP_30S));
+        // Test 3: Adaptive forced to L10_MAX (30s latency budget)
+        results.add(runAdaptiveForced(bootstrap, durationSec, PressureLevel.L10_MAX));
 
-        // Test 4: Adaptive forced to HTTP_60S
-        results.add(runAdaptiveForced(bootstrap, durationSec, PressureLevel.HTTP_60S));
+        // Test 4: Adaptive forced to L9_EXTREME (15s latency budget)
+        results.add(runAdaptiveForced(bootstrap, durationSec, PressureLevel.L9_EXTREME));
 
         // Test 5: Direct collector (no Kafka, measure pure collection speed)
-        results.add(runCollectorOnly(durationSec, PressureLevel.HTTP_60S));
+        results.add(runCollectorOnly(durationSec, PressureLevel.L10_MAX));
 
         // Test 6: Parallel Kafka sends (bypass collector, test raw parallel send)
         results.add(runParallelKafka(bootstrap, durationSec));
 
         // Test 7: Collector + Kafka WITHOUT serialization (isolate serialization cost)
-        results.add(runCollectorNoSerialization(bootstrap, durationSec, PressureLevel.HTTP_30S));
+        results.add(runCollectorNoSerialization(bootstrap, durationSec, PressureLevel.L10_MAX));
 
         // Test 8: Adaptive with fewer flush threads (reduce Kafka contention)
-        results.add(runAdaptiveFewThreads(bootstrap, durationSec, PressureLevel.HTTP_60S, 2));
+        results.add(runAdaptiveFewThreads(bootstrap, durationSec, PressureLevel.L10_MAX, 2));
 
         // Test 9: Adaptive with single flush thread (minimum contention)
-        results.add(runAdaptiveFewThreads(bootstrap, durationSec, PressureLevel.HTTP_60S, 1));
+        results.add(runAdaptiveFewThreads(bootstrap, durationSec, PressureLevel.L10_MAX, 1));
 
         printSummary(results);
     }

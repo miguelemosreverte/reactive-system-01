@@ -156,11 +156,11 @@ public class BatchSizeExplorer {
              KafkaProducer<String, byte[]> producer = new KafkaProducer<>(props)) {
 
             // Force specific config by recording a fake observation
-            cal.updatePressure(BatchCalibration.PressureLevel.HTTP_30S.minReqPer10s + 1);
+            cal.updatePressure(BatchCalibration.PressureLevel.L10_MAX.minReqPer10s + 1);
             cal.recordObservation(new BatchCalibration.Observation(
                 batchSize, intervalMicros,
                 Long.MAX_VALUE, 0, 0, 1, java.time.Instant.now()
-            ), BatchCalibration.PressureLevel.HTTP_30S);
+            ), BatchCalibration.PressureLevel.L10_MAX);
 
             // Create collector with large max batch size
             int maxBatch = Math.max(batchSize * 2, 131072);  // Allow very large batches

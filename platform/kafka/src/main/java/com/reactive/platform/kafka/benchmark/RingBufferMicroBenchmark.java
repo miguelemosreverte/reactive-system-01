@@ -127,7 +127,7 @@ public class RingBufferMicroBenchmark {
     static double testCollector(int threads) throws Exception {
         Path tempDb = Files.createTempFile("bench", ".db");
         try (BatchCalibration cal = BatchCalibration.create(tempDb, 5000.0)) {
-            cal.updatePressure(BatchCalibration.PressureLevel.MEGA.minReqPer10s + 1);
+            cal.updatePressure(BatchCalibration.PressureLevel.L7_HIGH.minReqPer10s + 1);
 
             LongAdder consumed = new LongAdder();
 

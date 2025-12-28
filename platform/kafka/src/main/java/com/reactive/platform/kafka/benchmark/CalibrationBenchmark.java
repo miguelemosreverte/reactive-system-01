@@ -48,7 +48,7 @@ public class CalibrationBenchmark {
         for (int i = 0; i < args.length; i++) {
             String arg = args[i];
             if (arg.equals("--all")) {
-                buckets.addAll(Arrays.asList(PressureLevel.EXTREME, PressureLevel.MEGA, PressureLevel.HTTP_30S));
+                buckets.addAll(Arrays.asList(PressureLevel.L9_EXTREME, PressureLevel.L7_HIGH, PressureLevel.L10_MAX));
             } else if (arg.equals("--rounds") && i + 1 < args.length) {
                 rounds = Integer.parseInt(args[++i]);
             } else if (arg.equals("--duration") && i + 1 < args.length) {
@@ -67,7 +67,7 @@ public class CalibrationBenchmark {
         }
 
         if (buckets.isEmpty() && !showStatus) {
-            buckets.addAll(Arrays.asList(PressureLevel.EXTREME, PressureLevel.MEGA, PressureLevel.HTTP_30S));
+            buckets.addAll(Arrays.asList(PressureLevel.L9_EXTREME, PressureLevel.L7_HIGH, PressureLevel.L10_MAX));
         }
 
         // Load calibration database
