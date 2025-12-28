@@ -43,10 +43,22 @@ public final class BatchCalibration implements AutoCloseable {
      * The system learns optimal batch/interval config for each level.
      */
     /**
-     * BULK BASELINE: 131.8M msg/s with batch=1000, acks=0, LZ4 compression.
-     * This is the theoretical maximum we should be approaching.
+     * BULK BASELINE - Two rates to consider:
+     *
+     * 1. SEND RATE: 127-131M msg/s (fire-and-forget)
+     *    - What the producer can push before Kafka acknowledges
+     *    - Measured during the send phase only
+     *
+     * 2. SUSTAINED RATE: 5-10M msg/s (Docker Kafka)
+     *    - What Kafka can actually absorb (including flush time)
+     *    - Limited by Docker Kafka's I/O throughput
+     *
+     * For regression detection, we use the SUSTAINED rate since that's
+     * what users actually experience in a real system.
      */
-    public static final long BULK_BASELINE_THROUGHPUT = 131_800_000L;
+    public static final long BULK_SEND_RATE = 127_000_000L;       // Fire-and-forget
+    public static final long BULK_SUSTAINED_RATE = 5_000_000L;    // Docker Kafka actual
+    public static final long BULK_BASELINE_THROUGHPUT = BULK_SUSTAINED_RATE;  // For comparisons
 
     /**
      * 10 Pressure Levels: From max-latency (1ms) to max-throughput (30s).
