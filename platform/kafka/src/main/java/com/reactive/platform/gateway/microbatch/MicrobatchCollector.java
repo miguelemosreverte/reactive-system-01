@@ -77,7 +77,10 @@ public final class MicrobatchCollector<T> implements AutoCloseable {
         this(batchConsumer, calibration, maxBatchSize, Runtime.getRuntime().availableProcessors());
     }
 
-    private static final int RING_BUFFER_CAPACITY = 65536;  // 64K slots per partition
+    // Ring buffer sized for high-throughput scenarios
+    // At 10M msg/s with 1s latency budget = 10M events to buffer
+    // 1M per partition × 12 cores = 12M total capacity
+    private static final int RING_BUFFER_CAPACITY = 1 << 20;  // 1M slots per partition
 
     @SuppressWarnings("unchecked")
     private MicrobatchCollector(Consumer<List<T>> batchConsumer, BatchCalibration calibration, int maxBatchSize, int flushThreadCount) {
@@ -92,9 +95,10 @@ public final class MicrobatchCollector<T> implements AutoCloseable {
             ringBuffers[i] = new FastRingBuffer<>(RING_BUFFER_CAPACITY);
         }
 
-        // Cap maxBatchSize to 50% of total ring buffer capacity to avoid producer blocking
+        // Batch size limited by ring buffer capacity (natural constraint)
+        // No artificial cap - latency budget is the real constraint
         int totalRingCapacity = partitionCount * RING_BUFFER_CAPACITY;
-        this.maxBatchSize = Math.min(maxBatchSize, totalRingCapacity / 2);
+        this.maxBatchSize = Math.min(maxBatchSize, totalRingCapacity);
 
         // Load calibration for initial pressure level, capped by ring buffer capacity
         var config = calibration.getBestConfig();
@@ -308,11 +312,17 @@ public final class MicrobatchCollector<T> implements AutoCloseable {
         @Override public int size() { return size; }
     }
 
-    /** Pressure monitoring loop - checks every 10 seconds. */
+    /**
+     * Pressure monitoring loop - checks every second.
+     *
+     * KEY DESIGN: Calibration is the single source of truth for pressure level.
+     * This loop observes throughput and reports it, but respects whatever
+     * pressure level the calibration has (which may be set externally).
+     */
     private void pressureLoop() {
         while (running) {
             try {
-                Thread.sleep(10_000); // Check every 10 seconds
+                Thread.sleep(1_000); // Check every second for responsiveness
             } catch (InterruptedException e) {
                 break;
             }
@@ -321,24 +331,22 @@ public final class MicrobatchCollector<T> implements AutoCloseable {
             long itemsInWindow = totalItems.sum() - windowItemCount;
             long elapsed = now - windowStartNanos;
 
-            // Calculate requests per 10 seconds
-            long reqPer10Sec = elapsed > 0 ? (itemsInWindow * PRESSURE_WINDOW_NANOS) / elapsed : 0;
+            // Report observed throughput to calibration (it decides pressure)
+            if (elapsed >= PRESSURE_WINDOW_NANOS) {
+                long reqPer10Sec = elapsed > 0 ? (itemsInWindow * PRESSURE_WINDOW_NANOS) / elapsed : 0;
+                calibration.updatePressure(reqPer10Sec);
+                windowStartNanos = now;
+                windowItemCount = totalItems.sum();
+            }
 
-            // Update pressure level
-            var oldPressure = currentPressure;
-            currentPressure = BatchCalibration.PressureLevel.fromRequestRate(reqPer10Sec);
-            calibration.updatePressure(reqPer10Sec);
-
-            // Reload config if pressure level changed
-            if (currentPressure != oldPressure) {
+            // Always read pressure from calibration (single source of truth)
+            var newPressure = calibration.getCurrentPressure();
+            if (newPressure != currentPressure) {
+                currentPressure = newPressure;
                 var config = calibration.getBestConfig();
                 this.targetBatchSize = Math.min(config.batchSize(), maxBatchSize);
                 this.flushIntervalMicros = config.flushIntervalMicros();
             }
-
-            // Reset window
-            windowStartNanos = now;
-            windowItemCount = totalItems.sum();
         }
     }
 
