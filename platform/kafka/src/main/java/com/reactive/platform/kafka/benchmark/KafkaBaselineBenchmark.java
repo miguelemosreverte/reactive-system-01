@@ -21,16 +21,24 @@ import java.util.concurrent.atomic.*;
  *   CONSUMER  - Read throughput
  *   ALL       - Run all modes and generate comparison report
  *
+ * Acks options (via environment or 5th arg):
+ *   0   - Fire-and-forget (no acknowledgement, fastest, may lose data)
+ *   1   - Leader acknowledgement (production-safe for most cases)
+ *   all - All replicas (guaranteed durability, slowest)
+ *
  * The MEGA mode tests what's possible when we can accept HTTP-timeout-level
  * latency (e.g., 30 seconds). This establishes the absolute ceiling.
  *
  * Usage:
- *   java KafkaBaselineBenchmark <mode> <durationSec> <kafkaBootstrap> <reportsDir>
+ *   java KafkaBaselineBenchmark <mode> <durationSec> <kafkaBootstrap> <reportsDir> [acks]
  */
 public class KafkaBaselineBenchmark {
 
     private static final int MESSAGE_SIZE = 64;  // bytes per message
     private static final byte[] TEST_MESSAGE = new byte[MESSAGE_SIZE];
+
+    // Configurable acks level: "0", "1", or "all"
+    private static String acksConfig = "1";  // Default to leader ack (production-safe)
 
     static {
         Arrays.fill(TEST_MESSAGE, (byte) 'X');
@@ -41,6 +49,14 @@ public class KafkaBaselineBenchmark {
         int durationSec = args.length > 1 ? Integer.parseInt(args[1]) : 30;
         String bootstrap = args.length > 2 ? args[2] : "kafka:29092";
         String reportsDir = args.length > 3 ? args[3] : "reports/kafka-baseline";
+        acksConfig = args.length > 4 ? args[4] : System.getenv().getOrDefault("KAFKA_ACKS", "1");
+
+        String acksDisplay = switch (acksConfig) {
+            case "0" -> "0 (fire-and-forget, NO durability)";
+            case "1" -> "1 (leader ack, production-safe)";
+            case "all" -> "all (all replicas, guaranteed durability)";
+            default -> acksConfig;
+        };
 
         System.out.println("╔══════════════════════════════════════════════════════════════════════════════╗");
         System.out.println("║                    KAFKA BASELINE BENCHMARK                                   ║");
@@ -48,6 +64,7 @@ public class KafkaBaselineBenchmark {
         System.out.printf("  Mode:      %s%n", mode);
         System.out.printf("  Duration:  %d seconds per test%n", durationSec);
         System.out.printf("  Kafka:     %s%n", bootstrap);
+        System.out.printf("  Acks:      %s%n", acksDisplay);
         System.out.printf("  Reports:   %s%n", reportsDir);
         System.out.println();
 
@@ -85,7 +102,7 @@ public class KafkaBaselineBenchmark {
 
         String topic = "benchmark-naive-" + System.currentTimeMillis();
         Properties props = producerProps(bootstrap);
-        props.put(ProducerConfig.ACKS_CONFIG, "0");
+        props.put(ProducerConfig.ACKS_CONFIG, acksConfig);
         props.put(ProducerConfig.LINGER_MS_CONFIG, 0);      // No batching delay
         props.put(ProducerConfig.BATCH_SIZE_CONFIG, 16384); // Small batches
 
@@ -151,7 +168,7 @@ public class KafkaBaselineBenchmark {
 
         String topic = "benchmark-bulk-" + System.currentTimeMillis();
         Properties props = producerProps(bootstrap);
-        props.put(ProducerConfig.ACKS_CONFIG, "0");
+        props.put(ProducerConfig.ACKS_CONFIG, acksConfig);
         props.put(ProducerConfig.LINGER_MS_CONFIG, batchSize >= 10000 ? 100 : 5);  // Higher linger for mega batches
         props.put(ProducerConfig.BATCH_SIZE_CONFIG, 16777216);  // 16MB batches for mega mode
         props.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, "lz4");

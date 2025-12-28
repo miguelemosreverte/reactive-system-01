@@ -77,24 +77,29 @@ public final class MicrobatchCollector<T> implements AutoCloseable {
         this(batchConsumer, calibration, maxBatchSize, Runtime.getRuntime().availableProcessors());
     }
 
+    private static final int RING_BUFFER_CAPACITY = 65536;  // 64K slots per partition
+
     @SuppressWarnings("unchecked")
     private MicrobatchCollector(Consumer<List<T>> batchConsumer, BatchCalibration calibration, int maxBatchSize, int flushThreadCount) {
         this.batchConsumer = batchConsumer;
         this.calibration = calibration;
-        this.maxBatchSize = maxBatchSize;
         this.windowStartNanos = System.nanoTime();
-
-        // Load calibration for initial pressure level
-        var config = calibration.getBestConfig();
-        this.targetBatchSize = config.batchSize();
-        this.flushIntervalMicros = config.flushIntervalMicros();
 
         // Ring buffers match CPU cores for submit distribution
         this.partitionCount = Runtime.getRuntime().availableProcessors();
         this.ringBuffers = new FastRingBuffer[partitionCount];
         for (int i = 0; i < partitionCount; i++) {
-            ringBuffers[i] = new FastRingBuffer<>(65536); // 64K slots per partition
+            ringBuffers[i] = new FastRingBuffer<>(RING_BUFFER_CAPACITY);
         }
+
+        // Cap maxBatchSize to 50% of total ring buffer capacity to avoid producer blocking
+        int totalRingCapacity = partitionCount * RING_BUFFER_CAPACITY;
+        this.maxBatchSize = Math.min(maxBatchSize, totalRingCapacity / 2);
+
+        // Load calibration for initial pressure level, capped by ring buffer capacity
+        var config = calibration.getBestConfig();
+        this.targetBatchSize = Math.min(config.batchSize(), this.maxBatchSize);
+        this.flushIntervalMicros = config.flushIntervalMicros();
 
         // Configurable flush thread count (fewer = less Kafka contention)
         int actualFlushThreads = Math.min(flushThreadCount, partitionCount);
@@ -327,7 +332,7 @@ public final class MicrobatchCollector<T> implements AutoCloseable {
             // Reload config if pressure level changed
             if (currentPressure != oldPressure) {
                 var config = calibration.getBestConfig();
-                this.targetBatchSize = config.batchSize();
+                this.targetBatchSize = Math.min(config.batchSize(), maxBatchSize);
                 this.flushIntervalMicros = config.flushIntervalMicros();
             }
 
