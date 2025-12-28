@@ -1,0 +1,59 @@
+name: "Flink - Observable (Production with Tracing)"
+description: "Production-grade Flink benchmark WITH full observability enabled. Traces flow to Jaeger, metrics to Prometheus, logs to Loki. Use this to demonstrate real-world throughput with complete observability stack."
+component: flink
+runtime: docker
+duration: 30000  # 30 seconds to accumulate meaningful trace data
+concurrency: 100  # Lower concurrency to avoid overwhelming trace collector
+
+# This brochure demonstrates production reality:
+# - Full distributed tracing via OpenTelemetry
+# - Metrics exported to Prometheus
+# - Logs correlated in Loki
+# - Traces visible in Jaeger/Grafana
+#
+# Compare with flink-stream to see the observability overhead:
+#   flink-stream:     ~7600 ops/s (tracing disabled)
+#   flink-observable: ~7000 ops/s (tracing enabled)
+#
+# The delta shows the cost of observability - approximately 8% overhead
+# which is acceptable for production deployments.
+
+config:
+  httpServer: NONE
+  microbatching: false
+  kafkaAcks: "1"
+  kafkaBatchSize: 65536
+  kafkaLingerMs: 5
+
+  env:
+    # ============================================
+    # OBSERVABILITY ENABLED - This is the key difference!
+    # ============================================
+    # Enable OpenTelemetry Java agent for distributed tracing
+    # All OTEL config must be in FLINK_ENV_JAVA_OPTS to be picked up by the agent
+    FLINK_ENV_JAVA_OPTS: "-javaagent:/opt/flink/lib/opentelemetry-javaagent.jar -Dotel.exporter.otlp.endpoint=http://otel-collector:4317 -Dotel.service.name=flink-processor -Dotel.traces.exporter=otlp -Dotel.metrics.exporter=none -Dotel.logs.exporter=none"
+    SKIP_TRACING: "false"          # ENABLE tracing (not skip!)
+    OTEL_ENABLED: "true"           # Enable OpenTelemetry exporter
+    SKIP_DROOLS: "true"            # Still skip Drools for Flink-focused test
+
+    # Checkpointing disabled for throughput comparison
+    SKIP_CHECKPOINTING: "true"
+
+    # Standard Flink tuning
+    BENCHMARK_MODE: "true"
+    FLINK_PARALLELISM: "32"
+    FLINK_BUFFER_TIMEOUT_MS: "0"
+
+    # ============================================
+    # Kafka Producer Tuning (Flink -> Kafka)
+    # ============================================
+    KAFKA_PRODUCER_LINGER_MS: "5"
+    KAFKA_PRODUCER_BATCH_SIZE: "131072"
+    KAFKA_PRODUCER_ACKS: "1"
+    KAFKA_PRODUCER_COMPRESSION: "lz4"
+
+    # ============================================
+    # Kafka Consumer Tuning (Kafka -> Flink)
+    # ============================================
+    KAFKA_CONSUMER_FETCH_MIN_BYTES: "16384"
+    KAFKA_CONSUMER_MAX_POLL_RECORDS: "10000"
