@@ -1,10 +1,13 @@
 package com.reactive.platform.kafka.benchmark;
 
+import org.apache.kafka.clients.admin.*;
 import org.apache.kafka.clients.consumer.*;
 import org.apache.kafka.clients.producer.*;
+import org.apache.kafka.common.*;
 import org.apache.kafka.common.serialization.*;
 
 import java.io.*;
+import java.nio.*;
 import java.nio.file.*;
 import java.time.*;
 import java.util.*;
@@ -94,6 +97,7 @@ public class KafkaBaselineBenchmark {
     /**
      * NAIVE PRODUCER: 1 Kafka send() per message.
      * This is the worst case for throughput - no batching benefit.
+     * Each message contains a sequence number for verification.
      */
     static Result benchmarkNaiveProducer(String bootstrap, int durationSec) throws Exception {
         System.out.println("═══════════════════════════════════════════════════════════════════════");
@@ -108,15 +112,19 @@ public class KafkaBaselineBenchmark {
 
         KafkaProducer<String, byte[]> producer = new KafkaProducer<>(props);
 
-        // Warmup
+        // Warmup (not counted, separate offset range)
         System.out.println("Warming up...");
         for (int i = 0; i < 10_000; i++) {
-            producer.send(new ProducerRecord<>(topic, TEST_MESSAGE));
+            producer.send(new ProducerRecord<>(topic, buildMessageWithSequence(-1)));  // -1 = warmup
         }
         producer.flush();
 
-        // Benchmark
-        System.out.printf("Running for %d seconds...%n", durationSec);
+        // Get starting offset after warmup
+        long startOffset = getTopicRecordCount(bootstrap, topic);
+
+        // Benchmark with sequence numbers
+        System.out.printf("Running for %d seconds (acks=%s)...%n", durationSec, acksConfig);
+        AtomicLong sequence = new AtomicLong(0);
         LongAdder count = new LongAdder();
         Instant start = Instant.now();
         Instant end = start.plusSeconds(durationSec);
@@ -129,7 +137,8 @@ public class KafkaBaselineBenchmark {
             executor.submit(() -> {
                 try {
                     while (Instant.now().isBefore(end)) {
-                        producer.send(new ProducerRecord<>(topic, TEST_MESSAGE));
+                        long seq = sequence.incrementAndGet();
+                        producer.send(new ProducerRecord<>(topic, buildMessageWithSequence(seq)));
                         count.increment();
                     }
                 } finally {
@@ -139,24 +148,63 @@ public class KafkaBaselineBenchmark {
         }
 
         latch.await();
+        System.out.println("Flushing to Kafka...");
         producer.flush();
         producer.close();
         executor.shutdown();
 
         Duration elapsed = Duration.between(start, Instant.now());
         double throughput = count.sum() / (elapsed.toMillis() / 1000.0);
+        long expectedMessages = count.sum();
+        long lastSequence = sequence.get();
 
-        System.out.printf("Result: %,d messages in %.2fs = %,.0f msg/s%n",
-            count.sum(), elapsed.toMillis() / 1000.0, throughput);
+        System.out.printf("Sent: %,d messages in %.2fs = %,.0f msg/s%n",
+            expectedMessages, elapsed.toMillis() / 1000.0, throughput);
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // VALIDATION: Verify messages are actually in Kafka
+        // ═══════════════════════════════════════════════════════════════════════
+        System.out.println();
+        System.out.println("VALIDATION:");
+
+        // 1. Check Kafka offset count
+        long endOffset = getTopicRecordCount(bootstrap, topic);
+        long kafkaRecords = endOffset - startOffset;
+        System.out.printf("  Kafka records: %,d (expected %,d)%n", kafkaRecords, expectedMessages);
+
+        boolean offsetMatch = kafkaRecords == expectedMessages;
+        if (offsetMatch) {
+            System.out.println("  ✓ Offset count matches expected");
+        } else {
+            System.out.printf("  ✗ Offset mismatch! Kafka has %,d, expected %,d%n", kafkaRecords, expectedMessages);
+        }
+
+        // 2. Verify last message sequence
+        long foundSequence = verifyLastMessage(bootstrap, topic, lastSequence);
+        boolean sequenceMatch = foundSequence > 0 && foundSequence <= lastSequence;
+        if (sequenceMatch) {
+            System.out.printf("  ✓ Last message verified (seq=%,d)%n", foundSequence);
+        } else {
+            System.out.printf("  ✗ Could not verify last message (expected seq near %,d, found %,d)%n",
+                lastSequence, foundSequence);
+        }
+
+        boolean verified = offsetMatch && sequenceMatch;
+        System.out.printf("  VERIFIED: %s%n", verified ? "YES ✓" : "NO ✗");
         System.out.println();
 
-        return new Result("NAIVE_PRODUCER", count.sum(), elapsed.toMillis(), throughput,
-            "1 send() per message, no batching benefit");
+        return new Result("NAIVE_PRODUCER", expectedMessages, kafkaRecords, verified,
+            elapsed.toMillis(), throughput,
+            String.format("1 send() per message, acks=%s", acksConfig));
     }
 
     /**
      * BULK PRODUCER: ALL messages in 1 Kafka send (serialized batch).
      * This is the theoretical maximum - Kafka does 1 I/O for N messages.
+     *
+     * IMPORTANT: Each Kafka record contains `batchSize` messages serialized together.
+     * - Kafka records = number of send() calls (batches)
+     * - Logical messages = batchSize × number of batches
      *
      * @param batchSize Number of messages per Kafka send (e.g., 1000 or 10000)
      */
@@ -169,26 +217,28 @@ public class KafkaBaselineBenchmark {
         String topic = "benchmark-bulk-" + System.currentTimeMillis();
         Properties props = producerProps(bootstrap);
         props.put(ProducerConfig.ACKS_CONFIG, acksConfig);
-        props.put(ProducerConfig.LINGER_MS_CONFIG, batchSize >= 10000 ? 100 : 5);  // Higher linger for mega batches
-        props.put(ProducerConfig.BATCH_SIZE_CONFIG, 16777216);  // 16MB batches for mega mode
+        props.put(ProducerConfig.LINGER_MS_CONFIG, batchSize >= 10000 ? 100 : 5);
+        props.put(ProducerConfig.BATCH_SIZE_CONFIG, 16777216);  // 16MB batches
         props.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, "lz4");
         props.put(ProducerConfig.BUFFER_MEMORY_CONFIG, 134217728L); // 128MB buffer
         props.put(ProducerConfig.MAX_REQUEST_SIZE_CONFIG, 16777216); // 16MB max request
 
         KafkaProducer<String, byte[]> producer = new KafkaProducer<>(props);
 
-        // Pre-build batch payload: [count:4][len:4][data]...
-        byte[] batchPayload = buildBatchPayload(batchSize);
-
-        // Warmup
+        // Warmup (not counted)
         System.out.println("Warming up...");
+        byte[] warmupPayload = buildBatchPayloadWithSequence(batchSize, -1);
         for (int i = 0; i < 100; i++) {
-            producer.send(new ProducerRecord<>(topic, "batch", batchPayload));
+            producer.send(new ProducerRecord<>(topic, "warmup", warmupPayload));
         }
         producer.flush();
 
-        // Benchmark
-        System.out.printf("Running for %d seconds (batch size: %d messages per send)...%n", durationSec, batchSize);
+        // Get starting offset after warmup
+        long startOffset = getTopicRecordCount(bootstrap, topic);
+
+        // Benchmark with sequence numbers in batches
+        System.out.printf("Running for %d seconds (batch size: %d, acks=%s)...%n", durationSec, batchSize, acksConfig);
+        AtomicLong batchSequence = new AtomicLong(0);
         LongAdder messageCount = new LongAdder();
         LongAdder batchCount = new LongAdder();
         Instant start = Instant.now();
@@ -202,7 +252,9 @@ public class KafkaBaselineBenchmark {
             executor.submit(() -> {
                 try {
                     while (Instant.now().isBefore(end)) {
-                        producer.send(new ProducerRecord<>(topic, "batch", batchPayload));
+                        long seq = batchSequence.incrementAndGet();
+                        byte[] payload = buildBatchPayloadWithSequence(batchSize, seq);
+                        producer.send(new ProducerRecord<>(topic, "batch", payload));
                         messageCount.add(batchSize);
                         batchCount.increment();
                     }
@@ -213,6 +265,7 @@ public class KafkaBaselineBenchmark {
         }
 
         latch.await();
+        System.out.println("Flushing to Kafka...");
         producer.flush();
         producer.close();
         executor.shutdown();
@@ -220,14 +273,54 @@ public class KafkaBaselineBenchmark {
         Duration elapsed = Duration.between(start, Instant.now());
         double throughput = messageCount.sum() / (elapsed.toMillis() / 1000.0);
         double kafkaSendsPerSec = batchCount.sum() / (elapsed.toMillis() / 1000.0);
+        long expectedBatches = batchCount.sum();
+        long expectedMessages = messageCount.sum();
+        long lastBatchSequence = batchSequence.get();
 
-        System.out.printf("Result: %,d messages (%,d batches) in %.2fs = %,.0f msg/s%n",
-            messageCount.sum(), batchCount.sum(), elapsed.toMillis() / 1000.0, throughput);
-        System.out.printf("Kafka sends/sec: %,.0f (each send = %d messages)%n", kafkaSendsPerSec, batchSize);
+        System.out.printf("Sent: %,d messages (%,d Kafka records) in %.2fs%n",
+            expectedMessages, expectedBatches, elapsed.toMillis() / 1000.0);
+        System.out.printf("Throughput: %,.0f msg/s | %,.0f Kafka records/s%n", throughput, kafkaSendsPerSec);
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // VALIDATION: Verify Kafka records are actually stored
+        // ═══════════════════════════════════════════════════════════════════════
+        System.out.println();
+        System.out.println("VALIDATION:");
+
+        // 1. Check Kafka offset count (number of records, NOT logical messages)
+        long endOffset = getTopicRecordCount(bootstrap, topic);
+        long kafkaRecords = endOffset - startOffset;
+        System.out.printf("  Kafka records: %,d (expected %,d batches)%n", kafkaRecords, expectedBatches);
+
+        boolean offsetMatch = kafkaRecords == expectedBatches;
+        if (offsetMatch) {
+            System.out.println("  ✓ Record count matches expected batches");
+        } else {
+            System.out.printf("  ✗ Record mismatch! Kafka has %,d, expected %,d batches%n", kafkaRecords, expectedBatches);
+        }
+
+        // 2. Verify last batch sequence
+        long foundSequence = verifyLastBatch(bootstrap, topic, lastBatchSequence);
+        boolean sequenceMatch = foundSequence > 0 && foundSequence <= lastBatchSequence;
+        if (sequenceMatch) {
+            System.out.printf("  ✓ Last batch verified (seq=%,d)%n", foundSequence);
+        } else {
+            System.out.printf("  ✗ Could not verify last batch (expected seq near %,d, found %,d)%n",
+                lastBatchSequence, foundSequence);
+        }
+
+        // 3. Calculate verified message count
+        long verifiedMessages = kafkaRecords * batchSize;
+        System.out.printf("  Verified messages: %,d (%,d batches × %,d per batch)%n",
+            verifiedMessages, kafkaRecords, batchSize);
+
+        boolean verified = offsetMatch && sequenceMatch;
+        System.out.printf("  VERIFIED: %s%n", verified ? "YES ✓" : "NO ✗");
         System.out.println();
 
-        return new Result(modeName + "_PRODUCER", messageCount.sum(), elapsed.toMillis(), throughput,
-            String.format("%d messages per Kafka send, LZ4 compression", batchSize));
+        return new Result(modeName + "_PRODUCER", expectedMessages, kafkaRecords, verified,
+            elapsed.toMillis(), throughput,
+            String.format("%d msg/batch, acks=%s, LZ4", batchSize, acksConfig));
     }
 
     /**
@@ -284,8 +377,8 @@ public class KafkaBaselineBenchmark {
             count.sum(), elapsed.toMillis() / 1000.0, throughput);
         System.out.println();
 
-        return new Result("CONSUMER", count.sum(), elapsed.toMillis(), throughput,
-            "Optimized fetch settings");
+        return new Result("CONSUMER", count.sum(), count.sum(), true,
+            elapsed.toMillis(), throughput, "Optimized fetch settings");
     }
 
     // ========================================================================
@@ -300,16 +393,76 @@ public class KafkaBaselineBenchmark {
         return props;
     }
 
-    static byte[] buildBatchPayload(int count) throws IOException {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream(count * (MESSAGE_SIZE + 4) + 4);
-        DataOutputStream dos = new DataOutputStream(baos);
-        dos.writeInt(count);
-        for (int i = 0; i < count; i++) {
-            dos.writeInt(MESSAGE_SIZE);
-            dos.write(TEST_MESSAGE);
+    /**
+     * Build batch payload: [sequence:8][count:4][messages...]
+     * The sequence number allows verification that batches were stored.
+     */
+    static byte[] buildBatchPayloadWithSequence(int count, long sequence) {
+        try {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream(count * (MESSAGE_SIZE + 4) + 12);
+            DataOutputStream dos = new DataOutputStream(baos);
+            dos.writeLong(sequence);  // 8 bytes: batch sequence for verification
+            dos.writeInt(count);      // 4 bytes: message count
+            for (int i = 0; i < count; i++) {
+                dos.writeInt(MESSAGE_SIZE);
+                dos.write(TEST_MESSAGE);
+            }
+            dos.flush();
+            return baos.toByteArray();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
-        dos.flush();
-        return baos.toByteArray();
+    }
+
+    /**
+     * Verify last batch in topic by reading its sequence number.
+     */
+    static long verifyLastBatch(String bootstrap, String topic, long expectedSequence) {
+        Properties props = new Properties();
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrap);
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, "verify-batch-" + System.currentTimeMillis());
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
+
+        try (KafkaConsumer<String, byte[]> consumer = new KafkaConsumer<>(props)) {
+            List<PartitionInfo> partitionInfos = consumer.partitionsFor(topic);
+            if (partitionInfos == null || partitionInfos.isEmpty()) return -1;
+
+            List<TopicPartition> partitions = partitionInfos.stream()
+                .map(p -> new TopicPartition(topic, p.partition()))
+                .toList();
+
+            consumer.assign(partitions);
+            Map<TopicPartition, Long> endOffsets = consumer.endOffsets(partitions);
+
+            // Find partition with highest offset
+            TopicPartition lastPartition = null;
+            long maxOffset = 0;
+            for (var entry : endOffsets.entrySet()) {
+                if (entry.getValue() > maxOffset) {
+                    maxOffset = entry.getValue();
+                    lastPartition = entry.getKey();
+                }
+            }
+
+            if (lastPartition == null || maxOffset == 0) return -1;
+
+            // Seek to last record
+            consumer.seek(lastPartition, maxOffset - 1);
+            ConsumerRecords<String, byte[]> records = consumer.poll(Duration.ofSeconds(5));
+
+            for (ConsumerRecord<String, byte[]> record : records) {
+                byte[] value = record.value();
+                if (value.length >= 8) {
+                    ByteBuffer buf = ByteBuffer.wrap(value);
+                    return buf.getLong();  // First 8 bytes are sequence
+                }
+            }
+            return -1;
+        } catch (Exception e) {
+            System.err.println("Failed to verify last batch: " + e.getMessage());
+            return -1;
+        }
     }
 
     static void produceMessages(String bootstrap, String topic, int count) throws Exception {
@@ -354,18 +507,19 @@ public class KafkaBaselineBenchmark {
         System.out.println("║                              SUMMARY                                          ║");
         System.out.println("╚══════════════════════════════════════════════════════════════════════════════╝");
         System.out.println();
-        System.out.printf("%-20s %15s %15s   %s%n", "Mode", "Messages", "Throughput", "Notes");
-        System.out.println("─".repeat(80));
+        System.out.printf("%-18s %12s %14s %10s   %s%n", "Mode", "Messages", "Throughput", "Verified", "Notes");
+        System.out.println("─".repeat(90));
 
         Result best = results.stream().max(Comparator.comparingDouble(r -> r.throughput)).orElse(null);
 
         for (Result r : results) {
             String marker = r == best ? " ★" : "";
-            System.out.printf("%-20s %,15d %,13.0f/s   %s%s%n",
-                r.mode, r.messages, r.throughput, r.notes, marker);
+            String verified = r.verified ? "✓ YES" : "✗ NO";
+            System.out.printf("%-18s %,12d %,12.0f/s %10s   %s%s%n",
+                r.mode, r.messages, r.throughput, verified, r.notes, marker);
         }
-        System.out.println("─".repeat(80));
-        System.out.println("★ = Best throughput");
+        System.out.println("─".repeat(90));
+        System.out.println("★ = Best throughput | ✓ = Messages verified in Kafka");
         System.out.println();
     }
 
@@ -377,6 +531,7 @@ public class KafkaBaselineBenchmark {
         json.append("{\n");
         json.append("  \"benchmark\": \"kafka-baseline\",\n");
         json.append("  \"timestamp\": \"").append(Instant.now()).append("\",\n");
+        json.append("  \"acks\": \"").append(acksConfig).append("\",\n");
         json.append("  \"results\": [\n");
 
         for (int i = 0; i < results.size(); i++) {
@@ -384,6 +539,8 @@ public class KafkaBaselineBenchmark {
             json.append("    {\n");
             json.append("      \"mode\": \"").append(r.mode).append("\",\n");
             json.append("      \"messages\": ").append(r.messages).append(",\n");
+            json.append("      \"kafkaRecords\": ").append(r.kafkaRecords).append(",\n");
+            json.append("      \"verified\": ").append(r.verified).append(",\n");
             json.append("      \"durationMs\": ").append(r.durationMs).append(",\n");
             json.append("      \"throughput\": ").append(String.format("%.2f", r.throughput)).append(",\n");
             json.append("      \"notes\": \"").append(r.notes).append("\"\n");
@@ -397,5 +554,127 @@ public class KafkaBaselineBenchmark {
         System.out.printf("Report written to %s/results.json%n", reportsDir);
     }
 
-    record Result(String mode, long messages, long durationMs, double throughput, String notes) {}
+    // ========================================================================
+    // Validation: Verify messages are actually in Kafka
+    // ========================================================================
+
+    /**
+     * Get the total number of records in a topic by summing end offsets across all partitions.
+     */
+    static long getTopicRecordCount(String bootstrap, String topic) {
+        Properties props = new Properties();
+        props.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrap);
+
+        try (AdminClient admin = AdminClient.create(props)) {
+            // Get topic partitions
+            DescribeTopicsResult descResult = admin.describeTopics(List.of(topic));
+            TopicDescription desc = descResult.topicNameValues().get(topic).get(5, TimeUnit.SECONDS);
+
+            // Get end offsets for all partitions
+            List<TopicPartition> partitions = desc.partitions().stream()
+                .map(p -> new TopicPartition(topic, p.partition()))
+                .toList();
+
+            // Use consumer to get end offsets
+            Properties consumerProps = new Properties();
+            consumerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrap);
+            consumerProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+            consumerProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
+
+            try (KafkaConsumer<String, byte[]> consumer = new KafkaConsumer<>(consumerProps)) {
+                Map<TopicPartition, Long> endOffsets = consumer.endOffsets(partitions);
+                return endOffsets.values().stream().mapToLong(Long::longValue).sum();
+            }
+        } catch (Exception e) {
+            System.err.println("Failed to get topic record count: " + e.getMessage());
+            return -1;
+        }
+    }
+
+    /**
+     * Consume and verify the last message in a topic.
+     * Returns the sequence number if found, or -1 on failure.
+     */
+    static long verifyLastMessage(String bootstrap, String topic, long expectedSequence) {
+        Properties props = new Properties();
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrap);
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, "verify-" + System.currentTimeMillis());
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
+
+        try (KafkaConsumer<String, byte[]> consumer = new KafkaConsumer<>(props)) {
+            // Get partitions and seek to end - 1
+            List<PartitionInfo> partitionInfos = consumer.partitionsFor(topic);
+            if (partitionInfos == null || partitionInfos.isEmpty()) {
+                return -1;
+            }
+
+            List<TopicPartition> partitions = partitionInfos.stream()
+                .map(p -> new TopicPartition(topic, p.partition()))
+                .toList();
+
+            consumer.assign(partitions);
+            Map<TopicPartition, Long> endOffsets = consumer.endOffsets(partitions);
+
+            // Find partition with highest offset and seek to last message
+            TopicPartition lastPartition = null;
+            long maxOffset = 0;
+            for (var entry : endOffsets.entrySet()) {
+                if (entry.getValue() > maxOffset) {
+                    maxOffset = entry.getValue();
+                    lastPartition = entry.getKey();
+                }
+            }
+
+            if (lastPartition == null || maxOffset == 0) {
+                return -1;
+            }
+
+            // Seek to last message
+            consumer.seek(lastPartition, maxOffset - 1);
+
+            // Poll for the last message
+            ConsumerRecords<String, byte[]> records = consumer.poll(Duration.ofSeconds(5));
+            if (records.isEmpty()) {
+                return -1;
+            }
+
+            // Get the last record
+            ConsumerRecord<String, byte[]> lastRecord = null;
+            for (ConsumerRecord<String, byte[]> record : records) {
+                lastRecord = record;
+            }
+
+            if (lastRecord == null) {
+                return -1;
+            }
+
+            // Extract sequence number from payload
+            byte[] value = lastRecord.value();
+            if (value.length >= 8) {
+                ByteBuffer buf = ByteBuffer.wrap(value);
+                return buf.getLong();  // First 8 bytes are sequence number
+            }
+
+            return -1;
+        } catch (Exception e) {
+            System.err.println("Failed to verify last message: " + e.getMessage());
+            return -1;
+        }
+    }
+
+    /**
+     * Build a message payload with sequence number for verification.
+     * Format: [sequence:8 bytes][padding to MESSAGE_SIZE]
+     */
+    static byte[] buildMessageWithSequence(long sequence) {
+        ByteBuffer buf = ByteBuffer.allocate(MESSAGE_SIZE);
+        buf.putLong(sequence);  // First 8 bytes are sequence number
+        // Rest is padding (already zeroed)
+        return buf.array();
+    }
+
+    record Result(String mode, long messages, long kafkaRecords, boolean verified,
+                  long durationMs, double throughput, String notes) {}
 }
