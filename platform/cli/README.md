@@ -114,6 +114,55 @@ Use arrow keys to navigate menus:
 | `show [sha]` | Show results for current or specific commit |
 | `compare [sha]` | Compare current with previous or specific commit |
 
+**Brochure commands:**
+
+Brochures are YAML-defined benchmark configurations in `reports/brochures/`. They allow running benchmarks with preconfigured settings and environment variables.
+
+| Command | Description |
+|---------|-------------|
+| `bench brochure list` | List available brochures |
+| `bench brochure show <name>` | Display brochure configuration |
+| `bench brochure run <name>` | Run brochure benchmark |
+
+**Brochure flags:**
+
+| Flag | Description |
+|------|-------------|
+| `--quick` | Quick mode: 10s duration, skip trace enrichment |
+
+**Available brochures:**
+
+| Brochure | Description |
+|----------|-------------|
+| `flink-stream` | Pure Flink throughput (no checkpointing) |
+| `flink-production` | Production-grade with RocksDB + checkpointing |
+| `kafka` | Kafka producer/consumer round-trip |
+| `gateway` | Gateway HTTP to Kafka |
+
+**Brochure YAML format:**
+
+Brochures support environment variable injection to configure components dynamically:
+
+```yaml
+name: "Flink - Stream Processing"
+component: flink
+duration: 10000
+concurrency: 200
+
+config:
+  env:
+    # Flink job configuration
+    SKIP_CHECKPOINTING: "true"
+    FLINK_PARALLELISM: "32"
+
+    # Kafka producer tuning
+    KAFKA_PRODUCER_LINGER_MS: "5"
+    KAFKA_PRODUCER_BATCH_SIZE: "131072"
+
+    # Kafka consumer tuning
+    KAFKA_CONSUMER_FETCH_MIN_BYTES: "16384"
+```
+
 ### Testing
 
 | Command | Description |
@@ -208,6 +257,7 @@ platform/cli/
 │   ├── diagnostics.go    # doctor, stats
 │   ├── diagnose.go       # memory command (pressure, risk, heap, jfr)
 │   ├── bench.go          # bench command with Docker Maven execution
+│   ├── bench_brochure.go # bench brochure subcommand (YAML-configured benchmarks)
 │   ├── bench_doctor.go   # bench doctor subcommand
 │   ├── bench_history.go  # bench history subcommand
 │   ├── e2e.go            # e2e tests

@@ -118,6 +118,34 @@ public class CounterJob {
     private static final boolean USE_ROCKSDB = Boolean.parseBoolean(
             System.getenv().getOrDefault("USE_ROCKSDB", "true"));
 
+    // ============================================
+    // Kafka Producer Tuning (configurable via brochure env vars)
+    // ============================================
+    private static final String KAFKA_PRODUCER_LINGER_MS =
+            System.getenv().getOrDefault("KAFKA_PRODUCER_LINGER_MS", "5");
+    private static final String KAFKA_PRODUCER_BATCH_SIZE =
+            System.getenv().getOrDefault("KAFKA_PRODUCER_BATCH_SIZE", "131072");  // 128KB
+    private static final String KAFKA_PRODUCER_ACKS =
+            System.getenv().getOrDefault("KAFKA_PRODUCER_ACKS", "1");
+    private static final String KAFKA_PRODUCER_COMPRESSION =
+            System.getenv().getOrDefault("KAFKA_PRODUCER_COMPRESSION", "lz4");
+    private static final String KAFKA_PRODUCER_BUFFER_MEMORY =
+            System.getenv().getOrDefault("KAFKA_PRODUCER_BUFFER_MEMORY", "134217728");  // 128MB
+    private static final String KAFKA_PRODUCER_MAX_IN_FLIGHT =
+            System.getenv().getOrDefault("KAFKA_PRODUCER_MAX_IN_FLIGHT", "5");
+
+    // ============================================
+    // Kafka Consumer Tuning (configurable via brochure env vars)
+    // ============================================
+    private static final String KAFKA_CONSUMER_FETCH_MIN_BYTES =
+            System.getenv().getOrDefault("KAFKA_CONSUMER_FETCH_MIN_BYTES", "16384");  // 16KB
+    private static final String KAFKA_CONSUMER_FETCH_MAX_BYTES =
+            System.getenv().getOrDefault("KAFKA_CONSUMER_FETCH_MAX_BYTES", "52428800");  // 50MB
+    private static final String KAFKA_CONSUMER_MAX_PARTITION_FETCH =
+            System.getenv().getOrDefault("KAFKA_CONSUMER_MAX_PARTITION_FETCH", "5242880");  // 5MB
+    private static final String KAFKA_CONSUMER_MAX_POLL_RECORDS =
+            System.getenv().getOrDefault("KAFKA_CONSUMER_MAX_POLL_RECORDS", "10000");
+
     public static void main(String[] args) throws Exception {
         LOG.info("Starting Counter Processing Job (CQRS mode)");
         LOG.info("Latency bounds: MIN={}ms, MAX={}ms", LATENCY_MIN_MS, LATENCY_MAX_MS);
@@ -186,20 +214,20 @@ public class CounterJob {
                     CHECKPOINT_INTERVAL_MS, CHECKPOINT_MIN_PAUSE_MS, CHECKPOINT_TIMEOUT_MS);
         }
 
-        // Kafka consumer properties - optimized for high throughput
+        // Kafka consumer properties - configurable via brochure env vars
         Properties kafkaProps = new Properties();
         kafkaProps.setProperty("fetch.max.wait.ms", KAFKA_FETCH_MAX_WAIT_MS);
-        kafkaProps.setProperty("fetch.min.bytes", "16384");        // 16KB min fetch for batching
-        kafkaProps.setProperty("fetch.max.bytes", "52428800");     // 50MB max fetch
-        kafkaProps.setProperty("max.partition.fetch.bytes", "5242880"); // 5MB per partition
-        // Ensure consumer polls continuously - higher for throughput
-        // 10000 records per poll for high throughput mode
-        kafkaProps.setProperty("max.poll.records", "10000");
+        kafkaProps.setProperty("fetch.min.bytes", KAFKA_CONSUMER_FETCH_MIN_BYTES);
+        kafkaProps.setProperty("fetch.max.bytes", KAFKA_CONSUMER_FETCH_MAX_BYTES);
+        kafkaProps.setProperty("max.partition.fetch.bytes", KAFKA_CONSUMER_MAX_PARTITION_FETCH);
+        kafkaProps.setProperty("max.poll.records", KAFKA_CONSUMER_MAX_POLL_RECORDS);
         kafkaProps.setProperty("max.poll.interval.ms", "300000");
         kafkaProps.setProperty("heartbeat.interval.ms", "3000");
         kafkaProps.setProperty("session.timeout.ms", "30000");
         // Auto commit is handled by Flink checkpoints
         kafkaProps.setProperty("enable.auto.commit", "false");
+        LOG.info("Consumer config: fetch.min.bytes={}, fetch.max.bytes={}, max.poll.records={}",
+                KAFKA_CONSUMER_FETCH_MIN_BYTES, KAFKA_CONSUMER_FETCH_MAX_BYTES, KAFKA_CONSUMER_MAX_POLL_RECORDS);
 
         // Configure Kafka source with unbounded streaming and trace context extraction
         KafkaSource<CounterEvent> source = KafkaSource.<CounterEvent>builder()
@@ -211,15 +239,16 @@ public class CounterJob {
                 .setProperties(kafkaProps)
                 .build();
 
-        // Kafka producer properties - optimized for high throughput
+        // Kafka producer properties - configurable via brochure env vars
         Properties producerProps = new Properties();
-        producerProps.setProperty("linger.ms", "5");            // 5ms batching delay for throughput
-        producerProps.setProperty("batch.size", "131072");      // 128KB batch size (larger batches)
-        producerProps.setProperty("acks", "1");                 // Leader acknowledgment only
-        producerProps.setProperty("compression.type", "lz4");   // Fast compression
-        producerProps.setProperty("buffer.memory", "134217728"); // 128MB buffer (doubled)
-        producerProps.setProperty("max.in.flight.requests.per.connection", "5"); // Allow 5 in-flight
-        LOG.info("Producer config: linger.ms=5, batch.size=128KB, compression=lz4, buffer=128MB");
+        producerProps.setProperty("linger.ms", KAFKA_PRODUCER_LINGER_MS);
+        producerProps.setProperty("batch.size", KAFKA_PRODUCER_BATCH_SIZE);
+        producerProps.setProperty("acks", KAFKA_PRODUCER_ACKS);
+        producerProps.setProperty("compression.type", KAFKA_PRODUCER_COMPRESSION);
+        producerProps.setProperty("buffer.memory", KAFKA_PRODUCER_BUFFER_MEMORY);
+        producerProps.setProperty("max.in.flight.requests.per.connection", KAFKA_PRODUCER_MAX_IN_FLIGHT);
+        LOG.info("Producer config: linger.ms={}, batch.size={}, compression={}, buffer={}",
+                KAFKA_PRODUCER_LINGER_MS, KAFKA_PRODUCER_BATCH_SIZE, KAFKA_PRODUCER_COMPRESSION, KAFKA_PRODUCER_BUFFER_MEMORY);
 
         // Sink for immediate results (counter-results topic) - with trace context propagation
         KafkaSink<CounterResult> resultsSink = KafkaSink.<CounterResult>builder()

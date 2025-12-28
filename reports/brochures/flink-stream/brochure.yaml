@@ -10,12 +10,35 @@ config:
   microbatching: false
   kafkaAcks: "1"
   kafkaBatchSize: 65536
-  kafkaLingerMs: 5  # Reduced for lower latency
+  kafkaLingerMs: 5
+
   # Environment variables applied to Flink containers before benchmark
+  # All configs are now dynamic via env vars (no hardcoded Java values)
   env:
-    SKIP_DROOLS: "true"
-    SKIP_TRACING: "true"
-    SKIP_CHECKPOINTING: "true"
-    BENCHMARK_MODE: "true"
-    FLINK_PARALLELISM: "32"  # Increased to match 32 Kafka partitions
-    FLINK_BUFFER_TIMEOUT_MS: "0"  # Flush immediately
+    # ============================================
+    # Flink Job Configuration
+    # ============================================
+    SKIP_DROOLS: "true"           # Skip Drools for pure Flink throughput
+    SKIP_TRACING: "true"          # Skip tracing for maximum throughput
+    SKIP_CHECKPOINTING: "true"    # Skip checkpointing (at-most-once semantics)
+    BENCHMARK_MODE: "true"        # Enable benchmark optimizations
+    FLINK_PARALLELISM: "32"       # Match 32 Kafka partitions
+    FLINK_BUFFER_TIMEOUT_MS: "0"  # Flush immediately (low latency)
+
+    # ============================================
+    # Kafka Producer Tuning (Flink -> Kafka)
+    # ============================================
+    KAFKA_PRODUCER_LINGER_MS: "5"          # 5ms batching delay for throughput
+    KAFKA_PRODUCER_BATCH_SIZE: "131072"    # 128KB batch size
+    KAFKA_PRODUCER_ACKS: "1"               # Leader acknowledgment only
+    KAFKA_PRODUCER_COMPRESSION: "lz4"      # Fast compression
+    KAFKA_PRODUCER_BUFFER_MEMORY: "134217728"  # 128MB buffer
+    KAFKA_PRODUCER_MAX_IN_FLIGHT: "5"      # 5 in-flight requests
+
+    # ============================================
+    # Kafka Consumer Tuning (Kafka -> Flink)
+    # ============================================
+    KAFKA_CONSUMER_FETCH_MIN_BYTES: "16384"    # 16KB min fetch for batching
+    KAFKA_CONSUMER_FETCH_MAX_BYTES: "52428800" # 50MB max fetch
+    KAFKA_CONSUMER_MAX_PARTITION_FETCH: "5242880"  # 5MB per partition
+    KAFKA_CONSUMER_MAX_POLL_RECORDS: "10000"   # 10K records per poll

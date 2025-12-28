@@ -19,15 +19,18 @@ concurrency: 200  # High concurrency for throughput
 config:
   httpServer: NONE
   microbatching: false
-  kafkaAcks: "1"  # Leader ack for Kafka producer (faster than "all")
-  kafkaBatchSize: 131072  # 128KB for high throughput
-  kafkaLingerMs: 2  # Low linger for batching without latency
+  kafkaAcks: "1"
+  kafkaBatchSize: 131072
+  kafkaLingerMs: 2
 
   # Environment variables applied to Flink containers - PRODUCTION CONFIG
+  # All configs are now dynamic via env vars (no hardcoded Java values)
   env:
-    # Skip non-essential features for benchmark
-    SKIP_DROOLS: "true"
-    SKIP_TRACING: "true"
+    # ============================================
+    # Flink Job Configuration
+    # ============================================
+    SKIP_DROOLS: "true"           # Skip Drools for pure Flink throughput
+    SKIP_TRACING: "true"          # Skip tracing for benchmark
 
     # CHECKPOINTING ENABLED - This is production-grade!
     SKIP_CHECKPOINTING: "false"
@@ -49,3 +52,21 @@ config:
 
     # Benchmark mode for passthrough processing
     BENCHMARK_MODE: "true"
+
+    # ============================================
+    # Kafka Producer Tuning (Flink -> Kafka)
+    # ============================================
+    KAFKA_PRODUCER_LINGER_MS: "5"          # 5ms batching delay for throughput
+    KAFKA_PRODUCER_BATCH_SIZE: "131072"    # 128KB batch size
+    KAFKA_PRODUCER_ACKS: "1"               # Leader acknowledgment only
+    KAFKA_PRODUCER_COMPRESSION: "lz4"      # Fast compression
+    KAFKA_PRODUCER_BUFFER_MEMORY: "134217728"  # 128MB buffer
+    KAFKA_PRODUCER_MAX_IN_FLIGHT: "5"      # 5 in-flight requests
+
+    # ============================================
+    # Kafka Consumer Tuning (Kafka -> Flink)
+    # ============================================
+    KAFKA_CONSUMER_FETCH_MIN_BYTES: "16384"    # 16KB min fetch for batching
+    KAFKA_CONSUMER_FETCH_MAX_BYTES: "52428800" # 50MB max fetch
+    KAFKA_CONSUMER_MAX_PARTITION_FETCH: "5242880"  # 5MB per partition
+    KAFKA_CONSUMER_MAX_POLL_RECORDS: "10000"   # 10K records per poll
