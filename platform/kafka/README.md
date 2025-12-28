@@ -253,7 +253,23 @@ mvn exec:java -Dexec.mainClass="...CalibrationBenchmark" \
 
 ## BULK Baseline Benchmark
 
-**This is the most important benchmark** - it establishes the theoretical maximum throughput.
+**This is the most important benchmark** - it establishes the production-safe throughput with verification.
+
+### Presets (Recommended)
+
+```bash
+# SMOKE TEST: Quick validation (<5 seconds)
+mvn exec:java -Dexec.mainClass="com.reactive.platform.kafka.benchmark.KafkaBaselineBenchmark" \
+    -Dexec.args="--smoke localhost:9092"
+
+# QUICK TEST: Development validation (15 seconds)
+mvn exec:java -Dexec.mainClass="com.reactive.platform.kafka.benchmark.KafkaBaselineBenchmark" \
+    -Dexec.args="--quick localhost:9092"
+
+# THOROUGH TEST: Final validation before release (~5 minutes)
+mvn exec:java -Dexec.mainClass="com.reactive.platform.kafka.benchmark.KafkaBaselineBenchmark" \
+    -Dexec.args="--thorough localhost:9092"
+```
 
 ### What It Measures
 
@@ -261,29 +277,31 @@ The BULK baseline batches N messages into a single Kafka `send()` call:
 - **BULK mode**: 1000 messages per send
 - **MEGA mode**: 10000 messages per send
 
-### Baseline Results (Optimized Hardware)
+**IMPORTANT:** All benchmarks include validation that verifies messages are actually stored in Kafka:
+1. Queries Kafka for topic end offset (compares expected vs actual)
+2. Consumes last message and verifies sequence number in payload
+3. Prints `VERIFIED: YES ✓` or `VERIFIED: NO ✗`
 
-On optimized hardware with native Kafka:
+### Verified Results (Docker Kafka)
 
-| Mode | Throughput | Configuration |
-|------|-----------|---------------|
-| **BULK** | **131.8M msg/s** | 1000 msg/batch, acks=0, LZ4 |
-| MEGA | 150M+ msg/s | 10000 msg/batch, acks=0, LZ4 |
+| Mode | Acks | Throughput | Verified | Use Case |
+|------|------|------------|----------|----------|
+| **BULK** | `1` (leader) | **99-111M msg/s** | ✓ YES | Production-safe |
+| **BULK** | `all` (replicas) | **94M msg/s** | ✓ YES | Guaranteed durability |
+| MEGA | `1` (leader) | **110M+ msg/s** | ✓ YES | Max throughput |
 
-This is the ceiling we're trying to reach with the adaptive system.
-
-### Running the Baseline
+### Running Custom Benchmarks
 
 ```bash
-# Run BULK baseline (1000 messages per Kafka send)
+# Run BULK baseline with custom duration
 mvn exec:java -Dexec.mainClass="com.reactive.platform.kafka.benchmark.KafkaBaselineBenchmark" \
     -Dexec.args="BULK 30 localhost:9092"
 
-# Run MEGA baseline (10000 messages per Kafka send)
+# Run with guaranteed durability (acks=all)
 mvn exec:java -Dexec.mainClass="com.reactive.platform.kafka.benchmark.KafkaBaselineBenchmark" \
-    -Dexec.args="MEGA 30 localhost:9092"
+    -Dexec.args="BULK 30 localhost:9092 reports/kafka-baseline all"
 
-# Run ALL modes and generate comparison report
+# Run ALL modes
 mvn exec:java -Dexec.mainClass="com.reactive.platform.kafka.benchmark.KafkaBaselineBenchmark" \
     -Dexec.args="ALL 30 localhost:9092 reports/kafka-baseline"
 ```

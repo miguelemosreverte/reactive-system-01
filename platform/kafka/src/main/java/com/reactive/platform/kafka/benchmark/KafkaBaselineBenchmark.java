@@ -17,22 +17,38 @@ import java.util.concurrent.atomic.*;
 /**
  * Kafka Baseline Benchmark - Establishes theoretical throughput limits.
  *
- * Modes:
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * PRESETS (recommended):
+ * ═══════════════════════════════════════════════════════════════════════════════
+ *   --smoke     Quick validation (<5s) - just verify Kafka works
+ *   --quick     Development test (15s) - fast but meaningful results
+ *   --thorough  Final validation (5min) - comprehensive test before release
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * MODES (for specific tests):
+ * ═══════════════════════════════════════════════════════════════════════════════
  *   NAIVE     - 1 Kafka send() per message (worst case producer)
  *   BULK      - 1000 messages per send (standard batching)
  *   MEGA      - 10000 messages per send (extreme batching, high latency OK)
  *   CONSUMER  - Read throughput
- *   ALL       - Run all modes and generate comparison report
+ *   ALL       - Run all modes
  *
- * Acks options (via environment or 5th arg):
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * ACKS OPTIONS:
+ * ═══════════════════════════════════════════════════════════════════════════════
  *   0   - Fire-and-forget (no acknowledgement, fastest, may lose data)
- *   1   - Leader acknowledgement (production-safe for most cases)
+ *   1   - Leader acknowledgement (production-safe) [DEFAULT]
  *   all - All replicas (guaranteed durability, slowest)
  *
- * The MEGA mode tests what's possible when we can accept HTTP-timeout-level
- * latency (e.g., 30 seconds). This establishes the absolute ceiling.
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * USAGE:
+ * ═══════════════════════════════════════════════════════════════════════════════
+ *   # Presets (recommended)
+ *   java KafkaBaselineBenchmark --smoke localhost:9092
+ *   java KafkaBaselineBenchmark --quick localhost:9092
+ *   java KafkaBaselineBenchmark --thorough localhost:9092
  *
- * Usage:
+ *   # Custom
  *   java KafkaBaselineBenchmark <mode> <durationSec> <kafkaBootstrap> <reportsDir> [acks]
  */
 public class KafkaBaselineBenchmark {
@@ -43,17 +59,138 @@ public class KafkaBaselineBenchmark {
     // Configurable acks level: "0", "1", or "all"
     private static String acksConfig = "1";  // Default to leader ack (production-safe)
 
+    // Preset configurations
+    private static final int SMOKE_DURATION = 3;      // <5 seconds total
+    private static final int QUICK_DURATION = 15;     // ~15 seconds per test
+    private static final int THOROUGH_DURATION = 60;  // 1 minute per test (5 min total for ALL)
+
     static {
         Arrays.fill(TEST_MESSAGE, (byte) 'X');
     }
 
     public static void main(String[] args) throws Exception {
+        // Handle presets first
+        if (args.length > 0 && args[0].startsWith("--")) {
+            runPreset(args);
+            return;
+        }
+
+        // Legacy/custom mode
         String mode = args.length > 0 ? args[0].toUpperCase() : "ALL";
         int durationSec = args.length > 1 ? Integer.parseInt(args[1]) : 30;
         String bootstrap = args.length > 2 ? args[2] : "kafka:29092";
         String reportsDir = args.length > 3 ? args[3] : "reports/kafka-baseline";
         acksConfig = args.length > 4 ? args[4] : System.getenv().getOrDefault("KAFKA_ACKS", "1");
 
+        runBenchmark(mode, durationSec, bootstrap, reportsDir);
+    }
+
+    /**
+     * Run a preset benchmark configuration.
+     */
+    static void runPreset(String[] args) throws Exception {
+        String preset = args[0].toLowerCase();
+        String bootstrap = args.length > 1 ? args[1] : "localhost:9092";
+        String reportsDir = args.length > 2 ? args[2] : "reports/kafka-baseline";
+        acksConfig = args.length > 3 ? args[3] : System.getenv().getOrDefault("KAFKA_ACKS", "1");
+
+        switch (preset) {
+            case "--smoke" -> {
+                printPresetBanner("SMOKE TEST", "Quick validation (<5 seconds)", SMOKE_DURATION);
+                runBenchmark("BULK", SMOKE_DURATION, bootstrap, reportsDir);
+            }
+            case "--quick" -> {
+                printPresetBanner("QUICK TEST", "Development validation (15 seconds)", QUICK_DURATION);
+                runBenchmark("BULK", QUICK_DURATION, bootstrap, reportsDir);
+            }
+            case "--thorough" -> {
+                printPresetBanner("THOROUGH TEST", "Comprehensive validation (~5 minutes)", THOROUGH_DURATION);
+                System.out.println("  Running: BULK + MEGA + verification");
+                System.out.println();
+
+                List<Result> results = new ArrayList<>();
+                results.add(benchmarkBulkProducer(bootstrap, THOROUGH_DURATION, 1000));
+                results.add(benchmarkBulkProducer(bootstrap, THOROUGH_DURATION, 10000));
+
+                printSummary(results);
+                writeReport(results, reportsDir);
+                printThoroughConclusion(results);
+            }
+            case "--help", "-h" -> printHelp();
+            default -> {
+                System.out.println("Unknown preset: " + preset);
+                printHelp();
+            }
+        }
+    }
+
+    static void printPresetBanner(String name, String description, int duration) {
+        System.out.println("╔══════════════════════════════════════════════════════════════════════════════╗");
+        System.out.printf("║  %-74s  ║%n", name);
+        System.out.println("╠══════════════════════════════════════════════════════════════════════════════╣");
+        System.out.printf("║  %-74s  ║%n", description);
+        System.out.printf("║  Duration: %d seconds per test | Acks: %-35s  ║%n", duration, acksConfig);
+        System.out.println("╚══════════════════════════════════════════════════════════════════════════════╝");
+        System.out.println();
+    }
+
+    static void printThoroughConclusion(List<Result> results) {
+        boolean allVerified = results.stream().allMatch(r -> r.verified);
+        double avgThroughput = results.stream().mapToDouble(r -> r.throughput).average().orElse(0);
+
+        System.out.println("╔══════════════════════════════════════════════════════════════════════════════╗");
+        System.out.println("║                         THOROUGH TEST CONCLUSION                              ║");
+        System.out.println("╠══════════════════════════════════════════════════════════════════════════════╣");
+        if (allVerified) {
+            System.out.println("║  ✓ ALL TESTS PASSED                                                          ║");
+            System.out.printf("║  ✓ Average throughput: %,.0f msg/s%s║%n",
+                avgThroughput, " ".repeat(Math.max(1, 40 - String.format("%,.0f", avgThroughput).length())));
+            System.out.println("║  ✓ Messages verified in Kafka                                                ║");
+            System.out.println("║                                                                              ║");
+            System.out.println("║  Ready for release! 🚀                                                       ║");
+        } else {
+            System.out.println("║  ✗ SOME TESTS FAILED                                                         ║");
+            System.out.println("║  ✗ Review validation output above                                            ║");
+            System.out.println("║                                                                              ║");
+            System.out.println("║  DO NOT release until issues are resolved.                                   ║");
+        }
+        System.out.println("╚══════════════════════════════════════════════════════════════════════════════╝");
+    }
+
+    static void printHelp() {
+        System.out.println("""
+            ╔══════════════════════════════════════════════════════════════════════════════╗
+            ║                    KAFKA BASELINE BENCHMARK                                   ║
+            ╚══════════════════════════════════════════════════════════════════════════════╝
+
+            PRESETS (recommended):
+              --smoke  <kafka>           Quick validation (<5s)
+              --quick  <kafka>           Development test (15s)
+              --thorough <kafka>         Final validation (~5min)
+
+            EXAMPLES:
+              java ... --smoke localhost:9092
+              java ... --quick localhost:9092
+              java ... --thorough localhost:9092
+
+            CUSTOM MODE:
+              java ... <MODE> <duration> <kafka> <reports> [acks]
+
+            MODES:
+              BULK      1000 messages per Kafka send (recommended)
+              MEGA      10000 messages per send (max throughput)
+              NAIVE     1 message per send (baseline)
+              CONSUMER  Read throughput
+              ALL       Run all modes
+
+            ACKS:
+              1         Leader ack (default, production-safe)
+              all       All replicas (guaranteed durability)
+              0         Fire-and-forget (NOT recommended)
+            """);
+    }
+
+    static void runBenchmark(String mode, int durationSec, String bootstrap, String reportsDir) throws Exception {
         String acksDisplay = switch (acksConfig) {
             case "0" -> "0 (fire-and-forget, NO durability)";
             case "1" -> "1 (leader ack, production-safe)";
