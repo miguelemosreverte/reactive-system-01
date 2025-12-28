@@ -2,6 +2,23 @@
 
 A Go-based command-line interface for managing, diagnosing, and benchmarking the reactive system.
 
+## Quick Start
+
+```bash
+# 1. Start the system
+cd platform/cli
+./reactive start
+
+# 2. Check health
+./reactive doctor
+
+# 3. Run a quick Flink benchmark
+./reactive bench brochure run flink-stream --quick
+
+# 4. Run production-grade benchmark (with checkpointing)
+./reactive bench brochure run flink-production --quick
+```
+
 ## Installation
 
 ```bash
@@ -278,8 +295,15 @@ platform/cli/
 # Check system health
 reactive doctor
 
-# Run a quick benchmark
-reactive bench full --quick
+# List all available brochures (25 preconfigured benchmarks)
+reactive bench brochure list
+
+# Run Flink benchmarks with dynamic configuration
+reactive bench brochure run flink-stream --quick          # Pure throughput (no checkpointing)
+reactive bench brochure run flink-production --quick      # Production-grade (RocksDB + checkpointing)
+
+# Run a 60-second benchmark for stable measurements
+reactive bench brochure run flink-stream
 
 # Run full benchmark suite with history tracking
 reactive bench all -d 60
@@ -297,6 +321,9 @@ reactive memory heap drools
 
 # Profile with Java Flight Recorder
 reactive memory jfr flink-taskmanager 60
+
+# Rebuild Flink after code changes
+reactive rebuild flink
 
 # Run end-to-end tests
 reactive e2e
