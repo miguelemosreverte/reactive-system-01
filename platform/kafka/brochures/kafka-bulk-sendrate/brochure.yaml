@@ -1,0 +1,68 @@
+# =============================================================================
+# KAFKA BULK SEND RATE BENCHMARK
+# =============================================================================
+#
+# WHAT THIS MEASURES:
+#   The maximum rate at which we can PUSH messages to Kafka (fire-and-forget).
+#   This is the producer's perspective - how fast can we call send()?
+#
+# CRITICAL CAVEATS:
+#   1. acks=0 - NO ACKNOWLEDGMENT from Kafka. Messages may be LOST.
+#   2. Fire-and-forget - Producer doesn't wait for Kafka confirmation.
+#   3. NOT suitable for production where data loss is unacceptable.
+#   4. Does NOT include flush time (time for Kafka to actually persist).
+#
+# WHY THIS NUMBER IS HIGH (127M+ msg/s):
+#   - Producer is just filling buffers, not waiting for Kafka
+#   - Actual Kafka I/O happens asynchronously
+#   - The "flush" after sending takes 100+ seconds to drain
+#
+# USE CASE:
+#   - Theoretical maximum for fire-and-forget logging
+#   - Baseline for comparing collection overhead
+#   - NOT a realistic production throughput target
+#
+# =============================================================================
+
+name: "Kafka BULK - Send Rate (acks=0)"
+description: |
+  THEORETICAL MAXIMUM send rate with acks=0 (fire-and-forget).
+
+  ⚠️  WARNING: This is NOT a production-safe configuration!
+  - Messages may be LOST (no acknowledgment)
+  - Does NOT include flush time
+  - Real sustained throughput is 10-20x lower
+
+  Use kafka-bulk-sustained for realistic production numbers.
+
+component: kafka
+category: baseline
+sub_category: theoretical
+
+# Cleanup before running to avoid disk-full issues
+pre_run:
+  - docker volume prune -f
+  - docker restart reactive-kafka
+  - sleep 10
+
+duration: 5000
+batch_size: 1000
+
+config:
+  kafkaBootstrap: "localhost:9092"
+  kafkaAcks: "0"                    # ⚠️ NO ACKNOWLEDGMENT
+  kafkaLingerMs: 5
+  kafkaBatchSize: 16777216          # 16MB
+  kafkaBufferMemory: 134217728      # 128MB
+  kafkaCompression: "lz4"
+
+metrics:
+  primary: "send_rate_msg_per_sec"
+  secondary: "sustained_rate_msg_per_sec"
+
+notes: |
+  This benchmark measures the SEND RATE (fire-and-forget), not the
+  sustained throughput. The send rate is 127M+ msg/s, but Kafka
+  can only actually absorb 5-10M msg/s on Docker.
+
+  For production planning, use kafka-bulk-sustained instead.

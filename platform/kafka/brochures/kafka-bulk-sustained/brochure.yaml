@@ -1,0 +1,80 @@
+# =============================================================================
+# KAFKA BULK SUSTAINED RATE BENCHMARK
+# =============================================================================
+#
+# WHAT THIS MEASURES:
+#   The ACTUAL rate at which Kafka can ABSORB and PERSIST messages.
+#   This includes the flush time - what really matters for production.
+#
+# WHY THIS IS THE RIGHT NUMBER FOR PLANNING:
+#   1. Includes flush time (waiting for Kafka to persist)
+#   2. Represents real end-to-end throughput
+#   3. Still uses acks=0 but measures total time
+#   4. Docker Kafka on typical dev machine: 5-10M msg/s
+#
+# COMPARISON TO SEND RATE:
+#   Send Rate:      127M msg/s (fire-and-forget, producer perspective)
+#   Sustained Rate:   5M msg/s (including flush, Kafka perspective)
+#
+# THE GAP EXPLAINED:
+#   - Producer fills 128MB buffer in ~5 seconds at 127M msg/s
+#   - Kafka takes ~120 seconds to actually persist those messages
+#   - Sustained = total_messages / total_time_including_flush
+#
+# USE CASE:
+#   - Realistic capacity planning
+#   - Understanding Docker Kafka limits
+#   - Baseline for adaptive system comparison
+#
+# =============================================================================
+
+name: "Kafka BULK - Sustained Rate (Docker)"
+description: |
+  REALISTIC throughput including Kafka I/O time.
+
+  This measures what Kafka can actually ABSORB, not just what
+  the producer can push. On Docker Kafka: 5-10M msg/s.
+
+  ⚠️  Still uses acks=0 - for durable writes, see kafka-transactional.
+
+component: kafka
+category: baseline
+sub_category: realistic
+
+# Cleanup before running to avoid disk-full issues
+pre_run:
+  - docker volume prune -f
+  - docker restart reactive-kafka
+  - sleep 10
+
+duration: 10000
+batch_size: 1000
+
+config:
+  kafkaBootstrap: "localhost:9092"
+  kafkaAcks: "0"                    # Still fire-and-forget
+  kafkaLingerMs: 5
+  kafkaBatchSize: 16777216          # 16MB
+  kafkaBufferMemory: 134217728      # 128MB
+  kafkaCompression: "lz4"
+
+metrics:
+  primary: "sustained_rate_msg_per_sec"
+  includes_flush: true
+
+baseline:
+  docker_kafka: 5000000             # 5M msg/s typical
+  min_acceptable: 1000000           # 1M msg/s minimum
+  regression_threshold: 0.5         # Alert if < 50% of baseline
+
+notes: |
+  This is the RIGHT number to use for capacity planning.
+
+  Docker Kafka Limits:
+  - Single broker: 5-10M msg/s sustained
+  - Limited by Docker I/O and single partition
+
+  For higher throughput:
+  - Use multiple partitions
+  - Use native Kafka (not Docker)
+  - Use acks=0 only for non-critical data

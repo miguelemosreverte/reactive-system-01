@@ -91,6 +91,61 @@ int intervalHint = targetLatencyMs * 1000;
 
 The system then learns the optimal through experimentation.
 
+## ⚠️ Understanding Throughput Numbers
+
+**CRITICAL:** Before looking at any throughput numbers, understand what they measure:
+
+### Three Types of Throughput
+
+| Metric | Value | What It Measures |
+|--------|-------|------------------|
+| **Send Rate** | 127M msg/s | Fire-and-forget (producer perspective) |
+| **Sustained Rate** | 5-10M msg/s | What Docker Kafka absorbs (including flush) |
+| **Transactional Rate** | 200-500K msg/s | With acks=all (guaranteed durability) |
+
+### Why Such Different Numbers?
+
+```
+SEND RATE (127M msg/s):
+├── Producer calls send() as fast as possible
+├── Messages buffer locally (128MB buffer)
+├── acks=0 means NO acknowledgment
+└── Does NOT include flush time
+
+SUSTAINED RATE (5-10M msg/s):
+├── Includes time for Kafka to actually persist
+├── Flush takes 100+ seconds for 5 seconds of sends
+├── What Kafka can actually absorb
+└── Still acks=0 (fire-and-forget)
+
+TRANSACTIONAL RATE (200-500K msg/s):
+├── acks=all - wait for ALL replicas
+├── Guaranteed durability
+├── Production-safe configuration
+└── 20-50x slower than acks=0
+```
+
+### Which Number to Use?
+
+| Use Case | Metric | Why |
+|----------|--------|-----|
+| Capacity planning (critical data) | Transactional | Guaranteed delivery |
+| Capacity planning (logs/metrics) | Sustained | Realistic throughput |
+| Comparing collection overhead | Send Rate | Isolates producer perf |
+
+See [brochures/README.md](brochures/README.md) for detailed benchmark documentation.
+
+### Pre-Benchmark Cleanup
+
+**ALWAYS** run before benchmarking:
+```bash
+docker volume prune -f          # Free disk space
+docker restart reactive-kafka   # Restart Kafka
+sleep 10                        # Wait for startup
+```
+
+Disk-full conditions cause **10-100x throughput degradation**.
+
 ## Components
 
 ### 1. BatchCalibration

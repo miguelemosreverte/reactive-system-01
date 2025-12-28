@@ -1,0 +1,96 @@
+# =============================================================================
+# KAFKA TRANSACTIONAL BENCHMARK (PRODUCTION-SAFE)
+# =============================================================================
+#
+# WHAT THIS MEASURES:
+#   Throughput with DURABLE writes - messages are guaranteed to be persisted.
+#   This is what you should use in production for critical data.
+#
+# KEY SETTINGS:
+#   acks=all     - Wait for ALL replicas to acknowledge
+#   retries=3    - Retry on transient failures
+#   idempotent   - Exactly-once semantics (no duplicates)
+#
+# EXPECTED THROUGHPUT:
+#   - Docker Kafka: 100K-500K msg/s (20-50x slower than acks=0)
+#   - Production Kafka cluster: 1-5M msg/s depending on replication
+#
+# WHY SO MUCH SLOWER?
+#   1. Producer waits for broker acknowledgment
+#   2. Broker waits for replication to followers
+#   3. fsync to disk before acknowledging
+#   4. Network round-trip for each batch
+#
+# WHEN TO USE:
+#   - Financial transactions
+#   - User actions that must not be lost
+#   - Audit logs
+#   - Any data where loss is unacceptable
+#
+# WHEN NOT TO USE:
+#   - Metrics/telemetry (use acks=1 or acks=0)
+#   - Logs that can be regenerated
+#   - High-frequency events where some loss is OK
+#
+# =============================================================================
+
+name: "Kafka Transactional (acks=all)"
+description: |
+  PRODUCTION-SAFE throughput with guaranteed durability.
+
+  ✅ Messages are guaranteed to be persisted
+  ✅ Exactly-once semantics (no duplicates)
+  ✅ Suitable for critical business data
+
+  Expected: 100K-500K msg/s on Docker (20-50x slower than acks=0)
+
+component: kafka
+category: baseline
+sub_category: production
+
+# Cleanup before running
+pre_run:
+  - docker volume prune -f
+  - docker restart reactive-kafka
+  - sleep 10
+
+duration: 30000
+batch_size: 100                     # Smaller batches for lower latency
+
+config:
+  kafkaBootstrap: "localhost:9092"
+  kafkaAcks: "all"                  # ✅ WAIT FOR ALL REPLICAS
+  kafkaLingerMs: 5
+  kafkaBatchSize: 65536             # 64KB (smaller for durability)
+  kafkaBufferMemory: 33554432       # 32MB
+  kafkaCompression: "lz4"
+  kafkaRetries: 3                   # Retry on failure
+  kafkaEnableIdempotence: true      # Exactly-once
+
+metrics:
+  primary: "transactional_rate_msg_per_sec"
+  includes_acks: true
+  durability: "guaranteed"
+
+baseline:
+  docker_kafka: 200000              # 200K msg/s typical with acks=all
+  production_cluster: 2000000       # 2M msg/s on proper cluster
+  min_acceptable: 50000             # 50K msg/s minimum
+
+notes: |
+  PRODUCTION RECOMMENDATION:
+
+  For critical data:
+    - Use acks=all (this benchmark)
+    - Accept lower throughput for durability
+    - Plan capacity based on this number, not acks=0
+
+  For metrics/logs:
+    - Use acks=1 or acks=0
+    - Higher throughput, acceptable loss
+
+  The 127M msg/s "send rate" is MISLEADING for production planning.
+  Use this transactional benchmark for realistic capacity estimates.
+
+# TODO: Run this benchmark and record actual results
+status: placeholder
