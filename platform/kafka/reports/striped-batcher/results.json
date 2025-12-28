@@ -1,0 +1,28 @@
+{
+  "brochure": "striped-batcher",
+  "name": "StripedBatcher - Lock-Free Adaptive Kafka Batcher",
+  "startTime": "2025-12-28T17:48:38.407533-03:00",
+  "endTime": "2025-12-28T17:53:38.56879-03:00",
+  "durationMs": 300161,
+  "throughput": 3473083.47,
+  "p50Ns": 100.63,
+  "p99Ns": 604.21,
+  "avgLatencyNs": 265.83,
+  "totalOps": 1042484206,
+  "verified": true,
+  "phases": [
+    {"target": 1000, "achieved": 891, "latencyNs": 419.83},
+    {"target": 5000, "achieved": 4727, "latencyNs": 80.76},
+    {"target": 10000, "achieved": 9466, "latencyNs": 42.91},
+    {"target": 50000, "achieved": 48269, "latencyNs": 31.74},
+    {"target": 100000, "achieved": 98085, "latencyNs": 30.78},
+    {"target": 500000, "achieved": 485992, "latencyNs": 42.62},
+    {"target": 1000000, "achieved": 962489, "latencyNs": 92.57},
+    {"target": 2000000, "achieved": 1936928, "latencyNs": 100.63},
+    {"target": 5000000, "achieved": 6960548, "latencyNs": 587.24},
+    {"target": 10000000, "achieved": 7176306, "latencyNs": 570.76},
+    {"target": 15000000, "achieved": 7090695, "latencyNs": 585.95},
+    {"target": 20000000, "achieved": 6837452, "latencyNs": 604.21}
+  ],
+  "notes": "5-minute benchmark: 4 min ramp-up (1K→20M msg/s) + 1 min sustained max load. Lock-free striped design with per-thread buffers."
+}

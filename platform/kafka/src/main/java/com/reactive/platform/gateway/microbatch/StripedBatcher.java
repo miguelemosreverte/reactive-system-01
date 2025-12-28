@@ -69,14 +69,6 @@ public final class StripedBatcher implements MessageBatcher {
         stripes[stripe].write(message);
     }
 
-    /**
-     * Send a batch of messages as a single chunk.
-     * Use when source data is already batched for maximum throughput.
-     */
-    public void sendBatch(byte[] batch) {
-        int stripe = (int) (Thread.currentThread().threadId() % NUM_STRIPES);
-        stripes[stripe].write(batch);
-    }
 
     /**
      * Flush loop: FLUSH when (bytes >= threshold) OR (time >= interval)

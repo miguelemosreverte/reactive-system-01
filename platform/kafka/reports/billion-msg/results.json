@@ -1,0 +1,24 @@
+{
+  "brochure": "billion-msg",
+  "name": "InlineBatcher - Billion Messages Per Second",
+  "interface": "send(message) only - no sendBatch()",
+  "startTime": "2025-12-28T18:41:22.576731-03:00",
+  "endTime": "2025-12-28T18:46:22.653443-03:00",
+  "durationMs": 300076,
+  "totalMessages": 3754869238,
+  "overallThroughput": 12513060.82,
+  "peakThroughput": 20315477,
+  "hitBillion": false,
+  "phases": [
+    {"target": 1000, "achieved": 893, "nsPerMsg": 1119507.42},
+    {"target": 10000, "achieved": 9439, "nsPerMsg": 105935.94},
+    {"target": 100000, "achieved": 97912, "nsPerMsg": 10213.22},
+    {"target": 1000000, "achieved": 980267, "nsPerMsg": 1020.13},
+    {"target": 10000000, "achieved": 9481912, "nsPerMsg": 105.46},
+    {"target": 50000000, "achieved": 20315477, "nsPerMsg": 49.22},
+    {"target": 100000000, "achieved": 18413496, "nsPerMsg": 54.31},
+    {"target": 500000000, "achieved": 19448860, "nsPerMsg": 51.42},
+    {"target": 1000000000, "achieved": 19756391, "nsPerMsg": 50.62},
+    {"target": 0, "achieved": 19413780, "nsPerMsg": 51.51}
+  ]
+}

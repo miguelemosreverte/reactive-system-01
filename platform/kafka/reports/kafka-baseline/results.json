@@ -1,0 +1,16 @@
+{
+  "benchmark": "kafka-baseline",
+  "timestamp": "2025-12-28T17:45:38.406985Z",
+  "acks": "1",
+  "results": [
+    {
+      "mode": "BULK_PRODUCER",
+      "messages": 538250000,
+      "kafkaRecords": 538250,
+      "verified": true,
+      "durationMs": 5004,
+      "throughput": 107563948.84,
+      "notes": "1000 msg/batch, acks=1, LZ4"
+    }
+  ]
+}
