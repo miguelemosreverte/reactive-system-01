@@ -306,6 +306,59 @@ mvn exec:java -Dexec.mainClass="com.reactive.platform.kafka.benchmark.KafkaBasel
     -Dexec.args="ALL 30 localhost:9092 reports/kafka-baseline"
 ```
 
+## Adaptive Ramp Benchmark
+
+**This benchmark tests the actual adaptive behavior** - it gradually increases load from 10 msg/s to maximum, showing how the system adapts batch sizes and maintains low latency.
+
+### Presets
+
+```bash
+# QUICK RAMP: 30 seconds (development)
+mvn exec:java -Dexec.mainClass="com.reactive.platform.kafka.benchmark.AdaptiveRampBenchmark" \
+    -Dexec.args="--ramp-quick localhost:9092"
+
+# FULL RAMP: 5 minutes (thorough validation)
+mvn exec:java -Dexec.mainClass="com.reactive.platform.kafka.benchmark.AdaptiveRampBenchmark" \
+    -Dexec.args="--ramp-full localhost:9092"
+```
+
+### What It Measures
+
+At each of the 10 pressure levels, the benchmark reports:
+- **Target vs Achieved** throughput
+- **Submit Latency** (microseconds)
+- **Batch Size** used (shows adaptation)
+- **Flush Interval** used
+- **Kafka Verification** (confirmed sends match records)
+
+### Sample Output
+
+```
+Level           Target     Achieved    Latency    BatchSize   Interval
+─────────────────────────────────────────────────────────────────────────
+L1_REALTIME       10/s         10/s      4.5µs      100,000      100ms
+L2_FAST           50/s         50/s      4.1µs      100,000      100ms
+L3_LOW           300/s        300/s      0.7µs      100,000      100ms
+L4_MODERATE    1,000/s      1,000/s      0.4µs       10,000 (-90%)   10ms
+L5_BALANCED    5,000/s      5,000/s      0.3µs       10,000       10ms
+L6_THROUGHPUT 25,000/s     24,998/s      0.2µs       10,000       10ms
+L7_HIGH      100,000/s     99,993/s      0.1µs      393,216 (+3832%) 500ms
+L8_AGGRESSIVE 500,000/s   499,961/s      0.1µs      393,216      500ms
+L9_EXTREME 2,000,000/s  1,999,854/s      0.1µs      393,216      500ms
+L10_MAX          MAX    5,053,953/s      0.8µs      393,216      500ms
+─────────────────────────────────────────────────────────────────────────
+VERIFIED: YES ✓
+```
+
+### Key Findings
+
+| Metric | Value |
+|--------|-------|
+| **Max Throughput** | 5.1M msg/s (with adaptive batching) |
+| **Latency Range** | 0.1 - 4.5 µs |
+| **Batch Adaptation** | 100K → 10K (-90%) → 393K (+3832%) |
+| **All Messages Verified** | ✓ YES |
+
 ### Compare Adaptive vs BULK
 
 ```bash
@@ -313,22 +366,6 @@ mvn exec:java -Dexec.mainClass="com.reactive.platform.kafka.benchmark.KafkaBasel
 mvn exec:java -Dexec.mainClass="com.reactive.platform.kafka.benchmark.AdaptiveVsBulkBenchmark" \
     -Dexec.args="30 localhost:9092"
 ```
-
-This runs multiple tests:
-1. BULK baseline (reference)
-2. Adaptive with auto pressure detection
-3. Adaptive forced to L10_MAX (30s latency budget)
-4. Adaptive forced to L9_EXTREME (15s latency budget)
-5. Collector only (no Kafka - pure collection speed)
-6. Parallel Kafka sends (bypass collector)
-
-### Regression Detection
-
-The system compares current throughput against the BULK baseline (131.8M msg/s):
-- **< 10%**: SEVERE REGRESSION
-- **< 50%**: REGRESSION
-- **< 80%**: Acceptable
-- **> 80%**: Good
 
 ## Running Other Benchmarks
 
