@@ -328,6 +328,11 @@ public final class BatchCalibration implements AutoCloseable {
         return currentPressure;
     }
 
+    /** Set fixed pressure level (for testing/benchmarking) */
+    public void setFixedPressure(PressureLevel level) {
+        this.currentPressure = level;
+    }
+
     /**
      * Get best config for CURRENT pressure level.
      */

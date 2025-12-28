@@ -140,7 +140,8 @@ public final class MicrobatchCollector<T> implements AutoCloseable {
      * Fewer threads = less Kafka contention, potentially higher throughput.
      */
     public static <T> MicrobatchCollector<T> create(Consumer<List<T>> batchConsumer, BatchCalibration calibration, int flushThreadCount) {
-        return new MicrobatchCollector<>(batchConsumer, calibration, 65536, flushThreadCount);
+        int maxBatch = calibration.getCurrentPressure().maxBatchSize();
+        return new MicrobatchCollector<>(batchConsumer, calibration, Math.max(maxBatch, 65536), flushThreadCount);
     }
 
     /**
