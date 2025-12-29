@@ -82,12 +82,45 @@ This document describes the iterative cleanup workflow used to improve code qual
 
 | Class | Purpose |
 |-------|---------|
-| `BenchmarkConstants` | Centralized benchmark configuration |
-| `BenchmarkThreading` | Thread pool and parallel execution utilities |
-| `RateLimiter` | Throughput limiting for benchmarks |
+| `BenchmarkConstants` | Centralized benchmark configuration (loads from HOCON) |
+| `BenchmarkThreading` | Thread pool and parallel execution utilities (eliminates 23+ duplicates) |
+| `RateLimiter` | Throughput limiting for benchmarks (eliminates 6+ duplicates) |
 | `ProducerFactory` | Kafka producer creation with presets |
 | `FormattingUtils` | Human-readable formatting (throughput, bytes, time) |
+| `BenchmarkResult` | Shared result types (RunResult, PhaseResult, etc.) |
 | `Publisher<A>` | Abstract interface hiding Kafka types |
+| `JsonCodec.JsonConfig` | Builder for JSON codec config (hides Jackson) |
+
+## Usage Examples
+
+### BenchmarkThreading
+```java
+// Run timed benchmark across all CPUs
+long total = BenchmarkThreading.runTimed(durationSec, (threadId, endTimeNanos) -> {
+    long count = 0;
+    while (System.nanoTime() < endTimeNanos) {
+        doWork();
+        count++;
+    }
+    return count;
+});
+```
+
+### RateLimiter
+```java
+RateLimiter limiter = RateLimiter.perSecond(1_000_000); // 1M ops/sec
+while (running) {
+    doWork();
+    limiter.acquire();
+}
+```
+
+### JsonCodec with config
+```java
+// Before: JsonCodec.forClass(Event.class, objectMapper)  // exposed Jackson
+// After:
+Codec<Event> codec = JsonCodec.forClass(Event.class, c -> c.lenient().prettyPrint());
+```
 
 ## Benchmark Verification
 
