@@ -230,11 +230,14 @@ public class CounterJob {
                 KAFKA_CONSUMER_FETCH_MIN_BYTES, KAFKA_CONSUMER_FETCH_MAX_BYTES, KAFKA_CONSUMER_MAX_POLL_RECORDS);
 
         // Configure Kafka source with unbounded streaming and trace context extraction
+        // Using committedOffsets with EARLIEST fallback:
+        // - Resumes from last committed offset if available (no duplicate processing)
+        // - Falls back to earliest for new consumer groups (no missed events)
         KafkaSource<CounterEvent> source = KafkaSource.<CounterEvent>builder()
                 .setBootstrapServers(KAFKA_BROKERS)
                 .setTopics(INPUT_TOPIC)
-                .setGroupId("flink-counter-group-v3")  // New group ID for trace-aware version
-                .setStartingOffsets(OffsetsInitializer.latest())
+                .setGroupId("flink-counter-group-v4")  // New group ID to reset offsets
+                .setStartingOffsets(OffsetsInitializer.committedOffsets(org.apache.kafka.clients.consumer.OffsetResetStrategy.EARLIEST))
                 .setDeserializer(new TracingKafkaDeserializer())  // Extracts trace context from headers
                 .setProperties(kafkaProps)
                 .build();

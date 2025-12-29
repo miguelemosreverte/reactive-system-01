@@ -88,6 +88,10 @@ public final class AvroCounterEventCodec {
         avro.setValue(event.value());
         avro.setTimestamp(event.timestamp());
 
+        // Set optional trace fields (null means not present in the union type)
+        avro.setTraceparent(null);
+        avro.setTracestate(null);
+
         // Set timing if present
         if (event.timing() != null) {
             com.reactive.platform.schema.EventTiming timing = new com.reactive.platform.schema.EventTiming();

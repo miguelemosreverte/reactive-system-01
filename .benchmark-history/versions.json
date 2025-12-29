@@ -1,0 +1,16 @@
+{
+  "benchmarks": [
+    {
+      "commit": "5d42b40d90f8560399913245788837f2691819eb",
+      "shortCommit": "5d42b40",
+      "message": "refactor: Scala-style enum naming + Docker HOCON integration",
+      "date": "2025-12-24",
+      "timestamp": "2025-12-26T11:50:34Z",
+      "components": [
+        "kafka",
+        "gateway",
+        "full"
+      ]
+    }
+  ]
+}

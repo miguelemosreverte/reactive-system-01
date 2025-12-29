@@ -1,0 +1,2569 @@
+{
+  "avgCpu": 64.97667100694444,
+  "avgMemory": 8.948254858190909,
+  "avgThroughput": 4833,
+  "component": "kafka",
+  "componentTiming": {
+    "droolsMs": 0,
+    "flinkMs": 0,
+    "gatewayMs": 0,
+    "kafkaMs": 0
+  },
+  "cpuTimeline": [
+    47.4853515625,
+    47.4853515625,
+    47.4853515625,
+    47.4853515625,
+    66.37369791666667,
+    66.37369791666667,
+    66.37369791666667,
+    66.37369791666667,
+    66.37369791666667,
+    61.051432291666664,
+    61.051432291666664,
+    61.051432291666664,
+    61.051432291666664,
+    61.051432291666664,
+    56.160481770833336,
+    56.160481770833336,
+    56.160481770833336,
+    56.160481770833336,
+    56.160481770833336,
+    51.66015625,
+    51.66015625,
+    51.66015625,
+    51.66015625,
+    51.66015625,
+    55.533854166666664,
+    55.533854166666664,
+    55.533854166666664,
+    55.533854166666664,
+    55.533854166666664,
+    60.432942708333336,
+    60.432942708333336,
+    60.432942708333336,
+    60.432942708333336,
+    60.432942708333336,
+    72.94921875,
+    72.94921875,
+    72.94921875,
+    72.94921875,
+    72.94921875,
+    76.45670572916667,
+    76.45670572916667,
+    76.45670572916667,
+    76.45670572916667,
+    76.45670572916667,
+    74.33268229166667,
+    74.33268229166667,
+    74.33268229166667,
+    74.33268229166667,
+    74.33268229166667,
+    72.37955729166667,
+    72.37955729166667,
+    72.37955729166667,
+    72.37955729166667,
+    72.37955729166667,
+    71.91569010416667,
+    71.91569010416667,
+    71.91569010416667,
+    71.91569010416667,
+    71.91569010416667,
+    76.83919270833333,
+    76.83919270833333,
+    76.83919270833333,
+    76.83919270833333
+  ],
+  "description": "Tests Kafka produce/consume round-trip",
+  "durationMs": 65122,
+  "endTime": "2025-12-26T11:50:31.720762857Z",
+  "errorMessage": "",
+  "failedOperations": 0,
+  "latency": {
+    "avg": 1,
+    "max": 18216,
+    "min": 0,
+    "p50": 0,
+    "p95": 1,
+    "p99": 3
+  },
+  "memoryTimeline": [
+    0.4279954823348222,
+    0.4279954823348222,
+    0.4279954823348222,
+    0.4418235042459524,
+    1.0643595984410346,
+    2.154233180805442,
+    6.331386259349997,
+    6.364854091613606,
+    6.364854091613606,
+    6.364854091613606,
+    6.364854091613606,
+    6.364854091613606,
+    6.364854091613606,
+    6.364854091613606,
+    6.364854091613606,
+    6.364854091613606,
+    6.364854091613606,
+    6.364854091613606,
+    6.364854091613606,
+    6.364854091613606,
+    6.046160424362878,
+    2.6294053719446424,
+    3.5912871680374763,
+    3.027097533279705,
+    6.145924473575868,
+    5.940101868984846,
+    1.5892223122931677,
+    10.860321668773171,
+    5.778459697242716,
+    13.389292607038975,
+    1.5450081301118987,
+    13.209349092785219,
+    4.504041697320606,
+    10.584733824947245,
+    11.931950924543528,
+    15.186812986317651,
+    15.901555324687394,
+    5.069199579970127,
+    6.2460538848795135,
+    15.930503814533633,
+    9.832602339839168,
+    31.112680102800876,
+    10.381853292838498,
+    20.390293233835667,
+    12.362728170031836,
+    5.624739414245769,
+    9.089992001612767,
+    17.563297537632348,
+    25.862440666628267,
+    13.202898879473073,
+    6.345293285380101,
+    17.804276975166385,
+    12.969545256995643,
+    5.857021495420236,
+    18.006442635052966,
+    17.212541748946858,
+    6.374779463453523,
+    10.850708222580979,
+    20.807120499598117,
+    11.593938065597904,
+    19.93425333467949,
+    -12.200064569631785,
+    19.63529944739457
+  ],
+  "name": "Kafka Benchmark",
+  "peakCpu": 76.83919270833333,
+  "peakMemory": 31.112680102800876,
+  "peakThroughput": 30000,
+  "prometheusMetrics": {
+    "collectedAt": "2025-12-26T08:50:34-03:00",
+    "services": {
+      "drools": {
+        "jvm": {
+          "heapUsedBytes": 71424360,
+          "heapMaxBytes": 402653184,
+          "heapCommittedBytes": 0,
+          "heapUsagePercent": 17.738431692123413,
+          "nonHeapUsedBytes": 111149552,
+          "nonHeapMaxBytes": 0,
+          "metaspaceUsedBytes": 84098176,
+          "metaspaceMaxBytes": 0,
+          "directBufferBytes": 439441,
+          "memoryPoolBreakdown": {
+            "CodeHeap 'non-nmethods'": 1643264,
+            "CodeHeap 'non-profiled nmethods'": 7752960,
+            "CodeHeap 'profiled nmethods'": 7497088,
+            "Compressed Class Space": 10158064,
+            "Metaspace": 84098176
+          }
+        },
+        "kafka": {
+          "consumerLag": {},
+          "totalLag": 0,
+          "bytesConsumedRate": 0,
+          "bytesProducedRate": 0,
+          "recordsConsumedRate": 0,
+          "recordsProducedRate": 0,
+          "fetchLatencyAvg": 0,
+          "produceLatencyAvg": 0
+        },
+        "http": {
+          "requestsTotal": 0,
+          "requestsRate": 0,
+          "errorRate": 0,
+          "avgResponseTime": 0,
+          "p99ResponseTime": 0
+        },
+        "gc": {
+          "totalPauseSeconds": 0.703,
+          "pauseCount": 55,
+          "avgPauseMs": 12.781818181818181,
+          "maxPauseMs": 0,
+          "gcOverheadPercent": 0,
+          "collectorBreakdown": {
+            "G1 Young Generation": {
+              "count": 55,
+              "totalTimeMs": 703,
+              "avgPauseMs": 12.781818181818181,
+              "maxPauseMs": 0
+            }
+          }
+        },
+        "threads": {
+          "liveThreads": 68,
+          "daemonThreads": 64,
+          "peakThreads": 77,
+          "threadsStarted": 333,
+          "stateBreakdown": {
+            "blocked": 0,
+            "new": 0,
+            "runnable": 7,
+            "terminated": 0,
+            "timed-waiting": 9,
+            "waiting": 52
+          }
+        }
+      },
+      "flink-taskmanager": {
+        "flink": {
+          "cpuLoad": 0.32163742690058483,
+          "heapUsed": 47010528,
+          "heapMax": 291962880,
+          "managedMemoryUsed": 0,
+          "managedMemoryTotal": 348966098,
+          "networkBuffersUsed": 2662,
+          "networkBuffersTotal": 2662,
+          "numRecordsIn": 0,
+          "numRecordsOut": 0,
+          "numBytesIn": 0,
+          "numBytesOut": 0,
+          "backPressuredTimeMsPerSecond": 0,
+          "busyTimeMsPerSecond": 0,
+          "idleTimeMsPerSecond": 0,
+          "checkpointsCompleted": 0,
+          "checkpointsFailed": 0,
+          "lastCheckpointDurationMs": 0
+        }
+      },
+      "gateway": {
+        "jvm": {
+          "heapUsedBytes": 141015840,
+          "heapMaxBytes": 1073741824,
+          "heapCommittedBytes": 0,
+          "heapUsagePercent": 13.133123517036438,
+          "nonHeapUsedBytes": 165115544,
+          "nonHeapMaxBytes": 0,
+          "metaspaceUsedBytes": 90237136,
+          "metaspaceMaxBytes": 0,
+          "directBufferBytes": 33993138,
+          "memoryPoolBreakdown": {
+            "CodeHeap 'non-nmethods'": 1745152,
+            "CodeHeap 'non-profiled nmethods'": 20703488,
+            "CodeHeap 'profiled nmethods'": 41289472,
+            "Compressed Class Space": 11140296,
+            "Metaspace": 90237136
+          }
+        },
+        "kafka": {
+          "consumerLag": {},
+          "totalLag": 0,
+          "bytesConsumedRate": 47.483354023247934,
+          "bytesProducedRate": 0,
+          "recordsConsumedRate": 0,
+          "recordsProducedRate": 0,
+          "fetchLatencyAvg": 501.6515151515151,
+          "produceLatencyAvg": 0
+        },
+        "http": {
+          "requestsTotal": 0,
+          "requestsRate": 0,
+          "errorRate": 0,
+          "avgResponseTime": 0,
+          "p99ResponseTime": 0
+        },
+        "gc": {
+          "totalPauseSeconds": 2.9339999999999997,
+          "pauseCount": 200,
+          "avgPauseMs": 14.669999999999998,
+          "maxPauseMs": 33,
+          "gcOverheadPercent": 0.0036433333333333335,
+          "collectorBreakdown": {
+            "G1 Young Generation": {
+              "count": 200,
+              "totalTimeMs": 2934,
+              "avgPauseMs": 14.67,
+              "maxPauseMs": 33
+            }
+          }
+        },
+        "threads": {
+          "liveThreads": 42,
+          "daemonThreads": 38,
+          "peakThreads": 59,
+          "threadsStarted": 111,
+          "stateBreakdown": {
+            "blocked": 0,
+            "new": 0,
+            "runnable": 14,
+            "terminated": 0,
+            "timed-waiting": 20,
+            "waiting": 8
+          }
+        }
+      }
+    }
+  },
+  "sampleEvents": [
+    {
+      "componentTiming": {
+        "droolsMs": 0,
+        "flinkMs": 0,
+        "gatewayMs": 0,
+        "kafkaMs": 0
+      },
+      "error": "",
+      "id": "kafka_5_1766749772624",
+      "latencyMs": 18211,
+      "otelTraceId": "61c5f4f16b55fb57d2c55d12dbb6a4e6",
+      "status": "success",
+      "timestamp": 1766749790836,
+      "traceData": {
+        "empty": false,
+        "logs": [
+          {
+            "fields": {
+              "@version": "1",
+              "level": "INFO",
+              "level_value": 20000,
+              "logger": "com.reactive.counter.bff.BffController",
+              "message": "BFF: action=increment, value=1, debug=true, requestId=000e982c2754fc830000000000000002, traceId=61c5f4f16b55fb57d2c55d12dbb6a4e6",
+              "service": "counter-application",
+              "serviceName": "counter-application",
+              "serviceVersion": "1.0.0",
+              "spanId": "22c06d65b012aa09",
+              "thread": "reactor-http-epoll-3",
+              "timestamp": "2025-12-26T11:49:32.628814528Z",
+              "traceId": "6b8df36e5c68d8e39d340bf13e0ca1d1",
+              "version": "1.0.0"
+            },
+            "labels": {
+              "compose_service": "gateway",
+              "container": "reactive-application",
+              "container_id": "4177d5de469d74a78bd828647c5b0a438a4da6b66aa1ae0d22f14b72bfcff55e",
+              "level": "INFO",
+              "project": "reactive-system-01",
+              "service": "application"
+            },
+            "line": "{\"timestamp\":\"2025-12-26T11:49:32.628814528Z\",\"@version\":\"1\",\"message\":\"BFF: action=increment, value=1, debug=true, requestId=000e982c2754fc830000000000000002, traceId=61c5f4f16b55fb57d2c55d12dbb6a4e6\",\"logger\":\"com.reactive.counter.bff.BffController\",\"thread\":\"reactor-http-epoll-3\",\"level\":\"INFO\",\"level_value\":20000,\"serviceVersion\":\"1.0.0\",\"serviceName\":\"counter-application\",\"traceId\":\"6b8df36e5c68d8e39d340bf13e0ca1d1\",\"spanId\":\"22c06d65b012aa09\",\"service\":\"counter-application\",\"version\":\"1.0.0\"}",
+            "timestamp": "1766749772628814528"
+          },
+          {
+            "fields": {
+              "@version": "1",
+              "level": "INFO",
+              "level_value": 20000,
+              "logger": "com.reactive.platform.benchmark.ObservabilityFetcher",
+              "message": "Found complete trace by otelTraceId=61c5f4f16b55fb57d2c55d12dbb6a4e6 with 7 spans (stable)",
+              "service": "counter-application",
+              "serviceName": "counter-application",
+              "serviceVersion": "1.0.0",
+              "thread": "parallel-3",
+              "timestamp": "2025-12-26T11:49:50.81940108Z",
+              "version": "1.0.0"
+            },
+            "labels": {
+              "compose_service": "gateway",
+              "container": "reactive-application",
+              "container_id": "4177d5de469d74a78bd828647c5b0a438a4da6b66aa1ae0d22f14b72bfcff55e",
+              "level": "INFO",
+              "project": "reactive-system-01",
+              "service": "application"
+            },
+            "line": "{\"timestamp\":\"2025-12-26T11:49:50.81940108Z\",\"@version\":\"1\",\"message\":\"Found complete trace by otelTraceId=61c5f4f16b55fb57d2c55d12dbb6a4e6 with 7 spans (stable)\",\"logger\":\"com.reactive.platform.benchmark.ObservabilityFetcher\",\"thread\":\"parallel-3\",\"level\":\"INFO\",\"level_value\":20000,\"serviceVersion\":\"1.0.0\",\"serviceName\":\"counter-application\",\"service\":\"counter-application\",\"version\":\"1.0.0\"}",
+            "timestamp": "1766749790819401080"
+          },
+          {
+            "fields": {
+              "@version": "1",
+              "level": "INFO",
+              "level_value": 20000,
+              "logger": "com.reactive.platform.benchmark.ObservabilityFetcher",
+              "message": "Found 1 total logs (requestId=000e982c2754fc830000000000000002, otelTraceId=61c5f4f16b55fb57d2c55d12dbb6a4e6)",
+              "service": "counter-application",
+              "serviceName": "counter-application",
+              "serviceVersion": "1.0.0",
+              "thread": "parallel-3",
+              "timestamp": "2025-12-26T11:49:50.834131658Z",
+              "version": "1.0.0"
+            },
+            "labels": {
+              "compose_service": "gateway",
+              "container": "reactive-application",
+              "container_id": "4177d5de469d74a78bd828647c5b0a438a4da6b66aa1ae0d22f14b72bfcff55e",
+              "level": "INFO",
+              "project": "reactive-system-01",
+              "service": "application"
+            },
+            "line": "{\"timestamp\":\"2025-12-26T11:49:50.834131658Z\",\"@version\":\"1\",\"message\":\"Found 1 total logs (requestId=000e982c2754fc830000000000000002, otelTraceId=61c5f4f16b55fb57d2c55d12dbb6a4e6)\",\"logger\":\"com.reactive.platform.benchmark.ObservabilityFetcher\",\"thread\":\"parallel-3\",\"level\":\"INFO\",\"level_value\":20000,\"serviceVersion\":\"1.0.0\",\"serviceName\":\"counter-application\",\"service\":\"counter-application\",\"version\":\"1.0.0\"}",
+            "timestamp": "1766749790834131658"
+          },
+          {
+            "fields": {},
+            "labels": {
+              "compose_service": "loki",
+              "container": "reactive-loki",
+              "container_id": "b59b2b451135192978461b55a5593f22a98d86a7feea90459f98e759a69016df",
+              "project": "reactive-system-01",
+              "service": "loki"
+            },
+            "line": "level=info ts=2025-12-26T11:49:50.821215819Z caller=roundtrip.go:241 org_id=fake traceID=76981c233053af5b msg=\"executing query\" type=range query=\"{service=~\\\".+\\\"} |= \\\"000e982c2754fc830000000000000002\\\"\" length=3m0s step=1s query_hash=1862863212",
+            "timestamp": "1766749790846639208"
+          },
+          {
+            "fields": {},
+            "labels": {
+              "compose_service": "loki",
+              "container": "reactive-loki",
+              "container_id": "b59b2b451135192978461b55a5593f22a98d86a7feea90459f98e759a69016df",
+              "project": "reactive-system-01",
+              "service": "loki"
+            },
+            "line": "level=info ts=2025-12-26T11:49:50.822542478Z caller=engine.go:234 component=querier org_id=fake traceID=76981c233053af5b msg=\"executing query\" type=range query=\"{service=~\\\".+\\\"} |= \\\"000e982c2754fc830000000000000002\\\"\" length=3m0s step=1s query_hash=1862863212",
+            "timestamp": "1766749790846677499"
+          },
+          {
+            "fields": {},
+            "labels": {
+              "compose_service": "loki",
+              "container": "reactive-loki",
+              "container_id": "b59b2b451135192978461b55a5593f22a98d86a7feea90459f98e759a69016df",
+              "project": "reactive-system-01",
+              "service": "loki"
+            },
+            "line": "level=info ts=2025-12-26T11:49:50.823798179Z caller=metrics.go:159 component=querier org_id=fake traceID=76981c233053af5b latency=fast query=\"{service=~\\\".+\\\"} |= \\\"000e982c2754fc830000000000000002\\\"\" query_hash=1862863212 query_type=filter range_type=range length=3m0s start_delta=2m0.003796054s end_delta=-59.996203863s step=1s duration=1.220784ms status=200 limit=500 returned_lines=1 throughput=74MB total_bytes=90kB total_bytes_structured_metadata=0B lines_per_second=194956 total_lines=238 post_filter_lines=1 total_entries=1 store_chunks_download_time=0s queue_time=30.375µs splits=0 shards=0 cache_chunk_req=0 cache_chunk_hit=0 cache_chunk_bytes_stored=0 cache_chunk_bytes_fetched=0 cache_chunk_download_time=0s cache_index_req=0 cache_index_hit=0 cache_index_download_time=0s cache_stats_results_req=0 cache_stats_results_hit=0 cache_stats_results_download_time=0s cache_result_req=0 cache_result_hit=0 cache_result_download_time=0s",
+            "timestamp": "1766749790846704249"
+          },
+          {
+            "fields": {},
+            "labels": {
+              "compose_service": "loki",
+              "container": "reactive-loki",
+              "container_id": "b59b2b451135192978461b55a5593f22a98d86a7feea90459f98e759a69016df",
+              "project": "reactive-system-01",
+              "service": "loki"
+            },
+            "line": "level=info ts=2025-12-26T11:49:50.824254176Z caller=metrics.go:159 component=frontend org_id=fake traceID=76981c233053af5b latency=fast query=\"{service=~\\\".+\\\"} |= \\\"000e982c2754fc830000000000000002\\\"\" query_hash=1862863212 query_type=filter range_type=range length=3m0s start_delta=2m0.004250343s end_delta=-59.995749574s step=1s duration=2.851899ms status=200 limit=500 returned_lines=0 throughput=32MB total_bytes=90kB total_bytes_structured_metadata=0B lines_per_second=83453 total_lines=238 post_filter_lines=1 total_entries=1 store_chunks_download_time=0s queue_time=30µs splits=0 shards=1 cache_chunk_req=0 cache_chunk_hit=0 cache_chunk_bytes_stored=0 cache_chunk_bytes_fetched=0 cache_chunk_download_time=0s cache_index_req=0 cache_index_hit=0 cache_index_download_time=0s cache_stats_results_req=0 cache_stats_results_hit=0 cache_stats_results_download_time=0s cache_result_req=0 cache_result_hit=0 cache_result_download_time=0s",
+            "timestamp": "1766749790846706915"
+          },
+          {
+            "fields": {},
+            "labels": {
+              "compose_service": "loki",
+              "container": "reactive-loki",
+              "container_id": "b59b2b451135192978461b55a5593f22a98d86a7feea90459f98e759a69016df",
+              "project": "reactive-system-01",
+              "service": "loki"
+            },
+            "line": "level=info ts=2025-12-26T11:49:50.825949583Z caller=roundtrip.go:241 org_id=fake traceID=7e1e4fa467fbb7cf msg=\"executing query\" type=range query=\"{service=~\\\".+\\\"} |= \\\"61c5f4f16b55fb57d2c55d12dbb6a4e6\\\"\" length=3m0s step=1s query_hash=3766018531",
+            "timestamp": "1766749790846717165"
+          },
+          {
+            "fields": {},
+            "labels": {
+              "compose_service": "loki",
+              "container": "reactive-loki",
+              "container_id": "b59b2b451135192978461b55a5593f22a98d86a7feea90459f98e759a69016df",
+              "project": "reactive-system-01",
+              "service": "loki"
+            },
+            "line": "level=info ts=2025-12-26T11:49:50.826559537Z caller=engine.go:234 component=querier org_id=fake traceID=7e1e4fa467fbb7cf msg=\"executing query\" type=range query=\"{service=~\\\".+\\\"} |= \\\"61c5f4f16b55fb57d2c55d12dbb6a4e6\\\"\" length=3m0s step=1s query_hash=3766018531",
+            "timestamp": "1766749790846730999"
+          },
+          {
+            "fields": {},
+            "labels": {
+              "compose_service": "loki",
+              "container": "reactive-loki",
+              "container_id": "b59b2b451135192978461b55a5593f22a98d86a7feea90459f98e759a69016df",
+              "project": "reactive-system-01",
+              "service": "loki"
+            },
+            "line": "level=info ts=2025-12-26T11:49:50.832308461Z caller=metrics.go:159 component=querier org_id=fake traceID=7e1e4fa467fbb7cf latency=fast query=\"{service=~\\\".+\\\"} |= \\\"61c5f4f16b55fb57d2c55d12dbb6a4e6\\\"\" query_hash=3766018531 query_type=filter range_type=range length=3m0s start_delta=2m0.012304378s end_delta=-59.987695539s step=1s duration=5.690299ms status=200 limit=500 returned_lines=1 throughput=16MB total_bytes=90kB total_bytes_structured_metadata=0B lines_per_second=41825 total_lines=238 post_filter_lines=1 total_entries=1 store_chunks_download_time=0s queue_time=15.957µs splits=0 shards=0 cache_chunk_req=0 cache_chunk_hit=0 cache_chunk_bytes_stored=0 cache_chunk_bytes_fetched=0 cache_chunk_download_time=0s cache_index_req=0 cache_index_hit=0 cache_index_download_time=0s cache_stats_results_req=0 cache_stats_results_hit=0 cache_stats_results_download_time=0s cache_result_req=0 cache_result_hit=0 cache_result_download_time=0s",
+            "timestamp": "1766749790846732874"
+          },
+          {
+            "fields": {},
+            "labels": {
+              "compose_service": "loki",
+              "container": "reactive-loki",
+              "container_id": "b59b2b451135192978461b55a5593f22a98d86a7feea90459f98e759a69016df",
+              "project": "reactive-system-01",
+              "service": "loki"
+            },
+            "line": "level=info ts=2025-12-26T11:49:50.832713333Z caller=metrics.go:159 component=frontend org_id=fake traceID=7e1e4fa467fbb7cf latency=fast query=\"{service=~\\\".+\\\"} |= \\\"61c5f4f16b55fb57d2c55d12dbb6a4e6\\\"\" query_hash=3766018531 query_type=filter range_type=range length=3m0s start_delta=2m0.012708792s end_delta=-59.987291167s step=1s duration=6.659294ms status=200 limit=500 returned_lines=0 throughput=14MB total_bytes=90kB total_bytes_structured_metadata=0B lines_per_second=35739 total_lines=238 post_filter_lines=1 total_entries=1 store_chunks_download_time=0s queue_time=16µs splits=0 shards=1 cache_chunk_req=0 cache_chunk_hit=0 cache_chunk_bytes_stored=0 cache_chunk_bytes_fetched=0 cache_chunk_download_time=0s cache_index_req=0 cache_index_hit=0 cache_index_download_time=0s cache_stats_results_req=0 cache_stats_results_hit=0 cache_stats_results_download_time=0s cache_result_req=0 cache_result_hit=0 cache_result_download_time=0s",
+            "timestamp": "1766749790846734707"
+          }
+        ],
+        "trace": {
+          "empty": false,
+          "processes": {
+            "p1": {
+              "serviceName": "jaeger-all-in-one",
+              "tags": [
+                {
+                  "key": "host.name",
+                  "type": "string",
+                  "value": "19f6ce227065"
+                },
+                {
+                  "key": "os.type",
+                  "type": "string",
+                  "value": "linux"
+                },
+                {
+                  "key": "otel.library.name",
+                  "type": "string",
+                  "value": "go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+                },
+                {
+                  "key": "otel.library.version",
+                  "type": "string",
+                  "value": "0.46.1"
+                },
+                {
+                  "key": "telemetry.sdk.language",
+                  "type": "string",
+                  "value": "go"
+                },
+                {
+                  "key": "telemetry.sdk.name",
+                  "type": "string",
+                  "value": "opentelemetry"
+                },
+                {
+                  "key": "telemetry.sdk.version",
+                  "type": "string",
+                  "value": "1.21.0"
+                }
+              ]
+            }
+          },
+          "spans": [
+            {
+              "duration": 74,
+              "operationName": "/api/traces/{traceID}",
+              "processID": "p1",
+              "references": [
+                {
+                  "refType": "CHILD_OF",
+                  "spanID": "e89a43f5fc82e0a8",
+                  "traceID": "61c5f4f16b55fb57d2c55d12dbb6a4e6"
+                }
+              ],
+              "spanID": "b683dac48e21c98d",
+              "startTime": 1766749786298586,
+              "tags": [
+                {
+                  "key": "http.method",
+                  "type": "string",
+                  "value": "GET"
+                },
+                {
+                  "key": "http.scheme",
+                  "type": "string",
+                  "value": "http"
+                },
+                {
+                  "key": "http.flavor",
+                  "type": "string",
+                  "value": "1.1"
+                },
+                {
+                  "key": "net.host.name",
+                  "type": "string",
+                  "value": "jaeger"
+                },
+                {
+                  "key": "net.host.port",
+                  "type": "int64",
+                  "value": 16686
+                },
+                {
+                  "key": "net.sock.peer.addr",
+                  "type": "string",
+                  "value": "172.18.0.11"
+                },
+                {
+                  "key": "net.sock.peer.port",
+                  "type": "int64",
+                  "value": 34316
+                },
+                {
+                  "key": "http.user_agent",
+                  "type": "string",
+                  "value": "Java-http-client/21.0.9"
+                },
+                {
+                  "key": "http.route",
+                  "type": "string",
+                  "value": "/api/traces/{traceID}"
+                },
+                {
+                  "key": "http.wrote_bytes",
+                  "type": "int64",
+                  "value": 93
+                },
+                {
+                  "key": "http.status_code",
+                  "type": "int64",
+                  "value": 404
+                },
+                {
+                  "key": "span.kind",
+                  "type": "string",
+                  "value": "server"
+                },
+                {
+                  "key": "internal.span.format",
+                  "type": "string",
+                  "value": "otlp"
+                }
+              ],
+              "traceID": "61c5f4f16b55fb57d2c55d12dbb6a4e6"
+            },
+            {
+              "duration": 61,
+              "operationName": "/api/traces/{traceID}",
+              "processID": "p1",
+              "references": [
+                {
+                  "refType": "CHILD_OF",
+                  "spanID": "3a6d0435122c5f82",
+                  "traceID": "61c5f4f16b55fb57d2c55d12dbb6a4e6"
+                }
+              ],
+              "spanID": "96b85dd5ad0a1e2e",
+              "startTime": 1766749786800760,
+              "tags": [
+                {
+                  "key": "http.method",
+                  "type": "string",
+                  "value": "GET"
+                },
+                {
+                  "key": "http.scheme",
+                  "type": "string",
+                  "value": "http"
+                },
+                {
+                  "key": "http.flavor",
+                  "type": "string",
+                  "value": "1.1"
+                },
+                {
+                  "key": "net.host.name",
+                  "type": "string",
+                  "value": "jaeger"
+                },
+                {
+                  "key": "net.host.port",
+                  "type": "int64",
+                  "value": 16686
+                },
+                {
+                  "key": "net.sock.peer.addr",
+                  "type": "string",
+                  "value": "172.18.0.11"
+                },
+                {
+                  "key": "net.sock.peer.port",
+                  "type": "int64",
+                  "value": 34316
+                },
+                {
+                  "key": "http.user_agent",
+                  "type": "string",
+                  "value": "Java-http-client/21.0.9"
+                },
+                {
+                  "key": "http.route",
+                  "type": "string",
+                  "value": "/api/traces/{traceID}"
+                },
+                {
+                  "key": "http.wrote_bytes",
+                  "type": "int64",
+                  "value": 93
+                },
+                {
+                  "key": "http.status_code",
+                  "type": "int64",
+                  "value": 404
+                },
+                {
+                  "key": "span.kind",
+                  "type": "string",
+                  "value": "server"
+                },
+                {
+                  "key": "internal.span.format",
+                  "type": "string",
+                  "value": "otlp"
+                }
+              ],
+              "traceID": "61c5f4f16b55fb57d2c55d12dbb6a4e6"
+            },
+            {
+              "duration": 28,
+              "operationName": "/api/traces/{traceID}",
+              "processID": "p1",
+              "references": [
+                {
+                  "refType": "CHILD_OF",
+                  "spanID": "3af59fb9d9781f10",
+                  "traceID": "61c5f4f16b55fb57d2c55d12dbb6a4e6"
+                }
+              ],
+              "spanID": "68a668040533848e",
+              "startTime": 1766749787303218,
+              "tags": [
+                {
+                  "key": "http.method",
+                  "type": "string",
+                  "value": "GET"
+                },
+                {
+                  "key": "http.scheme",
+                  "type": "string",
+                  "value": "http"
+                },
+                {
+                  "key": "http.flavor",
+                  "type": "string",
+                  "value": "1.1"
+                },
+                {
+                  "key": "net.host.name",
+                  "type": "string",
+                  "value": "jaeger"
+                },
+                {
+                  "key": "net.host.port",
+                  "type": "int64",
+                  "value": 16686
+                },
+                {
+                  "key": "net.sock.peer.addr",
+                  "type": "string",
+                  "value": "172.18.0.11"
+                },
+                {
+                  "key": "net.sock.peer.port",
+                  "type": "int64",
+                  "value": 34316
+                },
+                {
+                  "key": "http.user_agent",
+                  "type": "string",
+                  "value": "Java-http-client/21.0.9"
+                },
+                {
+                  "key": "http.route",
+                  "type": "string",
+                  "value": "/api/traces/{traceID}"
+                },
+                {
+                  "key": "http.wrote_bytes",
+                  "type": "int64",
+                  "value": 93
+                },
+                {
+                  "key": "http.status_code",
+                  "type": "int64",
+                  "value": 404
+                },
+                {
+                  "key": "span.kind",
+                  "type": "string",
+                  "value": "server"
+                },
+                {
+                  "key": "internal.span.format",
+                  "type": "string",
+                  "value": "otlp"
+                }
+              ],
+              "traceID": "61c5f4f16b55fb57d2c55d12dbb6a4e6"
+            },
+            {
+              "duration": 142,
+              "operationName": "/api/traces/{traceID}",
+              "processID": "p1",
+              "references": [
+                {
+                  "refType": "CHILD_OF",
+                  "spanID": "bec6f8526bbff88d",
+                  "traceID": "61c5f4f16b55fb57d2c55d12dbb6a4e6"
+                }
+              ],
+              "spanID": "d31003d58fa0f794",
+              "startTime": 1766749787804020,
+              "tags": [
+                {
+                  "key": "http.method",
+                  "type": "string",
+                  "value": "GET"
+                },
+                {
+                  "key": "http.scheme",
+                  "type": "string",
+                  "value": "http"
+                },
+                {
+                  "key": "http.flavor",
+                  "type": "string",
+                  "value": "1.1"
+                },
+                {
+                  "key": "net.host.name",
+                  "type": "string",
+                  "value": "jaeger"
+                },
+                {
+                  "key": "net.host.port",
+                  "type": "int64",
+                  "value": 16686
+                },
+                {
+                  "key": "net.sock.peer.addr",
+                  "type": "string",
+                  "value": "172.18.0.11"
+                },
+                {
+                  "key": "net.sock.peer.port",
+                  "type": "int64",
+                  "value": 34316
+                },
+                {
+                  "key": "http.user_agent",
+                  "type": "string",
+                  "value": "Java-http-client/21.0.9"
+                },
+                {
+                  "key": "http.route",
+                  "type": "string",
+                  "value": "/api/traces/{traceID}"
+                },
+                {
+                  "key": "http.wrote_bytes",
+                  "type": "int64",
+                  "value": 93
+                },
+                {
+                  "key": "http.status_code",
+                  "type": "int64",
+                  "value": 404
+                },
+                {
+                  "key": "span.kind",
+                  "type": "string",
+                  "value": "server"
+                },
+                {
+                  "key": "internal.span.format",
+                  "type": "string",
+                  "value": "otlp"
+                }
+              ],
+              "traceID": "61c5f4f16b55fb57d2c55d12dbb6a4e6"
+            },
+            {
+              "duration": 48,
+              "operationName": "/api/traces/{traceID}",
+              "processID": "p1",
+              "references": [
+                {
+                  "refType": "CHILD_OF",
+                  "spanID": "2d3b15f48fb079da",
+                  "traceID": "61c5f4f16b55fb57d2c55d12dbb6a4e6"
+                }
+              ],
+              "spanID": "fb307c495cae781d",
+              "startTime": 1766749788305164,
+              "tags": [
+                {
+                  "key": "http.method",
+                  "type": "string",
+                  "value": "GET"
+                },
+                {
+                  "key": "http.scheme",
+                  "type": "string",
+                  "value": "http"
+                },
+                {
+                  "key": "http.flavor",
+                  "type": "string",
+                  "value": "1.1"
+                },
+                {
+                  "key": "net.host.name",
+                  "type": "string",
+                  "value": "jaeger"
+                },
+                {
+                  "key": "net.host.port",
+                  "type": "int64",
+                  "value": 16686
+                },
+                {
+                  "key": "net.sock.peer.addr",
+                  "type": "string",
+                  "value": "172.18.0.11"
+                },
+                {
+                  "key": "net.sock.peer.port",
+                  "type": "int64",
+                  "value": 34316
+                },
+                {
+                  "key": "http.user_agent",
+                  "type": "string",
+                  "value": "Java-http-client/21.0.9"
+                },
+                {
+                  "key": "http.route",
+                  "type": "string",
+                  "value": "/api/traces/{traceID}"
+                },
+                {
+                  "key": "http.wrote_bytes",
+                  "type": "int64",
+                  "value": 93
+                },
+                {
+                  "key": "http.status_code",
+                  "type": "int64",
+                  "value": 404
+                },
+                {
+                  "key": "span.kind",
+                  "type": "string",
+                  "value": "server"
+                },
+                {
+                  "key": "internal.span.format",
+                  "type": "string",
+                  "value": "otlp"
+                }
+              ],
+              "traceID": "61c5f4f16b55fb57d2c55d12dbb6a4e6"
+            },
+            {
+              "duration": 37,
+              "operationName": "/api/traces/{traceID}",
+              "processID": "p1",
+              "references": [
+                {
+                  "refType": "CHILD_OF",
+                  "spanID": "f59d9288bb34fcdd",
+                  "traceID": "61c5f4f16b55fb57d2c55d12dbb6a4e6"
+                }
+              ],
+              "spanID": "6ca211c617fdac26",
+              "startTime": 1766749788807844,
+              "tags": [
+                {
+                  "key": "http.method",
+                  "type": "string",
+                  "value": "GET"
+                },
+                {
+                  "key": "http.scheme",
+                  "type": "string",
+                  "value": "http"
+                },
+                {
+                  "key": "http.flavor",
+                  "type": "string",
+                  "value": "1.1"
+                },
+                {
+                  "key": "net.host.name",
+                  "type": "string",
+                  "value": "jaeger"
+                },
+                {
+                  "key": "net.host.port",
+                  "type": "int64",
+                  "value": 16686
+                },
+                {
+                  "key": "net.sock.peer.addr",
+                  "type": "string",
+                  "value": "172.18.0.11"
+                },
+                {
+                  "key": "net.sock.peer.port",
+                  "type": "int64",
+                  "value": 34292
+                },
+                {
+                  "key": "http.user_agent",
+                  "type": "string",
+                  "value": "Java-http-client/21.0.9"
+                },
+                {
+                  "key": "http.route",
+                  "type": "string",
+                  "value": "/api/traces/{traceID}"
+                },
+                {
+                  "key": "http.wrote_bytes",
+                  "type": "int64",
+                  "value": 93
+                },
+                {
+                  "key": "http.status_code",
+                  "type": "int64",
+                  "value": 404
+                },
+                {
+                  "key": "span.kind",
+                  "type": "string",
+                  "value": "server"
+                },
+                {
+                  "key": "internal.span.format",
+                  "type": "string",
+                  "value": "otlp"
+                }
+              ],
+              "traceID": "61c5f4f16b55fb57d2c55d12dbb6a4e6"
+            },
+            {
+              "duration": 40,
+              "operationName": "/api/traces/{traceID}",
+              "processID": "p1",
+              "references": [
+                {
+                  "refType": "CHILD_OF",
+                  "spanID": "d392451b0f418d05",
+                  "traceID": "61c5f4f16b55fb57d2c55d12dbb6a4e6"
+                }
+              ],
+              "spanID": "0c350af10c6cba4b",
+              "startTime": 1766749789308834,
+              "tags": [
+                {
+                  "key": "http.method",
+                  "type": "string",
+                  "value": "GET"
+                },
+                {
+                  "key": "http.scheme",
+                  "type": "string",
+                  "value": "http"
+                },
+                {
+                  "key": "http.flavor",
+                  "type": "string",
+                  "value": "1.1"
+                },
+                {
+                  "key": "net.host.name",
+                  "type": "string",
+                  "value": "jaeger"
+                },
+                {
+                  "key": "net.host.port",
+                  "type": "int64",
+                  "value": 16686
+                },
+                {
+                  "key": "net.sock.peer.addr",
+                  "type": "string",
+                  "value": "172.18.0.11"
+                },
+                {
+                  "key": "net.sock.peer.port",
+                  "type": "int64",
+                  "value": 34316
+                },
+                {
+                  "key": "http.user_agent",
+                  "type": "string",
+                  "value": "Java-http-client/21.0.9"
+                },
+                {
+                  "key": "http.route",
+                  "type": "string",
+                  "value": "/api/traces/{traceID}"
+                },
+                {
+                  "key": "http.wrote_bytes",
+                  "type": "int64",
+                  "value": 93
+                },
+                {
+                  "key": "http.status_code",
+                  "type": "int64",
+                  "value": 404
+                },
+                {
+                  "key": "span.kind",
+                  "type": "string",
+                  "value": "server"
+                },
+                {
+                  "key": "internal.span.format",
+                  "type": "string",
+                  "value": "otlp"
+                }
+              ],
+              "traceID": "61c5f4f16b55fb57d2c55d12dbb6a4e6"
+            },
+            {
+              "duration": 255,
+              "operationName": "/api/traces/{traceID}",
+              "processID": "p1",
+              "references": [
+                {
+                  "refType": "CHILD_OF",
+                  "spanID": "985e4accd1370fa4",
+                  "traceID": "61c5f4f16b55fb57d2c55d12dbb6a4e6"
+                }
+              ],
+              "spanID": "fa7b2219f272bdea",
+              "startTime": 1766749789812427,
+              "tags": [
+                {
+                  "key": "http.method",
+                  "type": "string",
+                  "value": "GET"
+                },
+                {
+                  "key": "http.scheme",
+                  "type": "string",
+                  "value": "http"
+                },
+                {
+                  "key": "http.flavor",
+                  "type": "string",
+                  "value": "1.1"
+                },
+                {
+                  "key": "net.host.name",
+                  "type": "string",
+                  "value": "jaeger"
+                },
+                {
+                  "key": "net.host.port",
+                  "type": "int64",
+                  "value": 16686
+                },
+                {
+                  "key": "net.sock.peer.addr",
+                  "type": "string",
+                  "value": "172.18.0.11"
+                },
+                {
+                  "key": "net.sock.peer.port",
+                  "type": "int64",
+                  "value": 34314
+                },
+                {
+                  "key": "http.user_agent",
+                  "type": "string",
+                  "value": "Java-http-client/21.0.9"
+                },
+                {
+                  "key": "http.route",
+                  "type": "string",
+                  "value": "/api/traces/{traceID}"
+                },
+                {
+                  "key": "http.wrote_bytes",
+                  "type": "int64",
+                  "value": 8742
+                },
+                {
+                  "key": "http.status_code",
+                  "type": "int64",
+                  "value": 200
+                },
+                {
+                  "key": "span.kind",
+                  "type": "string",
+                  "value": "server"
+                },
+                {
+                  "key": "internal.span.format",
+                  "type": "string",
+                  "value": "otlp"
+                }
+              ],
+              "traceID": "61c5f4f16b55fb57d2c55d12dbb6a4e6"
+            },
+            {
+              "duration": 165,
+              "operationName": "/api/traces/{traceID}",
+              "processID": "p1",
+              "references": [
+                {
+                  "refType": "CHILD_OF",
+                  "spanID": "c99909e339aef67a",
+                  "traceID": "61c5f4f16b55fb57d2c55d12dbb6a4e6"
+                }
+              ],
+              "spanID": "d416f63cf7c7db13",
+              "startTime": 1766749790314245,
+              "tags": [
+                {
+                  "key": "http.method",
+                  "type": "string",
+                  "value": "GET"
+                },
+                {
+                  "key": "http.scheme",
+                  "type": "string",
+                  "value": "http"
+                },
+                {
+                  "key": "http.flavor",
+                  "type": "string",
+                  "value": "1.1"
+                },
+                {
+                  "key": "net.host.name",
+                  "type": "string",
+                  "value": "jaeger"
+                },
+                {
+                  "key": "net.host.port",
+                  "type": "int64",
+                  "value": 16686
+                },
+                {
+                  "key": "net.sock.peer.addr",
+                  "type": "string",
+                  "value": "172.18.0.11"
+                },
+                {
+                  "key": "net.sock.peer.port",
+                  "type": "int64",
+                  "value": 34314
+                },
+                {
+                  "key": "http.user_agent",
+                  "type": "string",
+                  "value": "Java-http-client/21.0.9"
+                },
+                {
+                  "key": "http.route",
+                  "type": "string",
+                  "value": "/api/traces/{traceID}"
+                },
+                {
+                  "key": "http.wrote_bytes",
+                  "type": "int64",
+                  "value": 8742
+                },
+                {
+                  "key": "http.status_code",
+                  "type": "int64",
+                  "value": 200
+                },
+                {
+                  "key": "span.kind",
+                  "type": "string",
+                  "value": "server"
+                },
+                {
+                  "key": "internal.span.format",
+                  "type": "string",
+                  "value": "otlp"
+                }
+              ],
+              "traceID": "61c5f4f16b55fb57d2c55d12dbb6a4e6"
+            },
+            {
+              "duration": 296,
+              "operationName": "/api/traces/{traceID}",
+              "processID": "p1",
+              "references": [
+                {
+                  "refType": "CHILD_OF",
+                  "spanID": "28d030e08a3db27c",
+                  "traceID": "61c5f4f16b55fb57d2c55d12dbb6a4e6"
+                }
+              ],
+              "spanID": "6fdf0a441f233b31",
+              "startTime": 1766749790815600,
+              "tags": [
+                {
+                  "key": "http.method",
+                  "type": "string",
+                  "value": "GET"
+                },
+                {
+                  "key": "http.scheme",
+                  "type": "string",
+                  "value": "http"
+                },
+                {
+                  "key": "http.flavor",
+                  "type": "string",
+                  "value": "1.1"
+                },
+                {
+                  "key": "net.host.name",
+                  "type": "string",
+                  "value": "jaeger"
+                },
+                {
+                  "key": "net.host.port",
+                  "type": "int64",
+                  "value": 16686
+                },
+                {
+                  "key": "net.sock.peer.addr",
+                  "type": "string",
+                  "value": "172.18.0.11"
+                },
+                {
+                  "key": "net.sock.peer.port",
+                  "type": "int64",
+                  "value": 34294
+                },
+                {
+                  "key": "http.user_agent",
+                  "type": "string",
+                  "value": "Java-http-client/21.0.9"
+                },
+                {
+                  "key": "http.route",
+                  "type": "string",
+                  "value": "/api/traces/{traceID}"
+                },
+                {
+                  "key": "http.wrote_bytes",
+                  "type": "int64",
+                  "value": 8742
+                },
+                {
+                  "key": "http.status_code",
+                  "type": "int64",
+                  "value": 200
+                },
+                {
+                  "key": "span.kind",
+                  "type": "string",
+                  "value": "server"
+                },
+                {
+                  "key": "internal.span.format",
+                  "type": "string",
+                  "value": "otlp"
+                }
+              ],
+              "traceID": "61c5f4f16b55fb57d2c55d12dbb6a4e6"
+            }
+          ],
+          "traceId": "61c5f4f16b55fb57d2c55d12dbb6a4e6"
+        }
+      },
+      "traceId": "000e982c2754fc830000000000000002"
+    },
+    {
+      "componentTiming": {
+        "droolsMs": 0,
+        "flinkMs": 0,
+        "gatewayMs": 0,
+        "kafkaMs": 0
+      },
+      "error": "",
+      "id": "kafka_2_1766749772624",
+      "latencyMs": 18216,
+      "otelTraceId": "c5eac775f27ed6fa8b9aec9c21d52524",
+      "status": "success",
+      "timestamp": 1766749790841,
+      "traceData": {
+        "empty": false,
+        "logs": [
+          {
+            "fields": {
+              "@version": "1",
+              "level": "INFO",
+              "level_value": 20000,
+              "logger": "com.reactive.counter.bff.BffController",
+              "message": "BFF: action=increment, value=1, debug=true, requestId=000e982c2753fc830000000000000002, traceId=c5eac775f27ed6fa8b9aec9c21d52524",
+              "service": "counter-application",
+              "serviceName": "counter-application",
+              "serviceVersion": "1.0.0",
+              "spanId": "22c06d65b012aa09",
+              "thread": "reactor-http-epoll-3",
+              "timestamp": "2025-12-26T11:49:32.627761201Z",
+              "traceId": "6b8df36e5c68d8e39d340bf13e0ca1d1",
+              "version": "1.0.0"
+            },
+            "labels": {
+              "compose_service": "gateway",
+              "container": "reactive-application",
+              "container_id": "4177d5de469d74a78bd828647c5b0a438a4da6b66aa1ae0d22f14b72bfcff55e",
+              "level": "INFO",
+              "project": "reactive-system-01",
+              "service": "application"
+            },
+            "line": "{\"timestamp\":\"2025-12-26T11:49:32.627761201Z\",\"@version\":\"1\",\"message\":\"BFF: action=increment, value=1, debug=true, requestId=000e982c2753fc830000000000000002, traceId=c5eac775f27ed6fa8b9aec9c21d52524\",\"logger\":\"com.reactive.counter.bff.BffController\",\"thread\":\"reactor-http-epoll-3\",\"level\":\"INFO\",\"level_value\":20000,\"serviceVersion\":\"1.0.0\",\"serviceName\":\"counter-application\",\"traceId\":\"6b8df36e5c68d8e39d340bf13e0ca1d1\",\"spanId\":\"22c06d65b012aa09\",\"service\":\"counter-application\",\"version\":\"1.0.0\"}",
+            "timestamp": "1766749772627761201"
+          },
+          {
+            "fields": {
+              "@version": "1",
+              "level": "INFO",
+              "level_value": 20000,
+              "logger": "com.reactive.platform.benchmark.ObservabilityFetcher",
+              "message": "Found complete trace by otelTraceId=c5eac775f27ed6fa8b9aec9c21d52524 with 7 spans (stable)",
+              "service": "counter-application",
+              "serviceName": "counter-application",
+              "serviceVersion": "1.0.0",
+              "thread": "parallel-4",
+              "timestamp": "2025-12-26T11:49:50.816286808Z",
+              "version": "1.0.0"
+            },
+            "labels": {
+              "compose_service": "gateway",
+              "container": "reactive-application",
+              "container_id": "4177d5de469d74a78bd828647c5b0a438a4da6b66aa1ae0d22f14b72bfcff55e",
+              "level": "INFO",
+              "project": "reactive-system-01",
+              "service": "application"
+            },
+            "line": "{\"timestamp\":\"2025-12-26T11:49:50.816286808Z\",\"@version\":\"1\",\"message\":\"Found complete trace by otelTraceId=c5eac775f27ed6fa8b9aec9c21d52524 with 7 spans (stable)\",\"logger\":\"com.reactive.platform.benchmark.ObservabilityFetcher\",\"thread\":\"parallel-4\",\"level\":\"INFO\",\"level_value\":20000,\"serviceVersion\":\"1.0.0\",\"serviceName\":\"counter-application\",\"service\":\"counter-application\",\"version\":\"1.0.0\"}",
+            "timestamp": "1766749790816286808"
+          },
+          {
+            "fields": {
+              "@version": "1",
+              "level": "INFO",
+              "level_value": 20000,
+              "logger": "com.reactive.platform.benchmark.ObservabilityFetcher",
+              "message": "Found 1 total logs (requestId=000e982c2753fc830000000000000002, otelTraceId=c5eac775f27ed6fa8b9aec9c21d52524)",
+              "service": "counter-application",
+              "serviceName": "counter-application",
+              "serviceVersion": "1.0.0",
+              "thread": "parallel-4",
+              "timestamp": "2025-12-26T11:49:50.83902417Z",
+              "version": "1.0.0"
+            },
+            "labels": {
+              "compose_service": "gateway",
+              "container": "reactive-application",
+              "container_id": "4177d5de469d74a78bd828647c5b0a438a4da6b66aa1ae0d22f14b72bfcff55e",
+              "level": "INFO",
+              "project": "reactive-system-01",
+              "service": "application"
+            },
+            "line": "{\"timestamp\":\"2025-12-26T11:49:50.83902417Z\",\"@version\":\"1\",\"message\":\"Found 1 total logs (requestId=000e982c2753fc830000000000000002, otelTraceId=c5eac775f27ed6fa8b9aec9c21d52524)\",\"logger\":\"com.reactive.platform.benchmark.ObservabilityFetcher\",\"thread\":\"parallel-4\",\"level\":\"INFO\",\"level_value\":20000,\"serviceVersion\":\"1.0.0\",\"serviceName\":\"counter-application\",\"service\":\"counter-application\",\"version\":\"1.0.0\"}",
+            "timestamp": "1766749790839024170"
+          },
+          {
+            "fields": {},
+            "labels": {
+              "compose_service": "loki",
+              "container": "reactive-loki",
+              "container_id": "b59b2b451135192978461b55a5593f22a98d86a7feea90459f98e759a69016df",
+              "project": "reactive-system-01",
+              "service": "loki"
+            },
+            "line": "level=info ts=2025-12-26T11:49:50.818138046Z caller=roundtrip.go:241 org_id=fake traceID=76b96bfb366731a7 msg=\"executing query\" type=range query=\"{service=~\\\".+\\\"} |= \\\"000e982c2753fc830000000000000002\\\"\" length=3m0s step=1s query_hash=2412902329",
+            "timestamp": "1766749790846626916"
+          },
+          {
+            "fields": {},
+            "labels": {
+              "compose_service": "loki",
+              "container": "reactive-loki",
+              "container_id": "b59b2b451135192978461b55a5593f22a98d86a7feea90459f98e759a69016df",
+              "project": "reactive-system-01",
+              "service": "loki"
+            },
+            "line": "level=info ts=2025-12-26T11:49:50.821002071Z caller=engine.go:234 component=querier org_id=fake traceID=76b96bfb366731a7 msg=\"executing query\" type=range query=\"{service=~\\\".+\\\"} |= \\\"000e982c2753fc830000000000000002\\\"\" length=3m0s step=1s query_hash=2412902329",
+            "timestamp": "1766749790846638041"
+          },
+          {
+            "fields": {},
+            "labels": {
+              "compose_service": "loki",
+              "container": "reactive-loki",
+              "container_id": "b59b2b451135192978461b55a5593f22a98d86a7feea90459f98e759a69016df",
+              "project": "reactive-system-01",
+              "service": "loki"
+            },
+            "line": "level=info ts=2025-12-26T11:49:50.821590776Z caller=metrics.go:159 component=querier org_id=fake traceID=76b96bfb366731a7 latency=fast query=\"{service=~\\\".+\\\"} |= \\\"000e982c2753fc830000000000000002\\\"\" query_hash=2412902329 query_type=filter range_type=range length=3m0s start_delta=2m0.004585526s end_delta=-59.995414391s step=1s duration=549.955µs status=200 limit=500 returned_lines=1 throughput=163MB total_bytes=90kB total_bytes_structured_metadata=0B lines_per_second=432762 total_lines=238 post_filter_lines=1 total_entries=1 store_chunks_download_time=0s queue_time=213.04µs splits=0 shards=0 cache_chunk_req=0 cache_chunk_hit=0 cache_chunk_bytes_stored=0 cache_chunk_bytes_fetched=0 cache_chunk_download_time=0s cache_index_req=0 cache_index_hit=0 cache_index_download_time=0s cache_stats_results_req=0 cache_stats_results_hit=0 cache_stats_results_download_time=0s cache_result_req=0 cache_result_hit=0 cache_result_download_time=0s",
+            "timestamp": "1766749790846643249"
+          },
+          {
+            "fields": {},
+            "labels": {
+              "compose_service": "loki",
+              "container": "reactive-loki",
+              "container_id": "b59b2b451135192978461b55a5593f22a98d86a7feea90459f98e759a69016df",
+              "project": "reactive-system-01",
+              "service": "loki"
+            },
+            "line": "level=info ts=2025-12-26T11:49:50.822407896Z caller=metrics.go:159 component=frontend org_id=fake traceID=76b96bfb366731a7 latency=fast query=\"{service=~\\\".+\\\"} |= \\\"000e982c2753fc830000000000000002\\\"\" query_hash=2412902329 query_type=filter range_type=range length=3m0s start_delta=2m0.005401271s end_delta=-59.994598646s step=1s duration=4.198016ms status=200 limit=500 returned_lines=0 throughput=21MB total_bytes=90kB total_bytes_structured_metadata=0B lines_per_second=56693 total_lines=238 post_filter_lines=1 total_entries=1 store_chunks_download_time=0s queue_time=213µs splits=0 shards=1 cache_chunk_req=0 cache_chunk_hit=0 cache_chunk_bytes_stored=0 cache_chunk_bytes_fetched=0 cache_chunk_download_time=0s cache_index_req=0 cache_index_hit=0 cache_index_download_time=0s cache_stats_results_req=0 cache_stats_results_hit=0 cache_stats_results_download_time=0s cache_result_req=0 cache_result_hit=0 cache_result_download_time=0s",
+            "timestamp": "1766749790846701457"
+          },
+          {
+            "fields": {},
+            "labels": {
+              "compose_service": "loki",
+              "container": "reactive-loki",
+              "container_id": "b59b2b451135192978461b55a5593f22a98d86a7feea90459f98e759a69016df",
+              "project": "reactive-system-01",
+              "service": "loki"
+            },
+            "line": "level=info ts=2025-12-26T11:49:50.825432961Z caller=roundtrip.go:241 org_id=fake traceID=1d58680ed3ea65b7 msg=\"executing query\" type=range query=\"{service=~\\\".+\\\"} |= \\\"c5eac775f27ed6fa8b9aec9c21d52524\\\"\" length=3m0s step=1s query_hash=3262186329",
+            "timestamp": "1766749790846713790"
+          },
+          {
+            "fields": {},
+            "labels": {
+              "compose_service": "loki",
+              "container": "reactive-loki",
+              "container_id": "b59b2b451135192978461b55a5593f22a98d86a7feea90459f98e759a69016df",
+              "project": "reactive-system-01",
+              "service": "loki"
+            },
+            "line": "level=info ts=2025-12-26T11:49:50.832184837Z caller=engine.go:234 component=querier org_id=fake traceID=1d58680ed3ea65b7 msg=\"executing query\" type=range query=\"{service=~\\\".+\\\"} |= \\\"c5eac775f27ed6fa8b9aec9c21d52524\\\"\" length=3m0s step=1s query_hash=3262186329",
+            "timestamp": "1766749790846731915"
+          },
+          {
+            "fields": {},
+            "labels": {
+              "compose_service": "loki",
+              "container": "reactive-loki",
+              "container_id": "b59b2b451135192978461b55a5593f22a98d86a7feea90459f98e759a69016df",
+              "project": "reactive-system-01",
+              "service": "loki"
+            },
+            "line": "level=info ts=2025-12-26T11:49:50.832815208Z caller=metrics.go:159 component=querier org_id=fake traceID=1d58680ed3ea65b7 latency=fast query=\"{service=~\\\".+\\\"} |= \\\"c5eac775f27ed6fa8b9aec9c21d52524\\\"\" query_hash=3262186329 query_type=filter range_type=range length=3m0s start_delta=2m0.015804916s end_delta=-59.984195001s step=1s duration=573.455µs status=200 limit=500 returned_lines=1 throughput=156MB total_bytes=90kB total_bytes_structured_metadata=0B lines_per_second=415028 total_lines=238 post_filter_lines=1 total_entries=1 store_chunks_download_time=0s queue_time=30µs splits=0 shards=0 cache_chunk_req=0 cache_chunk_hit=0 cache_chunk_bytes_stored=0 cache_chunk_bytes_fetched=0 cache_chunk_download_time=0s cache_index_req=0 cache_index_hit=0 cache_index_download_time=0s cache_stats_results_req=0 cache_stats_results_hit=0 cache_stats_results_download_time=0s cache_result_req=0 cache_result_hit=0 cache_result_download_time=0s",
+            "timestamp": "1766749790846740749"
+          },
+          {
+            "fields": {},
+            "labels": {
+              "compose_service": "loki",
+              "container": "reactive-loki",
+              "container_id": "b59b2b451135192978461b55a5593f22a98d86a7feea90459f98e759a69016df",
+              "project": "reactive-system-01",
+              "service": "loki"
+            },
+            "line": "level=info ts=2025-12-26T11:49:50.835897439Z caller=metrics.go:159 component=frontend org_id=fake traceID=1d58680ed3ea65b7 latency=fast query=\"{service=~\\\".+\\\"} |= \\\"c5eac775f27ed6fa8b9aec9c21d52524\\\"\" query_hash=3262186329 query_type=filter range_type=range length=3m0s start_delta=2m0.018890564s end_delta=-59.981109352s step=1s duration=9.819732ms status=200 limit=500 returned_lines=0 throughput=9.1MB total_bytes=90kB total_bytes_structured_metadata=0B lines_per_second=24236 total_lines=238 post_filter_lines=1 total_entries=1 store_chunks_download_time=0s queue_time=30µs splits=0 shards=1 cache_chunk_req=0 cache_chunk_hit=0 cache_chunk_bytes_stored=0 cache_chunk_bytes_fetched=0 cache_chunk_download_time=0s cache_index_req=0 cache_index_hit=0 cache_index_download_time=0s cache_stats_results_req=0 cache_stats_results_hit=0 cache_stats_results_download_time=0s cache_result_req=0 cache_result_hit=0 cache_result_download_time=0s",
+            "timestamp": "1766749790846743790"
+          }
+        ],
+        "trace": {
+          "empty": false,
+          "processes": {
+            "p1": {
+              "serviceName": "jaeger-all-in-one",
+              "tags": [
+                {
+                  "key": "host.name",
+                  "type": "string",
+                  "value": "19f6ce227065"
+                },
+                {
+                  "key": "os.type",
+                  "type": "string",
+                  "value": "linux"
+                },
+                {
+                  "key": "otel.library.name",
+                  "type": "string",
+                  "value": "go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+                },
+                {
+                  "key": "otel.library.version",
+                  "type": "string",
+                  "value": "0.46.1"
+                },
+                {
+                  "key": "telemetry.sdk.language",
+                  "type": "string",
+                  "value": "go"
+                },
+                {
+                  "key": "telemetry.sdk.name",
+                  "type": "string",
+                  "value": "opentelemetry"
+                },
+                {
+                  "key": "telemetry.sdk.version",
+                  "type": "string",
+                  "value": "1.21.0"
+                }
+              ]
+            }
+          },
+          "spans": [
+            {
+              "duration": 34,
+              "operationName": "/api/traces/{traceID}",
+              "processID": "p1",
+              "references": [
+                {
+                  "refType": "CHILD_OF",
+                  "spanID": "808a14adb6a05101",
+                  "traceID": "c5eac775f27ed6fa8b9aec9c21d52524"
+                }
+              ],
+              "spanID": "f000060d5c61a79c",
+              "startTime": 1766749786300229,
+              "tags": [
+                {
+                  "key": "http.method",
+                  "type": "string",
+                  "value": "GET"
+                },
+                {
+                  "key": "http.scheme",
+                  "type": "string",
+                  "value": "http"
+                },
+                {
+                  "key": "http.flavor",
+                  "type": "string",
+                  "value": "1.1"
+                },
+                {
+                  "key": "net.host.name",
+                  "type": "string",
+                  "value": "jaeger"
+                },
+                {
+                  "key": "net.host.port",
+                  "type": "int64",
+                  "value": 16686
+                },
+                {
+                  "key": "net.sock.peer.addr",
+                  "type": "string",
+                  "value": "172.18.0.11"
+                },
+                {
+                  "key": "net.sock.peer.port",
+                  "type": "int64",
+                  "value": 34314
+                },
+                {
+                  "key": "http.user_agent",
+                  "type": "string",
+                  "value": "Java-http-client/21.0.9"
+                },
+                {
+                  "key": "http.route",
+                  "type": "string",
+                  "value": "/api/traces/{traceID}"
+                },
+                {
+                  "key": "http.wrote_bytes",
+                  "type": "int64",
+                  "value": 93
+                },
+                {
+                  "key": "http.status_code",
+                  "type": "int64",
+                  "value": 404
+                },
+                {
+                  "key": "span.kind",
+                  "type": "string",
+                  "value": "server"
+                },
+                {
+                  "key": "internal.span.format",
+                  "type": "string",
+                  "value": "otlp"
+                }
+              ],
+              "traceID": "c5eac775f27ed6fa8b9aec9c21d52524"
+            },
+            {
+              "duration": 19,
+              "operationName": "/api/traces/{traceID}",
+              "processID": "p1",
+              "references": [
+                {
+                  "refType": "CHILD_OF",
+                  "spanID": "e5209f4103d9621e",
+                  "traceID": "c5eac775f27ed6fa8b9aec9c21d52524"
+                }
+              ],
+              "spanID": "a952cc104e8053fb",
+              "startTime": 1766749786801161,
+              "tags": [
+                {
+                  "key": "http.method",
+                  "type": "string",
+                  "value": "GET"
+                },
+                {
+                  "key": "http.scheme",
+                  "type": "string",
+                  "value": "http"
+                },
+                {
+                  "key": "http.flavor",
+                  "type": "string",
+                  "value": "1.1"
+                },
+                {
+                  "key": "net.host.name",
+                  "type": "string",
+                  "value": "jaeger"
+                },
+                {
+                  "key": "net.host.port",
+                  "type": "int64",
+                  "value": 16686
+                },
+                {
+                  "key": "net.sock.peer.addr",
+                  "type": "string",
+                  "value": "172.18.0.11"
+                },
+                {
+                  "key": "net.sock.peer.port",
+                  "type": "int64",
+                  "value": 34314
+                },
+                {
+                  "key": "http.user_agent",
+                  "type": "string",
+                  "value": "Java-http-client/21.0.9"
+                },
+                {
+                  "key": "http.route",
+                  "type": "string",
+                  "value": "/api/traces/{traceID}"
+                },
+                {
+                  "key": "http.wrote_bytes",
+                  "type": "int64",
+                  "value": 93
+                },
+                {
+                  "key": "http.status_code",
+                  "type": "int64",
+                  "value": 404
+                },
+                {
+                  "key": "span.kind",
+                  "type": "string",
+                  "value": "server"
+                },
+                {
+                  "key": "internal.span.format",
+                  "type": "string",
+                  "value": "otlp"
+                }
+              ],
+              "traceID": "c5eac775f27ed6fa8b9aec9c21d52524"
+            },
+            {
+              "duration": 78,
+              "operationName": "/api/traces/{traceID}",
+              "processID": "p1",
+              "references": [
+                {
+                  "refType": "CHILD_OF",
+                  "spanID": "d03141ab7382ef24",
+                  "traceID": "c5eac775f27ed6fa8b9aec9c21d52524"
+                }
+              ],
+              "spanID": "b120fa209b592c4e",
+              "startTime": 1766749787302445,
+              "tags": [
+                {
+                  "key": "http.method",
+                  "type": "string",
+                  "value": "GET"
+                },
+                {
+                  "key": "http.scheme",
+                  "type": "string",
+                  "value": "http"
+                },
+                {
+                  "key": "http.flavor",
+                  "type": "string",
+                  "value": "1.1"
+                },
+                {
+                  "key": "net.host.name",
+                  "type": "string",
+                  "value": "jaeger"
+                },
+                {
+                  "key": "net.host.port",
+                  "type": "int64",
+                  "value": 16686
+                },
+                {
+                  "key": "net.sock.peer.addr",
+                  "type": "string",
+                  "value": "172.18.0.11"
+                },
+                {
+                  "key": "net.sock.peer.port",
+                  "type": "int64",
+                  "value": 34314
+                },
+                {
+                  "key": "http.user_agent",
+                  "type": "string",
+                  "value": "Java-http-client/21.0.9"
+                },
+                {
+                  "key": "http.route",
+                  "type": "string",
+                  "value": "/api/traces/{traceID}"
+                },
+                {
+                  "key": "http.wrote_bytes",
+                  "type": "int64",
+                  "value": 93
+                },
+                {
+                  "key": "http.status_code",
+                  "type": "int64",
+                  "value": 404
+                },
+                {
+                  "key": "span.kind",
+                  "type": "string",
+                  "value": "server"
+                },
+                {
+                  "key": "internal.span.format",
+                  "type": "string",
+                  "value": "otlp"
+                }
+              ],
+              "traceID": "c5eac775f27ed6fa8b9aec9c21d52524"
+            },
+            {
+              "duration": 45,
+              "operationName": "/api/traces/{traceID}",
+              "processID": "p1",
+              "references": [
+                {
+                  "refType": "CHILD_OF",
+                  "spanID": "ca35a7fe0f636129",
+                  "traceID": "c5eac775f27ed6fa8b9aec9c21d52524"
+                }
+              ],
+              "spanID": "7090ddea72731e9d",
+              "startTime": 1766749787803924,
+              "tags": [
+                {
+                  "key": "http.method",
+                  "type": "string",
+                  "value": "GET"
+                },
+                {
+                  "key": "http.scheme",
+                  "type": "string",
+                  "value": "http"
+                },
+                {
+                  "key": "http.flavor",
+                  "type": "string",
+                  "value": "1.1"
+                },
+                {
+                  "key": "net.host.name",
+                  "type": "string",
+                  "value": "jaeger"
+                },
+                {
+                  "key": "net.host.port",
+                  "type": "int64",
+                  "value": 16686
+                },
+                {
+                  "key": "net.sock.peer.addr",
+                  "type": "string",
+                  "value": "172.18.0.11"
+                },
+                {
+                  "key": "net.sock.peer.port",
+                  "type": "int64",
+                  "value": 34292
+                },
+                {
+                  "key": "http.user_agent",
+                  "type": "string",
+                  "value": "Java-http-client/21.0.9"
+                },
+                {
+                  "key": "http.route",
+                  "type": "string",
+                  "value": "/api/traces/{traceID}"
+                },
+                {
+                  "key": "http.wrote_bytes",
+                  "type": "int64",
+                  "value": 93
+                },
+                {
+                  "key": "http.status_code",
+                  "type": "int64",
+                  "value": 404
+                },
+                {
+                  "key": "span.kind",
+                  "type": "string",
+                  "value": "server"
+                },
+                {
+                  "key": "internal.span.format",
+                  "type": "string",
+                  "value": "otlp"
+                }
+              ],
+              "traceID": "c5eac775f27ed6fa8b9aec9c21d52524"
+            },
+            {
+              "duration": 59,
+              "operationName": "/api/traces/{traceID}",
+              "processID": "p1",
+              "references": [
+                {
+                  "refType": "CHILD_OF",
+                  "spanID": "544c8f181c7d495e",
+                  "traceID": "c5eac775f27ed6fa8b9aec9c21d52524"
+                }
+              ],
+              "spanID": "f61b5085f01289df",
+              "startTime": 1766749788306307,
+              "tags": [
+                {
+                  "key": "http.method",
+                  "type": "string",
+                  "value": "GET"
+                },
+                {
+                  "key": "http.scheme",
+                  "type": "string",
+                  "value": "http"
+                },
+                {
+                  "key": "http.flavor",
+                  "type": "string",
+                  "value": "1.1"
+                },
+                {
+                  "key": "net.host.name",
+                  "type": "string",
+                  "value": "jaeger"
+                },
+                {
+                  "key": "net.host.port",
+                  "type": "int64",
+                  "value": 16686
+                },
+                {
+                  "key": "net.sock.peer.addr",
+                  "type": "string",
+                  "value": "172.18.0.11"
+                },
+                {
+                  "key": "net.sock.peer.port",
+                  "type": "int64",
+                  "value": 34292
+                },
+                {
+                  "key": "http.user_agent",
+                  "type": "string",
+                  "value": "Java-http-client/21.0.9"
+                },
+                {
+                  "key": "http.route",
+                  "type": "string",
+                  "value": "/api/traces/{traceID}"
+                },
+                {
+                  "key": "http.wrote_bytes",
+                  "type": "int64",
+                  "value": 93
+                },
+                {
+                  "key": "http.status_code",
+                  "type": "int64",
+                  "value": 404
+                },
+                {
+                  "key": "span.kind",
+                  "type": "string",
+                  "value": "server"
+                },
+                {
+                  "key": "internal.span.format",
+                  "type": "string",
+                  "value": "otlp"
+                }
+              ],
+              "traceID": "c5eac775f27ed6fa8b9aec9c21d52524"
+            },
+            {
+              "duration": 68,
+              "operationName": "/api/traces/{traceID}",
+              "processID": "p1",
+              "references": [
+                {
+                  "refType": "CHILD_OF",
+                  "spanID": "84d145103a20fc8a",
+                  "traceID": "c5eac775f27ed6fa8b9aec9c21d52524"
+                }
+              ],
+              "spanID": "9f52012605cbffcc",
+              "startTime": 1766749788807387,
+              "tags": [
+                {
+                  "key": "http.method",
+                  "type": "string",
+                  "value": "GET"
+                },
+                {
+                  "key": "http.scheme",
+                  "type": "string",
+                  "value": "http"
+                },
+                {
+                  "key": "http.flavor",
+                  "type": "string",
+                  "value": "1.1"
+                },
+                {
+                  "key": "net.host.name",
+                  "type": "string",
+                  "value": "jaeger"
+                },
+                {
+                  "key": "net.host.port",
+                  "type": "int64",
+                  "value": 16686
+                },
+                {
+                  "key": "net.sock.peer.addr",
+                  "type": "string",
+                  "value": "172.18.0.11"
+                },
+                {
+                  "key": "net.sock.peer.port",
+                  "type": "int64",
+                  "value": 34316
+                },
+                {
+                  "key": "http.user_agent",
+                  "type": "string",
+                  "value": "Java-http-client/21.0.9"
+                },
+                {
+                  "key": "http.route",
+                  "type": "string",
+                  "value": "/api/traces/{traceID}"
+                },
+                {
+                  "key": "http.wrote_bytes",
+                  "type": "int64",
+                  "value": 93
+                },
+                {
+                  "key": "http.status_code",
+                  "type": "int64",
+                  "value": 404
+                },
+                {
+                  "key": "span.kind",
+                  "type": "string",
+                  "value": "server"
+                },
+                {
+                  "key": "internal.span.format",
+                  "type": "string",
+                  "value": "otlp"
+                }
+              ],
+              "traceID": "c5eac775f27ed6fa8b9aec9c21d52524"
+            },
+            {
+              "duration": 14,
+              "operationName": "/api/traces/{traceID}",
+              "processID": "p1",
+              "references": [
+                {
+                  "refType": "CHILD_OF",
+                  "spanID": "24aa61fa8dafdee0",
+                  "traceID": "c5eac775f27ed6fa8b9aec9c21d52524"
+                }
+              ],
+              "spanID": "0d692c82bbcd4425",
+              "startTime": 1766749789309017,
+              "tags": [
+                {
+                  "key": "http.method",
+                  "type": "string",
+                  "value": "GET"
+                },
+                {
+                  "key": "http.scheme",
+                  "type": "string",
+                  "value": "http"
+                },
+                {
+                  "key": "http.flavor",
+                  "type": "string",
+                  "value": "1.1"
+                },
+                {
+                  "key": "net.host.name",
+                  "type": "string",
+                  "value": "jaeger"
+                },
+                {
+                  "key": "net.host.port",
+                  "type": "int64",
+                  "value": 16686
+                },
+                {
+                  "key": "net.sock.peer.addr",
+                  "type": "string",
+                  "value": "172.18.0.11"
+                },
+                {
+                  "key": "net.sock.peer.port",
+                  "type": "int64",
+                  "value": 34292
+                },
+                {
+                  "key": "http.user_agent",
+                  "type": "string",
+                  "value": "Java-http-client/21.0.9"
+                },
+                {
+                  "key": "http.route",
+                  "type": "string",
+                  "value": "/api/traces/{traceID}"
+                },
+                {
+                  "key": "http.wrote_bytes",
+                  "type": "int64",
+                  "value": 93
+                },
+                {
+                  "key": "http.status_code",
+                  "type": "int64",
+                  "value": 404
+                },
+                {
+                  "key": "span.kind",
+                  "type": "string",
+                  "value": "server"
+                },
+                {
+                  "key": "internal.span.format",
+                  "type": "string",
+                  "value": "otlp"
+                }
+              ],
+              "traceID": "c5eac775f27ed6fa8b9aec9c21d52524"
+            },
+            {
+              "duration": 282,
+              "operationName": "/api/traces/{traceID}",
+              "processID": "p1",
+              "references": [
+                {
+                  "refType": "CHILD_OF",
+                  "spanID": "6c1c460249ef27b9",
+                  "traceID": "c5eac775f27ed6fa8b9aec9c21d52524"
+                }
+              ],
+              "spanID": "af57090f525f9631",
+              "startTime": 1766749789810436,
+              "tags": [
+                {
+                  "key": "http.method",
+                  "type": "string",
+                  "value": "GET"
+                },
+                {
+                  "key": "http.scheme",
+                  "type": "string",
+                  "value": "http"
+                },
+                {
+                  "key": "http.flavor",
+                  "type": "string",
+                  "value": "1.1"
+                },
+                {
+                  "key": "net.host.name",
+                  "type": "string",
+                  "value": "jaeger"
+                },
+                {
+                  "key": "net.host.port",
+                  "type": "int64",
+                  "value": 16686
+                },
+                {
+                  "key": "net.sock.peer.addr",
+                  "type": "string",
+                  "value": "172.18.0.11"
+                },
+                {
+                  "key": "net.sock.peer.port",
+                  "type": "int64",
+                  "value": 34316
+                },
+                {
+                  "key": "http.user_agent",
+                  "type": "string",
+                  "value": "Java-http-client/21.0.9"
+                },
+                {
+                  "key": "http.route",
+                  "type": "string",
+                  "value": "/api/traces/{traceID}"
+                },
+                {
+                  "key": "http.wrote_bytes",
+                  "type": "int64",
+                  "value": 8741
+                },
+                {
+                  "key": "http.status_code",
+                  "type": "int64",
+                  "value": 200
+                },
+                {
+                  "key": "span.kind",
+                  "type": "string",
+                  "value": "server"
+                },
+                {
+                  "key": "internal.span.format",
+                  "type": "string",
+                  "value": "otlp"
+                }
+              ],
+              "traceID": "c5eac775f27ed6fa8b9aec9c21d52524"
+            },
+            {
+              "duration": 231,
+              "operationName": "/api/traces/{traceID}",
+              "processID": "p1",
+              "references": [
+                {
+                  "refType": "CHILD_OF",
+                  "spanID": "3d570333d4ab15d7",
+                  "traceID": "c5eac775f27ed6fa8b9aec9c21d52524"
+                }
+              ],
+              "spanID": "117372dacf27068d",
+              "startTime": 1766749790312310,
+              "tags": [
+                {
+                  "key": "http.method",
+                  "type": "string",
+                  "value": "GET"
+                },
+                {
+                  "key": "http.scheme",
+                  "type": "string",
+                  "value": "http"
+                },
+                {
+                  "key": "http.flavor",
+                  "type": "string",
+                  "value": "1.1"
+                },
+                {
+                  "key": "net.host.name",
+                  "type": "string",
+                  "value": "jaeger"
+                },
+                {
+                  "key": "net.host.port",
+                  "type": "int64",
+                  "value": 16686
+                },
+                {
+                  "key": "net.sock.peer.addr",
+                  "type": "string",
+                  "value": "172.18.0.11"
+                },
+                {
+                  "key": "net.sock.peer.port",
+                  "type": "int64",
+                  "value": 34316
+                },
+                {
+                  "key": "http.user_agent",
+                  "type": "string",
+                  "value": "Java-http-client/21.0.9"
+                },
+                {
+                  "key": "http.route",
+                  "type": "string",
+                  "value": "/api/traces/{traceID}"
+                },
+                {
+                  "key": "http.wrote_bytes",
+                  "type": "int64",
+                  "value": 8741
+                },
+                {
+                  "key": "http.status_code",
+                  "type": "int64",
+                  "value": 200
+                },
+                {
+                  "key": "span.kind",
+                  "type": "string",
+                  "value": "server"
+                },
+                {
+                  "key": "internal.span.format",
+                  "type": "string",
+                  "value": "otlp"
+                }
+              ],
+              "traceID": "c5eac775f27ed6fa8b9aec9c21d52524"
+            },
+            {
+              "duration": 371,
+              "operationName": "/api/traces/{traceID}",
+              "processID": "p1",
+              "references": [
+                {
+                  "refType": "CHILD_OF",
+                  "spanID": "5e1988ec102f5c4e",
+                  "traceID": "c5eac775f27ed6fa8b9aec9c21d52524"
+                }
+              ],
+              "spanID": "8da9740d45e268ba",
+              "startTime": 1766749790815000,
+              "tags": [
+                {
+                  "key": "http.method",
+                  "type": "string",
+                  "value": "GET"
+                },
+                {
+                  "key": "http.scheme",
+                  "type": "string",
+                  "value": "http"
+                },
+                {
+                  "key": "http.flavor",
+                  "type": "string",
+                  "value": "1.1"
+                },
+                {
+                  "key": "net.host.name",
+                  "type": "string",
+                  "value": "jaeger"
+                },
+                {
+                  "key": "net.host.port",
+                  "type": "int64",
+                  "value": 16686
+                },
+                {
+                  "key": "net.sock.peer.addr",
+                  "type": "string",
+                  "value": "172.18.0.11"
+                },
+                {
+                  "key": "net.sock.peer.port",
+                  "type": "int64",
+                  "value": 34316
+                },
+                {
+                  "key": "http.user_agent",
+                  "type": "string",
+                  "value": "Java-http-client/21.0.9"
+                },
+                {
+                  "key": "http.route",
+                  "type": "string",
+                  "value": "/api/traces/{traceID}"
+                },
+                {
+                  "key": "http.wrote_bytes",
+                  "type": "int64",
+                  "value": 8741
+                },
+                {
+                  "key": "http.status_code",
+                  "type": "int64",
+                  "value": 200
+                },
+                {
+                  "key": "span.kind",
+                  "type": "string",
+                  "value": "server"
+                },
+                {
+                  "key": "internal.span.format",
+                  "type": "string",
+                  "value": "otlp"
+                }
+              ],
+              "traceID": "c5eac775f27ed6fa8b9aec9c21d52524"
+            }
+          ],
+          "traceId": "c5eac775f27ed6fa8b9aec9c21d52524"
+        }
+      },
+      "traceId": "000e982c2753fc830000000000000002"
+    }
+  ],
+  "startTime": "2025-12-26T11:49:26.598431856Z",
+  "status": "completed",
+  "success": true,
+  "successfulOperations": 314751,
+  "throughputStability": 1.1716896836660613,
+  "throughputTimeline": [
+    0,
+    0,
+    0,
+    0,
+    5253,
+    11171,
+    13573,
+    30000,
+    4,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    2705,
+    2726,
+    12099,
+    12107,
+    12661,
+    12665,
+    14858,
+    14854,
+    13841,
+    13845,
+    15574,
+    15587,
+    16564,
+    16580,
+    14941,
+    14924,
+    13366,
+    13368,
+    10319,
+    10313,
+    15175,
+    15249,
+    14344,
+    14327,
+    14977,
+    15004,
+    12904,
+    12869,
+    13088,
+    13119,
+    12214,
+    12184,
+    13066,
+    13081,
+    10008,
+    9923,
+    2453,
+    2492,
+    2457,
+    2416,
+    3051,
+    3039,
+    3185,
+    3178,
+    3199,
+    3200,
+    3066,
+    3065,
+    2931,
+    2934,
+    2729,
+    2732,
+    3306,
+    3306,
+    3213,
+    3213,
+    2608,
+    2608,
+    2515,
+    2515,
+    2555,
+    2562,
+    2621,
+    2620,
+    1546,
+    1552,
+    1090,
+    1090,
+    1166,
+    1166,
+    1052,
+    1054,
+    1219,
+    1221,
+    1077,
+    1078,
+    1231,
+    1230,
+    600,
+    600,
+    1110,
+    1110,
+    913,
+    914,
+    1129,
+    1128
+  ],
+  "totalOperations": 314751
+}

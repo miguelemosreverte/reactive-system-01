@@ -231,10 +231,10 @@ func getBenchmarkConfig(target string) (module, testClass string) {
 		"kafka-producer": {"platform", "com.reactive.platform.benchmark.KafkaProducerBenchmark"},
 		"drools":         {"platform/deployment/docker/drools", "com.reactive.drools.benchmark.DroolsBenchmark"},
 		// Integration benchmarks
-		"kafka":   {"application", "com.reactive.counter.benchmark.KafkaBenchmark"},
-		"flink":   {"application", "com.reactive.counter.benchmark.FlinkBenchmark"},
+		"kafka":   {"application/counter", "com.reactive.counter.benchmark.KafkaBenchmark"},
+		"flink":   {"application/counter", "com.reactive.counter.benchmark.FlinkBenchmark"},
 		"gateway": {"platform/deployment/docker/gateway", "com.reactive.gateway.benchmark.GatewayBenchmark"},
-		"full":    {"application", "com.reactive.counter.benchmark.FullBenchmark"},
+		"full":    {"application/counter", "com.reactive.counter.benchmark.FullBenchmark"},
 	}
 	if cfg, ok := configs[target]; ok {
 		return cfg[0], cfg[1]

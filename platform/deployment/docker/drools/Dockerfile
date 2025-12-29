@@ -5,15 +5,25 @@ ARG SERVICE_VERSION=1.0.0
 ARG OTEL_AGENT_VERSION=1.32.0
 
 # Stage 1: Build with Maven (cached dependencies)
-FROM maven:3.9-eclipse-temurin-21 AS build
+FROM maven:3.9-eclipse-temurin-22 AS build
 
 WORKDIR /app
 
-# Copy and build platform module first (shared infrastructure)
-COPY platform/pom.xml platform/pom.xml
-COPY platform/src platform/src
+# Copy the entire project structure for Maven resolution
+COPY pom.xml pom.xml
+COPY platform platform
+COPY application application
+
+# Clean all target directories to remove pre-compiled classes
+RUN find . -type d -name target -exec rm -rf {} + 2>/dev/null || true
+
+# Install parent pom first
 RUN --mount=type=cache,target=/root/.m2/repository \
-    mvn -f platform/pom.xml install -DskipTests -q
+    mvn -f pom.xml install -N -DskipTests -q
+
+# Install all platform modules from root (ensures dependencies resolve)
+RUN --mount=type=cache,target=/root/.m2/repository \
+    mvn -f pom.xml install -DskipTests -q -pl platform/base,platform/http-server,platform/kafka,platform -am
 
 # Copy only pom.xml first for dependency caching
 COPY platform/deployment/docker/drools/pom.xml .
@@ -30,7 +40,7 @@ RUN --mount=type=cache,target=/root/.m2/repository \
     mvn package -DskipTests -Dmaven.test.skip=true -B
 
 # Stage 2: Runtime (minimal)
-FROM eclipse-temurin:21-jre AS runtime
+FROM eclipse-temurin:22-jre AS runtime
 
 ARG SERVICE_VERSION
 ARG OTEL_AGENT_VERSION

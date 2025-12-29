@@ -5,20 +5,17 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.3.0</version>
-        <relativePath/>
+        <groupId>com.reactive</groupId>
+        <artifactId>reactive-system</artifactId>
+        <version>1.0.0</version>
+        <relativePath>../../pom.xml</relativePath>
     </parent>
 
-    <groupId>com.reactive</groupId>
     <artifactId>drools</artifactId>
-    <version>1.0.0</version>
     <name>Reactive Drools Service</name>
     <description>Business Rules Engine with Drools</description>
 
     <properties>
-        <java.version>22</java.version>
         <drools.version>8.44.0.Final</drools.version>
     </properties>
 
@@ -27,7 +24,6 @@
         <dependency>
             <groupId>com.reactive</groupId>
             <artifactId>base</artifactId>
-            <version>1.0.0</version>
         </dependency>
 
         <!-- Spring Boot -->

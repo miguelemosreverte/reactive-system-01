@@ -1,0 +1,14 @@
+{
+  "brochure": "flink-stream-optimized",
+  "name": "Flink - Stream Processing (High Throughput)",
+  "runtime": "docker",
+  "startTime": "2025-12-28T10:02:40.129798-03:00",
+  "endTime": "2025-12-28T10:03:18.255566-03:00",
+  "durationMs": 38116,
+  "throughput": 0,
+  "p50Ms": 0,
+  "p99Ms": 0,
+  "totalOps": 0,
+  "successOps": 0,
+  "failedOps": 0
+}

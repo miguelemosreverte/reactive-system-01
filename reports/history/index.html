@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Benchmark History - Reactive Platform</title>
+    <link rel="stylesheet" href="../assets/shared.css">
+    <script src="../assets/shared.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .chart-section {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        .chart-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .chart-title::before {
+            content: '';
+            display: inline-block;
+            width: 4px;
+            height: 16px;
+            background: var(--accent-blue);
+            border-radius: 2px;
+        }
+        .chart-container {
+            position: relative;
+            height: 350px;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <aside class="app-sidebar">
+            <div class="sidebar-brand">
+                <svg class="sidebar-logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                </svg>
+                <span>Reactive Platform</span>
+            </div>
+            <nav class="sidebar-nav">
+                <div class="sidebar-section">
+                    <div class="sidebar-section-title">Overview</div>
+                    <a href="../dashboard.html" class="sidebar-link">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                        Dashboard
+                    </a>
+                    <a href="index.html" class="sidebar-link active">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                        History
+                    </a>
+                </div>
+                <div class="sidebar-section">
+                    <div class="sidebar-section-title">Benchmarks</div>
+                    <a href="../full/index.html" class="sidebar-link">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
+                        Full Pipeline
+                    </a>
+                    <a href="../kafka/index.html" class="sidebar-link">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+                        Kafka
+                    </a>
+                    <a href="../gateway/index.html" class="sidebar-link">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                        Gateway
+                    </a>
+                </div>
+            </nav>
+        </aside>
+
+        <main class="app-main">
+            <header class="app-header">
+                <div class="header-breadcrumb">
+                    <a href="../dashboard.html" class="breadcrumb-item">Home</a>
+                    <span class="breadcrumb-separator">/</span>
+                    <span class="breadcrumb-item active">History</span>
+                </div>
+                <div class="header-actions">
+                    <button class="polling-indicator active" onclick="togglePolling()" title="Auto-refresh ON (10s) - Click to disable">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M23 4v6h-6"/><path d="M1 20v-6h6"/>
+                            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                        </svg>
+                    </button>
+                    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+                        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="5"/>
+                            <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+                            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                            <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+                            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                        </svg>
+                        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                        </svg>
+                    </button>
+                </div>
+            </header>
+
+            <div class="app-content">
+                <div class="section">
+                    <h1 class="page-title">Benchmark History</h1>
+                    <p class="page-subtitle">Performance trends over time and commits</p>
+                </div>
+
+                <div class="grid-2" style="margin-bottom: 24px;">
+                    <div class="stat-card">
+                        <div class="stat-label">Total Benchmark Runs</div>
+                        <div class="stat-value">2</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Chart Data Points</div>
+                        <div class="stat-value">2</div>
+                    </div>
+                </div>
+
+                <div class="chart-section">
+                    <div class="chart-title">Throughput Over Time (ops/s)</div>
+                    <div class="chart-container">
+                        <canvas id="throughputChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-section">
+                    <div class="chart-title">Latency Percentiles Over Time (ms)</div>
+                    <div class="chart-container">
+                        <canvas id="latencyChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <footer class="app-footer">
+                <span>Generated at 2025-12-24 22:40:28 -03</span>
+                <span>Reactive Platform Benchmark History</span>
+            </footer>
+        </main>
+    </div>
+
+    <script>
+        // Get theme-aware colors
+        function getChartColors() {
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            return {
+                text: isDark ? '#c9d1d9' : '#24292f',
+                textMuted: isDark ? '#8b949e' : '#57606a',
+                grid: isDark ? '#21262d' : '#d0d7de',
+                blue: isDark ? '#58a6ff' : '#0969da',
+                green: isDark ? '#3fb950' : '#1a7f37',
+                red: isDark ? '#f85149' : '#cf222e'
+            };
+        }
+
+        let throughputChart, latencyChart;
+
+        function updateChartColors() {
+            const colors = getChartColors();
+
+            if (throughputChart) {
+                throughputChart.options.plugins.legend.labels.color = colors.text;
+                throughputChart.options.scales.x.ticks.color = colors.textMuted;
+                throughputChart.options.scales.x.grid.color = colors.grid;
+                throughputChart.options.scales.y.ticks.color = colors.textMuted;
+                throughputChart.options.scales.y.grid.color = colors.grid;
+                throughputChart.data.datasets[0].borderColor = colors.blue;
+                throughputChart.data.datasets[0].backgroundColor = colors.blue + '1a';
+                throughputChart.update('none');
+            }
+
+            if (latencyChart) {
+                latencyChart.options.plugins.legend.labels.color = colors.text;
+                latencyChart.options.scales.x.ticks.color = colors.textMuted;
+                latencyChart.options.scales.x.grid.color = colors.grid;
+                latencyChart.options.scales.y.ticks.color = colors.textMuted;
+                latencyChart.options.scales.y.grid.color = colors.grid;
+                latencyChart.data.datasets[0].borderColor = colors.green;
+                latencyChart.data.datasets[1].borderColor = colors.red;
+                latencyChart.update('none');
+            }
+        }
+
+        // Watch for theme changes
+        const observer = new MutationObserver(updateChartColors);
+        observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+        // Initialize charts
+        const colors = getChartColors();
+
+        const throughputCtx = document.getElementById('throughputChart').getContext('2d');
+        throughputChart = new Chart(throughputCtx, {
+            type: 'line',
+            data: {
+                labels: ['2025-12-20 58b5598', '2025-12-24 5d42b40'],
+                datasets: [{
+                    label: 'Peak Throughput (ops/s)',
+                    data: [931, 8789],
+                    borderColor: colors.blue,
+                    backgroundColor: colors.blue + '1a',
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { labels: { color: colors.text } }
+                },
+                scales: {
+                    x: {
+                        ticks: { color: colors.textMuted, maxRotation: 45 },
+                        grid: { color: colors.grid }
+                    },
+                    y: {
+                        ticks: { color: colors.textMuted },
+                        grid: { color: colors.grid },
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+
+        const latencyCtx = document.getElementById('latencyChart').getContext('2d');
+        latencyChart = new Chart(latencyCtx, {
+            type: 'line',
+            data: {
+                labels: ['2025-12-20 58b5598', '2025-12-24 5d42b40'],
+                datasets: [
+                    {
+                        label: 'P50 (ms)',
+                        data: [11.00, 1.00],
+                        borderColor: colors.green,
+                        backgroundColor: 'transparent',
+                        tension: 0.3,
+                        pointRadius: 3
+                    },
+                    {
+                        label: 'P99 (ms)',
+                        data: [39.00, 13.00],
+                        borderColor: colors.red,
+                        backgroundColor: 'transparent',
+                        tension: 0.3,
+                        pointRadius: 3
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { labels: { color: colors.text } }
+                },
+                scales: {
+                    x: {
+                        ticks: { color: colors.textMuted, maxRotation: 45 },
+                        grid: { color: colors.grid }
+                    },
+                    y: {
+                        ticks: { color: colors.textMuted },
+                        grid: { color: colors.grid },
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

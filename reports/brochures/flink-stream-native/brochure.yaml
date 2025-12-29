@@ -1,0 +1,21 @@
+name: "Flink - Stream Processing (Native)"
+description: "Flink stream processing benchmark - native execution for comparison"
+component: flink
+runtime: native  # Run directly on host machine (no Docker overhead)
+duration: 10000  # 10 seconds for quick iteration
+concurrency: 200  # More producer threads for higher throughput
+
+config:
+  httpServer: NONE
+  microbatching: false
+  kafkaAcks: "1"
+  kafkaBatchSize: 65536
+  kafkaLingerMs: 5  # Reduced for lower latency
+  # Environment variables applied to Flink containers before benchmark
+  env:
+    SKIP_DROOLS: "true"
+    SKIP_TRACING: "true"
+    SKIP_CHECKPOINTING: "true"
+    BENCHMARK_MODE: "true"
+    FLINK_PARALLELISM: "32"  # Increased to match 32 Kafka partitions
+    FLINK_BUFFER_TIMEOUT_MS: "0"  # Flush immediately

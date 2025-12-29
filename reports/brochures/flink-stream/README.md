@@ -6,13 +6,13 @@ Flink stream processing benchmark - measures Kafka to Kafka via Flink job
 
 | Metric | Value |
 |--------|-------|
-| Throughput | 1635 ops/s |
-| p50 Latency | 71480.0 ms |
-| p99 Latency | 105019.0 ms |
-| Total Operations | 211404 |
-| Successful | 0 |
-| Failed | 211404 |
-| Duration | 1m0s |
+| Throughput | 7601 ops/s |
+| p50 Latency | 1752.0 ms |
+| p99 Latency | 11959.0 ms |
+| Total Operations | 225627 |
+| Successful | 220886 |
+| Failed | 4741 |
+| Duration | 10s |
 
 ## Configuration
 
@@ -23,11 +23,11 @@ Flink stream processing benchmark - measures Kafka to Kafka via Flink job
 | Microbatching | false |
 | Batch Size | 0 |
 | Batch Timeout | 0 ms |
-| Concurrency | 100 |
+| Concurrency | 200 |
 | Kafka Acks | 1 |
 
 ## Timestamp
 
-- Started: 2025-12-27T12:01:37-03:00
-- Completed: 2025-12-27T12:04:22-03:00
-- Duration: 2m44.789794708s
+- Started: 2025-12-28T14:43:18-03:00
+- Completed: 2025-12-28T14:44:12-03:00
+- Duration: 53.901735s

@@ -1,0 +1,87 @@
+{
+  "component" : "flink",
+  "name" : "Flink Benchmark",
+  "description" : "Tests Kafka + Flink processing",
+  "startTime" : "2025-12-27T21:02:25.636298456Z",
+  "endTime" : "2025-12-27T21:34:26.637871829Z",
+  "durationMs" : 1921001,
+  "totalOperations" : 1803163,
+  "successfulOperations" : 65,
+  "failedOperations" : 1803098,
+  "peakThroughput" : 65,
+  "avgThroughput" : 938,
+  "throughputTimeline" : [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 65 ],
+  "latency" : {
+    "min" : 3481,
+    "max" : 1913938,
+    "avg" : 679006,
+    "p50" : 534425,
+    "p95" : 1751627,
+    "p99" : 1879131
+  },
+  "throughputStability" : 3.16227766016838,
+  "cpuTimeline" : [ 94.635009765625, 94.635009765625, 103.076171875, 103.076171875, 103.076171875, 103.076171875, 103.076171875, 113.8427734375 ],
+  "memoryTimeline" : [ 0.8018278883864989, 0.8018278883864989, 0.8018278883864989, 0.8154692662625147, 1.34103969338752, 3.609537886550535, 18.58700862199308, 12.724668282925602 ],
+  "peakCpu" : 113.8427734375,
+  "peakMemory" : 18.58700862199308,
+  "avgCpu" : 102.31170654296875,
+  "avgMemory" : 4.935400927034843,
+  "componentTiming" : {
+    "gatewayMs" : 0,
+    "kafkaMs" : 0,
+    "flinkMs" : 0,
+    "droolsMs" : 0
+  },
+  "sampleEvents" : [ {
+    "id" : "flink_flink_0_38",
+    "traceId" : null,
+    "otelTraceId" : null,
+    "timestamp" : 1766869353671,
+    "latencyMs" : 3486,
+    "status" : "success",
+    "error" : "",
+    "componentTiming" : {
+      "gatewayMs" : 0,
+      "kafkaMs" : 3486,
+      "flinkMs" : 0,
+      "droolsMs" : 0
+    },
+    "traceData" : {
+      "trace" : {
+        "traceId" : "",
+        "spans" : [ ],
+        "processes" : { },
+        "empty" : true
+      },
+      "logs" : [ ],
+      "empty" : true
+    }
+  }, {
+    "id" : "flink_flink_0_39",
+    "traceId" : null,
+    "otelTraceId" : null,
+    "timestamp" : 1766869353671,
+    "latencyMs" : 3486,
+    "status" : "success",
+    "error" : "",
+    "componentTiming" : {
+      "gatewayMs" : 0,
+      "kafkaMs" : 3486,
+      "flinkMs" : 0,
+      "droolsMs" : 0
+    },
+    "traceData" : {
+      "trace" : {
+        "traceId" : "",
+        "spans" : [ ],
+        "processes" : { },
+        "empty" : true
+      },
+      "logs" : [ ],
+      "empty" : true
+    }
+  } ],
+  "status" : "completed",
+  "errorMessage" : "",
+  "success" : false
+}

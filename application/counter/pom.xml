@@ -4,39 +4,26 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.reactive</groupId>
-    <artifactId>counter-application</artifactId>
-    <version>1.0.0</version>
-    <packaging>jar</packaging>
+    <parent>
+        <groupId>com.reactive</groupId>
+        <artifactId>reactive-system</artifactId>
+        <version>1.0.0</version>
+        <relativePath>../../pom.xml</relativePath>
+    </parent>
 
+    <artifactId>counter-application</artifactId>
+    <packaging>jar</packaging>
     <name>Counter Application</name>
     <description>Counter domain application using the reactive platform</description>
 
-    <parent>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.3.0</version>
-        <relativePath/>
-    </parent>
-
-    <properties>
-        <java.version>22</java.version>
-        <platform.version>1.0.0</platform.version>
-    </properties>
-
     <dependencies>
-        <!-- ============================================ -->
         <!-- Platform (our infrastructure) -->
-        <!-- ============================================ -->
         <dependency>
             <groupId>com.reactive</groupId>
             <artifactId>platform</artifactId>
-            <version>${platform.version}</version>
         </dependency>
 
-        <!-- ============================================ -->
         <!-- Spring Boot WebFlux -->
-        <!-- ============================================ -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webflux</artifactId>
@@ -66,18 +53,16 @@
             <artifactId>micrometer-tracing-bridge-otel</artifactId>
         </dependency>
 
-        <!-- OpenTelemetry API for span attributes -->
+        <!-- OpenTelemetry API -->
         <dependency>
             <groupId>io.opentelemetry</groupId>
             <artifactId>opentelemetry-api</artifactId>
-            <version>1.32.0</version>
         </dependency>
 
         <!-- Avro for serialization -->
         <dependency>
             <groupId>org.apache.avro</groupId>
             <artifactId>avro</artifactId>
-            <version>1.11.3</version>
         </dependency>
 
         <!-- Structured JSON logging -->
@@ -94,33 +79,25 @@
             <optional>true</optional>
         </dependency>
 
-        <!-- ============================================ -->
         <!-- Test dependencies -->
-        <!-- ============================================ -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
-
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>testcontainers</artifactId>
-            <version>1.19.3</version>
             <scope>test</scope>
         </dependency>
-
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>kafka</artifactId>
-            <version>1.19.3</version>
             <scope>test</scope>
         </dependency>
-
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>junit-jupiter</artifactId>
-            <version>1.19.3</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -139,49 +116,12 @@
                     </excludes>
                 </configuration>
             </plugin>
-
-            <!-- PMD: Dead code detection -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-pmd-plugin</artifactId>
-                <version>3.21.2</version>
-                <configuration>
-                    <rulesets>
-                        <ruleset>/category/java/bestpractices.xml/UnusedPrivateField</ruleset>
-                        <ruleset>/category/java/bestpractices.xml/UnusedLocalVariable</ruleset>
-                        <ruleset>/category/java/bestpractices.xml/UnusedPrivateMethod</ruleset>
-                        <ruleset>/category/java/bestpractices.xml/UnusedFormalParameter</ruleset>
-                        <ruleset>/category/java/codestyle.xml/UnnecessaryImport</ruleset>
-                    </rulesets>
-                    <printFailingErrors>true</printFailingErrors>
-                </configuration>
-            </plugin>
         </plugins>
     </build>
 
     <profiles>
-        <!-- E2E benchmark profile -->
-        <profile>
-            <id>e2e-benchmark</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-surefire-plugin</artifactId>
-                        <configuration>
-                            <includes>
-                                <include>**/EndToEndBenchmark.java</include>
-                                <include>**/*E2EBenchmark.java</include>
-                            </includes>
-                        </configuration>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-        <!-- Profile for running benchmarks outside Docker -->
         <profile>
             <id>benchmark</id>
-            <!-- No extra dependencies needed - uses main dependencies -->
         </profile>
     </profiles>
 </project>

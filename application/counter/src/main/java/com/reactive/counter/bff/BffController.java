@@ -7,7 +7,7 @@ import com.reactive.platform.benchmark.BenchmarkTypes.Trace;
 import com.reactive.platform.benchmark.ObservabilityFetcher;
 import com.reactive.platform.id.IdGenerator;
 import com.reactive.platform.kafka.KafkaPublisher;
-import com.reactive.platform.serialization.JsonCodec;
+import com.reactive.counter.serialization.AvroCounterEventCodec;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
@@ -63,7 +63,7 @@ public class BffController {
         publisher = KafkaPublisher.create(c -> c
                 .bootstrapServers(kafkaBootstrap)
                 .topic(eventsTopic)
-                .codec(JsonCodec.forClass(CounterEvent.class))
+                .codec(AvroCounterEventCodec.create())
                 .keyExtractor(e -> buildKafkaKey(e.customerId(), e.sessionId())));
         observability = ObservabilityFetcher.withUrls(jaegerUrl, lokiUrl);
         log.info("BFF initialized with Jaeger={}, Loki={}", jaegerUrl, lokiUrl);

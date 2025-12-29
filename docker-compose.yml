@@ -543,7 +543,7 @@ services:
 
   ui:
     build:
-      context: ./platform/ui
+      context: ./application/ui
       dockerfile: Dockerfile
     container_name: reactive-ui
     ports:

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flink Benchmark Report</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        #root { min-height: 100vh; }
+        .loading { display: flex; justify-content: center; align-items: center; height: 100vh; font-size: 18px; color: #666; }
+    </style>
+</head>
+<body>
+    <div id="root"><div class="loading">Loading benchmark report...</div></div>
+    <script>
+        window.__BENCHMARK_DATA__ = {
+  "component" : "flink",
+  "name" : "Flink Benchmark",
+  "description" : "Tests Kafka + Flink processing",
+  "startTime" : "2025-12-27T20:12:36.222112668Z",
+  "endTime" : "2025-12-27T20:12:50.610367356Z",
+  "durationMs" : 14388,
+  "totalOperations" : 32250,
+  "successfulOperations" : 0,
+  "failedOperations" : 32250,
+  "peakThroughput" : 0,
+  "avgThroughput" : 2241,
+  "throughputTimeline" : [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ],
+  "latency" : {
+    "min" : 3101,
+    "max" : 7452,
+    "avg" : 4275,
+    "p50" : 4230,
+    "p95" : 5380,
+    "p99" : 5856
+  },
+  "throughputStability" : 0.0,
+  "cpuTimeline" : [ 242.24853515625, 235.858154296875, 235.858154296875, 235.858154296875, 235.858154296875, 235.858154296875, 236.993408203125, 236.993408203125 ],
+  "memoryTimeline" : [ 0.7894988993217734, 0.7894988993217734, 0.7894988993217734, 0.8139024790745958, 1.1624366923887033, 1.2600323469964811, 0.8618932626841854, 1.3999038982647034 ],
+  "peakCpu" : 242.24853515625,
+  "peakMemory" : 1.3999038982647034,
+  "avgCpu" : 236.94076538085938,
+  "avgMemory" : 0.9833331721717486,
+  "componentTiming" : {
+    "gatewayMs" : 0,
+    "kafkaMs" : 0,
+    "flinkMs" : 0,
+    "droolsMs" : 0
+  },
+  "sampleEvents" : [ ],
+  "status" : "completed",
+  "errorMessage" : "",
+  "success" : false
+};
+        window.__BENCHMARK_COMMIT__ = "b09f009";
+    </script>
+    <script src="../assets/benchmark-report.js"></script>
+</body>
+</html>

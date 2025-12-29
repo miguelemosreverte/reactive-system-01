@@ -1,0 +1,33 @@
+{
+  "commit": "5d42b40d90f8560399913245788837f2691819eb",
+  "shortCommit": "5d42b40",
+  "message": "refactor: Scala-style enum naming + Docker HOCON integration",
+  "date": "2025-12-24",
+  "timestamp": "2025-12-26T11:50:34Z",
+  "components": {
+    "full": {
+      "peakThroughput": 20310,
+      "avgThroughput": 4976,
+      "latencyP50": 1,
+      "latencyP99": 4,
+      "totalOperations": 323634,
+      "successRate": 100
+    },
+    "gateway": {
+      "peakThroughput": 14735,
+      "avgThroughput": 4816,
+      "latencyP50": 1,
+      "latencyP99": 5,
+      "totalOperations": 313236,
+      "successRate": 100
+    },
+    "kafka": {
+      "peakThroughput": 30000,
+      "avgThroughput": 4833,
+      "latencyP50": 0,
+      "latencyP99": 3,
+      "totalOperations": 314751,
+      "successRate": 100
+    }
+  }
+}

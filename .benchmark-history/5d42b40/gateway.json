@@ -1,0 +1,845 @@
+{
+  "avgCpu": 51.76039599867725,
+  "avgMemory": 7.186750937707425,
+  "avgThroughput": 4816,
+  "component": "gateway",
+  "componentTiming": {
+    "droolsMs": 0,
+    "flinkMs": 0,
+    "gatewayMs": 0,
+    "kafkaMs": 0
+  },
+  "cpuTimeline": [
+    17.154947916666668,
+    17.154947916666668,
+    15.779622395833334,
+    15.779622395833334,
+    15.779622395833334,
+    15.779622395833334,
+    15.779622395833334,
+    14.510091145833334,
+    14.510091145833334,
+    14.510091145833334,
+    14.510091145833334,
+    14.510091145833334,
+    13.346354166666666,
+    13.346354166666666,
+    13.346354166666666,
+    13.346354166666666,
+    13.346354166666666,
+    21.622721354166668,
+    21.622721354166668,
+    21.622721354166668,
+    21.622721354166668,
+    21.622721354166668,
+    34.578450520833336,
+    34.578450520833336,
+    34.578450520833336,
+    34.578450520833336,
+    34.578450520833336,
+    50.496419270833336,
+    50.496419270833336,
+    50.496419270833336,
+    50.496419270833336,
+    50.496419270833336,
+    58.4716796875,
+    58.4716796875,
+    58.4716796875,
+    58.4716796875,
+    58.4716796875,
+    76.48111979166667,
+    76.48111979166667,
+    76.48111979166667,
+    76.48111979166667,
+    76.48111979166667,
+    82.373046875,
+    82.373046875,
+    82.373046875,
+    82.373046875,
+    82.373046875,
+    87.79296875,
+    87.79296875,
+    87.79296875,
+    87.79296875,
+    87.79296875,
+    83.43098958333333,
+    83.43098958333333,
+    83.43098958333333,
+    83.43098958333333,
+    83.43098958333333,
+    88.76953125,
+    88.76953125,
+    88.76953125,
+    88.76953125,
+    88.76953125,
+    88.330078125
+  ],
+  "description": "Tests HTTP + Kafka publish",
+  "durationMs": 65028,
+  "endTime": "2025-12-26T11:48:38.702026946Z",
+  "errorMessage": "",
+  "failedOperations": 0,
+  "latency": {
+    "avg": 1,
+    "max": 19278,
+    "min": 0,
+    "p50": 1,
+    "p95": 2,
+    "p99": 5
+  },
+  "memoryTimeline": [
+    0.8801969062866538,
+    0.8801969062866538,
+    0.8801969062866538,
+    0.8801969062866538,
+    1.9863831773200558,
+    1.4512882795154889,
+    2.1151854589221943,
+    2.1260312670996617,
+    2.1260312670996617,
+    2.1260312670996617,
+    2.1260312670996617,
+    2.1260312670996617,
+    2.1260312670996617,
+    2.1260312670996617,
+    2.1260312670996617,
+    2.1260312670996617,
+    2.056881697503875,
+    1.1130238346375985,
+    1.715567540227568,
+    0.40912270226363523,
+    1.368368470956429,
+    2.241436342131996,
+    4.621361535611804,
+    6.201524453252634,
+    3.395201757190694,
+    6.503649499397175,
+    9.407841679877315,
+    8.95041371158876,
+    0.7414436851685552,
+    6.262187599816207,
+    10.489724085094462,
+    1.8995336169531771,
+    10.33057425041301,
+    7.896728362218944,
+    7.3386711345601015,
+    10.146431245369183,
+    11.801440977858475,
+    8.990209287996267,
+    9.061112800168608,
+    17.804378223163514,
+    14.552417581266756,
+    0.6059058549896322,
+    11.425260692115764,
+    9.888380270541193,
+    13.48248243971101,
+    13.83845659107689,
+    -12.761076397934165,
+    12.03870952289162,
+    4.343597626877854,
+    17.334095338714025,
+    2.5488196365315536,
+    19.77949346997463,
+    9.811659345038775,
+    25.020633625920276,
+    11.67102077371633,
+    15.351183229093577,
+    4.518353715339231,
+    20.75861452731626,
+    14.103718417579303,
+    1.9579342798637,
+    9.163273563333876,
+    31.59760303855262,
+    22.78001749483574
+  ],
+  "name": "Gateway Benchmark",
+  "peakCpu": 88.76953125,
+  "peakMemory": 31.59760303855262,
+  "peakThroughput": 14735,
+  "prometheusMetrics": {
+    "collectedAt": "2025-12-26T08:49:05-03:00",
+    "services": {
+      "drools": {
+        "jvm": {
+          "heapUsedBytes": 66181480,
+          "heapMaxBytes": 402653184,
+          "heapCommittedBytes": 0,
+          "heapUsagePercent": 16.436348358790077,
+          "nonHeapUsedBytes": 111148400,
+          "nonHeapMaxBytes": 0,
+          "metaspaceUsedBytes": 84098176,
+          "metaspaceMaxBytes": 0,
+          "directBufferBytes": 455964,
+          "memoryPoolBreakdown": {
+            "CodeHeap 'non-nmethods'": 1643264,
+            "CodeHeap 'non-profiled nmethods'": 7751808,
+            "CodeHeap 'profiled nmethods'": 7497088,
+            "Compressed Class Space": 10158064,
+            "Metaspace": 84098176
+          }
+        },
+        "kafka": {
+          "consumerLag": {},
+          "totalLag": 0,
+          "bytesConsumedRate": 0,
+          "bytesProducedRate": 0,
+          "recordsConsumedRate": 0,
+          "recordsProducedRate": 0,
+          "fetchLatencyAvg": 0,
+          "produceLatencyAvg": 0
+        },
+        "http": {
+          "requestsTotal": 0,
+          "requestsRate": 0,
+          "errorRate": 0,
+          "avgResponseTime": 0,
+          "p99ResponseTime": 0
+        },
+        "gc": {
+          "totalPauseSeconds": 0.703,
+          "pauseCount": 55,
+          "avgPauseMs": 12.781818181818181,
+          "maxPauseMs": 0,
+          "gcOverheadPercent": 0,
+          "collectorBreakdown": {
+            "G1 Young Generation": {
+              "count": 55,
+              "totalTimeMs": 703,
+              "avgPauseMs": 12.781818181818181,
+              "maxPauseMs": 0
+            }
+          }
+        },
+        "threads": {
+          "liveThreads": 72,
+          "daemonThreads": 68,
+          "peakThreads": 77,
+          "threadsStarted": 333,
+          "stateBreakdown": {
+            "blocked": 0,
+            "new": 0,
+            "runnable": 7,
+            "terminated": 0,
+            "timed-waiting": 13,
+            "waiting": 52
+          }
+        }
+      },
+      "flink-taskmanager": {
+        "flink": {
+          "cpuLoad": 0.2956989247311828,
+          "heapUsed": 42870856,
+          "heapMax": 291962880,
+          "managedMemoryUsed": 0,
+          "managedMemoryTotal": 348966098,
+          "networkBuffersUsed": 2662,
+          "networkBuffersTotal": 2662,
+          "numRecordsIn": 0,
+          "numRecordsOut": 0,
+          "numBytesIn": 0,
+          "numBytesOut": 0,
+          "backPressuredTimeMsPerSecond": 0,
+          "busyTimeMsPerSecond": 0,
+          "idleTimeMsPerSecond": 0,
+          "checkpointsCompleted": 0,
+          "checkpointsFailed": 0,
+          "lastCheckpointDurationMs": 0
+        }
+      },
+      "gateway": {
+        "jvm": {
+          "heapUsedBytes": 197156704,
+          "heapMaxBytes": 1073741824,
+          "heapCommittedBytes": 0,
+          "heapUsagePercent": 18.36164891719818,
+          "nonHeapUsedBytes": 162539784,
+          "nonHeapMaxBytes": 0,
+          "metaspaceUsedBytes": 89887192,
+          "metaspaceMaxBytes": 0,
+          "directBufferBytes": 34043594,
+          "memoryPoolBreakdown": {
+            "CodeHeap 'non-nmethods'": 1745152,
+            "CodeHeap 'non-profiled nmethods'": 19868544,
+            "CodeHeap 'profiled nmethods'": 39903616,
+            "Compressed Class Space": 11135280,
+            "Metaspace": 89887192
+          }
+        },
+        "kafka": {
+          "consumerLag": {},
+          "totalLag": 0,
+          "bytesConsumedRate": 47.4749127399651,
+          "bytesProducedRate": 0,
+          "recordsConsumedRate": 0,
+          "recordsProducedRate": 0,
+          "fetchLatencyAvg": 501.84057971014494,
+          "produceLatencyAvg": 0
+        },
+        "http": {
+          "requestsTotal": 0,
+          "requestsRate": 0,
+          "errorRate": 0,
+          "avgResponseTime": 0,
+          "p99ResponseTime": 0
+        },
+        "gc": {
+          "totalPauseSeconds": 2.762,
+          "pauseCount": 164,
+          "avgPauseMs": 16.841463414634145,
+          "maxPauseMs": 62,
+          "gcOverheadPercent": 0.005353333333333333,
+          "collectorBreakdown": {
+            "G1 Young Generation": {
+              "count": 164,
+              "totalTimeMs": 2762,
+              "avgPauseMs": 16.841463414634145,
+              "maxPauseMs": 62
+            }
+          }
+        },
+        "threads": {
+          "liveThreads": 49,
+          "daemonThreads": 37,
+          "peakThreads": 59,
+          "threadsStarted": 103,
+          "stateBreakdown": {
+            "blocked": 0,
+            "new": 0,
+            "runnable": 14,
+            "terminated": 0,
+            "timed-waiting": 27,
+            "waiting": 8
+          }
+        }
+      }
+    }
+  },
+  "sampleEvents": [
+    {
+      "componentTiming": {
+        "droolsMs": 0,
+        "flinkMs": 0,
+        "gatewayMs": 19275,
+        "kafkaMs": 0
+      },
+      "error": "",
+      "id": "gateway_7_1766749659695",
+      "latencyMs": 19275,
+      "otelTraceId": "4050995bc6c298cd982049911a074d13",
+      "status": "success",
+      "timestamp": 1766749678970,
+      "traceData": {
+        "empty": false,
+        "logs": [
+          {
+            "fields": {
+              "@version": "1",
+              "level": "INFO",
+              "level_value": 20000,
+              "logger": "com.reactive.counter.bff.BffController",
+              "message": "BFF: action=INCREMENT, value=1, debug=true, requestId=000e982a6e34fc830000000000000002, traceId=4050995bc6c298cd982049911a074d13",
+              "service": "counter-application",
+              "serviceName": "counter-application",
+              "serviceVersion": "1.0.0",
+              "spanId": "a6e0342981985bdd",
+              "thread": "reactor-http-epoll-3",
+              "timestamp": "2025-12-26T11:47:39.700596762Z",
+              "traceId": "6a10d3048a24872477259154aebc9028",
+              "version": "1.0.0"
+            },
+            "labels": {
+              "compose_service": "gateway",
+              "container": "reactive-application",
+              "container_id": "4177d5de469d74a78bd828647c5b0a438a4da6b66aa1ae0d22f14b72bfcff55e",
+              "level": "INFO",
+              "project": "reactive-system-01",
+              "service": "application"
+            },
+            "line": "{\"timestamp\":\"2025-12-26T11:47:39.700596762Z\",\"@version\":\"1\",\"message\":\"BFF: action=INCREMENT, value=1, debug=true, requestId=000e982a6e34fc830000000000000002, traceId=4050995bc6c298cd982049911a074d13\",\"logger\":\"com.reactive.counter.bff.BffController\",\"thread\":\"reactor-http-epoll-3\",\"level\":\"INFO\",\"level_value\":20000,\"serviceVersion\":\"1.0.0\",\"serviceName\":\"counter-application\",\"traceId\":\"6a10d3048a24872477259154aebc9028\",\"spanId\":\"a6e0342981985bdd\",\"service\":\"counter-application\",\"version\":\"1.0.0\"}",
+            "timestamp": "1766749659700596762"
+          },
+          {
+            "fields": {
+              "@version": "1",
+              "level": "INFO",
+              "level_value": 20000,
+              "logger": "com.reactive.platform.benchmark.ObservabilityFetcher",
+              "message": "Found trace by otelTraceId=4050995bc6c298cd982049911a074d13 with 2 spans (timeout, may be incomplete)",
+              "service": "counter-application",
+              "serviceName": "counter-application",
+              "serviceVersion": "1.0.0",
+              "thread": "parallel-4",
+              "timestamp": "2025-12-26T11:47:58.958162974Z",
+              "version": "1.0.0"
+            },
+            "labels": {
+              "compose_service": "gateway",
+              "container": "reactive-application",
+              "container_id": "4177d5de469d74a78bd828647c5b0a438a4da6b66aa1ae0d22f14b72bfcff55e",
+              "level": "INFO",
+              "project": "reactive-system-01",
+              "service": "application"
+            },
+            "line": "{\"timestamp\":\"2025-12-26T11:47:58.958162974Z\",\"@version\":\"1\",\"message\":\"Found trace by otelTraceId=4050995bc6c298cd982049911a074d13 with 2 spans (timeout, may be incomplete)\",\"logger\":\"com.reactive.platform.benchmark.ObservabilityFetcher\",\"thread\":\"parallel-4\",\"level\":\"INFO\",\"level_value\":20000,\"serviceVersion\":\"1.0.0\",\"serviceName\":\"counter-application\",\"service\":\"counter-application\",\"version\":\"1.0.0\"}",
+            "timestamp": "1766749678958162974"
+          },
+          {
+            "fields": {
+              "@version": "1",
+              "level": "INFO",
+              "level_value": 20000,
+              "logger": "com.reactive.platform.benchmark.ObservabilityFetcher",
+              "message": "Found 1 total logs (requestId=000e982a6e34fc830000000000000002, otelTraceId=4050995bc6c298cd982049911a074d13)",
+              "service": "counter-application",
+              "serviceName": "counter-application",
+              "serviceVersion": "1.0.0",
+              "thread": "parallel-4",
+              "timestamp": "2025-12-26T11:47:58.969155337Z",
+              "version": "1.0.0"
+            },
+            "labels": {
+              "compose_service": "gateway",
+              "container": "reactive-application",
+              "container_id": "4177d5de469d74a78bd828647c5b0a438a4da6b66aa1ae0d22f14b72bfcff55e",
+              "level": "INFO",
+              "project": "reactive-system-01",
+              "service": "application"
+            },
+            "line": "{\"timestamp\":\"2025-12-26T11:47:58.969155337Z\",\"@version\":\"1\",\"message\":\"Found 1 total logs (requestId=000e982a6e34fc830000000000000002, otelTraceId=4050995bc6c298cd982049911a074d13)\",\"logger\":\"com.reactive.platform.benchmark.ObservabilityFetcher\",\"thread\":\"parallel-4\",\"level\":\"INFO\",\"level_value\":20000,\"serviceVersion\":\"1.0.0\",\"serviceName\":\"counter-application\",\"service\":\"counter-application\",\"version\":\"1.0.0\"}",
+            "timestamp": "1766749678969155337"
+          },
+          {
+            "fields": {},
+            "labels": {
+              "compose_service": "loki",
+              "container": "reactive-loki",
+              "container_id": "b59b2b451135192978461b55a5593f22a98d86a7feea90459f98e759a69016df",
+              "project": "reactive-system-01",
+              "service": "loki"
+            },
+            "line": "level=info ts=2025-12-26T11:47:58.960455913Z caller=roundtrip.go:241 org_id=fake traceID=3fac129d6f0515ef msg=\"executing query\" type=range query=\"{service=~\\\".+\\\"} |= \\\"000e982a6e34fc830000000000000002\\\"\" length=3m0s step=1s query_hash=3186486534",
+            "timestamp": "1766749679046542748"
+          },
+          {
+            "fields": {},
+            "labels": {
+              "compose_service": "loki",
+              "container": "reactive-loki",
+              "container_id": "b59b2b451135192978461b55a5593f22a98d86a7feea90459f98e759a69016df",
+              "project": "reactive-system-01",
+              "service": "loki"
+            },
+            "line": "level=info ts=2025-12-26T11:47:58.961429988Z caller=engine.go:234 component=querier org_id=fake traceID=3fac129d6f0515ef msg=\"executing query\" type=range query=\"{service=~\\\".+\\\"} |= \\\"000e982a6e34fc830000000000000002\\\"\" length=3m0s step=1s query_hash=3186486534",
+            "timestamp": "1766749679046548665"
+          },
+          {
+            "fields": {},
+            "labels": {
+              "compose_service": "loki",
+              "container": "reactive-loki",
+              "container_id": "b59b2b451135192978461b55a5593f22a98d86a7feea90459f98e759a69016df",
+              "project": "reactive-system-01",
+              "service": "loki"
+            },
+            "line": "level=info ts=2025-12-26T11:47:58.962204856Z caller=metrics.go:159 component=querier org_id=fake traceID=3fac129d6f0515ef latency=fast query=\"{service=~\\\".+\\\"} |= \\\"000e982a6e34fc830000000000000002\\\"\" query_hash=3186486534 query_type=filter range_type=range length=3m0s start_delta=2m0.004201481s end_delta=-59.995798436s step=1s duration=729.077µs status=200 limit=500 returned_lines=1 throughput=88MB total_bytes=64kB total_bytes_structured_metadata=0B lines_per_second=271576 total_lines=198 post_filter_lines=1 total_entries=1 store_chunks_download_time=0s queue_time=15µs splits=0 shards=0 cache_chunk_req=0 cache_chunk_hit=0 cache_chunk_bytes_stored=0 cache_chunk_bytes_fetched=0 cache_chunk_download_time=0s cache_index_req=0 cache_index_hit=0 cache_index_download_time=0s cache_stats_results_req=0 cache_stats_results_hit=0 cache_stats_results_download_time=0s cache_result_req=0 cache_result_hit=0 cache_result_download_time=0s",
+            "timestamp": "1766749679046553707"
+          },
+          {
+            "fields": {},
+            "labels": {
+              "compose_service": "loki",
+              "container": "reactive-loki",
+              "container_id": "b59b2b451135192978461b55a5593f22a98d86a7feea90459f98e759a69016df",
+              "project": "reactive-system-01",
+              "service": "loki"
+            },
+            "line": "level=info ts=2025-12-26T11:47:58.962504395Z caller=metrics.go:159 component=frontend org_id=fake traceID=3fac129d6f0515ef latency=fast query=\"{service=~\\\".+\\\"} |= \\\"000e982a6e34fc830000000000000002\\\"\" query_hash=3186486534 query_type=filter range_type=range length=3m0s start_delta=2m0.004497353s end_delta=-59.995502563s step=1s duration=1.983691ms status=200 limit=500 returned_lines=0 throughput=32MB total_bytes=64kB total_bytes_structured_metadata=0B lines_per_second=99813 total_lines=198 post_filter_lines=1 total_entries=1 store_chunks_download_time=0s queue_time=15µs splits=0 shards=1 cache_chunk_req=0 cache_chunk_hit=0 cache_chunk_bytes_stored=0 cache_chunk_bytes_fetched=0 cache_chunk_download_time=0s cache_index_req=0 cache_index_hit=0 cache_index_download_time=0s cache_stats_results_req=0 cache_stats_results_hit=0 cache_stats_results_download_time=0s cache_result_req=0 cache_result_hit=0 cache_result_download_time=0s",
+            "timestamp": "1766749679046557332"
+          },
+          {
+            "fields": {},
+            "labels": {
+              "compose_service": "loki",
+              "container": "reactive-loki",
+              "container_id": "b59b2b451135192978461b55a5593f22a98d86a7feea90459f98e759a69016df",
+              "project": "reactive-system-01",
+              "service": "loki"
+            },
+            "line": "level=info ts=2025-12-26T11:47:58.965545619Z caller=roundtrip.go:241 org_id=fake traceID=1674f362efcda707 msg=\"executing query\" type=range query=\"{service=~\\\".+\\\"} |= \\\"4050995bc6c298cd982049911a074d13\\\"\" length=3m0s step=1s query_hash=2796999948",
+            "timestamp": "1766749679046570248"
+          },
+          {
+            "fields": {},
+            "labels": {
+              "compose_service": "loki",
+              "container": "reactive-loki",
+              "container_id": "b59b2b451135192978461b55a5593f22a98d86a7feea90459f98e759a69016df",
+              "project": "reactive-system-01",
+              "service": "loki"
+            },
+            "line": "level=info ts=2025-12-26T11:47:58.967286312Z caller=engine.go:234 component=querier org_id=fake traceID=1674f362efcda707 msg=\"executing query\" type=range query=\"{service=~\\\".+\\\"} |= \\\"4050995bc6c298cd982049911a074d13\\\"\" length=3m0s step=1s query_hash=2796999948",
+            "timestamp": "1766749679046572165"
+          },
+          {
+            "fields": {},
+            "labels": {
+              "compose_service": "loki",
+              "container": "reactive-loki",
+              "container_id": "b59b2b451135192978461b55a5593f22a98d86a7feea90459f98e759a69016df",
+              "project": "reactive-system-01",
+              "service": "loki"
+            },
+            "line": "level=info ts=2025-12-26T11:47:58.968059013Z caller=metrics.go:159 component=querier org_id=fake traceID=1674f362efcda707 latency=fast query=\"{service=~\\\".+\\\"} |= \\\"4050995bc6c298cd982049911a074d13\\\"\" query_hash=2796999948 query_type=filter range_type=range length=3m0s start_delta=2m0.010050097s end_delta=-59.98994957s step=1s duration=686.786µs status=200 limit=500 returned_lines=1 throughput=94MB total_bytes=64kB total_bytes_structured_metadata=0B lines_per_second=288299 total_lines=198 post_filter_lines=1 total_entries=1 store_chunks_download_time=0s queue_time=20µs splits=0 shards=0 cache_chunk_req=0 cache_chunk_hit=0 cache_chunk_bytes_stored=0 cache_chunk_bytes_fetched=0 cache_chunk_download_time=0s cache_index_req=0 cache_index_hit=0 cache_index_download_time=0s cache_stats_results_req=0 cache_stats_results_hit=0 cache_stats_results_download_time=0s cache_result_req=0 cache_result_hit=0 cache_result_download_time=0s",
+            "timestamp": "1766749679046573081"
+          },
+          {
+            "fields": {},
+            "labels": {
+              "compose_service": "loki",
+              "container": "reactive-loki",
+              "container_id": "b59b2b451135192978461b55a5593f22a98d86a7feea90459f98e759a69016df",
+              "project": "reactive-system-01",
+              "service": "loki"
+            },
+            "line": "level=info ts=2025-12-26T11:47:58.968327761Z caller=metrics.go:159 component=frontend org_id=fake traceID=1674f362efcda707 latency=fast query=\"{service=~\\\".+\\\"} |= \\\"4050995bc6c298cd982049911a074d13\\\"\" query_hash=2796999948 query_type=filter range_type=range length=3m0s start_delta=2m0.010325803s end_delta=-59.989674156s step=1s duration=2.710934ms status=200 limit=500 returned_lines=0 throughput=24MB total_bytes=64kB total_bytes_structured_metadata=0B lines_per_second=73037 total_lines=198 post_filter_lines=1 total_entries=1 store_chunks_download_time=0s queue_time=20µs splits=0 shards=1 cache_chunk_req=0 cache_chunk_hit=0 cache_chunk_bytes_stored=0 cache_chunk_bytes_fetched=0 cache_chunk_download_time=0s cache_index_req=0 cache_index_hit=0 cache_index_download_time=0s cache_stats_results_req=0 cache_stats_results_hit=0 cache_stats_results_download_time=0s cache_result_req=0 cache_result_hit=0 cache_result_download_time=0s",
+            "timestamp": "1766749679046574915"
+          }
+        ],
+        "trace": {
+          "empty": true,
+          "processes": {},
+          "spans": [],
+          "traceId": ""
+        }
+      },
+      "traceId": "000e982a6e34fc830000000000000002"
+    },
+    {
+      "componentTiming": {
+        "droolsMs": 0,
+        "flinkMs": 0,
+        "gatewayMs": 19278,
+        "kafkaMs": 0
+      },
+      "error": "",
+      "id": "gateway_1_1766749659695",
+      "latencyMs": 19278,
+      "otelTraceId": "bb3c6622f0da11d3b14f1f313f2a3800",
+      "status": "success",
+      "timestamp": 1766749678974,
+      "traceData": {
+        "empty": false,
+        "logs": [
+          {
+            "fields": {
+              "@version": "1",
+              "level": "INFO",
+              "level_value": 20000,
+              "logger": "com.reactive.counter.bff.BffController",
+              "message": "BFF: action=INCREMENT, value=1, debug=true, requestId=000e982a6e38fc830000000000000000, traceId=bb3c6622f0da11d3b14f1f313f2a3800",
+              "service": "counter-application",
+              "serviceName": "counter-application",
+              "serviceVersion": "1.0.0",
+              "spanId": "87092750187cc13e",
+              "thread": "reactor-http-epoll-1",
+              "timestamp": "2025-12-26T11:47:39.704175646Z",
+              "traceId": "e68e871a358cedf5e9057ee8ef1633bc",
+              "version": "1.0.0"
+            },
+            "labels": {
+              "compose_service": "gateway",
+              "container": "reactive-application",
+              "container_id": "4177d5de469d74a78bd828647c5b0a438a4da6b66aa1ae0d22f14b72bfcff55e",
+              "level": "INFO",
+              "project": "reactive-system-01",
+              "service": "application"
+            },
+            "line": "{\"timestamp\":\"2025-12-26T11:47:39.704175646Z\",\"@version\":\"1\",\"message\":\"BFF: action=INCREMENT, value=1, debug=true, requestId=000e982a6e38fc830000000000000000, traceId=bb3c6622f0da11d3b14f1f313f2a3800\",\"logger\":\"com.reactive.counter.bff.BffController\",\"thread\":\"reactor-http-epoll-1\",\"level\":\"INFO\",\"level_value\":20000,\"serviceVersion\":\"1.0.0\",\"serviceName\":\"counter-application\",\"traceId\":\"e68e871a358cedf5e9057ee8ef1633bc\",\"spanId\":\"87092750187cc13e\",\"service\":\"counter-application\",\"version\":\"1.0.0\"}",
+            "timestamp": "1766749659704175646"
+          },
+          {
+            "fields": {
+              "@version": "1",
+              "level": "INFO",
+              "level_value": 20000,
+              "logger": "com.reactive.platform.benchmark.ObservabilityFetcher",
+              "message": "Found trace by otelTraceId=bb3c6622f0da11d3b14f1f313f2a3800 with 2 spans (timeout, may be incomplete)",
+              "service": "counter-application",
+              "serviceName": "counter-application",
+              "serviceVersion": "1.0.0",
+              "thread": "parallel-3",
+              "timestamp": "2025-12-26T11:47:58.958296723Z",
+              "version": "1.0.0"
+            },
+            "labels": {
+              "compose_service": "gateway",
+              "container": "reactive-application",
+              "container_id": "4177d5de469d74a78bd828647c5b0a438a4da6b66aa1ae0d22f14b72bfcff55e",
+              "level": "INFO",
+              "project": "reactive-system-01",
+              "service": "application"
+            },
+            "line": "{\"timestamp\":\"2025-12-26T11:47:58.958296723Z\",\"@version\":\"1\",\"message\":\"Found trace by otelTraceId=bb3c6622f0da11d3b14f1f313f2a3800 with 2 spans (timeout, may be incomplete)\",\"logger\":\"com.reactive.platform.benchmark.ObservabilityFetcher\",\"thread\":\"parallel-3\",\"level\":\"INFO\",\"level_value\":20000,\"serviceVersion\":\"1.0.0\",\"serviceName\":\"counter-application\",\"service\":\"counter-application\",\"version\":\"1.0.0\"}",
+            "timestamp": "1766749678958296723"
+          },
+          {
+            "fields": {
+              "@version": "1",
+              "level": "INFO",
+              "level_value": 20000,
+              "logger": "com.reactive.platform.benchmark.ObservabilityFetcher",
+              "message": "Found 1 total logs (requestId=000e982a6e38fc830000000000000000, otelTraceId=bb3c6622f0da11d3b14f1f313f2a3800)",
+              "service": "counter-application",
+              "serviceName": "counter-application",
+              "serviceVersion": "1.0.0",
+              "thread": "parallel-3",
+              "timestamp": "2025-12-26T11:47:58.972586307Z",
+              "version": "1.0.0"
+            },
+            "labels": {
+              "compose_service": "gateway",
+              "container": "reactive-application",
+              "container_id": "4177d5de469d74a78bd828647c5b0a438a4da6b66aa1ae0d22f14b72bfcff55e",
+              "level": "INFO",
+              "project": "reactive-system-01",
+              "service": "application"
+            },
+            "line": "{\"timestamp\":\"2025-12-26T11:47:58.972586307Z\",\"@version\":\"1\",\"message\":\"Found 1 total logs (requestId=000e982a6e38fc830000000000000000, otelTraceId=bb3c6622f0da11d3b14f1f313f2a3800)\",\"logger\":\"com.reactive.platform.benchmark.ObservabilityFetcher\",\"thread\":\"parallel-3\",\"level\":\"INFO\",\"level_value\":20000,\"serviceVersion\":\"1.0.0\",\"serviceName\":\"counter-application\",\"service\":\"counter-application\",\"version\":\"1.0.0\"}",
+            "timestamp": "1766749678972586307"
+          },
+          {
+            "fields": {},
+            "labels": {
+              "compose_service": "loki",
+              "container": "reactive-loki",
+              "container_id": "b59b2b451135192978461b55a5593f22a98d86a7feea90459f98e759a69016df",
+              "project": "reactive-system-01",
+              "service": "loki"
+            },
+            "line": "level=info ts=2025-12-26T11:47:58.961972858Z caller=roundtrip.go:241 org_id=fake traceID=2a8461eb08c8f7bd msg=\"executing query\" type=range query=\"{service=~\\\".+\\\"} |= \\\"000e982a6e38fc830000000000000000\\\"\" length=3m0s step=1s query_hash=2528054764",
+            "timestamp": "1766749679046555457"
+          },
+          {
+            "fields": {},
+            "labels": {
+              "compose_service": "loki",
+              "container": "reactive-loki",
+              "container_id": "b59b2b451135192978461b55a5593f22a98d86a7feea90459f98e759a69016df",
+              "project": "reactive-system-01",
+              "service": "loki"
+            },
+            "line": "level=info ts=2025-12-26T11:47:58.963353846Z caller=engine.go:234 component=querier org_id=fake traceID=2a8461eb08c8f7bd msg=\"executing query\" type=range query=\"{service=~\\\".+\\\"} |= \\\"000e982a6e38fc830000000000000000\\\"\" length=3m0s step=1s query_hash=2528054764",
+            "timestamp": "1766749679046559123"
+          },
+          {
+            "fields": {},
+            "labels": {
+              "compose_service": "loki",
+              "container": "reactive-loki",
+              "container_id": "b59b2b451135192978461b55a5593f22a98d86a7feea90459f98e759a69016df",
+              "project": "reactive-system-01",
+              "service": "loki"
+            },
+            "line": "level=info ts=2025-12-26T11:47:58.964378337Z caller=metrics.go:159 component=querier org_id=fake traceID=2a8461eb08c8f7bd latency=fast query=\"{service=~\\\".+\\\"} |= \\\"000e982a6e38fc830000000000000000\\\"\" query_hash=2528054764 query_type=filter range_type=range length=3m0s start_delta=2m0.006370629s end_delta=-59.993629288s step=1s duration=981.366µs status=200 limit=500 returned_lines=1 throughput=66MB total_bytes=64kB total_bytes_structured_metadata=0B lines_per_second=201759 total_lines=198 post_filter_lines=1 total_entries=1 store_chunks_download_time=0s queue_time=14.625µs splits=0 shards=0 cache_chunk_req=0 cache_chunk_hit=0 cache_chunk_bytes_stored=0 cache_chunk_bytes_fetched=0 cache_chunk_download_time=0s cache_index_req=0 cache_index_hit=0 cache_index_download_time=0s cache_stats_results_req=0 cache_stats_results_hit=0 cache_stats_results_download_time=0s cache_result_req=0 cache_result_hit=0 cache_result_download_time=0s",
+            "timestamp": "1766749679046561956"
+          },
+          {
+            "fields": {},
+            "labels": {
+              "compose_service": "loki",
+              "container": "reactive-loki",
+              "container_id": "b59b2b451135192978461b55a5593f22a98d86a7feea90459f98e759a69016df",
+              "project": "reactive-system-01",
+              "service": "loki"
+            },
+            "line": "level=info ts=2025-12-26T11:47:58.96463571Z caller=metrics.go:159 component=frontend org_id=fake traceID=2a8461eb08c8f7bd latency=fast query=\"{service=~\\\".+\\\"} |= \\\"000e982a6e38fc830000000000000000\\\"\" query_hash=2528054764 query_type=filter range_type=range length=3m0s start_delta=2m0.006632335s end_delta=-59.993367624s step=1s duration=2.330646ms status=200 limit=500 returned_lines=0 throughput=28MB total_bytes=64kB total_bytes_structured_metadata=0B lines_per_second=84954 total_lines=198 post_filter_lines=1 total_entries=1 store_chunks_download_time=0s queue_time=15µs splits=0 shards=1 cache_chunk_req=0 cache_chunk_hit=0 cache_chunk_bytes_stored=0 cache_chunk_bytes_fetched=0 cache_chunk_download_time=0s cache_index_req=0 cache_index_hit=0 cache_index_download_time=0s cache_stats_results_req=0 cache_stats_results_hit=0 cache_stats_results_download_time=0s cache_result_req=0 cache_result_hit=0 cache_result_download_time=0s",
+            "timestamp": "1766749679046563706"
+          },
+          {
+            "fields": {},
+            "labels": {
+              "compose_service": "loki",
+              "container": "reactive-loki",
+              "container_id": "b59b2b451135192978461b55a5593f22a98d86a7feea90459f98e759a69016df",
+              "project": "reactive-system-01",
+              "service": "loki"
+            },
+            "line": "level=info ts=2025-12-26T11:47:58.965710367Z caller=roundtrip.go:241 org_id=fake traceID=205fa0b107b00cb2 msg=\"executing query\" type=range query=\"{service=~\\\".+\\\"} |= \\\"bb3c6622f0da11d3b14f1f313f2a3800\\\"\" length=3m0s step=1s query_hash=3282051464",
+            "timestamp": "1766749679046571248"
+          },
+          {
+            "fields": {},
+            "labels": {
+              "compose_service": "loki",
+              "container": "reactive-loki",
+              "container_id": "b59b2b451135192978461b55a5593f22a98d86a7feea90459f98e759a69016df",
+              "project": "reactive-system-01",
+              "service": "loki"
+            },
+            "line": "level=info ts=2025-12-26T11:47:58.969120046Z caller=engine.go:234 component=querier org_id=fake traceID=205fa0b107b00cb2 msg=\"executing query\" type=range query=\"{service=~\\\".+\\\"} |= \\\"bb3c6622f0da11d3b14f1f313f2a3800\\\"\" length=3m0s step=1s query_hash=3282051464",
+            "timestamp": "1766749679046579706"
+          },
+          {
+            "fields": {},
+            "labels": {
+              "compose_service": "loki",
+              "container": "reactive-loki",
+              "container_id": "b59b2b451135192978461b55a5593f22a98d86a7feea90459f98e759a69016df",
+              "project": "reactive-system-01",
+              "service": "loki"
+            },
+            "line": "level=info ts=2025-12-26T11:47:58.969926039Z caller=metrics.go:159 component=querier org_id=fake traceID=205fa0b107b00cb2 latency=fast query=\"{service=~\\\".+\\\"} |= \\\"bb3c6622f0da11d3b14f1f313f2a3800\\\"\" query_hash=3282051464 query_type=filter range_type=range length=3m0s start_delta=2m0.011919414s end_delta=-59.988080545s step=1s duration=765.202µs status=200 limit=500 returned_lines=1 throughput=84MB total_bytes=64kB total_bytes_structured_metadata=0B lines_per_second=258755 total_lines=198 post_filter_lines=1 total_entries=1 store_chunks_download_time=0s queue_time=17.916µs splits=0 shards=0 cache_chunk_req=0 cache_chunk_hit=0 cache_chunk_bytes_stored=0 cache_chunk_bytes_fetched=0 cache_chunk_download_time=0s cache_index_req=0 cache_index_hit=0 cache_index_download_time=0s cache_stats_results_req=0 cache_stats_results_hit=0 cache_stats_results_download_time=0s cache_result_req=0 cache_result_hit=0 cache_result_download_time=0s",
+            "timestamp": "1766749679046580706"
+          },
+          {
+            "fields": {},
+            "labels": {
+              "compose_service": "loki",
+              "container": "reactive-loki",
+              "container_id": "b59b2b451135192978461b55a5593f22a98d86a7feea90459f98e759a69016df",
+              "project": "reactive-system-01",
+              "service": "loki"
+            },
+            "line": "level=info ts=2025-12-26T11:47:58.970154745Z caller=metrics.go:159 component=frontend org_id=fake traceID=205fa0b107b00cb2 latency=fast query=\"{service=~\\\".+\\\"} |= \\\"bb3c6622f0da11d3b14f1f313f2a3800\\\"\" query_hash=3282051464 query_type=filter range_type=range length=3m0s start_delta=2m0.012152953s end_delta=-59.987847005s step=1s duration=4.36517ms status=200 limit=500 returned_lines=0 throughput=15MB total_bytes=64kB total_bytes_structured_metadata=0B lines_per_second=45359 total_lines=198 post_filter_lines=1 total_entries=1 store_chunks_download_time=0s queue_time=18µs splits=0 shards=1 cache_chunk_req=0 cache_chunk_hit=0 cache_chunk_bytes_stored=0 cache_chunk_bytes_fetched=0 cache_chunk_download_time=0s cache_index_req=0 cache_index_hit=0 cache_index_download_time=0s cache_stats_results_req=0 cache_stats_results_hit=0 cache_stats_results_download_time=0s cache_result_req=0 cache_result_hit=0 cache_result_download_time=0s",
+            "timestamp": "1766749679046582581"
+          }
+        ],
+        "trace": {
+          "empty": true,
+          "processes": {},
+          "spans": [],
+          "traceId": ""
+        }
+      },
+      "traceId": "000e982a6e38fc830000000000000000"
+    }
+  ],
+  "startTime": "2025-12-26T11:47:33.674853285Z",
+  "status": "completed",
+  "success": true,
+  "successfulOperations": 313236,
+  "throughputStability": 0.7102007267059296,
+  "throughputTimeline": [
+    0,
+    0,
+    0,
+    0,
+    3051,
+    4662,
+    7022,
+    14735,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    4949,
+    4950,
+    7882,
+    7882,
+    9099,
+    9100,
+    9649,
+    9650,
+    5254,
+    5255,
+    5994,
+    5992,
+    8530,
+    8531,
+    8674,
+    8677,
+    7943,
+    7944,
+    8113,
+    8110,
+    9340,
+    9350,
+    10322,
+    10327,
+    11041,
+    11048,
+    10126,
+    10110,
+    9751,
+    9746,
+    5654,
+    5656,
+    8406,
+    8418,
+    9894,
+    9897,
+    7416,
+    7409,
+    7207,
+    7204,
+    5608,
+    5644,
+    6589,
+    6581,
+    7230,
+    7245,
+    7488,
+    7476,
+    6575,
+    6589,
+    8478,
+    8482,
+    11444,
+    11407,
+    8850,
+    8890,
+    11226,
+    11228,
+    9067,
+    9010,
+    2642,
+    2651,
+    2881,
+    2879,
+    3013,
+    3014,
+    3208,
+    3209,
+    2914,
+    2914,
+    2842,
+    2842,
+    2904,
+    2905,
+    2976,
+    2976,
+    2124,
+    2125,
+    3155,
+    3155,
+    3024,
+    3024,
+    2711,
+    2712,
+    2992,
+    3003,
+    2972,
+    2983,
+    2706,
+    2729,
+    2626,
+    2631,
+    2960,
+    2965
+  ],
+  "totalOperations": 313236
+}

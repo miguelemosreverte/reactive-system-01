@@ -29,7 +29,7 @@ spring:
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.ByteArrayDeserializer
       group-id: counter-app
-      auto-offset-reset: latest
+      auto-offset-reset: earliest
 
 app:
   # Delivery mode: "fire-and-forget" (fast, no wait) or "wait-for-result" (slower, guaranteed)

@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reactive Platform - Dashboard</title>
+    <link rel="stylesheet" href="assets/shared.css">
+    <script src="assets/shared.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <aside class="app-sidebar">
+            <div class="sidebar-brand">
+                <svg class="sidebar-logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                </svg>
+                <span>Reactive Platform</span>
+            </div>
+            <nav class="sidebar-nav">
+                <div class="sidebar-section">
+                    <div class="sidebar-section-title">Overview</div>
+                    <a href="dashboard.html" class="sidebar-link active">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                        Dashboard
+                    </a>
+                    <a href="history/index.html" class="sidebar-link">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                        History
+                    </a>
+                </div>
+                <div class="sidebar-section">
+                    <div class="sidebar-section-title">Benchmarks</div>
+                    <a href="full/index.html" class="sidebar-link">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
+                        Full Pipeline
+                    </a>
+                    <a href="kafka/index.html" class="sidebar-link">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+                        Kafka
+                    </a>
+                    <a href="gateway/index.html" class="sidebar-link">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                        Gateway
+                    </a>
+                </div>
+            </nav>
+        </aside>
+
+        <main class="app-main">
+            <header class="app-header">
+                <div class="header-breadcrumb">
+                    <span class="breadcrumb-item">Home</span>
+                    <span class="breadcrumb-separator">/</span>
+                    <span class="breadcrumb-item active">Dashboard</span>
+                </div>
+                <div class="header-actions">
+                    <div class="header-meta">
+                        <span class="meta-item">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-3.92 7.94"/></svg>
+                            5d42b40
+                        </span>
+                        <span class="meta-item">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+                            0 CPU / 0 GB
+                        </span>
+                    </div>
+                    <button class="polling-indicator active" onclick="togglePolling()" title="Auto-refresh ON (10s) - Click to disable">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M23 4v6h-6"/><path d="M1 20v-6h6"/>
+                            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                        </svg>
+                    </button>
+                    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+                        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="5"/>
+                            <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+                            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                            <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+                            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                        </svg>
+                        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                        </svg>
+                    </button>
+                </div>
+            </header>
+
+            <div class="app-content">
+                <div class="section">
+                    <div class="grid-4">
+                        <div class="stat-card">
+                            <div class="stat-label">Components</div>
+                            <div class="stat-value">8</div>
+                            <div class="stat-sub">services monitored</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Total Benchmarks</div>
+                            <div class="stat-value">1</div>
+                            <div class="stat-sub">runs recorded</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Avg Throughput</div>
+                            <div class="stat-value">20310</div>
+                            <div class="stat-sub">ops/sec</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Avg P99 Latency</div>
+                            <div class="stat-value">4.0</div>
+                            <div class="stat-sub">milliseconds</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <div class="section-header">
+                        <span class="section-title">Benchmark Summary by Component</span>
+                    </div>
+                    <div class="grid-3 component-bench-grid">
+                        <a href="full/index.html" class="component-bench-card success">
+                            <div class="cb-header">
+                                <span class="cb-name">Full Pipeline</span>
+                                <span class="badge success">Passed</span>
+                            </div>
+                            <div class="cb-metrics">
+                                <div class="cb-metric">
+                                    <span class="cb-value">20310</span>
+                                    <span class="cb-label">ops/s peak</span>
+                                </div>
+                                <div class="cb-metric">
+                                    <span class="cb-value">4</span>
+                                    <span class="cb-label">P99 ms</span>
+                                </div>
+                                <div class="cb-metric">
+                                    <span class="cb-value">100%</span>
+                                    <span class="cb-label">success</span>
+                                </div>
+                            </div>
+                        </a>
+                        <a href="gateway/index.html" class="component-bench-card success">
+                            <div class="cb-header">
+                                <span class="cb-name">Gateway</span>
+                                <span class="badge success">Passed</span>
+                            </div>
+                            <div class="cb-metrics">
+                                <div class="cb-metric">
+                                    <span class="cb-value">14735</span>
+                                    <span class="cb-label">ops/s peak</span>
+                                </div>
+                                <div class="cb-metric">
+                                    <span class="cb-value">5</span>
+                                    <span class="cb-label">P99 ms</span>
+                                </div>
+                                <div class="cb-metric">
+                                    <span class="cb-value">100%</span>
+                                    <span class="cb-label">success</span>
+                                </div>
+                            </div>
+                        </a>
+                        <a href="kafka/index.html" class="component-bench-card success">
+                            <div class="cb-header">
+                                <span class="cb-name">Kafka</span>
+                                <span class="badge success">Passed</span>
+                            </div>
+                            <div class="cb-metrics">
+                                <div class="cb-metric">
+                                    <span class="cb-value">30000</span>
+                                    <span class="cb-label">ops/s peak</span>
+                                </div>
+                                <div class="cb-metric">
+                                    <span class="cb-value">3</span>
+                                    <span class="cb-label">P99 ms</span>
+                                </div>
+                                <div class="cb-metric">
+                                    <span class="cb-value">100%</span>
+                                    <span class="cb-label">success</span>
+                                </div>
+                            </div>
+                        </a></div>
+                </div>
+
+                <div class="grid-2">
+                    <div class="section">
+                        <div class="card">
+                            <div class="card-header">
+                                <span class="card-title">Component Health</span>
+                            </div>
+                            <div class="component-list">
+                        <div class="component-item">
+                            <div class="component-status warning"></div>
+                            <div class="component-name">Application</div>
+                            <div class="component-meta">
+                                <div>1360 / 1536 MB</div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill warning" style="width: 89%"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="component-item">
+                            <div class="component-status success"></div>
+                            <div class="component-name">Drools</div>
+                            <div class="component-meta">
+                                <div>383 / 512 MB</div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill success" style="width: 75%"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="component-item">
+                            <div class="component-status success"></div>
+                            <div class="component-name">Flink JobManager</div>
+                            <div class="component-meta">
+                                <div>552 / 768 MB</div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill success" style="width: 72%"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="component-item">
+                            <div class="component-status success"></div>
+                            <div class="component-name">Grafana</div>
+                            <div class="component-meta">
+                                <div>160 / 256 MB</div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill success" style="width: 62%"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="component-item">
+                            <div class="component-status success"></div>
+                            <div class="component-name">Prometheus</div>
+                            <div class="component-meta">
+                                <div>83 / 768 MB</div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill success" style="width: 11%"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="component-item">
+                            <div class="component-status danger"></div>
+                            <div class="component-name">Kafka</div>
+                            <div class="component-meta">
+                                <div>1395 / 1536 MB</div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill danger" style="width: 91%"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="component-item">
+                            <div class="component-status success"></div>
+                            <div class="component-name">Jaeger</div>
+                            <div class="component-meta">
+                                <div>52 / 96 MB</div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill success" style="width: 54%"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="component-item">
+                            <div class="component-status success"></div>
+                            <div class="component-name">Loki</div>
+                            <div class="component-meta">
+                                <div>201 / 1024 MB</div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill success" style="width: 20%"></div>
+                                </div>
+                            </div>
+                        </div></div>
+                        </div>
+                    </div>
+
+                    <div class="section">
+                        <div class="card">
+                            <div class="card-header">
+                                <span class="card-title">Recent Benchmarks</span>
+                                <a href="history/index.html" class="card-link">View History</a>
+                            </div>
+                            <table class="bench-table">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Commit</th>
+                                        <th>Throughput</th>
+                                        <th>P99</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                            <tr>
+                                <td class="mono">2025-12-24</td>
+                                <td class="mono">5d42b40</td>
+                                <td class="mono">20310 ops/s</td>
+                                <td class="mono">4.0 ms</td>
+                                <td><span class="badge success">Success</span></td>
+                            </tr></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <footer class="app-footer">
+                <span>Generated at 2025-12-26 08:50:37 -03</span>
+                <span>Reactive Platform Dashboard</span>
+            </footer>
+        </main>
+    </div>
+</body>
+</html>

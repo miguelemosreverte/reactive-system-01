@@ -1,32 +1,36 @@
-# Build stage
-FROM maven:3.9-eclipse-temurin-21 AS builder
+# syntax=docker/dockerfile:1.4
+# Build stage - copy entire project structure for Maven resolution
+FROM maven:3.9-eclipse-temurin-22 AS build
 
-WORKDIR /build
+WORKDIR /app
 
-# Copy platform module first (dependency)
-COPY platform/pom.xml platform/pom.xml
-COPY platform/src platform/src
+# Copy the entire project structure for proper Maven resolution
+COPY pom.xml pom.xml
+COPY platform platform
+COPY application application
 
-# Install platform to local repo
-WORKDIR /build/platform
-RUN mvn clean install -DskipTests -q
+# Clean all target directories to remove pre-compiled classes
+RUN find . -type d -name target -exec rm -rf {} + 2>/dev/null || true
 
-# Copy application module
-WORKDIR /build
-COPY application/pom.xml application/pom.xml
-COPY application/src application/src
+# Install parent pom first
+RUN --mount=type=cache,target=/root/.m2/repository \
+    mvn -f pom.xml install -N -DskipTests -q
 
-# Build application
-WORKDIR /build/application
-RUN mvn clean package -DskipTests -q
+# Install all platform modules from root (ensures dependencies resolve)
+RUN --mount=type=cache,target=/root/.m2/repository \
+    mvn -f pom.xml install -DskipTests -q -pl platform/base,platform/http-server,platform/kafka,platform -am
+
+# Build the counter application with Spring Boot repackage to create fat jar
+RUN --mount=type=cache,target=/root/.m2/repository \
+    mvn -f pom.xml package spring-boot:repackage -DskipTests -q -pl application/counter
 
 # Runtime stage
-FROM eclipse-temurin:21-jre
+FROM eclipse-temurin:22-jre
 
 WORKDIR /app
 
 # Copy the jar
-COPY --from=builder /build/application/target/*.jar app.jar
+COPY --from=build /app/application/counter/target/*.jar app.jar
 
 # OpenTelemetry Java Agent for auto-instrumentation
 ADD https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v1.32.0/opentelemetry-javaagent.jar /app/opentelemetry-javaagent.jar

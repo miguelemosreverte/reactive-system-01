@@ -1,0 +1,30 @@
+name: "Flink - Stream Processing (High Throughput)"
+description: "Flink benchmark with optimized network buffers (4x exclusive, 32 floating, 64KB segments)"
+component: flink
+runtime: docker
+duration: 10000  # 10 seconds for quick iteration
+concurrency: 200  # More producer threads for higher throughput
+
+# NOTE: High-throughput tuning is now applied in docker-compose.yml:
+#   - taskmanager.network.memory.buffers-per-channel: 4 (default: 2)
+#   - taskmanager.network.memory.floating-buffers-per-gate: 32 (matches parallelism)
+#   - taskmanager.memory.segment-size: 64kb (default: 32kb)
+#   - pipeline.object-reuse: true (reduce GC pressure)
+#
+# Reference: https://flink.apache.org/2021/07/07/backpressure.html
+
+config:
+  httpServer: NONE
+  microbatching: false
+  kafkaAcks: "1"
+  kafkaBatchSize: 131072  # Increased from 65536 for higher throughput
+  kafkaLingerMs: 2  # Slightly lower for better batching without latency
+
+  # Environment variables applied to Flink containers before benchmark
+  env:
+    SKIP_DROOLS: "true"
+    SKIP_TRACING: "true"
+    SKIP_CHECKPOINTING: "true"
+    BENCHMARK_MODE: "true"
+    FLINK_PARALLELISM: "32"  # Match 32 Kafka partitions
+    FLINK_BUFFER_TIMEOUT_MS: "0"  # Flush immediately
