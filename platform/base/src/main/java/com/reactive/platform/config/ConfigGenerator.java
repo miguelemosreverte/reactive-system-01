@@ -62,9 +62,8 @@ public final class ConfigGenerator {
 
         // Memory settings - type-safe iteration over all services
         sb.append("# Service Memory Limits (container)\n");
-        for (PlatformConfig.Service service : PlatformConfig.Service.values()) {
-            appendServiceMemory(sb, service);
-        }
+        Arrays.stream(PlatformConfig.Service.values())
+            .forEach(service -> appendServiceMemory(sb, service));
 
         sb.append("\n# Flink Settings\n");
         var flinkTm = config.flinkTaskManager();
@@ -95,13 +94,17 @@ public final class ConfigGenerator {
 
     private void appendServiceMemory(StringBuilder sb, PlatformConfig.Service service) {
         String prefix = ENV_PREFIX.get(service);
-        try {
-            PlatformConfig.ServiceConfig svc = config.service(service);
+        tryGet(() -> config.service(service)).ifPresent(svc -> {
             sb.append(prefix).append("_MEMORY=").append(svc.containerMb()).append("M\n");
-            try {
+            if (svc.heapMb() > 0) {
                 sb.append(prefix).append("_HEAP=").append(svc.heapMb()).append("m\n");
-            } catch (Exception ignored) {}
-        } catch (Exception ignored) {}
+            }
+        });
+    }
+
+    private static <T> Optional<T> tryGet(java.util.function.Supplier<T> supplier) {
+        try { return Optional.ofNullable(supplier.get()); }
+        catch (Exception e) { return Optional.empty(); }
     }
 
     /**
@@ -200,19 +203,12 @@ public final class ConfigGenerator {
         sb.append("───────────────────────────────────────────────────────────\n");
 
         // Type-safe iteration over all services
-        for (PlatformConfig.Service service : PlatformConfig.Service.values()) {
-            try {
-                PlatformConfig.ServiceConfig svc = config.service(service);
-                String heap;
-                try {
-                    heap = svc.heapMb() + "MB";
-                } catch (Exception e) {
-                    heap = "-";
-                }
+        Arrays.stream(PlatformConfig.Service.values())
+            .forEach(service -> tryGet(() -> config.service(service)).ifPresent(svc -> {
+                String heap = svc.heapMb() > 0 ? svc.heapMb() + "MB" : "-";
                 sb.append(String.format("%-22s %6dMB %8s %s\n",
-                    service.configKey(), svc.containerMb(), heap, truncate(svc.description(), 30)));
-            } catch (Exception ignored) {}
-        }
+                    service.key(), svc.containerMb(), heap, truncate(svc.description(), 30)));
+            }));
 
         sb.append("───────────────────────────────────────────────────────────\n");
         sb.append(String.format("%-22s %6dMB\n", "TOTAL", allocated));
@@ -246,22 +242,18 @@ public final class ConfigGenerator {
             if (errors.isEmpty() && warnings.isEmpty()) {
                 sb.append("✓ Configuration is valid\n");
             } else {
-                if (!errors.isEmpty()) {
-                    sb.append("ERRORS:\n");
-                    for (String error : errors) {
-                        sb.append("  ✗ ").append(error).append("\n");
-                    }
-                    sb.append("\n");
-                }
-                if (!warnings.isEmpty()) {
-                    sb.append("WARNINGS:\n");
-                    for (String warning : warnings) {
-                        sb.append("  ⚠ ").append(warning).append("\n");
-                    }
-                }
+                appendSection(sb, "ERRORS", errors, "✗");
+                appendSection(sb, "WARNINGS", warnings, "⚠");
             }
 
             return sb.toString();
+        }
+
+        private static void appendSection(StringBuilder sb, String title, List<String> items, String icon) {
+            if (items.isEmpty()) return;
+            sb.append(title).append(":\n");
+            items.forEach(item -> sb.append("  ").append(icon).append(" ").append(item).append("\n"));
+            sb.append("\n");
         }
     }
 

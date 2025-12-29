@@ -12,6 +12,7 @@ import com.reactive.platform.serialization.Result;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
@@ -237,7 +238,6 @@ public final class FastGateway<E> {
     }
 
     private static String env(String key, String defaultValue) {
-        String value = System.getenv(key);
-        return value != null ? value : defaultValue;
+        return Optional.ofNullable(System.getenv(key)).orElse(defaultValue);
     }
 }

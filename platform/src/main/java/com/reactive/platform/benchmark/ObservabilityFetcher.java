@@ -260,14 +260,12 @@ public class ObservabilityFetcher {
 
     /** Extract OTel traceId from log entries. */
     public Optional<String> extractTraceIdFromLogs(List<LogEntry> logs) {
-        for (LogEntry entry : logs) {
-            // Try to extract traceId from parsed fields
-            Object traceId = entry.fields().get("traceId");
-            if (traceId != null && !traceId.toString().isEmpty() && !traceId.toString().equals("null")) {
-                return Optional.of(traceId.toString());
-            }
-        }
-        return Optional.empty();
+        return logs.stream()
+            .map(entry -> entry.fields().get("traceId"))
+            .filter(Objects::nonNull)
+            .map(Object::toString)
+            .filter(s -> !s.isEmpty() && !"null".equals(s))
+            .findFirst();
     }
 
     private List<LogEntry> queryLoki(String query, long startNs, long endNs) {

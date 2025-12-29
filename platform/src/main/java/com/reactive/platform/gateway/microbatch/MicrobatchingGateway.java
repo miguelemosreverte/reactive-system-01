@@ -11,6 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 
@@ -366,7 +367,6 @@ public final class MicrobatchingGateway<E> implements AutoCloseable {
     }
 
     private static String env(String key, String defaultValue) {
-        String value = System.getenv(key);
-        return value != null ? value : defaultValue;
+        return Optional.ofNullable(System.getenv(key)).orElse(defaultValue);
     }
 }

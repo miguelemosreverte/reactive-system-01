@@ -255,27 +255,31 @@ public class BottleneckAnalyzer {
             return TraceAnalysis.empty(trace != null ? trace.traceId() : "unknown");
         }
 
-        // Calculate duration by service
-        Map<String, Long> durationByService = new HashMap<>();
-        long totalDuration = 0;
+        // Calculate duration by service (max per service to avoid double-counting nested spans)
+        Map<String, Long> durationByService = trace.spans().stream()
+            .collect(Collectors.toMap(
+                span -> getServiceName(trace, span),
+                Span::duration,
+                Long::max
+            ));
 
-        for (Span span : trace.spans()) {
-            String service = getServiceName(trace, span);
-            long duration = span.duration();
-
-            durationByService.merge(service, duration, Long::max); // Use max to avoid double-counting nested spans
-            totalDuration = Math.max(totalDuration, getSpanEndTime(span) - getEarliestStartTime(trace));
-        }
+        long earliestStart = getEarliestStartTime(trace);
+        long totalDuration = trace.spans().stream()
+            .mapToLong(span -> getSpanEndTime(span) - earliestStart)
+            .max()
+            .orElse(0);
 
         if (totalDuration == 0) {
             return TraceAnalysis.empty(trace.traceId());
         }
 
         // Calculate percentages
-        Map<String, Double> percentByService = new HashMap<>();
-        for (var entry : durationByService.entrySet()) {
-            percentByService.put(entry.getKey(), (entry.getValue() * 100.0) / totalDuration);
-        }
+        final long duration = totalDuration;
+        Map<String, Double> percentByService = durationByService.entrySet().stream()
+            .collect(Collectors.toMap(
+                Map.Entry::getKey,
+                e -> (e.getValue() * 100.0) / duration
+            ));
 
         // Find bottleneck (highest percentage)
         String bottleneck = durationByService.entrySet().stream()
@@ -305,29 +309,31 @@ public class BottleneckAnalyzer {
             return new AggregateAnalysis(0, Map.of(), "unknown", 0, Map.of(), List.of("No traces available for analysis"));
         }
 
-        Map<String, List<Double>> percentsByService = new HashMap<>();
-        Map<String, Integer> bottleneckCounts = new HashMap<>();
+        List<TraceAnalysis> analyses = traces.stream()
+            .map(this::analyzeTrace)
+            .toList();
 
-        for (Trace trace : traces) {
-            TraceAnalysis analysis = analyzeTrace(trace);
+        // Group all percentages by service
+        Map<String, List<Double>> percentsByService = analyses.stream()
+            .flatMap(a -> a.percentByService().entrySet().stream())
+            .collect(Collectors.groupingBy(
+                Map.Entry::getKey,
+                Collectors.mapping(Map.Entry::getValue, Collectors.toList())
+            ));
 
-            for (var entry : analysis.percentByService().entrySet()) {
-                percentsByService.computeIfAbsent(entry.getKey(), k -> new ArrayList<>())
-                        .add(entry.getValue());
-            }
-
-            bottleneckCounts.merge(analysis.bottleneck(), 1, Integer::sum);
-        }
+        // Count bottlenecks
+        Map<String, Integer> bottleneckCounts = analyses.stream()
+            .collect(Collectors.groupingBy(
+                TraceAnalysis::bottleneck,
+                Collectors.summingInt(a -> 1)
+            ));
 
         // Calculate averages
-        Map<String, Double> avgPercentByService = new HashMap<>();
-        for (var entry : percentsByService.entrySet()) {
-            double avg = entry.getValue().stream()
-                    .mapToDouble(Double::doubleValue)
-                    .average()
-                    .orElse(0);
-            avgPercentByService.put(entry.getKey(), avg);
-        }
+        Map<String, Double> avgPercentByService = percentsByService.entrySet().stream()
+            .collect(Collectors.toMap(
+                Map.Entry::getKey,
+                e -> e.getValue().stream().mapToDouble(Double::doubleValue).average().orElse(0)
+            ));
 
         // Find primary bottleneck (most frequent)
         String primaryBottleneck = bottleneckCounts.entrySet().stream()
