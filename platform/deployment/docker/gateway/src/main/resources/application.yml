@@ -11,17 +11,20 @@ spring:
     name: gateway
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
+    # High-throughput producer configuration
+    # Aligned with reference.conf publisher.high-throughput preset
+    # Target: Maximize throughput with acceptable latency (<30s HTTP timeout)
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
-      acks: 1
-      retries: 0
-      batch-size: 131072        # 128KB batch - optimized for microbatching
-      linger-ms: 5              # 5ms batching window
-      buffer-memory: 134217728  # 128MB buffer
-      compression-type: lz4     # Fast compression
+      acks: 1                     # Leader ack (production-safe, fast)
+      retries: 0                  # No retries for throughput
+      batch-size: 131072          # 128KB batch - high throughput
+      linger-ms: 5                # 5ms batching window
+      buffer-memory: 134217728    # 128MB buffer
+      compression-type: lz4       # Fast compression
       properties:
-        max.in.flight.requests.per.connection: 5
+        max.in.flight.requests.per.connection: 5  # Parallel sends
         send.buffer.bytes: 131072  # 128KB send buffer
     consumer:
       group-id: gateway-java
