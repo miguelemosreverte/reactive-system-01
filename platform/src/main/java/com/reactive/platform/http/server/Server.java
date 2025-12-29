@@ -1,5 +1,6 @@
 package com.reactive.platform.http.server;
 
+import java.util.Arrays;
 import java.util.Optional;
 import java.util.function.Supplier;
 
@@ -249,21 +250,12 @@ public enum Server {
             .replace("_", "")
             .trim();
 
-        for (Server s : values()) {
-            String enumNorm = s.name().replace("_", "");
-            if (enumNorm.equals(normalized)) {
-                return Optional.of(s);
-            }
-        }
-
-        // Try exact display name match
-        for (Server s : values()) {
-            if (s.displayName().equalsIgnoreCase(name)) {
-                return Optional.of(s);
-            }
-        }
-
-        return Optional.empty();
+        return Arrays.stream(values())
+            .filter(s -> s.name().replace("_", "").equals(normalized))
+            .findFirst()
+            .or(() -> Arrays.stream(values())
+                .filter(s -> s.displayName().equalsIgnoreCase(name))
+                .findFirst());
     }
 
     /**
@@ -291,17 +283,17 @@ public enum Server {
         System.out.println("╚══════════════════════════════════════════════════════════════════════════════╝");
         System.out.println();
 
-        for (Tier tier : Tier.values()) {
+        Arrays.stream(Tier.values()).forEach(tier -> {
             System.out.printf("  %s (%s)%n", tier.name().replace("_", " "), tier.description());
             System.out.println("  " + "─".repeat(70));
 
-            for (Server s : byTier(tier)) {
+            Arrays.stream(byTier(tier)).forEach(s -> {
                 String factory = s.hasFactory() ? "" : " [standalone]";
                 System.out.printf("    %-12s  %-20s  %s%s%n",
                     s.name(), s.technology(), s.notes(), factory);
-            }
+            });
             System.out.println();
-        }
+        });
 
         System.out.println("  Default: " + defaultServer().displayName());
         System.out.println("  Override: Set HTTP_SERVER_IMPL environment variable");

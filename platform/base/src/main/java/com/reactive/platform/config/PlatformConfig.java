@@ -4,6 +4,7 @@ import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -126,13 +127,12 @@ public final class PlatformConfig {
     }
 
     public long allocatedMemoryMb() {
-        long total = 0;
-        for (Service svc : Service.values()) {
-            try {
-                total += service(svc).containerMb();
-            } catch (Exception ignored) {}
-        }
-        return total;
+        return Arrays.stream(Service.values())
+            .mapToLong(svc -> {
+                try { return service(svc).containerMb(); }
+                catch (Exception e) { return 0L; }
+            })
+            .sum();
     }
 
     // =========================================================================
