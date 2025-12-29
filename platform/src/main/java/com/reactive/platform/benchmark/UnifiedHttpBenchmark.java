@@ -100,10 +100,6 @@ public final class UnifiedHttpBenchmark {
         List<BenchmarkResult> results = new ArrayList<>();
 
         for (Server server : Server.values()) {
-            if (server == Server.IO_URING) {
-                System.out.println("Skipping " + server.name() + " (Linux-only)");
-                continue;
-            }
 
             System.out.println("\n" + "═".repeat(70));
             System.out.println("  Testing: " + server.displayName());
@@ -127,22 +123,18 @@ public final class UnifiedHttpBenchmark {
     }
 
     /**
-     * Run benchmark for top 5 performers + Spring Boot baseline.
+     * Run benchmark for all servers.
      */
     private static void runTop5Servers(int durationSeconds, int concurrency, String outputDir) throws Exception {
-        // Based on documented performance, top 5 + Spring Boot:
-        Server[] top5 = {
-            Server.ROCKET,      // Tier 1: ~662K req/s
-            Server.ZERO_COPY,   // Best in recent tests
-            Server.RAW,         // High performer
-            Server.NETTY,       // Industry standard
-            Server.HYPER,       // HTTP pipelining
-            Server.SPRING_BOOT  // Baseline (always include for comparison)
+        // Available servers: ROCKET (765K req/s champion) + SPRING_BOOT (baseline)
+        Server[] servers = {
+            Server.ROCKET,      // Champion: 765K req/s
+            Server.SPRING_BOOT  // Baseline (~5K req/s)
         };
 
         List<BenchmarkResult> results = new ArrayList<>();
 
-        for (Server server : top5) {
+        for (Server server : servers) {
             System.out.println("\n" + "═".repeat(70));
             System.out.println("  Testing: " + server.displayName() + " (" + server.tier().description() + ")");
             System.out.println("═".repeat(70));

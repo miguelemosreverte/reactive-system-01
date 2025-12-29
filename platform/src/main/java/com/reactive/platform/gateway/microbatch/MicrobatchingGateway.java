@@ -2,7 +2,10 @@ package com.reactive.platform.gateway.microbatch;
 
 import com.reactive.platform.base.Result;
 import com.reactive.platform.http.HttpServer;
-import com.reactive.platform.http.HttpServer.*;
+import com.reactive.platform.http.HttpServer.Handle;
+import com.reactive.platform.http.HttpServer.Handler;
+import com.reactive.platform.http.HttpServer.Request;
+import com.reactive.platform.http.HttpServer.Response;
 import com.reactive.platform.http.RocketHttpServer;
 import com.reactive.platform.kafka.KafkaPublisher;
 import com.reactive.platform.serialization.Codec;
@@ -12,7 +15,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 
@@ -360,6 +362,7 @@ public final class MicrobatchingGateway<E> implements AutoCloseable {
     }
 
     private static String env(String key, String defaultValue) {
-        return Optional.ofNullable(System.getenv(key)).orElse(defaultValue);
+        String value = System.getenv(key);
+        return value != null ? value : defaultValue;
     }
 }

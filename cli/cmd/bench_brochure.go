@@ -326,9 +326,9 @@ func runBrochure(brochure *Brochure, name string) *BrochureResult {
 func runHttpBrochure(projectRoot, network string, brochure *Brochure, outDir string, result *BrochureResult) {
 	durationSec := brochure.Duration / 1000
 
-	// Install only required modules for HTTP benchmarks: base + http-server
+	// Install required modules for HTTP benchmarks: base + http-server + kafka + platform (contains UnifiedHttpBenchmark)
 	printInfo("Building http-server module with dependencies...")
-	if !runMavenInstallModules(projectRoot, network, []string{"platform/base", "platform/http-server"}) {
+	if !runMavenInstallModules(projectRoot, network, []string{"platform/base", "platform/http-server", "platform/kafka", "platform"}) {
 		printError("Failed to build http-server module")
 		return
 	}
@@ -555,23 +555,10 @@ func runMavenInstallModules(projectRoot, network string, modules []string) bool 
 		return false
 	}
 
-	// Install platform aggregator POM
-	printInfo("Installing platform POM...")
-	platArgs := []string{
-		"run", "--rm",
-		"--network", network,
-		"-v", fmt.Sprintf("%s:/app", projectRoot),
-		"-v", "maven-repo:/root/.m2",
-		"-w", "/app/platform",
-		"maven:3.9-eclipse-temurin-21",
-		"mvn", "-q", "-N", "install",
-	}
-	platCmd := exec.Command("docker", platArgs...)
-	platCmd.Dir = projectRoot
-	if output, err := platCmd.CombinedOutput(); err != nil {
-		printError(fmt.Sprintf("Failed to install platform POM: %v\n%s", err, string(output)))
-		return false
-	}
+	// NOTE: The platform module is a JAR (not a POM aggregator), so we skip
+	// installing it here. It will be built when needed as a dependency.
+	// The individual modules (base, http-server, kafka, etc.) are installed
+	// directly in the loop below.
 
 	// Now install each module
 	for _, module := range modules {

@@ -203,17 +203,9 @@ public class BenchmarkRunner {
         cmd.add(server.mainClass());
         cmd.add(String.valueOf(port));
 
-        // Add workers arg for most servers
-        if (server != Server.ULTRA_FAST && server != Server.SPRING_BOOT) {
+        // Add workers arg for most servers (except Spring Boot which configures internally)
+        if (server != Server.SPRING_BOOT) {
             cmd.add(String.valueOf(config.workers));
-        }
-
-        // Special args for some servers
-        if (server == Server.IO_URING) {
-            cmd.add("false"); // busyPoll
-            cmd.add("false"); // sqpoll
-        } else if (server == Server.ZERO_COPY) {
-            cmd.add("true"); // busyPoll
         }
 
         return cmd.toArray(new String[0]);

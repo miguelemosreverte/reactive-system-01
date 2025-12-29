@@ -1,5 +1,7 @@
 package com.reactive.platform.gateway.microbatch;
 
+import com.reactive.platform.config.PlatformConfig;
+
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
@@ -18,7 +20,7 @@ import java.util.concurrent.atomic.AtomicReferenceArray;
  */
 public final class FastRingBuffer<T> {
 
-    private static final int DEFAULT_CAPACITY = 65536;
+    private static final int DEFAULT_CAPACITY = PlatformConfig.load().microbatch().ringBufferCapacity();
 
     // Padding to avoid false sharing
     private long p1, p2, p3, p4, p5, p6, p7;
@@ -138,9 +140,12 @@ public final class FastRingBuffer<T> {
      * Drain with offset.
      */
     public int drain(T[] array, int maxItems, int offset) {
+        if (offset >= array.length) return 0;
+
         long seq = consumerSeq;
         long available = producerSeq.get() - seq;
-        int toDrain = (int) Math.min(maxItems, available);
+        int capacity = array.length - offset;  // Actual space available in output array
+        int toDrain = (int) Math.min(maxItems, Math.min(available, capacity));
 
         int count = 0;
         for (int i = 0; i < toDrain; i++) {

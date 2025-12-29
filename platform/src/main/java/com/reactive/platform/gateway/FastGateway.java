@@ -18,7 +18,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 
 /**
- * High-performance gateway combining FastHttpServer + KafkaPublisher.
+ * High-performance gateway combining RocketHttpServer + KafkaPublisher.
  *
  * Design principles:
  * - Functional composition

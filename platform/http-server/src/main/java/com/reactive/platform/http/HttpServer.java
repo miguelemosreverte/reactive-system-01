@@ -131,16 +131,26 @@ public interface HttpServer {
 
     /**
      * Create a new HTTP server instance.
+     *
+     * For maximum performance, use RocketHttpServer.create() directly.
      */
     static HttpServer create() {
-        return new FastHttpServer();
+        throw new UnsupportedOperationException(
+            "For maximum performance, use RocketHttpServer.create() directly. " +
+            "RocketHttpServer achieves 765K req/s but has a specialized interface."
+        );
     }
 
     /**
      * Create with configuration.
+     *
+     * For maximum performance, use RocketHttpServer.create() directly.
      */
     static HttpServer create(Config config) {
-        return new FastHttpServer(config);
+        throw new UnsupportedOperationException(
+            "For maximum performance, use RocketHttpServer.create().reactors(N) directly. " +
+            "RocketHttpServer achieves 765K req/s but has a specialized interface."
+        );
     }
 
     /**

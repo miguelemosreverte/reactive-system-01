@@ -5,7 +5,6 @@ import java.io.*;
 import java.nio.file.*;
 import java.sql.*;
 import java.time.Instant;
-import java.util.Arrays;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
@@ -44,17 +43,48 @@ public final class BatchCalibration implements AutoCloseable {
      *
      * The system learns optimal batch/interval config for each level.
      */
+    /**
+     * BULK BASELINE - Two rates to consider:
+     *
+     * 1. SEND RATE: 127-131M msg/s (fire-and-forget)
+     *    - What the producer can push before Kafka acknowledges
+     *    - Measured during the send phase only
+     *
+     * 2. SUSTAINED RATE: 5-10M msg/s (Docker Kafka)
+     *    - What Kafka can actually absorb (including flush time)
+     *    - Limited by Docker Kafka's I/O throughput
+     *
+     * For regression detection, we use the SUSTAINED rate since that's
+     * what users actually experience in a real system.
+     */
+    public static final long BULK_SEND_RATE = 127_000_000L;       // Fire-and-forget
+    public static final long BULK_SUSTAINED_RATE = 5_000_000L;    // Docker Kafka actual
+    public static final long BULK_BASELINE_THROUGHPUT = BULK_SUSTAINED_RATE;  // For comparisons
+
+    /**
+     * 10 Pressure Levels: From max-latency (1ms) to max-throughput (30s).
+     *
+     * Simple flush strategy:
+     *   FLUSH when (batch >= batchSize) OR (time elapsed >= intervalMs)
+     *
+     * Lower levels = faster response, smaller batches
+     * Higher levels = higher throughput, larger batches, more latency
+     */
     public enum PressureLevel {
-        // Level          min/10s       max/10s        targetLatencyMs  description
-        IDLE(             0,            100,           1,    "< 10 req/s",       "Development/testing"),
-        LOW(              100,          1_000,         2,    "10-100 req/s",     "Light traffic"),
-        MEDIUM(           1_000,        10_000,        5,    "100-1K req/s",     "Normal load"),
-        HIGH(             10_000,       100_000,       10,   "1K-10K req/s",     "High traffic"),
-        EXTREME(          100_000,      1_000_000,     20,   "10K-100K req/s",   "Peak load"),
-        OVERLOAD(         1_000_000,    10_000_000,    50,   "100K-1M req/s",    "Stress test"),
-        MEGA(             10_000_000,   100_000_000,   100,  "1M-10M req/s",     "Benchmark"),
-        HTTP_30S(         100_000_000,  1_000_000_000, 1000, "10M-100M req/s",   "Max throughput"),
-        HTTP_60S(         1_000_000_000,Long.MAX_VALUE,5000, "> 100M req/s",     "Theoretical max");
+        // Level          min/10s       max/10s        latencyMs  description
+        //
+        // 10 levels spanning 1ms to 30s latency budget
+        //
+        L1_REALTIME(      0,            100,           1,      "< 10 req/s",      "Real-time, 1ms"),
+        L2_FAST(          100,          1_000,         5,      "10-100 req/s",    "Fast, 5ms"),
+        L3_LOW(           1_000,        5_000,         10,     "100-500 req/s",   "Low latency, 10ms"),
+        L4_MODERATE(      5_000,        20_000,        50,     "500-2K req/s",    "Moderate, 50ms"),
+        L5_BALANCED(      20_000,       100_000,       100,    "2K-10K req/s",    "Balanced, 100ms"),
+        L6_THROUGHPUT(    100_000,      500_000,       500,    "10K-50K req/s",   "Throughput, 500ms"),
+        L7_HIGH(          500_000,      2_000_000,     1000,   "50K-200K req/s",  "High batch, 1s"),
+        L8_AGGRESSIVE(    2_000_000,    10_000_000,    5000,   "200K-1M req/s",   "Aggressive, 5s"),
+        L9_EXTREME(       10_000_000,   50_000_000,    15000,  "1M-5M req/s",     "Extreme, 15s"),
+        L10_MAX(          50_000_000,   Long.MAX_VALUE,30000,  "> 5M req/s",      "Max throughput, 30s");
 
         public final long minReqPer10s;
         public final long maxReqPer10s;
@@ -84,10 +114,12 @@ public final class BatchCalibration implements AutoCloseable {
         }
 
         public static PressureLevel fromRequestRate(long requestsPer10Seconds) {
-            return Arrays.stream(values())
-                .filter(level -> requestsPer10Seconds >= level.minReqPer10s && requestsPer10Seconds < level.maxReqPer10s)
-                .findFirst()
-                .orElse(HTTP_60S);
+            for (PressureLevel level : values()) {
+                if (requestsPer10Seconds >= level.minReqPer10s && requestsPer10Seconds < level.maxReqPer10s) {
+                    return level;
+                }
+            }
+            return L10_MAX;
         }
 
         /** Create from requests per second (convenience method). */
@@ -210,7 +242,7 @@ public final class BatchCalibration implements AutoCloseable {
     private final ReentrantLock writeLock = new ReentrantLock();
     private final double targetLatencyMicros;
 
-    private volatile PressureLevel currentPressure = PressureLevel.MEDIUM;
+    private volatile PressureLevel currentPressure = PressureLevel.L5_BALANCED;
     private volatile long lastPressureUpdateNanos = System.nanoTime();
     private volatile long requestCountInWindow = 0;
 
@@ -271,11 +303,8 @@ public final class BatchCalibration implements AutoCloseable {
                 """);
 
             // Add expected_throughput column if not exists (for migration)
-            try {
-                stmt.execute("ALTER TABLE best_config ADD COLUMN expected_throughput INTEGER NOT NULL DEFAULT 0");
-            } catch (SQLException e) {
-                // Column already exists, ignore
-            }
+            Result.run(() -> stmt.execute("ALTER TABLE best_config ADD COLUMN expected_throughput INTEGER NOT NULL DEFAULT 0"));
+            // Failures ignored - column may already exist
 
             stmt.execute("CREATE INDEX IF NOT EXISTS idx_obs_pressure ON observations(pressure_level)");
             stmt.execute("CREATE INDEX IF NOT EXISTS idx_obs_score ON observations(score DESC)");
@@ -295,6 +324,11 @@ public final class BatchCalibration implements AutoCloseable {
     /** Get current pressure level */
     public PressureLevel getCurrentPressure() {
         return currentPressure;
+    }
+
+    /** Set fixed pressure level (for testing/benchmarking) */
+    public void setFixedPressure(PressureLevel level) {
+        this.currentPressure = level;
     }
 
     /**
@@ -513,7 +547,32 @@ public final class BatchCalibration implements AutoCloseable {
 
         // Current state
         sb.append("Current pressure: ").append(currentPressure.name());
-        sb.append(" (").append(currentPressure.rateRange).append(")\n");
+        sb.append(" (").append(currentPressure.rateRange).append(")\n\n");
+
+        // Regression check against BULK baseline
+        Config currentConfig = getBestConfig();
+        if (currentConfig.isCalibrated()) {
+            long throughput = currentConfig.throughputPerSec();
+            double pctOfBaseline = (throughput * 100.0) / BULK_BASELINE_THROUGHPUT;
+
+            sb.append("─".repeat(105)).append("\n");
+            sb.append("BASELINE COMPARISON (BULK: ").append(formatThroughput(BULK_BASELINE_THROUGHPUT)).append(")\n");
+            sb.append("─".repeat(105)).append("\n");
+            sb.append(String.format("  Current:  %s (%.1f%% of BULK baseline)%n",
+                formatThroughput(throughput), pctOfBaseline));
+
+            if (pctOfBaseline < 10) {
+                sb.append("  ⚠️  SEVERE REGRESSION: Throughput is <10% of baseline!\n");
+                sb.append("      Expected: ").append(formatThroughput(BULK_BASELINE_THROUGHPUT));
+                sb.append(" | Actual: ").append(formatThroughput(throughput)).append("\n");
+            } else if (pctOfBaseline < 50) {
+                sb.append("  ⚠️  REGRESSION: Throughput is <50% of baseline\n");
+            } else if (pctOfBaseline < 80) {
+                sb.append("  ⚡ Within 80% of baseline - acceptable\n");
+            } else {
+                sb.append("  ✓ Good: >80% of baseline throughput\n");
+            }
+        }
 
         return sb.toString();
     }

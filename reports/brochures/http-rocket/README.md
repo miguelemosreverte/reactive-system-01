@@ -6,11 +6,11 @@ NIO + SO_REUSEPORT with kernel-level connection distribution
 
 | Metric | Value |
 |--------|-------|
-| Throughput | 633903 ops/s |
-| p50 Latency | 0.2 ms |
-| p99 Latency | 4.5 ms |
-| Total Operations | 38042396 |
-| Successful | 38042396 |
+| Throughput | 356634 ops/s |
+| p50 Latency | 0.6 ms |
+| p99 Latency | 7.1 ms |
+| Total Operations | 21403745 |
+| Successful | 21403745 |
 | Failed | 0 |
 | Duration | 1m0s |
 
@@ -28,6 +28,6 @@ NIO + SO_REUSEPORT with kernel-level connection distribution
 
 ## Timestamp
 
-- Started: 2025-12-27T00:42:25-03:00
-- Completed: 2025-12-27T00:43:37-03:00
-- Duration: 1m11.817773625s
+- Started: 2025-12-29T13:55:37-03:00
+- Completed: 2025-12-29T13:57:05-03:00
+- Duration: 1m27.710468334s

@@ -31,7 +31,7 @@ import java.util.function.Supplier;
 public enum Server {
 
     // ========================================================================
-    // Tier 1: Maximum Throughput (600K+ req/s)
+    // Tier 1: Maximum Throughput (765K req/s)
     // ========================================================================
 
     ROCKET(
@@ -41,87 +41,9 @@ public enum Server {
         Tier.MAXIMUM_THROUGHPUT
     ),
 
-    BOSS_WORKER(
-        "NIO Boss/Worker",
-        "Classic Netty-style architecture with accept/worker separation",
-        "com.reactive.platform.http.BossWorkerHttpServer",
-        Tier.MAXIMUM_THROUGHPUT
-    ),
-
-    IO_URING(
-        "io_uring + FFM",
-        "Linux kernel async I/O, zero syscall overhead (Linux only)",
-        "com.reactive.platform.http.IoUringServer",
-        Tier.MAXIMUM_THROUGHPUT
-    ),
-
     // ========================================================================
-    // Tier 2: High Throughput (500-600K req/s)
+    // Tier 2: Framework-based (Baseline)
     // ========================================================================
-
-    HYPER(
-        "NIO + Pipelining",
-        "HTTP pipelining support for batched requests",
-        "com.reactive.platform.http.HyperHttpServer",
-        Tier.HIGH_THROUGHPUT
-    ),
-
-    RAW(
-        "NIO Multi-EventLoop",
-        "Pure Java, multiple independent event loops",
-        "com.reactive.platform.http.RawHttpServer",
-        Tier.HIGH_THROUGHPUT
-    ),
-
-    TURBO(
-        "NIO + selectNow",
-        "Busy-polling when active, sleep when idle",
-        "com.reactive.platform.http.TurboHttpServer",
-        Tier.HIGH_THROUGHPUT
-    ),
-
-    // ========================================================================
-    // Tier 3: Specialized (300-500K req/s)
-    // ========================================================================
-
-    ULTRA(
-        "NIO Minimal",
-        "Minimal 38-byte response, aggressive selectNow()",
-        "com.reactive.platform.http.UltraHttpServer",
-        Tier.SPECIALIZED
-    ),
-
-    ZERO_COPY(
-        "NIO + Busy-poll",
-        "Direct ByteBuffers, adaptive busy-polling",
-        "com.reactive.platform.http.ZeroCopyHttpServer",
-        Tier.SPECIALIZED
-    ),
-
-    ULTRA_FAST(
-        "NIO Single-thread",
-        "Redis-style single event loop, CPU-bound",
-        "com.reactive.platform.http.UltraFastHttpServer",
-        Tier.SPECIALIZED
-    ),
-
-    // ========================================================================
-    // Tier 4: Framework-based (<300K req/s)
-    // ========================================================================
-
-    FAST(
-        "NIO + VirtualThreads",
-        "Project Loom virtual threads for blocking I/O",
-        "com.reactive.platform.http.FastHttpServer",
-        Tier.FRAMEWORK
-    ),
-
-    NETTY(
-        "Netty NIO",
-        "Industry standard, requires Netty dependency",
-        "com.reactive.platform.http.NettyHttpServer",
-        Tier.FRAMEWORK
-    ),
 
     SPRING_BOOT(
         "Spring WebFlux",
@@ -151,10 +73,8 @@ public enum Server {
      * Performance tier classification.
      */
     public enum Tier {
-        MAXIMUM_THROUGHPUT("600K+ req/s"),
-        HIGH_THROUGHPUT("500-600K req/s"),
-        SPECIALIZED("300-500K req/s"),
-        FRAMEWORK("<300K req/s");
+        MAXIMUM_THROUGHPUT("765K req/s"),
+        FRAMEWORK("~5K req/s");
 
         private final String description;
 

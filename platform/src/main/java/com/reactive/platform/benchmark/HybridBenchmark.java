@@ -1,6 +1,6 @@
 package com.reactive.platform.benchmark;
 
-import com.reactive.platform.http.UltraHttpServer;
+import com.reactive.platform.http.RocketHttpServer;
 
 import java.io.*;
 import java.net.Socket;
@@ -32,7 +32,7 @@ public final class HybridBenchmark {
         System.out.println();
 
         // Start server with optimal reactor count
-        UltraHttpServer.Handle handle = UltraHttpServer.create()
+        RocketHttpServer.Handle handle = RocketHttpServer.create()
             .reactors(4)
             .start(9999);
         Thread.sleep(200);

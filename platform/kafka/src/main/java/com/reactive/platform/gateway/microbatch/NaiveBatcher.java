@@ -11,7 +11,7 @@ import java.util.function.Consumer;
  *
  * Use as baseline comparison for other implementations.
  *
- * @deprecated Use {@link PartitionedBatcher} instead - achieves 1.11B msg/s with efficient batching.
+ * @deprecated Use {@link MicrobatchCollector} instead - achieves 1.3B msg/s with efficient batching.
  */
 @Deprecated
 public final class NaiveBatcher implements MessageBatcher {
