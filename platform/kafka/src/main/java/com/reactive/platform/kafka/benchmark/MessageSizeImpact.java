@@ -1,6 +1,6 @@
 package com.reactive.platform.kafka.benchmark;
 
-import com.reactive.platform.gateway.microbatch.FastBatcher;
+import com.reactive.platform.gateway.microbatch.DirectFlushBatcher;
 
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.LongAdder;
@@ -48,7 +48,7 @@ public class MessageSizeImpact {
         CountDownLatch latch = new CountDownLatch(threads);
 
         LongAdder sink = new LongAdder();
-        FastBatcher batcher = new FastBatcher(d -> sink.add(d.length));
+        DirectFlushBatcher batcher = new DirectFlushBatcher(d -> sink.add(d.length));
 
         long[] counts = new long[threads];
         long endTime = System.nanoTime() + DURATION_SECONDS * 1_000_000_000L;

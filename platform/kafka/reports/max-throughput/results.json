@@ -1,28 +1,20 @@
 {
-  "brochure": "max-throughput",
-  "name": "StripedBatcher MAX Throughput",
-  "startTime": "2025-12-28T17:59:45.695268-03:00",
-  "endTime": "2025-12-28T18:04:37.465418-03:00",
-  "durationMs": 291770,
-  "peakThroughput": 3257683772,
-  "overallThroughput": 1448403695.90,
-  "avgLatencyNs": 191565.68,
-  "totalOps": 422600746352,
-  "verified": true,
-  "kafkaRecords": 42,
-  "phases": [
-    {"chunkKB": 1, "target": 10000, "achieved": 9779, "latencyNs": 235.99},
-    {"chunkKB": 4, "target": 100000, "achieved": 98928, "latencyNs": 213.85},
-    {"chunkKB": 16, "target": 1000000, "achieved": 982649, "latencyNs": 613.71},
-    {"chunkKB": 32, "target": 10000000, "achieved": 9822939, "latencyNs": 900.25},
-    {"chunkKB": 64, "target": 100000000, "achieved": 98513920, "latencyNs": 1564.74},
-    {"chunkKB": 128, "target": 500000000, "achieved": 490949485, "latencyNs": 1932.12},
-    {"chunkKB": 256, "target": 1000000000, "achieved": 984650313, "latencyNs": 4784.95},
-    {"chunkKB": 512, "target": 2000000000, "achieved": 1963767125, "latencyNs": 9783.18},
-    {"chunkKB": 1024, "target": "UNLIMITED", "achieved": 3257683772, "latencyNs": 58809.55},
-    {"chunkKB": 2048, "target": "UNLIMITED", "achieved": 3075072390, "latencyNs": 125857.89},
-    {"chunkKB": 4096, "target": "UNLIMITED", "achieved": 2618715574, "latencyNs": 296147.98},
-    {"chunkKB": 4096, "target": "UNLIMITED", "achieved": 2668252364, "latencyNs": 285447.27}
-  ],
-  "notes": "5-minute benchmark. 4 min ramp-up with increasing batch sizes, 1 min sustained max load."
+  "benchmark": "MaxThroughputTest",
+  "description": "Pure send(message) throughput - no System.nanoTime() per message",
+  "timestamp": "2025-12-28T20:29:05.888359-03:00",
+  "durationMs": 14493,
+  "configuration": {
+    "threads": 12,
+    "messageSize": 64,
+    "messagesPerThread": 100000000,
+    "totalMessages": 1200000000
+  },
+  "results": {
+    "baseline": { "name": "arraycopy only", "throughput": 2977667493, "nsPerMsg": 0.34 },
+    "partitionedBatcher": { "name": "PartitionedBatcher", "throughput": 1317233809, "nsPerMsg": 0.76, "percentOfBaseline": 44, "recommended": true },
+    "directFlushBatcher": { "name": "DirectFlushBatcher", "throughput": 542005420, "nsPerMsg": 1.85, "percentOfBaseline": 18 },
+    "stripedBatcher": { "name": "StripedBatcher", "throughput": 135838804, "nsPerMsg": 7.36, "percentOfBaseline": 5 },
+    "inlineBatcher": { "name": "InlineBatcher.create()", "throughput": 892193308, "nsPerMsg": 1.12, "percentOfBaseline": 30 }
+  },
+  "achievement": "1+ BILLION msg/s with send(message) API - no sendBatch() cheating!"
 }

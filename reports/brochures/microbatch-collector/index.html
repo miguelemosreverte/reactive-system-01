@@ -30,30 +30,30 @@
 
             <div class="metrics">
                 <div class="metric">
-                    <div class="metric-value">2612</div>
+                    <div class="metric-value">311579</div>
                     <div class="metric-label">ops/s</div>
                 </div>
                 <div class="metric">
-                    <div class="metric-value">355.1</div>
+                    <div class="metric-value">1.6</div>
                     <div class="metric-label">p50 latency (ms)</div>
                 </div>
                 <div class="metric">
-                    <div class="metric-value">710.2</div>
+                    <div class="metric-value">3.2</div>
                     <div class="metric-label">p99 latency (ms)</div>
                 </div>
                 <div class="metric">
-                    <div class="metric-value">218031679</div>
+                    <div class="metric-value">185048487</div>
                     <div class="metric-label">total ops</div>
                 </div>
             </div>
 
             <div class="metrics" style="margin-top: 20px;">
                 <div class="metric">
-                    <div class="metric-value success">1256000</div>
+                    <div class="metric-value success">4166746</div>
                     <div class="metric-label">successful</div>
                 </div>
                 <div class="metric">
-                    <div class="metric-value failed">216775679</div>
+                    <div class="metric-value failed">180881741</div>
                     <div class="metric-label">failed</div>
                 </div>
             </div>
@@ -73,22 +73,74 @@
         <div class="card">
             <h2>Raw Results</h2>
             <pre>{
-  "avgThroughput": 2612.36,
-  "component": "microbatch-collector-kafka",
-  "durationMs": 480791,
-  "failedOperations": 216775679,
-  "latency": {
-    "avg": 355.097,
-    "max": 781.213,
-    "p50": 355.097,
-    "p95": 426.116,
-    "p99": 710.194
+  "brochure": "microbatch-collector",
+  "durationMs": 14021,
+  "endTime": "2025-12-27T16:19:32.036464-03:00",
+  "failedOps": 180881741,
+  "name": "Microbatch Collector (No HTTP)",
+  "p50Ms": 1.585,
+  "p99Ms": 3.171,
+  "rawResults": {
+    "brochure": "microbatch-collector",
+    "durationMs": 14434,
+    "endTime": "2025-12-27T16:18:29.173314-03:00",
+    "failedOps": 180881741,
+    "name": "Microbatch Collector (No HTTP)",
+    "p50Ms": 1.585,
+    "p99Ms": 3.171,
+    "rawResults": {
+      "brochure": "microbatch-collector",
+      "durationMs": 20328,
+      "endTime": "2025-12-27T16:18:08.806332-03:00",
+      "failedOps": 180881741,
+      "name": "Microbatch Collector (No HTTP)",
+      "p50Ms": 1.585,
+      "p99Ms": 3.171,
+      "rawResults": {
+        "brochure": "microbatch-collector",
+        "durationMs": 33802,
+        "endTime": "2025-12-27T16:17:19.450487-03:00",
+        "failedOps": 180881741,
+        "name": "Microbatch Collector (No HTTP)",
+        "p50Ms": 1.585,
+        "p99Ms": 3.171,
+        "rawResults": {
+          "avgThroughput": 311579,
+          "component": "microbatch-collector-kafka",
+          "durationMs": 13373,
+          "failedOperations": 180881741,
+          "latency": {
+            "avg": 1.585,
+            "max": 3.488,
+            "p50": 1.585,
+            "p95": 1.902,
+            "p99": 3.171
+          },
+          "name": "MicrobatchCollector + Kafka",
+          "notes": "Submitted: 185,048,487 events; Sent to Kafka: 4,175,082 events; Dropped: 180,881,741 events (backpressure); Batches sent: 51,564; Avg batch size: 81.0; Avg Kafka batch time: 1.585 ms; Best config: batch=64, interval=1000µs",
+          "status": "completed",
+          "successfulOperations": 4166746,
+          "totalOperations": 185048487
+        },
+        "startTime": "2025-12-27T16:16:45.646981-03:00",
+        "successOps": 4166746,
+        "throughput": 311579,
+        "totalOps": 185048487
+      },
+      "startTime": "2025-12-27T16:17:48.47723-03:00",
+      "successOps": 4166746,
+      "throughput": 311579,
+      "totalOps": 185048487
+    },
+    "startTime": "2025-12-27T16:18:14.734793-03:00",
+    "successOps": 4166746,
+    "throughput": 311579,
+    "totalOps": 185048487
   },
-  "name": "MicrobatchCollector + Kafka",
-  "notes": "Submitted: 218,031,679 events; Sent to Kafka: 1,256,000 events; Dropped: 216,775,679 events (backpressure); Batches sent: 4,009; Avg batch size: 313.3; Avg Kafka batch time: 355.097 ms; Best config: batch=64, interval=1000µs",
-  "status": "completed",
-  "successfulOperations": 1256000,
-  "totalOperations": 218031679
+  "startTime": "2025-12-27T16:19:18.013791-03:00",
+  "successOps": 4166746,
+  "throughput": 311579,
+  "totalOps": 185048487
 }</pre>
         </div>
     </div>

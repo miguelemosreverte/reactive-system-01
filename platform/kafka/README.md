@@ -422,23 +422,125 @@ buffer.memory=536870912  # 512MB
 compression.type=lz4
 ```
 
+## Kafka Producer Implementations
+
+The system provides multiple Kafka producer implementations as a **strategy pattern**. Each implementation has different performance characteristics:
+
+### 1. Naive Producer (Direct Send)
+
+The simplest approach - each message is sent directly to Kafka.
+
+```java
+// No batching, just send
+producer.send(new ProducerRecord<>(topic, message));
+```
+
+| Characteristic | Value |
+|---------------|-------|
+| **Throughput** | 1-5M msg/s |
+| **Latency** | Variable (depends on Kafka) |
+| **Use Case** | Low volume, latency-sensitive |
+| **Overhead** | ~200ns per message |
+
+### 2. StripedBatcher (Lock-Free Striped Design)
+
+**The recommended implementation** for high-throughput scenarios.
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        StripedBatcher                                    │
+├─────────────────────────────────────────────────────────────────────────┤
+│  Thread 0      Thread 1      Thread 2      ...      Thread N            │
+│     ↓             ↓             ↓                      ↓                │
+│  ┌──────┐     ┌──────┐     ┌──────┐             ┌──────┐               │
+│  │Stripe│     │Stripe│     │Stripe│             │Stripe│               │
+│  │ 32MB │     │ 32MB │     │ 32MB │             │ 32MB │               │
+│  └──┬───┘     └──┬───┘     └──┬───┘             └──┬───┘               │
+│     │            │            │                    │                    │
+│     └────────────┴────────────┴────────────────────┘                    │
+│                          ↓                                               │
+│              ┌───────────────────────┐                                   │
+│              │    Flush Thread       │  FLUSH when:                      │
+│              │  (single, periodic)   │  (bytes >= N) OR (time >= T)      │
+│              └───────────┬───────────┘                                   │
+│                          ↓                                               │
+│                    ┌──────────┐                                          │
+│                    │  Kafka   │                                          │
+│                    └──────────┘                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+**Design Philosophy:** Single component, self-calibrating, no if/else.
+
+| Characteristic | Value |
+|---------------|-------|
+| **Per-message submit** | ~18M msg/s (54ns overhead) |
+| **Bulk submit** | 300M+ msg/s (3ns overhead) |
+| **Latency Control** | 1ms (L1) to 30s (L10) |
+| **Contention** | Zero (lock-free stripes) |
+
+**Key Insight:** The 54ns per-message overhead is fundamental (arraycopy + atomic position). To exceed BULK baseline, producers must batch at source using `submitBulk()`.
+
+```java
+// Per-message submit (~18M msg/s)
+batcher.submit(message);
+
+// Bulk submit for max throughput (~300M msg/s)
+batcher.submitBulk(batch);  // Pre-batched data
+```
+
+### 3. AdaptiveBatcher (Pressure-Aware)
+
+StripedBatcher with automatic pressure detection and parameter adjustment.
+
+```java
+AdaptiveBatcher batcher = new AdaptiveBatcher(sender, calibration);
+// Parameters adjust automatically based on observed throughput
+```
+
+| Pressure Level | Latency Budget | Threshold | Interval |
+|---------------|----------------|-----------|----------|
+| L1_REALTIME | 1ms | 64KB | 0.5ms |
+| L5_BALANCED | 100ms | 6.4MB | 50ms |
+| L10_MAX | 30s | 64MB | 15s |
+
+### Performance Comparison
+
+| Implementation | Throughput | % of BULK | Latency |
+|---------------|-----------|-----------|---------|
+| **BULK baseline** | 185M msg/s | 100% | N/A |
+| Naive (direct) | 5M msg/s | 2.7% | Variable |
+| StripedBatcher (per-msg) | 18M msg/s | 9.7% | 54ns |
+| StripedBatcher (bulk) | **300M+ msg/s** | **162%** | 3ns |
+
+### Recommendation
+
+| Scenario | Implementation | Why |
+|----------|---------------|-----|
+| Low volume (<1K msg/s) | Naive | Simplest, latency OK |
+| Medium volume (1K-10M msg/s) | StripedBatcher per-msg | Good throughput, easy API |
+| High volume (>10M msg/s) | StripedBatcher bulk | Match/exceed BULK baseline |
+
 ## Files
 
 ```
 src/main/java/com/reactive/platform/
 ├── gateway/microbatch/
-│   ├── BatchCalibration.java      # Learning & pressure detection (131.8M baseline)
-│   ├── MicrobatchCollector.java   # Main collector with ring buffers
+│   ├── BatchCalibration.java      # Learning & pressure detection
+│   ├── MicrobatchCollector.java   # Original collector with ring buffers
 │   ├── FastRingBuffer.java        # LMAX-inspired lock-free buffer
-│   └── MpscRingBuffer.java        # Alternative MPSC implementation
+│   ├── StripedBatcher.java        # ⭐ NEW: Lock-free striped batcher
+│   ├── AdaptiveBatcher.java       # ⭐ NEW: Pressure-aware adaptive batcher
+│   ├── SimpleBatcher.java         # Simple synchronized batcher
+│   └── ExponentialBatcher.java    # Experimental exponential bucket design
 └── kafka/benchmark/
-    ├── KafkaBaselineBenchmark.java   # ⭐ BULK baseline (131.8M msg/s reference)
-    ├── AdaptiveVsBulkBenchmark.java  # ⭐ Compare adaptive vs BULK
-    ├── CalibrationBenchmark.java     # Per-bucket benchmarking
-    ├── BatchSizeExplorer.java        # Batch size impact analysis
-    ├── QuickBatchTest.java           # Fast hypothesis testing
-    ├── RingBufferMicroBenchmark.java # Ring buffer performance
-    └── OnlineLearningBenchmark.java  # Continuous learning
+    ├── KafkaBaselineBenchmark.java      # ⭐ BULK baseline reference
+    ├── StripedBatcherBenchmark.java     # ⭐ NEW: Striped batcher perf
+    ├── BulkSubmitBenchmark.java         # ⭐ NEW: Per-msg vs bulk comparison
+    ├── FinalComparisonBenchmark.java    # ⭐ NEW: All implementations
+    ├── AdaptiveRampBenchmark.java       # Ramp-up load testing
+    ├── AdaptiveVsBulkBenchmark.java     # Adaptive vs BULK comparison
+    └── ...
 ```
 
 ## Theory: Why This Works

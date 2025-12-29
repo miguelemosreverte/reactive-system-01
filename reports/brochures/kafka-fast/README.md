@@ -6,11 +6,11 @@ Maximum Kafka producer throughput with acks=0, high concurrency, and batching
 
 | Metric | Value |
 |--------|-------|
-| Throughput | 4637 ops/s |
-| p50 Latency | 27.6 ms |
-| p99 Latency | 0.0 ms |
-| Total Operations | 281157 |
-| Successful | 281157 |
+| Throughput | 328816 ops/s |
+| p50 Latency | 0.4 ms |
+| p99 Latency | 0.1 ms |
+| Total Operations | 19731282 |
+| Successful | 19731282 |
 | Failed | 0 |
 | Duration | 1m0s |
 
@@ -28,6 +28,6 @@ Maximum Kafka producer throughput with acks=0, high concurrency, and batching
 
 ## Timestamp
 
-- Started: 2025-12-27T10:20:17-03:00
-- Completed: 2025-12-27T10:22:27-03:00
-- Duration: 2m10.245003208s
+- Started: 2025-12-27T16:02:31-03:00
+- Completed: 2025-12-27T16:03:56-03:00
+- Duration: 1m25.389832542s
