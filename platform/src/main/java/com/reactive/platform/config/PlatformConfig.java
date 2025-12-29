@@ -7,6 +7,7 @@ import com.typesafe.config.ConfigMemorySize;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -256,12 +257,15 @@ public final class PlatformConfig {
         }
 
         public long heapMb() {
-            try {
-                return config.getMemorySize("memory.heap").toBytes() / BYTES_PER_MB;
-            } catch (Exception e) {
-                // Go services use go-memlimit instead
-                return config.getMemorySize("memory.go-memlimit").toBytes() / BYTES_PER_MB;
-            }
+            return getOptionalMemory("memory.heap")
+                .or(() -> getOptionalMemory("memory.go-memlimit"))
+                .orElse(0L);
+        }
+
+        private Optional<Long> getOptionalMemory(String path) {
+            return config.hasPath(path)
+                ? Optional.of(config.getMemorySize(path).toBytes() / BYTES_PER_MB)
+                : Optional.empty();
         }
 
         public long processSizeMb() {
@@ -269,27 +273,27 @@ public final class PlatformConfig {
         }
 
         public List<String> jvmOptions() {
-            try {
-                return config.getStringList("jvm.options");
-            } catch (Exception e) {
-                return List.of();
-            }
+            return getOptionalStringList("jvm.options").orElse(List.of());
         }
 
         public int parallelism() {
-            try {
-                return config.getInt("parallelism");
-            } catch (Exception e) {
-                return 1;
-            }
+            return getOptionalInt("parallelism").orElse(1);
         }
 
         public int asyncCapacity() {
-            try {
-                return config.getInt("async-capacity");
-            } catch (Exception e) {
-                return 100;
-            }
+            return getOptionalInt("async-capacity").orElse(100);
+        }
+
+        private Optional<List<String>> getOptionalStringList(String path) {
+            return config.hasPath(path)
+                ? Optional.of(config.getStringList(path))
+                : Optional.empty();
+        }
+
+        private Optional<Integer> getOptionalInt(String path) {
+            return config.hasPath(path)
+                ? Optional.of(config.getInt(path))
+                : Optional.empty();
         }
 
         public Config raw() {

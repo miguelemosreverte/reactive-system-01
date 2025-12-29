@@ -84,13 +84,13 @@ public class QuickBatchTest {
                     bestBatchSize = batchSize;
                 }
 
-                System.out.printf("%-12d │ %12.1fM/s │ %12.0f/s │ %9.2fms%s%n",
-                    batchSize, msgThroughput / 1_000_000.0, batchRate, avgLatencyMs, marker);
+                System.out.printf("%-12d │ %15s │ %12.0f/s │ %9.2fms%s%n",
+                    batchSize, FormattingUtils.formatThroughput(msgThroughput), batchRate, avgLatencyMs, marker);
             }
         }
 
         System.out.println("─".repeat(60));
-        System.out.printf("\nBest: batch=%d → %.1fM msg/s%n", bestBatchSize, bestMsgThroughput / 1_000_000.0);
+        System.out.printf("\nBest: batch=%d → %s%n", bestBatchSize, FormattingUtils.formatThroughput(bestMsgThroughput));
 
         if (bestBatchSize > 10000) {
             System.out.println("\n✓ CONFIRMED: Bigger batches = better throughput");

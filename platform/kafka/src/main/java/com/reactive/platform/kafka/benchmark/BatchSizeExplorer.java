@@ -62,16 +62,16 @@ public class BatchSizeExplorer {
                 notes = "★ NEW BEST";
             }
 
-            System.out.printf("%-12d │ %10.1fM/s │ %10.1fms │ %13.0f/s │ %s%n",
+            System.out.printf("%-12d │ %12s │ %10.1fms │ %13.0f/s │ %s%n",
                 batchSize,
-                result.throughput / 1_000_000.0,
+                FormattingUtils.formatThroughput(result.throughput),
                 result.avgLatencyMs,
                 result.batchesPerSec,
                 notes);
         }
 
         System.out.println("─".repeat(70));
-        System.out.printf("Best: batch=%d → %.1fM/s%n%n", bestBatchSize, bestThroughput / 1_000_000.0);
+        System.out.printf("Best: batch=%d → %s%n%n", bestBatchSize, FormattingUtils.formatThroughput(bestThroughput));
 
         // Phase 2: Test interval impact with best batch size
         System.out.println("Phase 2: Flush Interval Impact (batch=" + bestBatchSize + ")");
@@ -93,16 +93,16 @@ public class BatchSizeExplorer {
                 notes = "★ NEW BEST";
             }
 
-            System.out.printf("%-12s │ %10.1fM/s │ %10.1fms │ %13.0f/s │ %s%n",
+            System.out.printf("%-12s │ %12s │ %10.1fms │ %13.0f/s │ %s%n",
                 formatInterval(interval),
-                result.throughput / 1_000_000.0,
+                FormattingUtils.formatThroughput(result.throughput),
                 result.avgLatencyMs,
                 result.batchesPerSec,
                 notes);
         }
 
         System.out.println("─".repeat(70));
-        System.out.printf("Best: interval=%s → %.1fM/s%n%n", formatInterval(bestInterval), bestThroughput2 / 1_000_000.0);
+        System.out.printf("Best: interval=%s → %s%n%n", formatInterval(bestInterval), FormattingUtils.formatThroughput(bestThroughput2));
 
         // Phase 3: Push to the limit - test very large batches
         System.out.println("Phase 3: Extreme Batch Sizes (pushing limits)");
@@ -120,9 +120,9 @@ public class BatchSizeExplorer {
                     bestBatchSize = batchSize;
                 }
 
-                System.out.printf("batch=%-8d interval=%-8s → %10.1fM/s (latency: %.1fms) %s%n",
+                System.out.printf("batch=%-8d interval=%-8s → %12s (latency: %.1fms) %s%n",
                     batchSize, formatInterval(bestInterval),
-                    result.throughput / 1_000_000.0,
+                    FormattingUtils.formatThroughput(result.throughput),
                     result.avgLatencyMs,
                     notes);
             } catch (Exception e) {
@@ -135,7 +135,7 @@ public class BatchSizeExplorer {
         System.out.println("CONCLUSION");
         System.out.println("═".repeat(70));
         System.out.printf("Optimal config: batch=%d, interval=%s%n", bestBatchSize, formatInterval(bestInterval));
-        System.out.printf("Max throughput: %.1fM msg/s%n", bestThroughput2 / 1_000_000.0);
+        System.out.printf("Max throughput: %s%n", FormattingUtils.formatThroughput(bestThroughput2));
         System.out.println();
         System.out.println("Recommendation:");
         if (bestBatchSize > 4096) {
@@ -237,9 +237,7 @@ public class BatchSizeExplorer {
     }
 
     static String formatInterval(int micros) {
-        if (micros >= 1_000_000) return String.format("%.0fs", micros / 1_000_000.0);
-        if (micros >= 1_000) return String.format("%.0fms", micros / 1_000.0);
-        return micros + "µs";
+        return FormattingUtils.formatInterval(micros);
     }
 
     static byte[] createBulk(java.util.List<byte[]> batch) {

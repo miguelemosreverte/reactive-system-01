@@ -26,18 +26,20 @@ public record CounterState(
         CRITICAL;
 
         public static AlertLevel fromString(String s) {
-            if (s == null) return NONE;
-            return switch (s.toUpperCase()) {
-                case "NORMAL" -> NORMAL;
-                case "WARNING" -> WARNING;
-                case "RESET" -> RESET;
-                case "LOW_RISK" -> LOW_RISK;
-                case "MEDIUM_RISK" -> MEDIUM_RISK;
-                case "HIGH_RISK" -> HIGH_RISK;
-                case "CRITICAL" -> CRITICAL;
-                case "PENDING" -> PENDING;
-                default -> NONE;
-            };
+            return java.util.Optional.ofNullable(s)
+                .map(String::toUpperCase)
+                .map(upper -> switch (upper) {
+                    case "NORMAL" -> NORMAL;
+                    case "WARNING" -> WARNING;
+                    case "RESET" -> RESET;
+                    case "LOW_RISK" -> LOW_RISK;
+                    case "MEDIUM_RISK" -> MEDIUM_RISK;
+                    case "HIGH_RISK" -> HIGH_RISK;
+                    case "CRITICAL" -> CRITICAL;
+                    case "PENDING" -> PENDING;
+                    default -> NONE;
+                })
+                .orElse(NONE);
         }
     }
 
