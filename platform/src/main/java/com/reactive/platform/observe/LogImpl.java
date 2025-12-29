@@ -168,12 +168,16 @@ final class LogImpl {
     // Async Span Support
     // ========================================================================
 
-    Log.SpanHandle asyncSpan(String operation, Log.SpanType type) {
-        SpanKind kind = switch (type) {
+    private static SpanKind toSpanKind(Log.SpanType type) {
+        return switch (type) {
             case PRODUCER -> SpanKind.PRODUCER;
             case CONSUMER -> SpanKind.CONSUMER;
             case INTERNAL -> SpanKind.INTERNAL;
         };
+    }
+
+    Log.SpanHandle asyncSpan(String operation, Log.SpanType type) {
+        SpanKind kind = toSpanKind(type);
 
         Span span = tracer.spanBuilder(operation)
                 .setSpanKind(kind)
@@ -274,11 +278,7 @@ final class LogImpl {
 
         @Override
         public Log.SpanHandle childSpan(String operation, Log.SpanType type) {
-            SpanKind kind = switch (type) {
-                case PRODUCER -> SpanKind.PRODUCER;
-                case CONSUMER -> SpanKind.CONSUMER;
-                case INTERNAL -> SpanKind.INTERNAL;
-            };
+            SpanKind kind = toSpanKind(type);
 
             // Create child span with this span as parent
             Span childSpan = tracer.spanBuilder(operation)
@@ -361,11 +361,7 @@ final class LogImpl {
     }
 
     Log.SpanHandle asyncTracedProcess(String operation, Traceable input, Log.SpanType type) {
-        SpanKind kind = switch (type) {
-            case PRODUCER -> SpanKind.PRODUCER;
-            case CONSUMER -> SpanKind.CONSUMER;
-            case INTERNAL -> SpanKind.INTERNAL;
-        };
+        SpanKind kind = toSpanKind(type);
 
         Span span = tracer.spanBuilder(operation)
                 .setSpanKind(kind)
@@ -393,11 +389,7 @@ final class LogImpl {
     }
 
     Log.SpanHandle asyncTracedConsume(String operation, TracedMessage message, Log.SpanType type) {
-        SpanKind kind = switch (type) {
-            case PRODUCER -> SpanKind.PRODUCER;
-            case CONSUMER -> SpanKind.CONSUMER;
-            case INTERNAL -> SpanKind.INTERNAL;
-        };
+        SpanKind kind = toSpanKind(type);
 
         // Extract parent context from message's trace headers
         Map<String, String> carrier = new HashMap<>();
@@ -442,11 +434,7 @@ final class LogImpl {
     }
 
     Log.SpanHandle tracedReceive(String operation, Traceable message, Log.SpanType type) {
-        SpanKind kind = switch (type) {
-            case PRODUCER -> SpanKind.PRODUCER;
-            case CONSUMER -> SpanKind.CONSUMER;
-            case INTERNAL -> SpanKind.INTERNAL;
-        };
+        SpanKind kind = toSpanKind(type);
 
         Span span = tracer.spanBuilder(operation)
                 .setSpanKind(kind)

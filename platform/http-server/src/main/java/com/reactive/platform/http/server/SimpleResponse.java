@@ -1,7 +1,5 @@
 package com.reactive.platform.http.server;
 
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -18,9 +16,9 @@ public record SimpleResponse(
     }
 
     private static Map<String, String> defaultHeaders(int contentLength) {
-        Map<String, String> headers = new HashMap<>();
-        headers.put("Content-Type", "application/json");
-        headers.put("Content-Length", String.valueOf(contentLength));
-        return Collections.unmodifiableMap(headers);
+        return Map.of(
+            "Content-Type", "application/json",
+            "Content-Length", String.valueOf(contentLength)
+        );
     }
 }

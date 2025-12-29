@@ -64,15 +64,14 @@ public final class GatewayFactory {
      * Get server enum from environment variable.
      */
     public static Server serverFromEnv() {
-        String impl = System.getenv(ENV_SERVER);
-        if (impl == null) {
-            return Server.defaultServer();
-        }
-        return Server.fromName(impl).orElseGet(() -> {
-            System.err.printf("Warning: Unknown server '%s', using default %s%n",
-                impl, Server.defaultServer().displayName());
-            return Server.defaultServer();
-        });
+        return Optional.ofNullable(System.getenv(ENV_SERVER))
+            .flatMap(impl -> Server.fromName(impl)
+                .or(() -> {
+                    System.err.printf("Warning: Unknown server '%s', using default %s%n",
+                        impl, Server.defaultServer().displayName());
+                    return Optional.empty();
+                }))
+            .orElseGet(Server::defaultServer);
     }
 
     // ========================================================================

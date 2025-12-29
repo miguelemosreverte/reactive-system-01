@@ -246,11 +246,12 @@ public class KafkaEventStore implements EventStore {
     }
 
     private Map<String, String> extractHeaders(ConsumerRecord<String, byte[]> record) {
-        Map<String, String> headers = new HashMap<>();
-        for (Header h : record.headers()) {
-            headers.put(h.key(), new String(h.value(), StandardCharsets.UTF_8));
-        }
-        return headers;
+        return StreamSupport.stream(record.headers().spliterator(), false)
+            .collect(Collectors.toMap(
+                Header::key,
+                h -> new String(h.value(), StandardCharsets.UTF_8),
+                (a, b) -> b  // keep last on duplicate keys
+            ));
     }
 
     private Optional<String> extractAggregateId(ConsumerRecord<String, byte[]> record) {
