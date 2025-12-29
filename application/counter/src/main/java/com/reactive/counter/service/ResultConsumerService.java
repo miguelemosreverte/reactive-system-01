@@ -34,8 +34,10 @@ public class ResultConsumerService {
     // Pending transactions awaiting results (for wait-for-result mode)
     private final Map<String, CompletableFuture<CounterResult>> pendingTransactions = new ConcurrentHashMap<>();
 
-    // Sink for broadcasting results to WebSocket clients (bounded buffer to prevent OOM)
-    private final Sinks.Many<CounterResult> resultSink = Sinks.many().multicast().onBackpressureBuffer(1000);
+    // Sink for broadcasting results to WebSocket clients
+    // Using replay().limit() instead of multicast() to ensure subscribers receive emissions
+    // even with slight timing delays between subscription and emission
+    private final Sinks.Many<CounterResult> resultSink = Sinks.many().replay().limit(100);
 
     // Callback for state updates (set by CounterController)
     private java.util.function.Consumer<CounterResult> stateUpdateCallback;
@@ -76,7 +78,7 @@ public class ResultConsumerService {
                 result);
 
         try {
-            log.debug("Received result from Flink: eventId={}, sessionId={}, value={}, alert={}",
+            log.info("Received result from Flink: eventId={}, sessionId={}, value={}, alert={}",
                     result.eventId(), result.sessionId(), result.currentValue(), result.alert());
 
             // Complete pending transaction if any (for wait-for-result mode)
@@ -110,11 +112,16 @@ public class ResultConsumerService {
 
         try {
             Sinks.EmitResult emitResult = resultSink.tryEmitNext(result);
+            log.info("Broadcast to WebSocket sink: sessionId={}, emitResult={}",
+                    result.sessionId(), emitResult.name());
             if (!emitResult.isSuccess()) {
                 wsSpan.attr("emit.result", emitResult.name());
+                log.warn("Failed to emit to WebSocket sink: sessionId={}, result={}",
+                        result.sessionId(), emitResult.name());
             }
             wsSpan.success();
         } catch (Exception e) {
+            log.error("Error broadcasting to WebSocket sink: sessionId={}", result.sessionId(), e);
             wsSpan.failure(e);
         }
     }
@@ -151,27 +158,30 @@ public class ResultConsumerService {
      * Result model matching Flink's CounterResult.
      * Record with compact constructor for boundary normalization.
      * Implements Traceable for automatic span attribute extraction.
+     *
+     * IMPORTANT: Field order MUST match Flink's CounterResult exactly for Jackson deserialization.
+     * Flink's order: sessionId, currentValue, alert, message, requestId, customerId, eventId, timing, timestamp, traceparent, tracestate
      */
     @com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
     public record CounterResult(
-            String requestId,
-            String customerId,
-            String eventId,
             String sessionId,
             int currentValue,
             String alert,
             String message,
+            String requestId,
+            String customerId,
+            String eventId,
             long timestamp,
             String traceparent,
             String tracestate
     ) implements Traceable {
         public CounterResult {
-            requestId = or(requestId, "");
-            customerId = or(customerId, "");
-            eventId = or(eventId, "");
             sessionId = or(sessionId, "");
             alert = or(alert, "");
             message = or(message, "");
+            requestId = or(requestId, "");
+            customerId = or(customerId, "");
+            eventId = or(eventId, "");
             traceparent = or(traceparent, "");
             tracestate = or(tracestate, "");
         }

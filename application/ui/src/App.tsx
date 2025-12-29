@@ -1,16 +1,16 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { Typography, Space, Button, Row, Col, Card, Steps } from 'antd';
-import { ExportOutlined } from '@ant-design/icons';
+import { BugOutlined } from '@ant-design/icons';
 import Counter from './components/Counter';
 import ConnectionStatus from './components/ConnectionStatus';
 import SystemStatus from './components/SystemStatus';
 import EventFlow, { FlowStage } from './components/EventFlow';
 import Documentation from './components/Documentation';
 import TraceViewer from './components/TraceViewer';
+import ForensicModal from './components/ForensicModal';
 import { AppLayout, NavItem } from './components/layout';
 import { useWebSocket } from './hooks/useWebSocket';
-import { getJaegerTraceUrl } from './utils/urls';
 
 const { Title, Text } = Typography;
 
@@ -39,6 +39,7 @@ function App() {
   const [alert, setAlert] = useState<string>('NONE');
   const [message, setMessage] = useState<string>('');
   const [lastTraceId, setLastTraceId] = useState<string | null>(null);
+  const [forensicModalOpen, setForensicModalOpen] = useState(false);
 
   const activeNav = (pathToNav[location.pathname] || 'demo') as NavItem;
   const traceIdFromUrl = searchParams.get('traceId');
@@ -162,13 +163,12 @@ function App() {
                     {lastTraceId}
                   </Text>
                   <Button
-                    type="link"
-                    icon={<ExportOutlined />}
-                    href={getJaegerTraceUrl(lastTraceId)}
-                    target="_blank"
+                    type="primary"
+                    icon={<BugOutlined />}
+                    onClick={() => setForensicModalOpen(true)}
                     size="small"
                   >
-                    View in Jaeger
+                    Forensic Debug
                   </Button>
                   <Button
                     type="link"
@@ -255,13 +255,22 @@ function App() {
   };
 
   return (
-    <AppLayout
-      activeNav={activeNav}
-      onNavigate={(item) => navigate(navToPath[item])}
-      isConnected={isConnected}
-    >
-      {renderContent()}
-    </AppLayout>
+    <>
+      <AppLayout
+        activeNav={activeNav}
+        onNavigate={(item) => navigate(navToPath[item])}
+        isConnected={isConnected}
+      >
+        {renderContent()}
+      </AppLayout>
+
+      <ForensicModal
+        open={forensicModalOpen}
+        onClose={() => setForensicModalOpen(false)}
+        sessionId={sessionId}
+        traceId={lastTraceId}
+      />
+    </>
   );
 }
 
