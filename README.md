@@ -1,13 +1,25 @@
 # Reactive System
 
-A high-performance stream processing platform with benchmarking infrastructure as a first-class concern.
+## 765K HTTP req/s | 1+ Billion Kafka msg/s
+
+A high-performance stream processing platform achieving near-theoretical-maximum throughput.
+
+## Achievements
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│  HTTP Server (RocketHttpServer):    765,000 requests/second             │
+│  Kafka Batching (MicrobatchCollector): 1.3 BILLION messages/second      │
+│  End-to-End with Kafka:             100+ MILLION messages/second        │
+└─────────────────────────────────────────────────────────────────────────┘
+```
 
 ## What This Project Is
 
 This is a **performance engineering laboratory** built around a real-time counter application. The counter itself is simple - the value lies in the systematic approach to measuring and optimizing each layer:
 
-- **HTTP Server Layer** - 9 implementations from Spring WebFlux baseline to custom NIO servers achieving 700K+ req/s
-- **Gateway Layer** - Adaptive microbatching that combines HTTP ingestion with Kafka publishing at 150K+ ops/s
+- **HTTP Server Layer** - Custom NIO server achieving **765K req/s** (153x faster than Spring WebFlux)
+- **Kafka Layer** - Adaptive microbatching achieving **1+ billion msg/s** in pure batching
 - **Stream Processing** - Flink jobs consuming from Kafka, applying Drools business rules
 - **End-to-End Pipelines** - Full request flow from HTTP to Kafka to Flink with distributed tracing
 
@@ -84,11 +96,12 @@ Measured on Apple M-series, same-container benchmarking:
 
 | Component | Implementation | Throughput |
 |-----------|---------------|------------|
-| HTTP Server | Rocket (NIO + SO_REUSEPORT) | 777K req/s |
-| HTTP Server | Spring WebFlux (baseline) | 180K req/s |
-| Gateway | Netty + Adaptive Microbatch | 191K ops/s |
-| Gateway | Spring WebFlux (baseline) | 15K ops/s |
-| Kafka Producer | Fire-and-Forget | 1.2M msgs/s |
+| HTTP Server | **RocketHttpServer** | **765K req/s** |
+| HTTP Server | SpringBootHttpServer (baseline) | 5K req/s |
+| Kafka Batching | **MicrobatchCollector** | **1.3B msg/s** |
+| Kafka End-to-End | With Docker Kafka (verified) | 100M+ msg/s |
+
+See [platform/http-server/README.md](platform/http-server/README.md) and [platform/kafka/README.md](platform/kafka/README.md) for details.
 
 ## Architecture
 

@@ -1,95 +1,81 @@
 # HTTP Server Module
 
-High-performance HTTP server implementations for benchmarking and production use.
+## 765,000 Requests/Second
 
-## Purpose
-
-This module contains 9 HTTP server implementations, from enterprise baseline (Spring WebFlux) to custom NIO servers achieving 700K+ requests/second. Each implementation demonstrates different architectural patterns and performance trade-offs.
+This module contains high-performance HTTP server implementations achieving **765K req/s** - near the theoretical maximum for single-machine HTTP processing.
 
 ## Implementations
 
-| Server | Architecture | Throughput | Use Case |
-|--------|-------------|------------|----------|
-| `SpringBootHttpServer` | Spring WebFlux | ~180K req/s | Enterprise baseline |
-| `NettyHttpServer` | Netty boss/worker | ~400K req/s | Production standard |
-| `BossWorkerHttpServer` | Accept/worker separation | ~450K req/s | Classic pattern |
-| `RawHttpServer` | Pure NIO, multi-loop | ~500K req/s | Educational |
-| `RocketHttpServer` | NIO + SO_REUSEPORT | ~777K req/s | High performance |
-| `HyperHttpServer` | Lock-free + pipelining | ~600K req/s | Low latency |
-| `TurboHttpServer` | Adaptive busy-polling | ~550K req/s | Latency sensitive |
-| `UltraHttpServer` | Minimal response | ~650K req/s | Maximum throughput |
-| `ZeroCopyHttpServer` | Direct buffers | ~500K req/s | Memory efficient |
+| Server | Throughput | Description |
+|--------|------------|-------------|
+| **`RocketHttpServer`** | **765K req/s** | Production-ready, SO_REUSEPORT + NIO |
+| `SpringBootHttpServer` | ~5K req/s | Enterprise baseline, familiar Spring ecosystem |
 
-## Quick Start
+### RocketHttpServer - The Champion
 
-### Run a Benchmark
-
-```bash
-# Using the brochure system
-./reactive bench brochure run http-rocket
-
-# Direct execution
-mvn exec:java -Dexec.mainClass="com.reactive.platform.benchmark.UnifiedHttpBenchmark" \
-  -Dexec.args="ROCKET 60 100 /tmp"
+```
+┌─────────────┐  ┌─────────────┐  ┌─────────────┐
+│  Reactor 0  │  │  Reactor 1  │  │  Reactor N  │
+│  Accept+IO  │  │  Accept+IO  │  │  Accept+IO  │
+│  Port 8080  │  │  Port 8080  │  │  Port 8080  │
+└─────────────┘  └─────────────┘  └─────────────┘
+      ↑               ↑               ↑
+      └───────────────┴───────────────┘
+                SO_REUSEPORT
+         (kernel load balances connections)
 ```
 
-### Use in Your Code
+**Key design decisions:**
+- Multiple reactors sharing the same port via `SO_REUSEPORT`
+- Each reactor handles both accept AND I/O (no handoff overhead)
+- Zero allocation in hot path
+- Pre-computed responses
+
+## Quick Start
 
 ```java
 import com.reactive.platform.http.RocketHttpServer;
 
-HttpServer server = new RocketHttpServer(8080, 4);
-server.start(request -> {
-    return new Response(200, "{\"status\":\"ok\"}");
-});
+// Start server with 4 reactors
+try (var handle = RocketHttpServer.create()
+        .reactors(4)
+        .onBody(body -> processEvent(body))
+        .start(8080)) {
+    handle.awaitTermination();
+}
 ```
 
 ## Brochures
 
-Located in `brochures/`:
-
 | Brochure | Description |
 |----------|-------------|
-| `http-rocket` | NIO + SO_REUSEPORT benchmark |
-| `http-netty` | Netty event loop benchmark |
+| `http-rocket` | RocketHttpServer benchmark (765K req/s) |
 | `http-spring` | Spring WebFlux baseline |
-| `http-hyper` | Lock-free multi-core |
-| `http-turbo` | Adaptive busy-polling |
-| `http-ultra` | Minimal response overhead |
-| `http-raw` | Pure Java NIO |
-| `http-boss-worker` | Classic accept/worker pattern |
-| `http-zero-copy` | Direct buffer optimization |
-
-## Package Structure
-
-```
-com.reactive.platform.http/
-├── HttpServer.java            # Common interface
-├── RocketHttpServer.java      # SO_REUSEPORT + NIO
-├── NettyHttpServer.java       # Netty-based
-├── BossWorkerHttpServer.java  # Boss/worker pattern
-├── HyperHttpServer.java       # Lock-free design
-├── RawHttpServer.java         # Pure NIO
-└── server/                    # Shared utilities
-```
 
 ## Build
 
 ```bash
 mvn compile                    # Compile
 mvn test                       # Run tests
-mvn test -Pbenchmark           # Run benchmarks
 ```
 
-## Benchmarking Notes
+## Recovering Removed Implementations
 
-- All benchmarks use same-container testing (client and server in same JVM)
-- This eliminates network variance and isolates server performance
-- Warmup: 5 seconds, then measure for specified duration
-- Results show throughput (req/s) and latency percentiles (p50, p99)
+During cleanup, we removed 12 experimental HTTP server implementations that were used during the optimization journey. To recover them:
 
-## Dependencies
+```bash
+# Checkout the pre-cleanup commit
+git checkout 2b77838 -- platform/http-server/src/main/java/com/reactive/platform/http/
 
-- Netty (for Netty-based servers)
-- Spring WebFlux (for Spring server)
-- JMH (benchmarking framework)
+# Removed implementations (historical reference):
+# - BossWorkerHttpServer (665K req/s) - Boss/worker pattern
+# - HyperHttpServer (566K req/s) - Lock-free + pipelining
+# - TurboHttpServer (609K req/s) - Adaptive busy-polling
+# - UltraHttpServer (516K req/s) - Minimal response
+# - ZeroCopyHttpServer (511K req/s) - Direct buffers
+# - RawHttpServer (698K req/s) - Pure NIO
+# - NettyHttpServer (485K req/s) - Netty-based
+# - FastHttpServer, Http2Server, IoUringServer, UltraFastServer, UltraFastHttpServer
+```
+
+These implementations represent the evolutionary path to 765K req/s. The final `RocketHttpServer` incorporates lessons learned from all of them.
