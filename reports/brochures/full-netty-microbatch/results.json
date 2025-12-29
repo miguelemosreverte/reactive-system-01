@@ -1,31 +1,31 @@
 {
   "brochure": "full-netty-microbatch",
   "name": "Full Pipeline - Netty + Microbatch",
-  "startTime": "2025-12-27T00:06:43.315406-03:00",
-  "endTime": "2025-12-27T00:10:59.385751-03:00",
-  "durationMs": 256056,
-  "throughput": 205623.88,
-  "p50Ms": 0.857,
-  "p99Ms": 5.151,
-  "totalOps": 12337433,
-  "successOps": 12337433,
+  "startTime": "2025-12-29T14:44:55.973824-03:00",
+  "endTime": "2025-12-29T14:45:31.296402-03:00",
+  "durationMs": 35322,
+  "throughput": 256505.2,
+  "p50Ms": 0.697,
+  "p99Ms": 5,
+  "totalOps": 2565052,
+  "successOps": 2565052,
   "failedOps": 0,
   "rawResults": {
-    "avgThroughput": 205623.88,
+    "avgThroughput": 256505.2,
     "component": "microbatch-gateway",
-    "durationMs": 60000,
+    "durationMs": 10000,
     "failedOperations": 0,
     "latency": {
-      "avg": 0.857,
-      "max": 5.666,
-      "p50": 0.857,
-      "p95": 1.028,
-      "p99": 5.151
+      "avg": 0.697,
+      "max": 5.5,
+      "p50": 0.697,
+      "p95": 0.837,
+      "p99": 5
     },
     "name": "MicrobatchingGateway (NIO Client)",
-    "notes": "Batch size: 81; Flush interval: 1035 µs; Collector throughput: 35764 events/sec",
+    "notes": "Batch size: 1000000; Flush interval: 5000000 µs; Collector throughput: 150376 events/sec",
     "status": "completed",
-    "successfulOperations": 12337433,
-    "totalOperations": 12337433
+    "successfulOperations": 2565052,
+    "totalOperations": 2565052
   }
 }

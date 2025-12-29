@@ -55,6 +55,7 @@ pre_run:
   - sleep 10
 
 duration: 30000
+concurrency: 8
 batch_size: 100                     # Smaller batches for lower latency
 
 config:

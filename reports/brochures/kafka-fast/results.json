@@ -1,31 +1,31 @@
 {
   "brochure": "kafka-fast",
   "name": "Kafka - Fire-and-Forget",
-  "startTime": "2025-12-27T16:02:31.06204-03:00",
-  "endTime": "2025-12-27T16:03:56.482834-03:00",
-  "durationMs": 85389,
-  "throughput": 328816.34,
-  "p50Ms": 0.388,
-  "p99Ms": 0.142,
-  "totalOps": 19731282,
-  "successOps": 19731282,
+  "startTime": "2025-12-29T14:49:22.26779-03:00",
+  "endTime": "2025-12-29T14:49:55.841186-03:00",
+  "durationMs": 33573,
+  "throughput": 429501.08,
+  "p50Ms": 0.293,
+  "p99Ms": 0.013,
+  "totalOps": 4361154,
+  "successOps": 4361154,
   "failedOps": 0,
   "rawResults": {
-    "avgThroughput": 328816.34,
+    "avgThroughput": 429501.08,
     "component": "kafka-producer",
-    "durationMs": 60007,
+    "durationMs": 10154,
     "failedOperations": 0,
     "latency": {
-      "avg": 0.388,
-      "max": 0.17,
-      "p50": 0.388,
-      "p95": 0.582,
-      "p99": 0.142
+      "avg": 0.293,
+      "max": 0.016,
+      "p50": 0.293,
+      "p95": 0.439,
+      "p99": 0.013
     },
     "name": "Kafka Producer Benchmark",
     "notes": "Fire-and-forget Kafka producer throughput (acks=0). This is the theoretical maximum for Kafka publishing.",
     "status": "completed",
-    "successfulOperations": 19731282,
-    "totalOperations": 19731282
+    "successfulOperations": 4361154,
+    "totalOperations": 4361154
   }
 }

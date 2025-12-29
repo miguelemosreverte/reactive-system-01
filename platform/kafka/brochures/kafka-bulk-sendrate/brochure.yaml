@@ -46,6 +46,7 @@ pre_run:
   - sleep 10
 
 duration: 5000
+concurrency: 8
 batch_size: 1000
 
 config:

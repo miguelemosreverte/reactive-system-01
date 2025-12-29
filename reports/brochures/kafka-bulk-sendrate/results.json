@@ -1,0 +1,13 @@
+{
+  "brochure": "kafka-bulk-sendrate",
+  "name": "Kafka BULK - Send Rate (acks=0)",
+  "startTime": "2025-12-29T14:48:17.440609-03:00",
+  "endTime": "2025-12-29T14:48:37.805692-03:00",
+  "durationMs": 20365,
+  "throughput": 0,
+  "p50Ms": 0,
+  "p99Ms": 0,
+  "totalOps": 0,
+  "successOps": 0,
+  "failedOps": 0
+}

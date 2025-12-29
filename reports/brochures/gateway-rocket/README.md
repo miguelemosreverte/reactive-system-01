@@ -6,13 +6,13 @@ Rocket HTTP Server + Kafka microbatching gateway
 
 | Metric | Value |
 |--------|-------|
-| Throughput | 213874 ops/s |
-| p50 Latency | 2.0 ms |
-| p99 Latency | 12.0 ms |
-| Total Operations | 12832469 |
-| Successful | 12832469 |
+| Throughput | 293645 ops/s |
+| p50 Latency | 1.5 ms |
+| p99 Latency | 8.1 ms |
+| Total Operations | 2936447 |
+| Successful | 2936447 |
 | Failed | 0 |
-| Duration | 1m0s |
+| Duration | 10s |
 
 ## Configuration
 
@@ -28,6 +28,6 @@ Rocket HTTP Server + Kafka microbatching gateway
 
 ## Timestamp
 
-- Started: 2025-12-27T00:28:38-03:00
-- Completed: 2025-12-27T00:32:54-03:00
-- Duration: 4m15.503521791s
+- Started: 2025-12-29T14:46:23-03:00
+- Completed: 2025-12-29T14:46:54-03:00
+- Duration: 31.784160709s

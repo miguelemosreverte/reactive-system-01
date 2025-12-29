@@ -6,13 +6,13 @@ Production-grade Flink benchmark WITH full observability enabled. Traces flow to
 
 | Metric | Value |
 |--------|-------|
-| Throughput | 7001 ops/s |
-| p50 Latency | 3301.0 ms |
-| p99 Latency | 17935.0 ms |
-| Total Operations | 215538 |
-| Successful | 185812 |
-| Failed | 29726 |
-| Duration | 30s |
+| Throughput | 2192 ops/s |
+| p50 Latency | 20593.0 ms |
+| p99 Latency | 29969.0 ms |
+| Total Operations | 95008 |
+| Successful | 19908 |
+| Failed | 75100 |
+| Duration | 10s |
 
 ## Configuration
 
@@ -28,6 +28,6 @@ Production-grade Flink benchmark WITH full observability enabled. Traces flow to
 
 ## Timestamp
 
-- Started: 2025-12-28T14:41:54-03:00
-- Completed: 2025-12-28T14:42:48-03:00
-- Duration: 54.314270458s
+- Started: 2025-12-29T14:40:34-03:00
+- Completed: 2025-12-29T14:41:48-03:00
+- Duration: 1m14.028707791s

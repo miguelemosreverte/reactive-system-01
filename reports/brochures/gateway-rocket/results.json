@@ -1,31 +1,31 @@
 {
   "brochure": "gateway-rocket",
   "name": "Gateway - Rocket + Microbatch",
-  "startTime": "2025-12-27T00:28:38.623818-03:00",
-  "endTime": "2025-12-27T00:32:54.130515-03:00",
-  "durationMs": 255503,
-  "throughput": 213874.48,
-  "p50Ms": 1.987,
-  "p99Ms": 12.011,
-  "totalOps": 12832469,
-  "successOps": 12832469,
+  "startTime": "2025-12-29T14:46:23.204151-03:00",
+  "endTime": "2025-12-29T14:46:54.987181-03:00",
+  "durationMs": 31784,
+  "throughput": 293644.7,
+  "p50Ms": 1.481,
+  "p99Ms": 8.083,
+  "totalOps": 2936447,
+  "successOps": 2936447,
   "failedOps": 0,
   "rawResults": {
-    "avgThroughput": 213874.48,
+    "avgThroughput": 293644.7,
     "component": "microbatch-gateway",
-    "durationMs": 60000,
+    "durationMs": 10000,
     "failedOperations": 0,
     "latency": {
-      "avg": 1.987,
-      "max": 13.212,
-      "p50": 1.987,
-      "p95": 2.384,
-      "p99": 12.011
+      "avg": 1.481,
+      "max": 8.891,
+      "p50": 1.481,
+      "p95": 1.778,
+      "p99": 8.083
     },
     "name": "MicrobatchingGateway (NIO Client)",
-    "notes": "Batch size: 52; Flush interval: 1057 µs; Collector throughput: 35764 events/sec",
+    "notes": "Batch size: 1000000; Flush interval: 5000000 µs; Collector throughput: 157908 events/sec",
     "status": "completed",
-    "successfulOperations": 12832469,
-    "totalOperations": 12832469
+    "successfulOperations": 2936447,
+    "totalOperations": 2936447
   }
 }

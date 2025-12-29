@@ -6,13 +6,13 @@ Production-grade Flink benchmark with RocksDB incremental checkpoints, exactly-o
 
 | Metric | Value |
 |--------|-------|
-| Throughput | 6500 ops/s |
-| p50 Latency | 2924.0 ms |
-| p99 Latency | 20738.0 ms |
-| Total Operations | 202055 |
-| Successful | 147174 |
-| Failed | 54881 |
-| Duration | 1m0s |
+| Throughput | 2497 ops/s |
+| p50 Latency | 21187.0 ms |
+| p99 Latency | 26662.0 ms |
+| Total Operations | 94931 |
+| Successful | 19731 |
+| Failed | 75200 |
+| Duration | 10s |
 
 ## Configuration
 
@@ -28,6 +28,6 @@ Production-grade Flink benchmark with RocksDB incremental checkpoints, exactly-o
 
 ## Timestamp
 
-- Started: 2025-12-28T13:45:39-03:00
-- Completed: 2025-12-28T13:46:33-03:00
-- Duration: 54.44069475s
+- Started: 2025-12-29T14:41:49-03:00
+- Completed: 2025-12-29T14:42:37-03:00
+- Duration: 47.896001125s

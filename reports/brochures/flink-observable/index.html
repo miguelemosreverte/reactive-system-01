@@ -30,30 +30,30 @@
 
             <div class="metrics">
                 <div class="metric">
-                    <div class="metric-value">7001</div>
+                    <div class="metric-value">2192</div>
                     <div class="metric-label">ops/s</div>
                 </div>
                 <div class="metric">
-                    <div class="metric-value">3301.0</div>
+                    <div class="metric-value">20593.0</div>
                     <div class="metric-label">p50 latency (ms)</div>
                 </div>
                 <div class="metric">
-                    <div class="metric-value">17935.0</div>
+                    <div class="metric-value">29969.0</div>
                     <div class="metric-label">p99 latency (ms)</div>
                 </div>
                 <div class="metric">
-                    <div class="metric-value">215538</div>
+                    <div class="metric-value">95008</div>
                     <div class="metric-label">total ops</div>
                 </div>
             </div>
 
             <div class="metrics" style="margin-top: 20px;">
                 <div class="metric">
-                    <div class="metric-value success">185812</div>
+                    <div class="metric-value success">19908</div>
                     <div class="metric-label">successful</div>
                 </div>
                 <div class="metric">
-                    <div class="metric-value failed">29726</div>
+                    <div class="metric-value failed">75100</div>
                     <div class="metric-label">failed</div>
                 </div>
             </div>
@@ -66,16 +66,16 @@
                 <div class="config-row"><span>HTTP Server</span><span>NONE</span></div>
                 <div class="config-row"><span>Microbatching</span><span>false</span></div>
                 <div class="config-row"><span>Concurrency</span><span>100</span></div>
-                <div class="config-row"><span>Duration</span><span>30s</span></div>
+                <div class="config-row"><span>Duration</span><span>10s</span></div>
             </div>
         </div>
 
         <div class="card">
             <h2>Raw Results</h2>
             <pre>{
-  "avgCpu": 119.0460205078125,
-  "avgMemory": 9.419655813663093,
-  "avgThroughput": 7001,
+  "avgCpu": 163.45621744791666,
+  "avgMemory": 1.269373963735371,
+  "avgThroughput": 2192,
   "component": "flink",
   "componentTiming": {
     "droolsMs": 0,
@@ -84,76 +84,82 @@
     "kafkaMs": 0
   },
   "cpuTimeline": [
-    92.68798828125,
-    92.68798828125,
-    92.68798828125,
-    92.68798828125,
-    92.68798828125,
-    91.265869140625,
-    91.265869140625,
-    91.265869140625,
-    91.265869140625,
-    91.265869140625,
-    134.0087890625,
-    134.0087890625,
-    134.0087890625,
-    134.0087890625,
-    134.0087890625,
-    184.33837890625,
-    184.33837890625,
-    184.33837890625
+    143.64013671875,
+    142.144775390625,
+    142.144775390625,
+    142.144775390625,
+    142.144775390625,
+    142.144775390625,
+    150.787353515625,
+    150.787353515625,
+    150.787353515625,
+    150.787353515625,
+    150.787353515625,
+    170.745849609375,
+    170.745849609375,
+    170.745849609375,
+    170.745849609375,
+    170.745849609375,
+    194.110107421875,
+    194.110107421875,
+    194.110107421875,
+    194.110107421875,
+    194.110107421875
   ],
   "description": "Tests Kafka + Flink processing",
-  "durationMs": 30786,
-  "endTime": "2025-12-28T17:42:48.401781483Z",
+  "durationMs": 43327,
+  "endTime": "2025-12-29T17:41:47.897814752Z",
   "errorMessage": "",
-  "failedOperations": 29726,
+  "failedOperations": 75100,
   "latency": {
-    "avg": 4604,
-    "max": 21144,
-    "min": 8,
-    "p50": 3301,
-    "p95": 13829,
-    "p99": 17935
+    "avg": 19307,
+    "max": 30385,
+    "min": 52,
+    "p50": 20593,
+    "p95": 29756,
+    "p99": 29969
   },
   "memoryTimeline": [
-    1.3682539264361062,
-    1.3682539264361062,
-    1.3682539264361062,
-    1.4008060097694397,
-    1.253023991982142,
-    1.253023991982142,
-    1.253023991982142,
-    0.7891597847143809,
-    1.7014630138874054,
-    3.7535702188809714,
-    6.619058301051457,
-    16.65626813968023,
-    19.517533729473747,
-    20.15329599380493,
-    20.19574915369352,
-    17.772954950730004,
-    28.911453237136204,
-    24.218658357858658
+    0.49055821315985276,
+    0.49055821315985276,
+    0.49055821315985276,
+    0.49055821315985276,
+    0.5550397906387061,
+    0.9225601540472275,
+    0.45606455408540886,
+    0.514679337503916,
+    0.514679337503916,
+    0.514679337503916,
+    0.5758621101092576,
+    1.4301829708548714,
+    2.762426887837269,
+    1.746218306080142,
+    2.3430710030080086,
+    2.6094376413445723,
+    1.5773520792337288,
+    1.673019523907425,
+    3.0037597426794527,
+    1.6877805858028863,
+    1.8078070236626724
   ],
   "name": "Flink Benchmark",
-  "peakCpu": 184.33837890625,
-  "peakMemory": 28.911453237136204,
-  "peakThroughput": 20307,
+  "peakCpu": 194.110107421875,
+  "peakMemory": 3.0037597426794527,
+  "peakThroughput": 5535,
   "sampleEvents": [
     {
       "componentTiming": {
         "droolsMs": 0,
         "flinkMs": 0,
         "gatewayMs": 0,
-        "kafkaMs": 7905
+        "kafkaMs": 8879
       },
       "error": "",
-      "id": "flink_flink_18_832",
-      "latencyMs": 7905,
+      "id": "flink_flink_14_86",
+      "latencyMs": 8879,
       "otelTraceId": null,
       "status": "success",
-      "timestamp": 1766943757345,
+      "timestamp": 1767030084482,
       "traceData": {
         "empty": true,
         "logs": [],
@@ -171,14 +177,14 @@
         "droolsMs": 0,
         "flinkMs": 0,
         "gatewayMs": 0,
-        "kafkaMs": 797
+        "kafkaMs": 9087
       },
       "error": "",
-      "id": "flink_flink_52_2475",
-      "latencyMs": 797,
+      "id": "flink_flink_12_334",
+      "latencyMs": 9087,
       "otelTraceId": null,
       "status": "success",
-      "timestamp": 1766943757378,
+      "timestamp": 1767030084803,
       "traceData": {
         "empty": true,
         "logs": [],
@@ -192,11 +198,11 @@
       "traceId": null
     }
   ],
-  "startTime": "2025-12-28T17:42:17.615025202Z",
+  "startTime": "2025-12-29T17:41:04.570109246Z",
   "status": "completed",
   "success": false,
-  "successfulOperations": 185812,
-  "throughputStability": 0.7840552270228377,
+  "successfulOperations": 19908,
+  "throughputStability": 1.2115186611744124,
   "throughputTimeline": [
     0,
     0,
@@ -206,26 +212,29 @@
     0,
     0,
     0,
-    506,
-    4758,
-    10213,
-    19595,
-    18782,
-    19759,
-    14804,
-    14709,
-    17188,
-    17199,
-    16612,
-    18051,
-    18107,
-    19548,
-    20307,
-    19784,
-    15813,
-    12009
+    0,
+    0,
+    0,
+    365,
+    622,
+    1689,
+    3547,
+    1001,
+    229,
+    342,
+    583,
+    905,
+    1123,
+    2493,
+    3144,
+    3298,
+    3996,
+    5535,
+    4436,
+    2504,
+    2850
   ],
-  "totalOperations": 215538
+  "totalOperations": 95008
 }</pre>
         </div>
     </div>

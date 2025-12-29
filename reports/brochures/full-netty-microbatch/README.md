@@ -6,13 +6,13 @@ Optimized E2E pipeline with Rocket HTTP server and adaptive microbatching
 
 | Metric | Value |
 |--------|-------|
-| Throughput | 205624 ops/s |
-| p50 Latency | 0.9 ms |
-| p99 Latency | 5.2 ms |
-| Total Operations | 12337433 |
-| Successful | 12337433 |
+| Throughput | 256505 ops/s |
+| p50 Latency | 0.7 ms |
+| p99 Latency | 5.0 ms |
+| Total Operations | 2565052 |
+| Successful | 2565052 |
 | Failed | 0 |
-| Duration | 1m0s |
+| Duration | 10s |
 
 ## Configuration
 
@@ -28,6 +28,6 @@ Optimized E2E pipeline with Rocket HTTP server and adaptive microbatching
 
 ## Timestamp
 
-- Started: 2025-12-27T00:06:43-03:00
-- Completed: 2025-12-27T00:10:59-03:00
-- Duration: 4m16.056354375s
+- Started: 2025-12-29T14:44:55-03:00
+- Completed: 2025-12-29T14:45:31-03:00
+- Duration: 35.322362083s

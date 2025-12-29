@@ -1,13 +1,13 @@
 {
   "brochure": "full-spring",
   "name": "Full Pipeline - Spring",
-  "startTime": "2025-12-27T10:41:57.737799-03:00",
-  "endTime": "2025-12-27T10:48:00.11678-03:00",
-  "durationMs": 362373,
-  "throughput": 830.32,
-  "p50Ms": 4,
-  "p99Ms": 79,
-  "totalOps": 300000,
-  "successOps": 300000,
+  "startTime": "2025-12-29T14:45:31.912839-03:00",
+  "endTime": "2025-12-29T14:45:48.009267-03:00",
+  "durationMs": 16110,
+  "throughput": 3251.19,
+  "p50Ms": 16,
+  "p99Ms": 229,
+  "totalOps": 50000,
+  "successOps": 50000,
   "failedOps": 0
 }

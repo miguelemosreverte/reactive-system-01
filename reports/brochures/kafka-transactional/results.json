@@ -1,0 +1,13 @@
+{
+  "brochure": "kafka-transactional",
+  "name": "Kafka Transactional (acks=all)",
+  "startTime": "2025-12-29T14:49:56.501186-03:00",
+  "endTime": "2025-12-29T14:50:17.10305-03:00",
+  "durationMs": 20601,
+  "throughput": 0,
+  "p50Ms": 0,
+  "p99Ms": 0,
+  "totalOps": 0,
+  "successOps": 0,
+  "failedOps": 0
+}

@@ -6,13 +6,13 @@ Complete E2E pipeline using Spring Boot gateway (baseline)
 
 | Metric | Value |
 |--------|-------|
-| Throughput | 830 ops/s |
-| p50 Latency | 4.0 ms |
-| p99 Latency | 79.0 ms |
-| Total Operations | 300000 |
-| Successful | 300000 |
+| Throughput | 3251 ops/s |
+| p50 Latency | 16.0 ms |
+| p99 Latency | 229.0 ms |
+| Total Operations | 50000 |
+| Successful | 50000 |
 | Failed | 0 |
-| Duration | 1m0s |
+| Duration | 10s |
 
 ## Configuration
 
@@ -28,6 +28,6 @@ Complete E2E pipeline using Spring Boot gateway (baseline)
 
 ## Timestamp
 
-- Started: 2025-12-27T10:41:57-03:00
-- Completed: 2025-12-27T10:48:00-03:00
-- Duration: 6m2.373643875s
+- Started: 2025-12-29T14:45:31-03:00
+- Completed: 2025-12-29T14:45:48-03:00
+- Duration: 16.110176375s

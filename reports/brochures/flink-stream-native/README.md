@@ -6,12 +6,12 @@ Flink stream processing benchmark - native execution for comparison
 
 | Metric | Value |
 |--------|-------|
-| Throughput | 0 ops/s |
-| p50 Latency | 0.0 ms |
-| p99 Latency | 0.0 ms |
-| Total Operations | 0 |
-| Successful | 0 |
-| Failed | 0 |
+| Throughput | 3289 ops/s |
+| p50 Latency | 16636.0 ms |
+| p99 Latency | 26063.0 ms |
+| Total Operations | 123066 |
+| Successful | 47941 |
+| Failed | 75125 |
 | Duration | 10s |
 
 ## Configuration
@@ -28,6 +28,6 @@ Flink stream processing benchmark - native execution for comparison
 
 ## Timestamp
 
-- Started: 2025-12-28T09:47:54-03:00
-- Completed: 2025-12-28T09:47:58-03:00
-- Duration: 3.391022375s
+- Started: 2025-12-29T14:43:19-03:00
+- Completed: 2025-12-29T14:44:06-03:00
+- Duration: 46.897341417s

@@ -6,13 +6,13 @@ Gateway using Spring WebFlux with standard Kafka producer
 
 | Metric | Value |
 |--------|-------|
-| Throughput | 827 ops/s |
-| p50 Latency | 4.0 ms |
-| p99 Latency | 83.0 ms |
-| Total Operations | 300000 |
-| Successful | 300000 |
+| Throughput | 7474 ops/s |
+| p50 Latency | 10.0 ms |
+| p99 Latency | 74.0 ms |
+| Total Operations | 50000 |
+| Successful | 50000 |
 | Failed | 0 |
-| Duration | 1m0s |
+| Duration | 10s |
 
 ## Configuration
 
@@ -28,6 +28,6 @@ Gateway using Spring WebFlux with standard Kafka producer
 
 ## Timestamp
 
-- Started: 2025-12-27T10:35:41-03:00
-- Completed: 2025-12-27T10:41:45-03:00
-- Duration: 6m3.6561255s
+- Started: 2025-12-29T14:46:55-03:00
+- Completed: 2025-12-29T14:47:03-03:00
+- Duration: 7.553932458s

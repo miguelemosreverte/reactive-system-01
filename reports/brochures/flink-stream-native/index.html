@@ -30,30 +30,30 @@
 
             <div class="metrics">
                 <div class="metric">
-                    <div class="metric-value">0</div>
+                    <div class="metric-value">3289</div>
                     <div class="metric-label">ops/s</div>
                 </div>
                 <div class="metric">
-                    <div class="metric-value">0.0</div>
+                    <div class="metric-value">16636.0</div>
                     <div class="metric-label">p50 latency (ms)</div>
                 </div>
                 <div class="metric">
-                    <div class="metric-value">0.0</div>
+                    <div class="metric-value">26063.0</div>
                     <div class="metric-label">p99 latency (ms)</div>
                 </div>
                 <div class="metric">
-                    <div class="metric-value">0</div>
+                    <div class="metric-value">123066</div>
                     <div class="metric-label">total ops</div>
                 </div>
             </div>
 
             <div class="metrics" style="margin-top: 20px;">
                 <div class="metric">
-                    <div class="metric-value success">0</div>
+                    <div class="metric-value success">47941</div>
                     <div class="metric-label">successful</div>
                 </div>
                 <div class="metric">
-                    <div class="metric-value failed">0</div>
+                    <div class="metric-value failed">75125</div>
                     <div class="metric-label">failed</div>
                 </div>
             </div>
@@ -72,7 +72,164 @@
 
         <div class="card">
             <h2>Raw Results</h2>
-            <pre>null</pre>
+            <pre>{
+  "avgCpu": 334.22144839638156,
+  "avgMemory": 3.47520944735979,
+  "avgThroughput": 3289,
+  "component": "flink",
+  "componentTiming": {
+    "droolsMs": 0,
+    "flinkMs": 0,
+    "gatewayMs": 0,
+    "kafkaMs": 0
+  },
+  "cpuTimeline": [
+    330.82275390625,
+    330.82275390625,
+    330.82275390625,
+    316.339111328125,
+    316.339111328125,
+    316.339111328125,
+    316.339111328125,
+    316.339111328125,
+    301.01318359375,
+    301.01318359375,
+    301.01318359375,
+    301.01318359375,
+    301.01318359375,
+    376.007080078125,
+    376.007080078125,
+    376.007080078125,
+    376.007080078125,
+    376.007080078125,
+    390.9423828125
+  ],
+  "description": "Tests Kafka + Flink processing",
+  "durationMs": 37411,
+  "endTime": "2025-12-29T17:44:05.285753559Z",
+  "errorMessage": "",
+  "failedOperations": 75125,
+  "latency": {
+    "avg": 14434,
+    "max": 26730,
+    "min": 54,
+    "p50": 16636,
+    "p95": 25741,
+    "p99": 26063
+  },
+  "memoryTimeline": [
+    0.4853574136146029,
+    0.4853574136146029,
+    0.4853574136146029,
+    0.504871454454006,
+    0.9735765194235589,
+    0.5213004664370888,
+    0.5213004664370888,
+    0.5213004664370888,
+    0.6271455999006306,
+    1.1164689601812148,
+    2.7164568219866068,
+    3.7309630353349195,
+    5.639647863861313,
+    5.5908227982676415,
+    5.757996982201598,
+    9.462764424488956,
+    3.5350095897091363,
+    10.927624810010867,
+    12.42565699986049
+  ],
+  "name": "Flink Benchmark",
+  "peakCpu": 390.9423828125,
+  "peakMemory": 12.42565699986049,
+  "peakThroughput": 10223,
+  "sampleEvents": [
+    {
+      "componentTiming": {
+        "droolsMs": 0,
+        "flinkMs": 0,
+        "gatewayMs": 0,
+        "kafkaMs": 8703
+      },
+      "error": "",
+      "id": "flink_flink_47_739",
+      "latencyMs": 8703,
+      "otelTraceId": null,
+      "status": "success",
+      "timestamp": 1767030225685,
+      "traceData": {
+        "empty": true,
+        "logs": [],
+        "trace": {
+          "empty": true,
+          "processes": {},
+          "spans": [],
+          "traceId": ""
+        }
+      },
+      "traceId": null
+    },
+    {
+      "componentTiming": {
+        "droolsMs": 0,
+        "flinkMs": 0,
+        "gatewayMs": 0,
+        "kafkaMs": 8886
+      },
+      "error": "",
+      "id": "flink_flink_44_1165",
+      "latencyMs": 8886,
+      "otelTraceId": null,
+      "status": "success",
+      "timestamp": 1767030225886,
+      "traceData": {
+        "empty": true,
+        "logs": [],
+        "trace": {
+          "empty": true,
+          "processes": {},
+          "spans": [],
+          "traceId": ""
+        }
+      },
+      "traceId": null
+    }
+  ],
+  "startTime": "2025-12-29T17:43:27.874855630Z",
+  "status": "completed",
+  "success": false,
+  "successfulOperations": 47941,
+  "throughputStability": 0.8847707060837704,
+  "throughputTimeline": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    945,
+    4969,
+    3417,
+    10223,
+    5886,
+    5494,
+    3339,
+    3172,
+    2974,
+    3159,
+    6474,
+    6367,
+    8281,
+    8421,
+    3971,
+    4235,
+    6945,
+    6870
+  ],
+  "totalOperations": 123066
+}</pre>
         </div>
     </div>
 </body>

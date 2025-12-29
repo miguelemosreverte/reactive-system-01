@@ -30,26 +30,26 @@
 
             <div class="metrics">
                 <div class="metric">
-                    <div class="metric-value">328816</div>
+                    <div class="metric-value">429501</div>
                     <div class="metric-label">ops/s</div>
                 </div>
                 <div class="metric">
-                    <div class="metric-value">0.4</div>
+                    <div class="metric-value">0.3</div>
                     <div class="metric-label">p50 latency (ms)</div>
                 </div>
                 <div class="metric">
-                    <div class="metric-value">0.1</div>
+                    <div class="metric-value">0.0</div>
                     <div class="metric-label">p99 latency (ms)</div>
                 </div>
                 <div class="metric">
-                    <div class="metric-value">19731282</div>
+                    <div class="metric-value">4361154</div>
                     <div class="metric-label">total ops</div>
                 </div>
             </div>
 
             <div class="metrics" style="margin-top: 20px;">
                 <div class="metric">
-                    <div class="metric-value success">19731282</div>
+                    <div class="metric-value success">4361154</div>
                     <div class="metric-label">successful</div>
                 </div>
                 <div class="metric">
@@ -66,29 +66,29 @@
                 <div class="config-row"><span>HTTP Server</span><span></span></div>
                 <div class="config-row"><span>Microbatching</span><span>false</span></div>
                 <div class="config-row"><span>Concurrency</span><span>128</span></div>
-                <div class="config-row"><span>Duration</span><span>1m0s</span></div>
+                <div class="config-row"><span>Duration</span><span>10s</span></div>
             </div>
         </div>
 
         <div class="card">
             <h2>Raw Results</h2>
             <pre>{
-  "avgThroughput": 328816.34,
+  "avgThroughput": 429501.08,
   "component": "kafka-producer",
-  "durationMs": 60007,
+  "durationMs": 10154,
   "failedOperations": 0,
   "latency": {
-    "avg": 0.388,
-    "max": 0.17,
-    "p50": 0.388,
-    "p95": 0.582,
-    "p99": 0.142
+    "avg": 0.293,
+    "max": 0.016,
+    "p50": 0.293,
+    "p95": 0.439,
+    "p99": 0.013
   },
   "name": "Kafka Producer Benchmark",
   "notes": "Fire-and-forget Kafka producer throughput (acks=0). This is the theoretical maximum for Kafka publishing.",
   "status": "completed",
-  "successfulOperations": 19731282,
-  "totalOperations": 19731282
+  "successfulOperations": 4361154,
+  "totalOperations": 4361154
 }</pre>
         </div>
     </div>

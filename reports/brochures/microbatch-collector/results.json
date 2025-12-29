@@ -1,31 +1,31 @@
 {
   "brochure": "microbatch-collector",
   "name": "Microbatch Collector (No HTTP)",
-  "startTime": "2025-12-29T14:34:23.892775-03:00",
-  "endTime": "2025-12-29T14:35:00.579926-03:00",
-  "durationMs": 36686,
-  "throughput": 8545910.87,
-  "p50Ms": 18.171,
-  "p99Ms": 36.342,
-  "totalOps": 90894308,
-  "successOps": 90894308,
+  "startTime": "2025-12-29T14:50:54.845411-03:00",
+  "endTime": "2025-12-29T14:51:25.901159-03:00",
+  "durationMs": 31055,
+  "throughput": 13018442.71,
+  "p50Ms": 10.505,
+  "p99Ms": 21.01,
+  "totalOps": 137943419,
+  "successOps": 137943419,
   "failedOps": 0,
   "rawResults": {
-    "avgThroughput": 8545910.87,
+    "avgThroughput": 13018442.71,
     "component": "microbatch-collector-kafka",
-    "durationMs": 10636,
+    "durationMs": 10596,
     "failedOperations": 0,
     "latency": {
-      "avg": 18.171,
-      "max": 39.976,
-      "p50": 18.171,
-      "p95": 21.805,
-      "p99": 36.342
+      "avg": 10.505,
+      "max": 23.111,
+      "p50": 10.505,
+      "p95": 12.606,
+      "p99": 21.01
     },
     "name": "MicrobatchCollector + Kafka (Batch Send)",
-    "notes": "Submitted: 91,669,181 events; Sent to Kafka: 90,894,308 events; Batches sent: 773; Avg batch size: 117586.4; Avg Kafka batch time: 18.171 ms; Kafka throughput: 8,545,911 events/sec; Best config: batch=30000000, interval=30000000µs",
+    "notes": "Submitted: 146,907,156 events; Sent to Kafka: 137,943,419 events; Batches sent: 1,244; Avg batch size: 110887.0; Avg Kafka batch time: 10.505 ms; Kafka throughput: 13,018,443 events/sec; Best config: batch=30000000, interval=30000000µs",
     "status": "completed",
-    "successfulOperations": 90894308,
-    "totalOperations": 90894308
+    "successfulOperations": 137943419,
+    "totalOperations": 137943419
   }
 }

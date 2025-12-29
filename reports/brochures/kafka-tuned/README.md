@@ -1,18 +1,18 @@
 # Kafka - Tuned Batching
 
-Kafka producer with optimized batch settings (acks=1, large batches)
+Kafka producer with optimized batch settings (acks=1, high concurrency)
 
 ## Results
 
 | Metric | Value |
 |--------|-------|
-| Throughput | 4623 ops/s |
-| p50 Latency | 3.5 ms |
-| p99 Latency | 0.2 ms |
-| Total Operations | 280857 |
-| Successful | 280857 |
+| Throughput | 433223 ops/s |
+| p50 Latency | 0.3 ms |
+| p99 Latency | 0.0 ms |
+| Total Operations | 4336129 |
+| Successful | 4336129 |
 | Failed | 0 |
-| Duration | 1m0s |
+| Duration | 10s |
 
 ## Configuration
 
@@ -23,11 +23,11 @@ Kafka producer with optimized batch settings (acks=1, large batches)
 | Microbatching | false |
 | Batch Size | 0 |
 | Batch Timeout | 0 ms |
-| Concurrency | 16 |
+| Concurrency | 128 |
 | Kafka Acks | 1 |
 
 ## Timestamp
 
-- Started: 2025-12-27T00:50:24-03:00
-- Completed: 2025-12-27T00:52:34-03:00
-- Duration: 2m9.5115355s
+- Started: 2025-12-29T14:50:18-03:00
+- Completed: 2025-12-29T14:50:54-03:00
+- Duration: 36.107456334s

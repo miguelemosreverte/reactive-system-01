@@ -6,13 +6,13 @@ Enterprise framework, Netty under the hood - BASELINE
 
 | Metric | Value |
 |--------|-------|
-| Throughput | 2620 ops/s |
-| p50 Latency | 157.1 ms |
-| p99 Latency | 512.5 ms |
-| Total Operations | 159016 |
-| Successful | 159016 |
+| Throughput | 2702 ops/s |
+| p50 Latency | 165.3 ms |
+| p99 Latency | 440.4 ms |
+| Total Operations | 27067 |
+| Successful | 27067 |
 | Failed | 0 |
-| Duration | 1m0s |
+| Duration | 10s |
 
 ## Configuration
 
@@ -28,6 +28,6 @@ Enterprise framework, Netty under the hood - BASELINE
 
 ## Timestamp
 
-- Started: 2025-12-29T14:32:53-03:00
-- Completed: 2025-12-29T14:34:15-03:00
-- Duration: 1m22.279970208s
+- Started: 2025-12-29T14:47:41-03:00
+- Completed: 2025-12-29T14:48:16-03:00
+- Duration: 35.074085333s

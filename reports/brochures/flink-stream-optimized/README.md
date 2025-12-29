@@ -6,12 +6,12 @@ Flink benchmark with optimized network buffers (4x exclusive, 32 floating, 64KB 
 
 | Metric | Value |
 |--------|-------|
-| Throughput | 0 ops/s |
-| p50 Latency | 0.0 ms |
-| p99 Latency | 0.0 ms |
-| Total Operations | 0 |
-| Successful | 0 |
-| Failed | 0 |
+| Throughput | 2782 ops/s |
+| p50 Latency | 19015.0 ms |
+| p99 Latency | 28023.0 ms |
+| Total Operations | 108892 |
+| Successful | 34811 |
+| Failed | 74081 |
 | Duration | 10s |
 
 ## Configuration
@@ -28,6 +28,6 @@ Flink benchmark with optimized network buffers (4x exclusive, 32 floating, 64KB 
 
 ## Timestamp
 
-- Started: 2025-12-28T10:02:40-03:00
-- Completed: 2025-12-28T10:03:18-03:00
-- Duration: 38.116105708s
+- Started: 2025-12-29T14:44:07-03:00
+- Completed: 2025-12-29T14:44:55-03:00
+- Duration: 48.163250917s

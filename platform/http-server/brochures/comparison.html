@@ -57,12 +57,12 @@
 <body>
     <div class="container">
         <h1>Reactive System Benchmark</h1>
-        <p class="subtitle">Performance comparison across 19 configurations • Throughput Decomposition Analysis</p>
+        <p class="subtitle">Performance comparison across 16 configurations • Throughput Decomposition Analysis</p>
 
         <div class="winner-card">
             <div class="winner-title">🏆 Fastest Configuration</div>
-            <div class="winner-name">HTTP - Boss/Worker</div>
-            <div class="winner-throughput">741K <span class="winner-unit">ops/s</span></div>
+            <div class="winner-name">Microbatch Collector (No HTTP)</div>
+            <div class="winner-throughput">13.0M <span class="winner-unit">ops/s</span></div>
         </div>
 
         <div class="insight-box">
@@ -127,179 +127,152 @@
                 <tbody>
             <tr class="winner">
                 <td>🏆 #1</td>
-                <td><strong>HTTP - Boss/Worker</strong></td>
-                <td>740624</td>
-                <td>0.2</td>
-                <td>3.8</td>
-                <td>44441897</td>
+                <td><strong>Microbatch Collector (No HTTP)</strong></td>
+                <td>13018443</td>
+                <td>10.5</td>
+                <td>21.0</td>
+                <td>137943419</td>
                 <td></td>
             </tr>
             <tr class="">
                 <td>#2</td>
-                <td><strong>HTTP - Hyper</strong></td>
-                <td>717701</td>
-                <td>0.2</td>
-                <td>3.9</td>
-                <td>43067783</td>
-                <td>1.0x slower</td>
+                <td><strong>Kafka BULK - Sustained Rate (Docker)</strong></td>
+                <td>447529</td>
+                <td>0.0</td>
+                <td>0.0</td>
+                <td>4479317</td>
+                <td>29.1x slower</td>
             </tr>
             <tr class="">
                 <td>#3</td>
-                <td><strong>HTTP - Zero Copy</strong></td>
-                <td>664103</td>
-                <td>0.1</td>
-                <td>6.6</td>
-                <td>39851504</td>
-                <td>1.1x slower</td>
+                <td><strong>Kafka - Tuned Batching</strong></td>
+                <td>433223</td>
+                <td>0.3</td>
+                <td>0.0</td>
+                <td>4336129</td>
+                <td>30.1x slower</td>
             </tr>
             <tr class="">
                 <td>#4</td>
-                <td><strong>HTTP - Raw NIO</strong></td>
-                <td>662642</td>
-                <td>0.2</td>
-                <td>4.0</td>
-                <td>39763827</td>
-                <td>1.1x slower</td>
+                <td><strong>Kafka - Fire-and-Forget</strong></td>
+                <td>429501</td>
+                <td>0.3</td>
+                <td>0.0</td>
+                <td>4361154</td>
+                <td>30.3x slower</td>
             </tr>
             <tr class="">
                 <td>#5</td>
-                <td><strong>HTTP - Turbo</strong></td>
-                <td>661052</td>
-                <td>0.1</td>
-                <td>6.9</td>
-                <td>39680314</td>
-                <td>1.1x slower</td>
+                <td><strong>Gateway - Netty + Microbatch</strong></td>
+                <td>310383</td>
+                <td>0.6</td>
+                <td>4.6</td>
+                <td>3103832</td>
+                <td>41.9x slower</td>
             </tr>
             <tr class="">
                 <td>#6</td>
-                <td><strong>HTTP - Ultra</strong></td>
-                <td>657374</td>
-                <td>0.1</td>
-                <td>7.0</td>
-                <td>39447068</td>
-                <td>1.1x slower</td>
+                <td><strong>Gateway - Rocket + Microbatch</strong></td>
+                <td>293645</td>
+                <td>1.5</td>
+                <td>8.1</td>
+                <td>2936447</td>
+                <td>44.3x slower</td>
             </tr>
             <tr class="">
                 <td>#7</td>
                 <td><strong>HTTP - Rocket Server</strong></td>
-                <td>633903</td>
-                <td>0.2</td>
-                <td>4.5</td>
-                <td>38042396</td>
-                <td>1.2x slower</td>
+                <td>269250</td>
+                <td>0.7</td>
+                <td>10.6</td>
+                <td>2700850</td>
+                <td>48.4x slower</td>
             </tr>
             <tr class="">
                 <td>#8</td>
-                <td><strong>HTTP - Raw Netty</strong></td>
-                <td>545611</td>
-                <td>0.5</td>
-                <td>4.7</td>
-                <td>32742122</td>
-                <td>1.4x slower</td>
+                <td><strong>Full Pipeline - Netty + Microbatch</strong></td>
+                <td>256505</td>
+                <td>0.7</td>
+                <td>5.0</td>
+                <td>2565052</td>
+                <td>50.8x slower</td>
             </tr>
             <tr class="">
                 <td>#9</td>
-                <td><strong>Gateway - Rocket + Microbatch</strong></td>
-                <td>213874</td>
-                <td>2.0</td>
-                <td>12.0</td>
-                <td>12832469</td>
-                <td>3.5x slower</td>
+                <td><strong>Gateway - Spring WebFlux</strong></td>
+                <td>7474</td>
+                <td>10.0</td>
+                <td>74.0</td>
+                <td>50000</td>
+                <td>1741.9x slower</td>
             </tr>
             <tr class="">
                 <td>#10</td>
-                <td><strong>Gateway - Boss/Worker + Microbatch</strong></td>
-                <td>213543</td>
-                <td>2.0</td>
-                <td>12.6</td>
-                <td>12812575</td>
-                <td>3.5x slower</td>
+                <td><strong>Flink - Stream Processing</strong></td>
+                <td>3440</td>
+                <td>14073.0</td>
+                <td>20799.0</td>
+                <td>110211</td>
+                <td>3784.4x slower</td>
             </tr>
             <tr class="">
                 <td>#11</td>
-                <td><strong>Gateway - Hyper + Microbatch</strong></td>
-                <td>208619</td>
-                <td>2.0</td>
-                <td>12.7</td>
-                <td>12517112</td>
-                <td>3.6x slower</td>
+                <td><strong>Flink - Stream Processing (Native)</strong></td>
+                <td>3289</td>
+                <td>16636.0</td>
+                <td>26063.0</td>
+                <td>123066</td>
+                <td>3958.2x slower</td>
             </tr>
             <tr class="">
                 <td>#12</td>
-                <td><strong>Gateway - Turbo + Microbatch</strong></td>
-                <td>208249</td>
-                <td>2.0</td>
-                <td>13.3</td>
-                <td>12494948</td>
-                <td>3.6x slower</td>
+                <td><strong>Full Pipeline - Spring</strong></td>
+                <td>3251</td>
+                <td>16.0</td>
+                <td>229.0</td>
+                <td>50000</td>
+                <td>4004.2x slower</td>
             </tr>
             <tr class="">
                 <td>#13</td>
-                <td><strong>Full Pipeline - Netty + Microbatch</strong></td>
-                <td>205624</td>
-                <td>0.9</td>
-                <td>5.2</td>
-                <td>12337433</td>
-                <td>3.6x slower</td>
+                <td><strong>Flink - Stream Processing (High Throughput)</strong></td>
+                <td>2782</td>
+                <td>19015.0</td>
+                <td>28023.0</td>
+                <td>108892</td>
+                <td>4679.5x slower</td>
             </tr>
             <tr class="">
                 <td>#14</td>
-                <td><strong>Gateway - Raw NIO + Microbatch</strong></td>
-                <td>203010</td>
-                <td>2.1</td>
-                <td>14.3</td>
-                <td>12180584</td>
-                <td>3.6x slower</td>
+                <td><strong>HTTP - Spring WebFlux</strong></td>
+                <td>2702</td>
+                <td>165.3</td>
+                <td>440.4</td>
+                <td>27067</td>
+                <td>4817.4x slower</td>
             </tr>
             <tr class="">
                 <td>#15</td>
-                <td><strong>Gateway - Netty + Microbatch</strong></td>
-                <td>197165</td>
-                <td>0.9</td>
-                <td>6.4</td>
-                <td>11829915</td>
-                <td>3.8x slower</td>
+                <td><strong>Flink - Production Grade (High Throughput + Checkpointing)</strong></td>
+                <td>2497</td>
+                <td>21187.0</td>
+                <td>26662.0</td>
+                <td>94931</td>
+                <td>5213.6x slower</td>
             </tr>
             <tr class="">
                 <td>#16</td>
-                <td><strong>HTTP - Spring WebFlux</strong></td>
-                <td>5316</td>
-                <td>88.5</td>
-                <td>182.9</td>
-                <td>319123</td>
-                <td>139.3x slower</td>
-            </tr>
-            <tr class="">
-                <td>#17</td>
-                <td><strong>Kafka - Fire-and-Forget</strong></td>
-                <td>4626</td>
-                <td>3.5</td>
-                <td>0.4</td>
-                <td>280826</td>
-                <td>160.1x slower</td>
-            </tr>
-            <tr class="">
-                <td>#18</td>
-                <td><strong>Kafka - Tuned Batching</strong></td>
-                <td>4623</td>
-                <td>3.5</td>
-                <td>0.2</td>
-                <td>280857</td>
-                <td>160.2x slower</td>
-            </tr>
-            <tr class="">
-                <td>#19</td>
-                <td><strong>Microbatch Collector (No HTTP)</strong></td>
-                <td>2612</td>
-                <td>355.1</td>
-                <td>710.2</td>
-                <td>218031679</td>
-                <td>283.5x slower</td>
+                <td><strong>Flink - Observable (Production with Tracing)</strong></td>
+                <td>2192</td>
+                <td>20593.0</td>
+                <td>29969.0</td>
+                <td>95008</td>
+                <td>5939.1x slower</td>
             </tr></tbody>
             </table>
         </div>
 
-        <div class="timestamp">Generated: 2025-12-27 01:02:45 • Reactive System Benchmark Suite</div>
+        <div class="timestamp">Generated: 2025-12-29 14:51:25 • Reactive System Benchmark Suite</div>
     </div>
 
     <script>
@@ -323,8 +296,8 @@
             return 'rgba(148, 163, 184, 0.85)';
         }
 
-        const labels = ["HTTP - Boss/Worker", "HTTP - Hyper", "HTTP - Zero Copy", "HTTP - Raw NIO", "HTTP - Turbo", "HTTP - Ultra", "HTTP - Rocket Server", "HTTP - Raw Netty", "Gateway - Rocket + Microbatch", "Gateway - Boss/Worker + Microbatch", "Gateway - Hyper + Microbatch", "Gateway - Turbo + Microbatch", "Full Pipeline - Netty + Microbatch", "Gateway - Raw NIO + Microbatch", "Gateway - Netty + Microbatch", "HTTP - Spring WebFlux", "Kafka - Fire-and-Forget", "Kafka - Tuned Batching", "Microbatch Collector (No HTTP)"];
-        const data = [740624, 717701, 664103, 662642, 661052, 657374, 633903, 545611, 213874, 213543, 208619, 208249, 205624, 203010, 197165, 5316, 4626, 4623, 2612];
+        const labels = ["Microbatch Collector (No HTTP)", "Kafka BULK - Sustained Rate (Docker)", "Kafka - Tuned Batching", "Kafka - Fire-and-Forget", "Gateway - Netty + Microbatch", "Gateway - Rocket + Microbatch", "HTTP - Rocket Server", "Full Pipeline - Netty + Microbatch", "Gateway - Spring WebFlux", "Flink - Stream Processing", "Flink - Stream Processing (Native)", "Full Pipeline - Spring", "Flink - Stream Processing (High Throughput)", "HTTP - Spring WebFlux", "Flink - Production Grade (High Throughput + Checkpointing)", "Flink - Observable (Production with Tracing)"];
+        const data = [13018443, 447529, 433223, 429501, 310383, 293645, 269250, 256505, 7474, 3440, 3289, 3251, 2782, 2702, 2497, 2192];
         const backgroundColors = labels.map(name => getColor(name));
 
         // Log Scale Chart
@@ -369,9 +342,9 @@
         });
 
         // Waterfall Chart - Layer Decomposition
-        const waterfallLabels = ["Collector (In-Memory)", "Kafka Producer", "HTTP Server", "Gateway (HTTP+Kafka)", "Full Pipeline"];
-        const waterfallValues = [2612, 4626, 740624, 213874, 205624];
-        const waterfallColors = ['rgba(34, 197, 94, 0.85)', 'rgba(59, 130, 246, 0.85)', 'rgba(168, 85, 247, 0.85)', 'rgba(249, 115, 22, 0.85)', 'rgba(236, 72, 153, 0.85)'];
+        const waterfallLabels = ["Collector (In-Memory)", "Kafka Producer", "Flink (Kafka+Stream)", "HTTP Server", "Gateway (HTTP+Kafka)", "Full Pipeline"];
+        const waterfallValues = [13018443, 447529, 3440, 269250, 310383, 256505];
+        const waterfallColors = ['rgba(34, 197, 94, 0.85)', 'rgba(59, 130, 246, 0.85)', 'rgba(14, 165, 233, 0.85)', 'rgba(168, 85, 247, 0.85)', 'rgba(249, 115, 22, 0.85)', 'rgba(236, 72, 153, 0.85)'];
 
         new Chart(document.getElementById('waterfallChart').getContext('2d'), {
             type: 'bar',

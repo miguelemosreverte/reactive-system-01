@@ -30,26 +30,26 @@
 
             <div class="metrics">
                 <div class="metric">
-                    <div class="metric-value">205624</div>
+                    <div class="metric-value">256505</div>
                     <div class="metric-label">ops/s</div>
                 </div>
                 <div class="metric">
-                    <div class="metric-value">0.9</div>
+                    <div class="metric-value">0.7</div>
                     <div class="metric-label">p50 latency (ms)</div>
                 </div>
                 <div class="metric">
-                    <div class="metric-value">5.2</div>
+                    <div class="metric-value">5.0</div>
                     <div class="metric-label">p99 latency (ms)</div>
                 </div>
                 <div class="metric">
-                    <div class="metric-value">12337433</div>
+                    <div class="metric-value">2565052</div>
                     <div class="metric-label">total ops</div>
                 </div>
             </div>
 
             <div class="metrics" style="margin-top: 20px;">
                 <div class="metric">
-                    <div class="metric-value success">12337433</div>
+                    <div class="metric-value success">2565052</div>
                     <div class="metric-label">successful</div>
                 </div>
                 <div class="metric">
@@ -66,29 +66,29 @@
                 <div class="config-row"><span>HTTP Server</span><span>ROCKET</span></div>
                 <div class="config-row"><span>Microbatching</span><span>true</span></div>
                 <div class="config-row"><span>Concurrency</span><span>200</span></div>
-                <div class="config-row"><span>Duration</span><span>1m0s</span></div>
+                <div class="config-row"><span>Duration</span><span>10s</span></div>
             </div>
         </div>
 
         <div class="card">
             <h2>Raw Results</h2>
             <pre>{
-  "avgThroughput": 205623.88,
+  "avgThroughput": 256505.2,
   "component": "microbatch-gateway",
-  "durationMs": 60000,
+  "durationMs": 10000,
   "failedOperations": 0,
   "latency": {
-    "avg": 0.857,
-    "max": 5.666,
-    "p50": 0.857,
-    "p95": 1.028,
-    "p99": 5.151
+    "avg": 0.697,
+    "max": 5.5,
+    "p50": 0.697,
+    "p95": 0.837,
+    "p99": 5
   },
   "name": "MicrobatchingGateway (NIO Client)",
-  "notes": "Batch size: 81; Flush interval: 1035 µs; Collector throughput: 35764 events/sec",
+  "notes": "Batch size: 1000000; Flush interval: 5000000 µs; Collector throughput: 150376 events/sec",
   "status": "completed",
-  "successfulOperations": 12337433,
-  "totalOperations": 12337433
+  "successfulOperations": 2565052,
+  "totalOperations": 2565052
 }</pre>
         </div>
     </div>

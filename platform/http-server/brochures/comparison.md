@@ -2,7 +2,7 @@
 
 ## 🏆 Fastest Configuration
 
-**HTTP - Boss/Worker** — **741K ops/s**
+**Microbatch Collector (No HTTP)** — **13.0M ops/s**
 
 ---
 
@@ -20,11 +20,11 @@
 
 | Layer | Best Config | Throughput | Description |
 |-------|-------------|------------|-------------|
-| Collector | Microbatch Collector (No HTTP) | 3K ops/s | Pure in-memory event batching |
-| Kafka | Kafka - Fire-and-Forget | 5K ops/s | Message serialization + network |
-| HTTP | HTTP - Boss/Worker | 741K ops/s | Connection handling overhead |
-| Gateway | Gateway - Rocket + Microbatch | 214K ops/s | HTTP + Kafka combined |
-| Full Pipeline | Full Pipeline - Netty + Microbatch | 206K ops/s | End-to-end processing |
+| Collector | Microbatch Collector (No HTTP) | 13.0M ops/s | Pure in-memory event batching |
+| Kafka | Kafka BULK - Sustained Rate (Docker) | 448K ops/s | Message serialization + network |
+| HTTP | Microbatch Collector (No HTTP) | 13.0M ops/s | Connection handling overhead |
+| Gateway | Gateway - Netty + Microbatch | 310K ops/s | HTTP + Kafka combined |
+| Full Pipeline | Full Pipeline - Netty + Microbatch | 257K ops/s | End-to-end processing |
 
 
 ---
@@ -33,27 +33,24 @@
 
 | Rank | Configuration | Throughput | p50 | p99 | Total Ops | vs Winner |
 |:----:|---------------|------------|-----|-----|-----------|----------:|
-| 🏆 1 | **HTTP - Boss/Worker** | 741K ops/s | 0.2 ms | 3.8 ms | 44.4M |  |
-| 2 | **HTTP - Hyper** | 718K ops/s | 0.2 ms | 3.9 ms | 43.1M | 1.0x slower |
-| 3 | **HTTP - Zero Copy** | 664K ops/s | 0.1 ms | 6.6 ms | 39.9M | 1.1x slower |
-| 4 | **HTTP - Raw NIO** | 663K ops/s | 0.2 ms | 4.0 ms | 39.8M | 1.1x slower |
-| 5 | **HTTP - Turbo** | 661K ops/s | 0.1 ms | 6.9 ms | 39.7M | 1.1x slower |
-| 6 | **HTTP - Ultra** | 657K ops/s | 0.1 ms | 7.0 ms | 39.4M | 1.1x slower |
-| 7 | **HTTP - Rocket Server** | 634K ops/s | 0.2 ms | 4.5 ms | 38.0M | 1.2x slower |
-| 8 | **HTTP - Raw Netty** | 546K ops/s | 0.5 ms | 4.7 ms | 32.7M | 1.4x slower |
-| 9 | **Gateway - Rocket + Microbatch** | 214K ops/s | 2.0 ms | 12.0 ms | 12.8M | 3.5x slower |
-| 10 | **Gateway - Boss/Worker + Microbatch** | 214K ops/s | 2.0 ms | 12.6 ms | 12.8M | 3.5x slower |
-| 11 | **Gateway - Hyper + Microbatch** | 209K ops/s | 2.0 ms | 12.7 ms | 12.5M | 3.6x slower |
-| 12 | **Gateway - Turbo + Microbatch** | 208K ops/s | 2.0 ms | 13.3 ms | 12.5M | 3.6x slower |
-| 13 | **Full Pipeline - Netty + Microbatch** | 206K ops/s | 0.9 ms | 5.2 ms | 12.3M | 3.6x slower |
-| 14 | **Gateway - Raw NIO + Microbatch** | 203K ops/s | 2.1 ms | 14.3 ms | 12.2M | 3.6x slower |
-| 15 | **Gateway - Netty + Microbatch** | 197K ops/s | 0.9 ms | 6.4 ms | 11.8M | 3.8x slower |
-| 16 | **HTTP - Spring WebFlux** | 5K ops/s | 88.5 ms | 182.9 ms | 319K | 139.3x slower |
-| 17 | **Kafka - Fire-and-Forget** | 5K ops/s | 3.5 ms | 0.4 ms | 281K | 160.1x slower |
-| 18 | **Kafka - Tuned Batching** | 5K ops/s | 3.5 ms | 0.2 ms | 281K | 160.2x slower |
-| 19 | **Microbatch Collector (No HTTP)** | 3K ops/s | 355.1 ms | 710.2 ms | 218.0M | 283.5x slower |
+| 🏆 1 | **Microbatch Collector (No HTTP)** | 13.0M ops/s | 10.5 ms | 21.0 ms | 137.9M |  |
+| 2 | **Kafka BULK - Sustained Rate (Docker)** | 448K ops/s | 0.0 ms | 0.0 ms | 4.5M | 29.1x slower |
+| 3 | **Kafka - Tuned Batching** | 433K ops/s | 0.3 ms | 0.0 ms | 4.3M | 30.1x slower |
+| 4 | **Kafka - Fire-and-Forget** | 430K ops/s | 0.3 ms | 0.0 ms | 4.4M | 30.3x slower |
+| 5 | **Gateway - Netty + Microbatch** | 310K ops/s | 0.6 ms | 4.6 ms | 3.1M | 41.9x slower |
+| 6 | **Gateway - Rocket + Microbatch** | 294K ops/s | 1.5 ms | 8.1 ms | 2.9M | 44.3x slower |
+| 7 | **HTTP - Rocket Server** | 269K ops/s | 0.7 ms | 10.6 ms | 2.7M | 48.4x slower |
+| 8 | **Full Pipeline - Netty + Microbatch** | 257K ops/s | 0.7 ms | 5.0 ms | 2.6M | 50.8x slower |
+| 9 | **Gateway - Spring WebFlux** | 7K ops/s | 10.0 ms | 74.0 ms | 50K | 1741.9x slower |
+| 10 | **Flink - Stream Processing** | 3K ops/s | 14073.0 ms | 20799.0 ms | 110K | 3784.4x slower |
+| 11 | **Flink - Stream Processing (Native)** | 3K ops/s | 16636.0 ms | 26063.0 ms | 123K | 3958.2x slower |
+| 12 | **Full Pipeline - Spring** | 3K ops/s | 16.0 ms | 229.0 ms | 50K | 4004.2x slower |
+| 13 | **Flink - Stream Processing (High Throughput)** | 3K ops/s | 19015.0 ms | 28023.0 ms | 109K | 4679.5x slower |
+| 14 | **HTTP - Spring WebFlux** | 3K ops/s | 165.3 ms | 440.4 ms | 27K | 4817.4x slower |
+| 15 | **Flink - Production Grade (High Throughput + Checkpointing)** | 2K ops/s | 21187.0 ms | 26662.0 ms | 95K | 5213.6x slower |
+| 16 | **Flink - Observable (Production with Tracing)** | 2K ops/s | 20593.0 ms | 29969.0 ms | 95K | 5939.1x slower |
 
 
 ---
 
-*Generated: 2025-12-27T01:02:45-03:00*
+*Generated: 2025-12-29T14:51:25-03:00*

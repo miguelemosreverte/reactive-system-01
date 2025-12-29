@@ -6,13 +6,13 @@ Optimized gateway with Rocket/Netty HTTP and adaptive microbatching
 
 | Metric | Value |
 |--------|-------|
-| Throughput | 197165 ops/s |
-| p50 Latency | 0.9 ms |
-| p99 Latency | 6.4 ms |
-| Total Operations | 11829915 |
-| Successful | 11829915 |
+| Throughput | 310383 ops/s |
+| p50 Latency | 0.6 ms |
+| p99 Latency | 4.6 ms |
+| Total Operations | 3103832 |
+| Successful | 3103832 |
 | Failed | 0 |
-| Duration | 1m0s |
+| Duration | 10s |
 
 ## Configuration
 
@@ -28,6 +28,6 @@ Optimized gateway with Rocket/Netty HTTP and adaptive microbatching
 
 ## Timestamp
 
-- Started: 2025-12-27T00:20:04-03:00
-- Completed: 2025-12-27T00:24:22-03:00
-- Duration: 4m18.226109375s
+- Started: 2025-12-29T14:45:48-03:00
+- Completed: 2025-12-29T14:46:22-03:00
+- Duration: 34.10142075s
