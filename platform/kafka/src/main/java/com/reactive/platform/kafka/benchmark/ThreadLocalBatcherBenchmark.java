@@ -11,6 +11,7 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.LongAdder;
 
+// TODO 4.1: Review for deletion - uses @Deprecated ThreadLocalBatcher (replaced by PartitionedBatcher)
 /**
  * Benchmark comparing ThreadLocalBatcher to BULK baseline.
  */

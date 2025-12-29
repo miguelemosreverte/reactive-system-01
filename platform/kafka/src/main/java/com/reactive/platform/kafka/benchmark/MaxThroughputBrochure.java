@@ -32,6 +32,7 @@ import java.util.concurrent.atomic.*;
  */
 public class MaxThroughputBrochure {
 
+    // TODO 1.1: Extract to BenchmarkConstants.java (duplicated in 17 files)
     private static final int MESSAGE_SIZE = 64;
     private static final int TOTAL_DURATION_SEC = 300;  // 5 minutes
     private static final int RAMP_DURATION_SEC = 240;   // 4 minutes ramp
@@ -382,6 +383,7 @@ public class MaxThroughputBrochure {
         }
     }
 
+    // TODO 1.2: Extract to ProducerFactory.java (duplicated in 37 methods across benchmark files)
     static KafkaProducer<String, byte[]> createProducer(String bootstrap) {
         Properties props = new Properties();
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrap);
@@ -396,6 +398,7 @@ public class MaxThroughputBrochure {
         return new KafkaProducer<>(props);
     }
 
+    // TODO 1.4: Extract to shared BenchmarkResult interface (7 similar records across benchmark files)
     record PhaseResult(long targetRate, long achievedRate, double avgLatencyNanos,
                        int chunkSizeKB, int messagesPerChunk, long chunks) {}
 

@@ -11,6 +11,7 @@ CLI_DIR="$SCRIPT_DIR/platform/cli"
 REPORTS_DIR="$SCRIPT_DIR/reports"
 ASSETS_SRC="$SCRIPT_DIR/platform/reports/assets"
 
+# TODO 6.1: Extract magic numbers to configuration block with documentation
 # Colima recommended resources (based on system capacity)
 COLIMA_MIN_CPU=6
 COLIMA_MIN_MEM=12  # GB
@@ -49,6 +50,7 @@ get_system_resources() {
     echo "$cpu $mem_gb"
 }
 
+# TODO 6.1: Extract magic numbers (2/3, 4, 8, 2, 4) to named constants
 # Calculate recommended Colima resources
 get_recommended_resources() {
     read sys_cpu sys_mem <<< $(get_system_resources)

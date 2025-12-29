@@ -53,12 +53,14 @@ import java.util.concurrent.atomic.*;
  */
 public class KafkaBaselineBenchmark {
 
+    // TODO 1.1: Extract to BenchmarkConstants.java (duplicated in 17 files)
     private static final int MESSAGE_SIZE = 64;  // bytes per message
     private static final byte[] TEST_MESSAGE = new byte[MESSAGE_SIZE];
 
     // Configurable acks level: "0", "1", or "all"
     private static String acksConfig = "1";  // Default to leader ack (production-safe)
 
+    // TODO 1.1: Extract to BenchmarkConstants.java
     // Preset configurations
     private static final int SMOKE_DURATION = 3;      // <5 seconds total
     private static final int QUICK_DURATION = 15;     // ~15 seconds per test
@@ -231,6 +233,7 @@ public class KafkaBaselineBenchmark {
         writeReport(results, reportsDir);
     }
 
+    // TODO 3.1: Split this 97-line method - extract warmup, benchmark loop, metrics, verification
     /**
      * NAIVE PRODUCER: 1 Kafka send() per message.
      * This is the worst case for throughput - no batching benefit.
@@ -345,6 +348,7 @@ public class KafkaBaselineBenchmark {
      *
      * @param batchSize Number of messages per Kafka send (e.g., 1000 or 10000)
      */
+    // TODO 3.2: Split this 113-line method - extract warmup, benchmark loop, metrics, verification
     static Result benchmarkBulkProducer(String bootstrap, int durationSec, int batchSize) throws Exception {
         String modeName = batchSize >= 10000 ? "MEGA" : "BULK";
         System.out.println("═══════════════════════════════════════════════════════════════════════");
@@ -522,6 +526,7 @@ public class KafkaBaselineBenchmark {
     // Helpers
     // ========================================================================
 
+    // TODO 1.2: Extract to ProducerFactory.java (duplicated in 37 methods across benchmark files)
     static Properties producerProps(String bootstrap) {
         Properties props = new Properties();
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrap);
@@ -551,6 +556,7 @@ public class KafkaBaselineBenchmark {
         }
     }
 
+    // TODO 2.1: Merge with verifyLastMessage() - both do similar partition seeking and record extraction
     /**
      * Verify last batch in topic by reading its sequence number.
      */
@@ -728,6 +734,7 @@ public class KafkaBaselineBenchmark {
         }
     }
 
+    // TODO 2.1: Merge with verifyLastBatch() above - both do similar partition seeking and record extraction
     /**
      * Consume and verify the last message in a topic.
      * Returns the sequence number if found, or -1 on failure.
@@ -812,6 +819,7 @@ public class KafkaBaselineBenchmark {
         return buf.array();
     }
 
+    // TODO 1.4: Extract to shared BenchmarkResult interface (7 similar records across benchmark files)
     record Result(String mode, long messages, long kafkaRecords, boolean verified,
                   long durationMs, double throughput, String notes) {}
 }

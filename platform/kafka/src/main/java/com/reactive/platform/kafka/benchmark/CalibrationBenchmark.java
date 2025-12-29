@@ -307,6 +307,7 @@ public class CalibrationBenchmark {
         System.out.printf("%nResults saved to: %s%n", jsonPath);
     }
 
+    // TODO 1.4: Extract to shared BenchmarkResult interface (7 similar records across benchmark files)
     record BucketResult(
         PressureLevel bucket,
         Config config,
@@ -318,6 +319,7 @@ public class CalibrationBenchmark {
         double changePercent
     ) {}
 
+    // TODO 1.2: Extract to ProducerFactory.java (duplicated in 37 methods across benchmark files)
     static Properties createProducerProps(String bootstrap) {
         Properties props = new Properties();
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrap);
@@ -331,6 +333,7 @@ public class CalibrationBenchmark {
         return props;
     }
 
+    // TODO 1.3: Extract to FormattingUtils.java (duplicated in 3 files)
     static String formatInterval(int micros) {
         if (micros >= 1_000_000) return String.format("%.1fs", micros / 1_000_000.0);
         if (micros >= 1_000) return String.format("%.1fms", micros / 1_000.0);
