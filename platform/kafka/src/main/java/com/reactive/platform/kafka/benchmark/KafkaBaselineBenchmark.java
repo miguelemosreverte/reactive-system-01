@@ -231,7 +231,6 @@ public class KafkaBaselineBenchmark {
         writeReport(results, reportsDir);
     }
 
-    // TODO 3.1: Split this 97-line method - extract warmup, benchmark loop, metrics, verification
     /**
      * NAIVE PRODUCER: 1 Kafka send() per message.
      * This is the worst case for throughput - no batching benefit.
@@ -318,7 +317,7 @@ public class KafkaBaselineBenchmark {
         }
 
         // 2. Verify last message sequence
-        long foundSequence = verifyLastMessage(bootstrap, topic, lastSequence);
+        long foundSequence = KafkaVerifier.verifyLastSequence(bootstrap, topic);
         boolean sequenceMatch = foundSequence > 0 && foundSequence <= lastSequence;
         if (sequenceMatch) {
             System.out.printf("  ✓ Last message verified (seq=%,d)%n", foundSequence);
@@ -346,7 +345,6 @@ public class KafkaBaselineBenchmark {
      *
      * @param batchSize Number of messages per Kafka send (e.g., 1000 or 10000)
      */
-    // TODO 3.2: Split this 113-line method - extract warmup, benchmark loop, metrics, verification
     static Result benchmarkBulkProducer(String bootstrap, int durationSec, int batchSize) throws Exception {
         String modeName = batchSize >= 10000 ? "MEGA" : "BULK";
         System.out.println("═══════════════════════════════════════════════════════════════════════");
@@ -439,7 +437,7 @@ public class KafkaBaselineBenchmark {
         }
 
         // 2. Verify last batch sequence
-        long foundSequence = verifyLastBatch(bootstrap, topic, lastBatchSequence);
+        long foundSequence = KafkaVerifier.verifyLastSequence(bootstrap, topic);
         boolean sequenceMatch = foundSequence > 0 && foundSequence <= lastBatchSequence;
         if (sequenceMatch) {
             System.out.printf("  ✓ Last batch verified (seq=%,d)%n", foundSequence);
@@ -546,58 +544,6 @@ public class KafkaBaselineBenchmark {
             return baos.toByteArray();
         } catch (IOException e) {
             throw new RuntimeException(e);
-        }
-    }
-
-    // TODO 2.1: Merge with verifyLastMessage() - both do similar partition seeking and record extraction
-    /**
-     * Verify last batch in topic by reading its sequence number.
-     */
-    static long verifyLastBatch(String bootstrap, String topic, long expectedSequence) {
-        Properties props = new Properties();
-        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrap);
-        props.put(ConsumerConfig.GROUP_ID_CONFIG, "verify-batch-" + System.currentTimeMillis());
-        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
-
-        try (KafkaConsumer<String, byte[]> consumer = new KafkaConsumer<>(props)) {
-            List<PartitionInfo> partitionInfos = consumer.partitionsFor(topic);
-            if (partitionInfos == null || partitionInfos.isEmpty()) return -1;
-
-            List<TopicPartition> partitions = partitionInfos.stream()
-                .map(p -> new TopicPartition(topic, p.partition()))
-                .toList();
-
-            consumer.assign(partitions);
-            Map<TopicPartition, Long> endOffsets = consumer.endOffsets(partitions);
-
-            // Find partition with highest offset
-            TopicPartition lastPartition = null;
-            long maxOffset = 0;
-            for (var entry : endOffsets.entrySet()) {
-                if (entry.getValue() > maxOffset) {
-                    maxOffset = entry.getValue();
-                    lastPartition = entry.getKey();
-                }
-            }
-
-            if (lastPartition == null || maxOffset == 0) return -1;
-
-            // Seek to last record
-            consumer.seek(lastPartition, maxOffset - 1);
-            ConsumerRecords<String, byte[]> records = consumer.poll(Duration.ofSeconds(5));
-
-            for (ConsumerRecord<String, byte[]> record : records) {
-                byte[] value = record.value();
-                if (value.length >= 8) {
-                    ByteBuffer buf = ByteBuffer.wrap(value);
-                    return buf.getLong();  // First 8 bytes are sequence
-                }
-            }
-            return -1;
-        } catch (Exception e) {
-            System.err.println("Failed to verify last batch: " + e.getMessage());
-            return -1;
         }
     }
 
@@ -727,80 +673,6 @@ public class KafkaBaselineBenchmark {
         }
     }
 
-    // TODO 2.1: Merge with verifyLastBatch() above - both do similar partition seeking and record extraction
-    /**
-     * Consume and verify the last message in a topic.
-     * Returns the sequence number if found, or -1 on failure.
-     */
-    static long verifyLastMessage(String bootstrap, String topic, long expectedSequence) {
-        Properties props = new Properties();
-        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrap);
-        props.put(ConsumerConfig.GROUP_ID_CONFIG, "verify-" + System.currentTimeMillis());
-        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
-        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
-
-        try (KafkaConsumer<String, byte[]> consumer = new KafkaConsumer<>(props)) {
-            // Get partitions and seek to end - 1
-            List<PartitionInfo> partitionInfos = consumer.partitionsFor(topic);
-            if (partitionInfos == null || partitionInfos.isEmpty()) {
-                return -1;
-            }
-
-            List<TopicPartition> partitions = partitionInfos.stream()
-                .map(p -> new TopicPartition(topic, p.partition()))
-                .toList();
-
-            consumer.assign(partitions);
-            Map<TopicPartition, Long> endOffsets = consumer.endOffsets(partitions);
-
-            // Find partition with highest offset and seek to last message
-            TopicPartition lastPartition = null;
-            long maxOffset = 0;
-            for (var entry : endOffsets.entrySet()) {
-                if (entry.getValue() > maxOffset) {
-                    maxOffset = entry.getValue();
-                    lastPartition = entry.getKey();
-                }
-            }
-
-            if (lastPartition == null || maxOffset == 0) {
-                return -1;
-            }
-
-            // Seek to last message
-            consumer.seek(lastPartition, maxOffset - 1);
-
-            // Poll for the last message
-            ConsumerRecords<String, byte[]> records = consumer.poll(Duration.ofSeconds(5));
-            if (records.isEmpty()) {
-                return -1;
-            }
-
-            // Get the last record
-            ConsumerRecord<String, byte[]> lastRecord = null;
-            for (ConsumerRecord<String, byte[]> record : records) {
-                lastRecord = record;
-            }
-
-            if (lastRecord == null) {
-                return -1;
-            }
-
-            // Extract sequence number from payload
-            byte[] value = lastRecord.value();
-            if (value.length >= 8) {
-                ByteBuffer buf = ByteBuffer.wrap(value);
-                return buf.getLong();  // First 8 bytes are sequence number
-            }
-
-            return -1;
-        } catch (Exception e) {
-            System.err.println("Failed to verify last message: " + e.getMessage());
-            return -1;
-        }
-    }
-
     /**
      * Build a message payload with sequence number for verification.
      * Format: [sequence:8 bytes][padding to MESSAGE_SIZE]
@@ -812,7 +684,6 @@ public class KafkaBaselineBenchmark {
         return buf.array();
     }
 
-    // TODO 1.4: Extract to shared BenchmarkResult interface (7 similar records across benchmark files)
     record Result(String mode, long messages, long kafkaRecords, boolean verified,
                   long durationMs, double throughput, String notes) {}
 }

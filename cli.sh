@@ -11,10 +11,25 @@ CLI_DIR="$SCRIPT_DIR/platform/cli"
 REPORTS_DIR="$SCRIPT_DIR/reports"
 ASSETS_SRC="$SCRIPT_DIR/platform/reports/assets"
 
-# TODO 6.1: Extract magic numbers to configuration block with documentation
-# Colima recommended resources (based on system capacity)
-COLIMA_MIN_CPU=6
-COLIMA_MIN_MEM=12  # GB
+# ============================================================================
+# Colima Resource Configuration
+# ============================================================================
+# These values optimize Docker performance for the Reactive System.
+# Adjust based on your workload and system capacity.
+#
+# The Reactive System runs Kafka, Flink, and multiple benchmark containers.
+# Kafka benefits significantly from more CPU and memory allocation.
+
+# Minimum resources required for acceptable performance
+COLIMA_MIN_CPU=6           # Minimum CPUs (Kafka needs parallelism)
+COLIMA_MIN_MEM=12          # Minimum memory in GB
+
+# Resource allocation strategy
+COLIMA_ALLOC_FRACTION=2/3  # Fraction of system resources to allocate
+COLIMA_MIN_ALLOC_CPU=4     # Never allocate fewer CPUs than this
+COLIMA_MIN_ALLOC_MEM=8     # Never allocate less memory (GB) than this
+COLIMA_RESERVE_CPU=2       # Always leave this many CPUs for host
+COLIMA_RESERVE_MEM=4       # Always leave this much memory (GB) for host
 
 # Set Docker host for Colima if running
 if [[ -S "$HOME/.colima/docker.sock" ]]; then
@@ -50,20 +65,19 @@ get_system_resources() {
     echo "$cpu $mem_gb"
 }
 
-# TODO 6.1: Extract magic numbers (2/3, 4, 8, 2, 4) to named constants
-# Calculate recommended Colima resources
+# Calculate recommended Colima resources using configuration above
 get_recommended_resources() {
     read sys_cpu sys_mem <<< $(get_system_resources)
 
-    # Allocate 2/3 of CPUs (min 4, leave at least 2 for host)
-    local rec_cpu=$((sys_cpu * 2 / 3))
-    [[ $rec_cpu -lt 4 ]] && rec_cpu=4
-    [[ $rec_cpu -gt $((sys_cpu - 2)) ]] && rec_cpu=$((sys_cpu - 2))
+    # Allocate fraction of CPUs (respecting min allocation and host reserve)
+    local rec_cpu=$((sys_cpu * $COLIMA_ALLOC_FRACTION))
+    [[ $rec_cpu -lt $COLIMA_MIN_ALLOC_CPU ]] && rec_cpu=$COLIMA_MIN_ALLOC_CPU
+    [[ $rec_cpu -gt $((sys_cpu - $COLIMA_RESERVE_CPU)) ]] && rec_cpu=$((sys_cpu - $COLIMA_RESERVE_CPU))
 
-    # Allocate 2/3 of memory (min 8GB, leave at least 4GB for host)
-    local rec_mem=$((sys_mem * 2 / 3))
-    [[ $rec_mem -lt 8 ]] && rec_mem=8
-    [[ $rec_mem -gt $((sys_mem - 4)) ]] && rec_mem=$((sys_mem - 4))
+    # Allocate fraction of memory (respecting min allocation and host reserve)
+    local rec_mem=$((sys_mem * $COLIMA_ALLOC_FRACTION))
+    [[ $rec_mem -lt $COLIMA_MIN_ALLOC_MEM ]] && rec_mem=$COLIMA_MIN_ALLOC_MEM
+    [[ $rec_mem -gt $((sys_mem - $COLIMA_RESERVE_MEM)) ]] && rec_mem=$((sys_mem - $COLIMA_RESERVE_MEM))
 
     echo "$rec_cpu $rec_mem"
 }
