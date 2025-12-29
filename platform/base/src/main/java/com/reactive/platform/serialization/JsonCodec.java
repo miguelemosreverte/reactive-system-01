@@ -1,4 +1,5 @@
 package com.reactive.platform.serialization;
+import com.reactive.platform.base.Result;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;

@@ -8,7 +8,7 @@ import com.reactive.platform.http.HttpServer.Response;
 import com.reactive.platform.http.Json;
 import com.reactive.platform.kafka.KafkaPublisher;
 import com.reactive.platform.serialization.Codec;
-import com.reactive.platform.serialization.Result;
+import com.reactive.platform.base.Result;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
@@ -231,9 +231,7 @@ public final class FastGateway<E> {
         System.out.println("Kafka: " + kafkaBootstrap + " / " + topic);
 
         try (GatewayHandle handle = gateway.start(port)) {
-            handle.awaitTermination();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
+            Result.run(() -> handle.awaitTermination());
         }
     }
 

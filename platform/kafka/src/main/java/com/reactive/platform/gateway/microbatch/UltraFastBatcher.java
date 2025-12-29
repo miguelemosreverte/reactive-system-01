@@ -1,5 +1,6 @@
 package com.reactive.platform.gateway.microbatch;
 
+import com.reactive.platform.base.Result;
 import java.util.Arrays;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -60,7 +61,7 @@ public final class UltraFastBatcher implements MessageBatcher {
                     sender.accept(data);
                 }
             }
-            try { Thread.sleep(1); } catch (InterruptedException e) { break; }
+            if (Result.sleep(1).isFailure()) break;
         }
 
         // Final flush
@@ -76,7 +77,7 @@ public final class UltraFastBatcher implements MessageBatcher {
     public void close() {
         running = false;
         flushThread.interrupt();
-        try { flushThread.join(1000); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+        Result.join(flushThread, 1000);
     }
 
     private static final class Stripe {

@@ -4,7 +4,7 @@ import com.reactive.platform.config.PlatformConfig;
 import com.reactive.platform.observe.Log;
 import com.reactive.platform.observe.Log.SpanHandle;
 import com.reactive.platform.serialization.Codec;
-import com.reactive.platform.serialization.Result;
+import com.reactive.platform.base.Result;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;

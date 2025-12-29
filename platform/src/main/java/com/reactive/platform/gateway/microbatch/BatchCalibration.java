@@ -1,5 +1,6 @@
 package com.reactive.platform.gateway.microbatch;
 
+import com.reactive.platform.base.Result;
 import java.io.*;
 import java.nio.file.*;
 import java.sql.*;
@@ -597,6 +598,6 @@ public final class BatchCalibration implements AutoCloseable {
 
     @Override
     public void close() {
-        try { conn.close(); } catch (SQLException ignored) {}
+        Result.run(conn::close);
     }
 }

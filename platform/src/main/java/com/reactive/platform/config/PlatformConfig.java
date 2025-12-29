@@ -1,5 +1,6 @@
 package com.reactive.platform.config;
 
+import com.reactive.platform.base.Result;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 
@@ -124,10 +125,7 @@ public final class PlatformConfig {
 
     public long allocatedMemoryMb() {
         return Arrays.stream(Service.values())
-            .mapToLong(svc -> {
-                try { return service(svc).containerMb(); }
-                catch (Exception e) { return 0L; }
-            })
+            .mapToLong(svc -> Result.of(() -> service(svc).containerMb()).getOrElse(0L))
             .sum();
     }
 

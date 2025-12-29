@@ -1,4 +1,5 @@
 package com.reactive.platform.serialization;
+import com.reactive.platform.base.Result;
 
 import org.apache.avro.io.*;
 import org.apache.avro.specific.SpecificDatumReader;

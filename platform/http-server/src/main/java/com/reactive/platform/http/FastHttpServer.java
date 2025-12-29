@@ -1,5 +1,6 @@
 package com.reactive.platform.http;
 
+import com.reactive.platform.base.Result;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
@@ -152,7 +153,7 @@ public final class FastHttpServer implements HttpServer {
             } catch (IOException e) {
                 // Connection closed or error - normal
             } finally {
-                try { client.close(); } catch (IOException ignored) {}
+                Result.run(client::close);
             }
         }
 
@@ -272,11 +273,9 @@ public final class FastHttpServer implements HttpServer {
         @Override
         public void close() {
             running.set(false);
-            try {
-                selector.wakeup();
-                serverChannel.close();
-                selector.close();
-            } catch (IOException ignored) {}
+            selector.wakeup();
+            Result.run(serverChannel::close);
+            Result.run(selector::close);
             acceptor.shutdown();
             workers.shutdown();
             System.out.println("[FastHttpServer] Stopped");

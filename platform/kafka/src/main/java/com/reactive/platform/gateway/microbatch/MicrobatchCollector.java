@@ -1,5 +1,6 @@
 package com.reactive.platform.gateway.microbatch;
 
+import com.reactive.platform.base.Result;
 import com.reactive.platform.config.PlatformConfig;
 
 import java.util.ArrayList;
@@ -225,7 +226,7 @@ public final class MicrobatchCollector<T> implements AutoCloseable {
                 if (batchCount > 0) {
                     Thread.onSpinWait();
                 } else {
-                    try { Thread.sleep(0, 100_000); } catch (InterruptedException e) { break; }
+                    if (Result.sleep(0, 100_000).isFailure()) break;
                 }
             }
         }
@@ -295,7 +296,7 @@ public final class MicrobatchCollector<T> implements AutoCloseable {
                     Thread.onSpinWait();
                 } else {
                     // Empty, sleep a bit
-                    try { Thread.sleep(0, 100_000); } catch (InterruptedException e) { break; }
+                    if (Result.sleep(0, 100_000).isFailure()) break;
                 }
             }
         }
@@ -327,11 +328,7 @@ public final class MicrobatchCollector<T> implements AutoCloseable {
      */
     private void pressureLoop() {
         while (running) {
-            try {
-                Thread.sleep(1_000); // Check every second for responsiveness
-            } catch (InterruptedException e) {
-                break;
-            }
+            if (Result.sleep(1_000).isFailure()) break;
 
             long now = System.nanoTime();
             long itemsInWindow = totalItems.sum() - windowItemCount;
@@ -359,19 +356,15 @@ public final class MicrobatchCollector<T> implements AutoCloseable {
     /** Flush a batch to the consumer. */
     private void flush(List<T> batch) {
         long start = System.nanoTime();
-        try {
-            batchConsumer.accept(batch);
-            long elapsed = System.nanoTime() - start;
-
-            // Update metrics (LongAdder - no contention)
-            totalItems.add(batch.size());
-            totalBatches.increment();
-            totalFlushNanos.add(elapsed);
-
-        } catch (Exception e) {
-            // Log error, continue
-            System.err.println("Batch flush failed: " + e.getMessage());
-        }
+        Result.run(() -> batchConsumer.accept(batch))
+            .onSuccess(ok -> {
+                long elapsed = System.nanoTime() - start;
+                // Update metrics (LongAdder - no contention)
+                totalItems.add(batch.size());
+                totalBatches.increment();
+                totalFlushNanos.add(elapsed);
+            })
+            .onFailure(e -> System.err.println("Batch flush failed: " + e.getMessage()));
     }
 
     /** Force flush all ring buffers. */
@@ -424,9 +417,9 @@ public final class MicrobatchCollector<T> implements AutoCloseable {
         running = false;
         pressureThread.interrupt();
         for (Thread t : flushThreads) t.interrupt();
-        try { pressureThread.join(1000); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+        Result.join(pressureThread, 1000);
         for (Thread t : flushThreads) {
-            try { t.join(1000); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+            Result.join(t, 1000);
         }
         flush();
     }

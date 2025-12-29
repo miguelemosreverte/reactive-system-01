@@ -1,5 +1,6 @@
 package com.reactive.platform.gateway.microbatch;
 
+import com.reactive.platform.base.Result;
 import java.io.*;
 import java.nio.file.*;
 import java.sql.*;
@@ -302,11 +303,8 @@ public final class BatchCalibration implements AutoCloseable {
                 """);
 
             // Add expected_throughput column if not exists (for migration)
-            try {
-                stmt.execute("ALTER TABLE best_config ADD COLUMN expected_throughput INTEGER NOT NULL DEFAULT 0");
-            } catch (SQLException e) {
-                // Column already exists, ignore
-            }
+            Result.run(() -> stmt.execute("ALTER TABLE best_config ADD COLUMN expected_throughput INTEGER NOT NULL DEFAULT 0"));
+            // Failures ignored - column may already exist
 
             stmt.execute("CREATE INDEX IF NOT EXISTS idx_obs_pressure ON observations(pressure_level)");
             stmt.execute("CREATE INDEX IF NOT EXISTS idx_obs_score ON observations(score DESC)");
@@ -659,6 +657,6 @@ public final class BatchCalibration implements AutoCloseable {
 
     @Override
     public void close() {
-        try { conn.close(); } catch (SQLException ignored) {}
+        Result.run(conn::close);
     }
 }

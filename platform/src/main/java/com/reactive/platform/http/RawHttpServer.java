@@ -1,5 +1,6 @@
 package com.reactive.platform.http;
 
+import com.reactive.platform.base.Result;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.StandardSocketOptions;
@@ -628,10 +629,8 @@ public final class RawHttpServer {
         }
 
         private void closeChannel(SelectionKey key, SocketChannel channel) {
-            try {
-                key.cancel();
-                channel.close();
-            } catch (IOException ignored) {}
+            key.cancel();
+            Result.run(channel::close);
         }
     }
 
@@ -668,9 +667,7 @@ public final class RawHttpServer {
 
         try (Handle handle = server.start(port)) {
             System.out.println("Server started. Press Ctrl+C to stop.");
-            handle.awaitTermination();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
+            Result.run(() -> handle.awaitTermination());
         }
     }
 }

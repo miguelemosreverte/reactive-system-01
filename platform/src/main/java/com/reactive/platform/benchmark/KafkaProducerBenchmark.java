@@ -57,13 +57,13 @@ public class KafkaProducerBenchmark {
         // Simple string codec for benchmarking
         Codec<String> codec = new Codec<>() {
             @Override
-            public com.reactive.platform.serialization.Result<byte[]> encode(String value) {
-                return com.reactive.platform.serialization.Result.success(value.getBytes(StandardCharsets.UTF_8));
+            public com.reactive.platform.base.Result<byte[]> encode(String value) {
+                return com.reactive.platform.base.Result.success(value.getBytes(StandardCharsets.UTF_8));
             }
 
             @Override
-            public com.reactive.platform.serialization.Result<String> decode(byte[] bytes) {
-                return com.reactive.platform.serialization.Result.success(new String(bytes, StandardCharsets.UTF_8));
+            public com.reactive.platform.base.Result<String> decode(byte[] bytes) {
+                return com.reactive.platform.base.Result.success(new String(bytes, StandardCharsets.UTF_8));
             }
 
             @Override

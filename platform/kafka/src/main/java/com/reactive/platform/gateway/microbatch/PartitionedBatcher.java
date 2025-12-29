@@ -1,5 +1,6 @@
 package com.reactive.platform.gateway.microbatch;
 
+import com.reactive.platform.base.Result;
 import java.util.Arrays;
 import java.util.function.Consumer;
 
@@ -101,7 +102,7 @@ public class PartitionedBatcher implements MessageBatcher {
             }
 
             if (!flushed) {
-                try { Thread.sleep(0, 100_000); } catch (InterruptedException e) { break; }
+                if (Result.sleep(0, 100_000).isFailure()) break;
             }
         }
 
@@ -122,7 +123,7 @@ public class PartitionedBatcher implements MessageBatcher {
     public void close() {
         running = false;
         flushThread.interrupt();
-        try { flushThread.join(1000); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+        Result.join(flushThread, 1000);
     }
 
     /**

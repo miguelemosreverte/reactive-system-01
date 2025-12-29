@@ -1,5 +1,6 @@
 package com.reactive.platform.http;
 
+import com.reactive.platform.base.Result;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
@@ -232,10 +233,8 @@ public final class UltraFastHttpServer {
                 }
 
             } catch (IOException e) {
-                try {
-                    key.cancel();
-                    client.close();
-                } catch (IOException ignored) {}
+                key.cancel();
+                Result.run(client::close);
             }
         }
 
@@ -265,11 +264,9 @@ public final class UltraFastHttpServer {
         public void close() {
             running.set(false);
             selector.wakeup();
-            try {
-                eventLoopThread.join(1000);
-                serverChannel.close();
-                selector.close();
-            } catch (Exception ignored) {}
+            Result.run(() -> eventLoopThread.join(1000));
+            Result.run(serverChannel::close);
+            Result.run(selector::close);
             System.out.println("[UltraFastHttpServer] Stopped. Requests: " + requests.get());
         }
     }

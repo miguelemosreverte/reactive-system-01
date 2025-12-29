@@ -1,5 +1,6 @@
 package com.reactive.platform.gateway.microbatch;
 
+import com.reactive.platform.base.Result;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
@@ -88,7 +89,7 @@ public final class DirectBatcher implements AutoCloseable {
                     sender.accept(batch);
                 }
             } else if (count == 0) {
-                try { Thread.sleep(0, 100_000); } catch (InterruptedException e) { break; }
+                if (Result.sleep(0, 100_000).isFailure()) break;
             } else {
                 Thread.onSpinWait();
             }
@@ -115,7 +116,7 @@ public final class DirectBatcher implements AutoCloseable {
         running = false;
         for (Thread t : flushThreads) {
             t.interrupt();
-            try { t.join(1000); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+            Result.join(t, 1000);
         }
         flush();
     }

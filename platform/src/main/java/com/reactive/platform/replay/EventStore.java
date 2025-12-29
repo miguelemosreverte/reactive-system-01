@@ -1,6 +1,6 @@
 package com.reactive.platform.replay;
 
-import com.reactive.platform.serialization.Result;
+import com.reactive.platform.base.Result;
 
 import java.time.Instant;
 import java.util.List;

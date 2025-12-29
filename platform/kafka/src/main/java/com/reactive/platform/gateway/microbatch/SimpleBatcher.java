@@ -1,5 +1,6 @@
 package com.reactive.platform.gateway.microbatch;
 
+import com.reactive.platform.base.Result;
 import java.util.function.Consumer;
 
 /**
@@ -72,7 +73,7 @@ public final class SimpleBatcher implements AutoCloseable {
             }
 
             if (!shouldFlush) {
-                try { Thread.sleep(0, 100_000); } catch (InterruptedException e) { break; }
+                if (Result.sleep(0, 100_000).isFailure()) break;
             }
         }
 
@@ -97,6 +98,6 @@ public final class SimpleBatcher implements AutoCloseable {
     public void close() {
         running = false;
         flushThread.interrupt();
-        try { flushThread.join(1000); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+        Result.join(flushThread, 1000);
     }
 }

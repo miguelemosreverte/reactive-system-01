@@ -1,5 +1,6 @@
 package com.reactive.platform.http;
 
+import com.reactive.platform.base.Result;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.StandardSocketOptions;
@@ -119,13 +120,9 @@ public final class TurboHttpServer {
             for (TurboReactor r : reactors) {
                 r.wakeup();
             }
-            try {
-                for (TurboReactor r : reactors) {
-                    r.join(1000);
-                    r.cleanup();
-                }
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
+            for (TurboReactor r : reactors) {
+                Result.join(r, 1000);
+                r.cleanup();
             }
             System.out.printf("[TurboHttpServer] Stopped. Total: %,d requests%n", requestCount());
         }
@@ -174,8 +171,8 @@ public final class TurboHttpServer {
         }
 
         void cleanup() {
-            try { serverChannel.close(); } catch (IOException ignored) {}
-            try { selector.close(); } catch (IOException ignored) {}
+            Result.run(serverChannel::close);
+            Result.run(selector::close);
         }
 
         @Override
@@ -271,10 +268,8 @@ public final class TurboHttpServer {
         }
 
         private void close(SelectionKey key, SocketChannel channel) {
-            try {
-                key.cancel();
-                channel.close();
-            } catch (IOException ignored) {}
+            key.cancel();
+            Result.run(channel::close);
         }
     }
 

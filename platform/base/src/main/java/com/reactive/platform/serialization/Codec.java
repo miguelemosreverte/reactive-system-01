@@ -1,5 +1,6 @@
 package com.reactive.platform.serialization;
 
+import com.reactive.platform.base.Result;
 import java.util.Optional;
 import java.util.function.Function;
 

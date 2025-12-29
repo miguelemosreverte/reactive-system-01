@@ -2,7 +2,7 @@ package com.reactive.counter.serialization;
 
 import com.reactive.counter.domain.CounterEvent;
 import com.reactive.platform.serialization.Codec;
-import com.reactive.platform.serialization.Result;
+import com.reactive.platform.base.Result;
 import org.apache.avro.io.*;
 import org.apache.avro.specific.SpecificDatumReader;
 import org.apache.avro.specific.SpecificDatumWriter;

@@ -1,5 +1,6 @@
 package com.reactive.platform.gateway.microbatch;
 
+import com.reactive.platform.base.Result;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.*;
@@ -193,7 +194,7 @@ public final class MicrobatchCollector<T> implements AutoCloseable {
                     if (++emptySpins % 100 == 0) Thread.yield();
                     else Thread.onSpinWait();
                 } else {
-                    try { Thread.sleep(0, 10_000); } catch (InterruptedException e) { break; }
+                    if (Result.sleep(0, 10_000).isFailure()) break;
                 }
             }
         }
@@ -233,7 +234,7 @@ public final class MicrobatchCollector<T> implements AutoCloseable {
                     if (++emptySpins % 100 == 0) Thread.yield();
                     else Thread.onSpinWait();
                 } else {
-                    try { Thread.sleep(0, 10_000); } catch (InterruptedException e) { break; }
+                    if (Result.sleep(0, 10_000).isFailure()) break;
                 }
             }
         }
@@ -253,11 +254,7 @@ public final class MicrobatchCollector<T> implements AutoCloseable {
     /** Pressure monitoring loop - checks every 10 seconds. */
     private void pressureLoop() {
         while (running) {
-            try {
-                Thread.sleep(10_000); // Check every 10 seconds
-            } catch (InterruptedException e) {
-                break;
-            }
+            if (Result.sleep(10_000).isFailure()) break; // Check every 10 seconds
 
             long now = System.nanoTime();
             long itemsInWindow = totalItems.sum() - windowItemCount;
@@ -352,9 +349,9 @@ public final class MicrobatchCollector<T> implements AutoCloseable {
         running = false;
         pressureThread.interrupt();
         for (Thread t : flushThreads) t.interrupt();
-        try { pressureThread.join(1000); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+        Result.join(pressureThread, 1000);
         for (Thread t : flushThreads) {
-            try { t.join(1000); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+            Result.join(t, 1000);
         }
         flush();
     }

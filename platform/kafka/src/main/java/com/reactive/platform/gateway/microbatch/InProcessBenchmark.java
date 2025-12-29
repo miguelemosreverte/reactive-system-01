@@ -10,7 +10,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.LongAdder;
 
 import com.reactive.platform.serialization.Codec;
-import com.reactive.platform.serialization.Result;
+import com.reactive.platform.base.Result;
 
 /**
  * In-process benchmark that starts both the gateway and client in the same JVM.

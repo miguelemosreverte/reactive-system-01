@@ -3,7 +3,7 @@ package com.reactive.platform.benchmark;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.reactive.platform.serialization.Result;
+import com.reactive.platform.base.Result;
 
 import static com.reactive.platform.observe.Log.*;
 import java.nio.file.Files;

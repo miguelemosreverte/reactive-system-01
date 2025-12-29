@@ -1,5 +1,6 @@
 package com.reactive.platform.benchmark;
 
+import com.reactive.platform.base.Result;
 import com.reactive.platform.http.server.Server;
 
 import java.io.IOException;
@@ -270,16 +271,16 @@ public final class UnifiedHttpBenchmark {
             Object builder = createMethod.invoke(null);
 
             // Set reactors if available
-            try {
-                Method reactorsMethod = builder.getClass().getMethod("reactors", int.class);
-                builder = reactorsMethod.invoke(builder, reactors);
-            } catch (NoSuchMethodException ignored) {}
+            Object finalBuilder1 = builder;
+            builder = Result.of(() -> finalBuilder1.getClass().getMethod("reactors", int.class))
+                .flatMap(m -> Result.of(() -> m.invoke(finalBuilder1, reactors)))
+                .getOrElse(finalBuilder1);
 
             // Set no-op handler if available
-            try {
-                Method onBodyMethod = builder.getClass().getMethod("onBody", java.util.function.Consumer.class);
-                builder = onBodyMethod.invoke(builder, (java.util.function.Consumer<ByteBuffer>) buf -> {});
-            } catch (NoSuchMethodException ignored) {}
+            Object finalBuilder2 = builder;
+            builder = Result.of(() -> finalBuilder2.getClass().getMethod("onBody", java.util.function.Consumer.class))
+                .flatMap(m -> Result.of(() -> m.invoke(finalBuilder2, (java.util.function.Consumer<ByteBuffer>) buf -> {})))
+                .getOrElse(finalBuilder2);
 
             Method startMethod = builder.getClass().getMethod("start", int.class);
             return startMethod.invoke(builder, PORT);
@@ -291,10 +292,8 @@ public final class UnifiedHttpBenchmark {
                 Object instance = constructor.newInstance(PORT, reactors);
 
                 // Try to start if there's a start method
-                try {
-                    Method startMethod = serverClass.getMethod("start");
-                    startMethod.invoke(instance);
-                } catch (NoSuchMethodException ignored) {}
+                Result.of(() -> serverClass.getMethod("start"))
+                    .flatMap(m -> Result.of(() -> m.invoke(instance)));
 
                 return instance;
 
@@ -482,7 +481,7 @@ public final class UnifiedHttpBenchmark {
                         }
                     } catch (IOException e) {
                         key.cancel();
-                        try { channel.close(); } catch (IOException ignored) {}
+                        Result.run(channel::close);
                     }
                 }
             }
@@ -490,7 +489,7 @@ public final class UnifiedHttpBenchmark {
             // Cleanup
             for (SocketChannel channel : channels) {
                 if (channel != null) {
-                    try { channel.close(); } catch (IOException ignored) {}
+                    Result.run(channel::close);
                 }
             }
             selector.close();

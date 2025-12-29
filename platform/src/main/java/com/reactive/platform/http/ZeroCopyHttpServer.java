@@ -1,5 +1,6 @@
 package com.reactive.platform.http;
 
+import com.reactive.platform.base.Result;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.StandardSocketOptions;
@@ -123,13 +124,9 @@ public final class ZeroCopyHttpServer {
             for (Worker w : workers) {
                 w.wakeup();
             }
-            try {
-                acceptor.join(1000);
-                for (Worker w : workers) {
-                    w.join(1000);
-                }
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
+            Result.join(acceptor, 1000);
+            for (Worker w : workers) {
+                Result.join(w, 1000);
             }
             acceptor.cleanup();
             for (Worker w : workers) {
@@ -167,8 +164,8 @@ public final class ZeroCopyHttpServer {
         void wakeup() { selector.wakeup(); }
 
         void cleanup() {
-            try { serverChannel.close(); } catch (IOException ignored) {}
-            try { selector.close(); } catch (IOException ignored) {}
+            Result.run(serverChannel::close);
+            Result.run(selector::close);
         }
 
         @Override
@@ -256,7 +253,7 @@ public final class ZeroCopyHttpServer {
         void wakeup() { selector.wakeup(); }
 
         void cleanup() {
-            try { selector.close(); } catch (IOException ignored) {}
+            Result.run(selector::close);
         }
 
         @Override
@@ -309,7 +306,7 @@ public final class ZeroCopyHttpServer {
                 try {
                     ch.register(selector, SelectionKey.OP_READ);
                 } catch (Exception e) {
-                    try { ch.close(); } catch (IOException ignored) {}
+                    Result.run(ch::close);
                 }
             }
         }
@@ -336,7 +333,7 @@ public final class ZeroCopyHttpServer {
 
             } catch (IOException e) {
                 key.cancel();
-                try { channel.close(); } catch (IOException ignored) {}
+                Result.run(channel::close);
             }
         }
     }

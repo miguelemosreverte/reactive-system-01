@@ -1,7 +1,7 @@
 package com.reactive.platform.replay;
 
 import com.reactive.platform.replay.ReplayResult.StateSnapshot;
-import com.reactive.platform.serialization.Result;
+import com.reactive.platform.base.Result;
 
 import java.util.ArrayList;
 import java.util.List;

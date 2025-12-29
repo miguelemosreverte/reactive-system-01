@@ -1,5 +1,6 @@
 package com.reactive.platform.gateway.microbatch;
 
+import com.reactive.platform.base.Result;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.function.Consumer;
@@ -158,7 +159,7 @@ public final class AdaptiveBatcher implements AutoCloseable {
                 if (calibration != null && elapsed >= 1_000_000_000L) {
                     checkPressure();
                 }
-                try { Thread.sleep(0, 100_000); } catch (InterruptedException e) { break; }
+                if (Result.sleep(0, 100_000).isFailure()) break;
             }
         }
 
@@ -261,7 +262,7 @@ public final class AdaptiveBatcher implements AutoCloseable {
     public void close() {
         running = false;
         flushThread.interrupt();
-        try { flushThread.join(1000); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+        Result.join(flushThread, 1000);
     }
 
     /**

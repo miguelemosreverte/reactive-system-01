@@ -3,6 +3,7 @@ package com.reactive.platform.benchmark;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.reactive.platform.base.Result;
 import com.reactive.platform.benchmark.BenchmarkTypes.*;
 
 import java.net.URI;
@@ -297,10 +298,8 @@ public class ObservabilityFetcher {
                         String timestamp = value.get(0).asText();
                         String line = value.get(1).asText();
 
-                        Map<String, Object> fields = Map.of();
-                        try {
-                            fields = mapper.readValue(line, new TypeReference<>() {});
-                        } catch (Exception ignored) {}
+                        final Map<String, Object> fields = Result.of(() -> mapper.readValue(line, new TypeReference<Map<String, Object>>() {}))
+                            .getOrElse(Map.of());
 
                         entries.add(new LogEntry(timestamp, line, labels, fields));
                     }

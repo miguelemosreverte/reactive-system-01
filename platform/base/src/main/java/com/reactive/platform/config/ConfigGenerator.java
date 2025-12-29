@@ -1,5 +1,6 @@
 package com.reactive.platform.config;
 
+import com.reactive.platform.base.Result;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigRenderOptions;
@@ -103,8 +104,7 @@ public final class ConfigGenerator {
     }
 
     private static <T> Optional<T> tryGet(java.util.function.Supplier<T> supplier) {
-        try { return Optional.ofNullable(supplier.get()); }
-        catch (Exception e) { return Optional.empty(); }
+        return Result.of(supplier::get).toOptional();
     }
 
     /**
@@ -161,24 +161,25 @@ public final class ConfigGenerator {
     }
 
     private void checkHeapRatio(List<String> errors, List<String> warnings, PlatformConfig.Service service) {
-        try {
-            PlatformConfig.ServiceConfig svc = config.service(service);
-            long container = svc.containerMb();
-            long heap = svc.heapMb();
-            double ratio = (double) heap / container;
+        Result.of(() -> config.service(service))
+            .onSuccess(svc -> {
+                long container = svc.containerMb();
+                long heap = svc.heapMb();
+                double ratio = (double) heap / container;
+                String name = service.configKey();
 
-            String name = service.configKey();
-            if (ratio > 0.85) {
-                warnings.add(String.format(
-                    "%s: heap/container ratio %.0f%% too high (heap=%dMB, container=%dMB). Leave room for native memory.",
-                    name, ratio * 100, heap, container));
-            }
-            if (ratio < 0.5) {
-                warnings.add(String.format(
-                    "%s: heap/container ratio %.0f%% wasteful (heap=%dMB, container=%dMB)",
-                    name, ratio * 100, heap, container));
-            }
-        } catch (Exception ignored) {}
+                if (ratio > 0.85) {
+                    warnings.add(String.format(
+                        "%s: heap/container ratio %.0f%% too high (heap=%dMB, container=%dMB). Leave room for native memory.",
+                        name, ratio * 100, heap, container));
+                }
+                if (ratio < 0.5) {
+                    warnings.add(String.format(
+                        "%s: heap/container ratio %.0f%% wasteful (heap=%dMB, container=%dMB)",
+                        name, ratio * 100, heap, container));
+                }
+            });
+        // Failures silently ignored - service may not exist
     }
 
     /**

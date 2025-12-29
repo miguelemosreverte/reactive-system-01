@@ -1,5 +1,6 @@
 package com.reactive.platform.benchmark;
 
+import com.reactive.platform.base.Result;
 import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.StandardSocketOptions;
@@ -375,7 +376,7 @@ public final class ScalingDiagnostics {
             for (DiagnosticReactor r : reactors) {
                 if (r != null) {
                     r.selector.wakeup();
-                    try { r.join(1000); } catch (InterruptedException ignored) {}
+                    Result.run(() -> r.join(1000));
                     r.cleanup();
                 }
             }
@@ -423,8 +424,8 @@ public final class ScalingDiagnostics {
         }
 
         void cleanup() {
-            try { serverChannel.close(); } catch (IOException ignored) {}
-            try { selector.close(); } catch (IOException ignored) {}
+            Result.run(serverChannel::close);
+            Result.run(selector::close);
         }
 
         @Override
@@ -465,7 +466,7 @@ public final class ScalingDiagnostics {
                                 }
                             } catch (IOException e) {
                                 key.cancel();
-                                try { channel.close(); } catch (IOException ignored) {}
+                                Result.run(channel::close);
                             }
                         }
                     }
@@ -504,7 +505,7 @@ public final class ScalingDiagnostics {
             for (TimingReactor r : reactors) {
                 if (r != null) {
                     r.selector.wakeup();
-                    try { r.join(1000); } catch (InterruptedException ignored) {}
+                    Result.run(() -> r.join(1000));
                     r.cleanup();
                 }
             }
@@ -584,8 +585,8 @@ public final class ScalingDiagnostics {
         }
 
         void cleanup() {
-            try { serverChannel.close(); } catch (IOException ignored) {}
-            try { selector.close(); } catch (IOException ignored) {}
+            Result.run(serverChannel::close);
+            Result.run(selector::close);
         }
 
         @Override
@@ -642,7 +643,7 @@ public final class ScalingDiagnostics {
                                 }
                             } catch (IOException e) {
                                 key.cancel();
-                                try { channel.close(); } catch (IOException ignored) {}
+                                Result.run(channel::close);
                             }
                         }
                     }

@@ -2,7 +2,7 @@ package com.reactive.platform.gateway.microbatch;
 
 import com.reactive.platform.kafka.KafkaPublisher;
 import com.reactive.platform.serialization.Codec;
-import com.reactive.platform.serialization.Result;
+import com.reactive.platform.base.Result;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -492,7 +492,7 @@ public class GatewayComparisonBenchmark {
                         }
                     } catch (IOException e) {
                         key.cancel();
-                        try { channel.close(); } catch (IOException ignored) {}
+                        Result.run(channel::close);
                     }
                 }
             }
@@ -500,7 +500,7 @@ public class GatewayComparisonBenchmark {
             // Cleanup
             for (SocketChannel channel : channels) {
                 if (channel != null) {
-                    try { channel.close(); } catch (IOException ignored) {}
+                    Result.run(channel::close);
                 }
             }
             selector.close();

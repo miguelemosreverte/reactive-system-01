@@ -1,5 +1,6 @@
 package com.reactive.platform.gateway.microbatch;
 
+import com.reactive.platform.base.Result;
 import java.util.Arrays;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.Consumer;
@@ -70,7 +71,7 @@ public final class FastBatcher implements MessageBatcher {
                 sender.accept(batch);
             } else {
                 // Brief pause to avoid busy-wait
-                try { Thread.sleep(0, 100_000); } catch (InterruptedException e) { break; }
+                if (Result.sleep(0, 100_000).isFailure()) break;
             }
         }
     }
@@ -84,7 +85,7 @@ public final class FastBatcher implements MessageBatcher {
 
         running = false;
         flushThread.interrupt();
-        try { flushThread.join(1000); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+        Result.join(flushThread, 1000);
     }
 
     /**

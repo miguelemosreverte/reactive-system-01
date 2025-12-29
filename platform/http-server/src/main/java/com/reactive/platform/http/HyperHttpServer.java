@@ -1,5 +1,6 @@
 package com.reactive.platform.http;
 
+import com.reactive.platform.base.Result;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.StandardSocketOptions;
@@ -185,13 +186,11 @@ public final class HyperHttpServer {
             for (Worker w : workers) {
                 w.selector.wakeup();
             }
-            try {
-                acceptorThread.join(1000);
-                for (Worker w : workers) {
-                    w.join(1000);
-                }
-                serverChannel.close();
-            } catch (Exception ignored) {}
+            Result.run(() -> acceptorThread.join(1000));
+            for (Worker w : workers) {
+                Result.run(() -> w.join(1000));
+            }
+            Result.run(serverChannel::close);
             System.out.printf("[HyperHttpServer] Stopped. Requests: %d%n", requestCount());
         }
     }
@@ -230,9 +229,8 @@ public final class HyperHttpServer {
                     // Register any pending connections
                     SocketChannel pending;
                     while ((pending = pendingConnections.poll()) != null) {
-                        try {
-                            pending.register(selector, SelectionKey.OP_READ);
-                        } catch (ClosedChannelException ignored) {}
+                        final SocketChannel ch = pending;
+                        Result.run(() -> ch.register(selector, SelectionKey.OP_READ));
                     }
 
                     if (selector.select(1) == 0) continue;
@@ -399,10 +397,8 @@ public final class HyperHttpServer {
         }
 
         private void close(SelectionKey key, SocketChannel channel) {
-            try {
-                key.cancel();
-                channel.close();
-            } catch (IOException ignored) {}
+            key.cancel();
+            Result.run(channel::close);
         }
     }
 
@@ -432,9 +428,7 @@ public final class HyperHttpServer {
 
         try (Handle handle = server.start(port, workers)) {
             System.out.println("Server started. Press Ctrl+C to stop.");
-            handle.awaitTermination();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
+            Result.run(() -> handle.awaitTermination());
         }
     }
 }

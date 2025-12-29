@@ -1,5 +1,7 @@
 package com.reactive.platform.benchmark;
 
+import com.reactive.platform.base.Result;
+
 import java.io.*;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
@@ -171,15 +173,15 @@ public final class StandaloneClient {
                         }
                     } catch (IOException e) {
                         key.cancel();
-                        try { channel.close(); } catch (IOException ignored) {}
+                        Result.run(channel::close);
                     }
                 }
             }
 
             Arrays.stream(channels)
                 .filter(Objects::nonNull)
-                .forEach(ch -> { try { ch.close(); } catch (IOException ignored) {} });
-            selector.close();
+                .forEach(ch -> Result.run(ch::close)); // Silently ignore close errors
+            Result.run(selector::close);
 
         } catch (Exception e) {
             // Thread error

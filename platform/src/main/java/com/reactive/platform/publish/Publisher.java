@@ -1,6 +1,6 @@
 package com.reactive.platform.publish;
 
-import com.reactive.platform.serialization.Result;
+import com.reactive.platform.base.Result;
 
 import java.util.List;
 import java.util.Optional;

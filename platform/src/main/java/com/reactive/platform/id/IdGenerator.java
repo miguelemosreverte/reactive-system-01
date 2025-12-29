@@ -1,5 +1,7 @@
 package com.reactive.platform.id;
 
+import com.reactive.platform.base.Result;
+
 import java.net.InetAddress;
 import java.security.SecureRandom;
 import java.util.concurrent.atomic.AtomicLong;
@@ -115,15 +117,12 @@ public final class IdGenerator {
     }
 
     private static int generateNodeId() {
-        try {
+        return Result.of(() -> {
             // Combine hostname hash with random bits for uniqueness
             String hostname = InetAddress.getLocalHost().getHostName();
             int hostnameHash = hostname.hashCode() & 0xFF; // 8 bits from hostname
             int randomBits = new SecureRandom().nextInt() & 0xFF; // 8 random bits
             return (hostnameHash << 8) | randomBits;
-        } catch (Exception e) {
-            // Fallback to pure random
-            return new SecureRandom().nextInt() & 0xFFFF;
-        }
+        }).getOrElse(() -> new SecureRandom().nextInt() & 0xFFFF); // Fallback to pure random
     }
 }

@@ -1,5 +1,6 @@
 package com.reactive.platform.gateway.microbatch;
 
+import com.reactive.platform.base.Result;
 import com.reactive.platform.http.HttpServer;
 import com.reactive.platform.http.HttpServer.*;
 import com.reactive.platform.http.RocketHttpServer;
@@ -311,8 +312,8 @@ public final class MicrobatchingGateway<E> implements AutoCloseable {
 
         // Simple byte array codec for raw throughput
         Codec<byte[]> byteCodec = Codec.of(
-            bytes -> com.reactive.platform.serialization.Result.success(bytes),
-            bytes -> com.reactive.platform.serialization.Result.success(bytes),
+            bytes -> com.reactive.platform.base.Result.success(bytes),
+            bytes -> com.reactive.platform.base.Result.success(bytes),
             "application/octet-stream",
             "bytes"
         );
@@ -329,20 +330,16 @@ public final class MicrobatchingGateway<E> implements AutoCloseable {
         // Print metrics periodically
         Thread metricsThread = Thread.ofVirtual().start(() -> {
             while (!Thread.currentThread().isInterrupted()) {
-                try {
-                    Thread.sleep(5000);
-                    GatewayMetrics m = gateway.getMetrics();
-                    System.out.printf(
-                        "[Metrics] Requests: %,d | Throughput: %.0f req/s | " +
-                        "Batch: %d | Flush: %d µs%n",
-                        m.totalRequests(),
-                        m.requestsPerSecond(),
-                        m.collectorMetrics().currentBatchSize(),
-                        m.collectorMetrics().currentFlushIntervalMicros()
-                    );
-                } catch (InterruptedException e) {
-                    break;
-                }
+                if (Result.sleep(5000).isFailure()) break;
+                GatewayMetrics m = gateway.getMetrics();
+                System.out.printf(
+                    "[Metrics] Requests: %,d | Throughput: %.0f req/s | " +
+                    "Batch: %d | Flush: %d µs%n",
+                    m.totalRequests(),
+                    m.requestsPerSecond(),
+                    m.collectorMetrics().currentBatchSize(),
+                    m.collectorMetrics().currentFlushIntervalMicros()
+                );
             }
         });
 
@@ -353,11 +350,7 @@ public final class MicrobatchingGateway<E> implements AutoCloseable {
             System.out.println("Gateway stopped.");
         }));
 
-        try {
-            gateway.awaitTermination();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
+        Result.run(() -> gateway.awaitTermination());
     }
 
     private static byte[] bufferToBytes(ByteBuffer buffer) {

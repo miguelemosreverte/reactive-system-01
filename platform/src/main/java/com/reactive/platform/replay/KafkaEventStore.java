@@ -2,7 +2,7 @@ package com.reactive.platform.replay;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.reactive.platform.serialization.Result;
+import com.reactive.platform.base.Result;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -138,13 +138,14 @@ public class KafkaEventStore implements EventStore {
 
     @Override
     public boolean isHealthy() {
-        try (var consumer = createConsumer()) {
-            consumer.listTopics(Duration.ofSeconds(5));
-            return true;
-        } catch (Exception e) {
-            warn("Kafka health check failed: {}", e.getMessage());
-            return false;
-        }
+        return Result.of(() -> {
+            try (var consumer = createConsumer()) {
+                consumer.listTopics(Duration.ofSeconds(5));
+                return true;
+            }
+        })
+        .onFailure(e -> warn("Kafka health check failed: {}", e.getMessage()))
+        .getOrElse(false);
     }
 
     // ========================================================================

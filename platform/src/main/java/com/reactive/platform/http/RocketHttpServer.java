@@ -1,5 +1,6 @@
 package com.reactive.platform.http;
 
+import com.reactive.platform.base.Result;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.StandardSocketOptions;
@@ -158,13 +159,9 @@ public final class RocketHttpServer {
             for (Reactor r : reactors) {
                 r.wakeup();
             }
-            try {
-                for (Reactor r : reactors) {
-                    r.join(1000);
-                    r.cleanup();
-                }
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
+            for (Reactor r : reactors) {
+                Result.join(r, 1000);
+                r.cleanup();
             }
             System.out.printf("[RocketHttpServer] Stopped. Total: %,d requests%n", requestCount());
         }
@@ -221,10 +218,8 @@ public final class RocketHttpServer {
         }
 
         void cleanup() {
-            try {
-                serverChannel.close();
-                selector.close();
-            } catch (IOException ignored) {}
+            Result.run(serverChannel::close);
+            Result.run(selector::close);
         }
 
         @Override
@@ -382,10 +377,8 @@ public final class RocketHttpServer {
         }
 
         private void close(SelectionKey key, SocketChannel channel) {
-            try {
-                key.cancel();
-                channel.close();
-            } catch (IOException ignored) {}
+            key.cancel();
+            Result.run(channel::close);
         }
     }
 
@@ -418,9 +411,7 @@ public final class RocketHttpServer {
 
         try (Handle handle = server.start(port)) {
             System.out.println("Server running. Press Ctrl+C to stop.");
-            handle.awaitTermination();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
+            Result.run(() -> handle.awaitTermination());
         }
     }
 }
