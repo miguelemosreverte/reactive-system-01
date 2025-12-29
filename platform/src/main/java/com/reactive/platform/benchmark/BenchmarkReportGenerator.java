@@ -81,11 +81,7 @@ public class BenchmarkReportGenerator {
      */
     public Result<Path> generateAll(List<BenchmarkResult> results) {
         return Result.of(() -> {
-            for (BenchmarkResult result : results) {
-                generate(result).getOrThrow();
-            }
-
-            // Generate index and return its path
+            results.forEach(result -> generate(result).getOrThrow());
             return generateIndex(results).getOrThrow();
         });
     }

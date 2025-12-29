@@ -414,20 +414,19 @@ public class BottleneckAnalyzer {
                 .mapToLong(Long::longValue).average().orElse(0);
 
         // Build component health list
-        List<ComponentHealth> componentHealth = new ArrayList<>();
-        for (var entry : durationsByService.entrySet()) {
-            String service = entry.getKey();
-            long avgDuration = (long) entry.getValue().stream()
+        final long finalAvgTotalDuration = avgTotalDuration;
+        List<ComponentHealth> componentHealth = durationsByService.entrySet().stream()
+            .map(entry -> {
+                String service = entry.getKey();
+                long avgDuration = (long) entry.getValue().stream()
                     .mapToLong(Long::longValue).average().orElse(0);
-            double percent = avgTotalDuration > 0 ? (avgDuration * 100.0) / avgTotalDuration : 0;
-            HealthStatus status = HealthStatus.fromPercent(percent);
-            String diagnosis = generateComponentDiagnosis(service, percent, status);
-
-            componentHealth.add(new ComponentHealth(service, avgDuration, percent, status, diagnosis));
-        }
-
-        // Sort by percentage (highest first)
-        componentHealth.sort((a, b) -> Double.compare(b.percentOfTotal(), a.percentOfTotal()));
+                double percent = finalAvgTotalDuration > 0 ? (avgDuration * 100.0) / finalAvgTotalDuration : 0;
+                HealthStatus status = HealthStatus.fromPercent(percent);
+                String diagnosis = generateComponentDiagnosis(service, percent, status);
+                return new ComponentHealth(service, avgDuration, percent, status, diagnosis);
+            })
+            .sorted((a, b) -> Double.compare(b.percentOfTotal(), a.percentOfTotal()))
+            .collect(Collectors.toList());
 
         // Find primary bottleneck
         String primaryBottleneck = bottleneckCounts.entrySet().stream()
@@ -723,41 +722,40 @@ public class BottleneckAnalyzer {
             return List.of();
         }
 
-        List<OperationTiming> timings = new ArrayList<>();
+        return trace.spans().stream()
+            .map(span -> {
+                String service = getServiceName(trace, span);
 
-        for (Span span : trace.spans()) {
-            String service = getServiceName(trace, span);
-            String operation = span.operationName();
+                // Extract relevant tags from Map<String, Object>
+                Map<String, String> tags = span.tags().stream()
+                    .filter(tag -> {
+                        String key = String.valueOf(tag.get("key"));
+                        return key.startsWith("http.") || key.startsWith("db.") ||
+                               key.startsWith("messaging.") || key.equals("error");
+                    })
+                    .collect(Collectors.toMap(
+                        tag -> String.valueOf(tag.get("key")),
+                        tag -> String.valueOf(tag.get("value")),
+                        (a, b) -> b
+                    ));
 
-            // Extract relevant tags from Map<String, Object>
-            Map<String, String> tags = new HashMap<>();
-            for (var tag : span.tags()) {
-                // Only include relevant tags
-                String key = String.valueOf(tag.get("key"));
-                if (key.startsWith("http.") || key.startsWith("db.") ||
-                    key.startsWith("messaging.") || key.equals("error")) {
-                    tags.put(key, String.valueOf(tag.get("value")));
-                }
-            }
-
-            // Find parent span ID from references (each reference is a Map)
-            String parentSpanId = span.references().stream()
+                // Find parent span ID from references
+                String parentSpanId = span.references().stream()
                     .filter(ref -> "CHILD_OF".equals(String.valueOf(ref.get("refType"))))
                     .map(ref -> String.valueOf(ref.get("spanID")))
                     .findFirst()
                     .orElse("");
 
-            timings.add(new OperationTiming(
+                return new OperationTiming(
                     service,
-                    operation,
+                    span.operationName(),
                     span.duration(),
                     span.spanId(),
                     parentSpanId,
                     tags
-            ));
-        }
-
-        return timings;
+                );
+            })
+            .collect(Collectors.toList());
     }
 
     /** Calculate aggregate statistics for each operation across multiple traces. */

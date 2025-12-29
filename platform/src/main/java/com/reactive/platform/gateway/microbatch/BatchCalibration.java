@@ -4,6 +4,7 @@ import java.io.*;
 import java.nio.file.*;
 import java.sql.*;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
@@ -82,12 +83,10 @@ public final class BatchCalibration implements AutoCloseable {
         }
 
         public static PressureLevel fromRequestRate(long requestsPer10Seconds) {
-            for (PressureLevel level : values()) {
-                if (requestsPer10Seconds >= level.minReqPer10s && requestsPer10Seconds < level.maxReqPer10s) {
-                    return level;
-                }
-            }
-            return HTTP_60S;
+            return Arrays.stream(values())
+                .filter(level -> requestsPer10Seconds >= level.minReqPer10s && requestsPer10Seconds < level.maxReqPer10s)
+                .findFirst()
+                .orElse(HTTP_60S);
         }
 
         /** Create from requests per second (convenience method). */
