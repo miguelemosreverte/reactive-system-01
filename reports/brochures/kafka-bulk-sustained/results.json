@@ -1,31 +1,31 @@
 {
   "brochure": "kafka-bulk-sustained",
   "name": "Kafka BULK - Sustained Rate (Docker)",
-  "startTime": "2025-12-29T14:48:38.440221-03:00",
-  "endTime": "2025-12-29T14:49:21.553488-03:00",
-  "durationMs": 43113,
-  "throughput": 447528.92,
-  "p50Ms": 0.017,
-  "p99Ms": 0.017,
-  "totalOps": 4479317,
-  "successOps": 4479317,
+  "startTime": "2025-12-29T16:07:33.60176-03:00",
+  "endTime": "2025-12-29T16:07:55.514133-03:00",
+  "durationMs": 21912,
+  "throughput": 745003.4,
+  "p50Ms": 0.01,
+  "p99Ms": 0.042,
+  "totalOps": 7450034,
+  "successOps": 7450034,
   "failedOps": 0,
   "rawResults": {
-    "avgThroughput": 447528.92,
+    "avgThroughput": 745003.4,
     "component": "kafka-producer",
-    "durationMs": 10009,
+    "durationMs": 10000,
     "failedOperations": 0,
     "latency": {
-      "avg": 0.017,
-      "max": 0.02,
-      "p50": 0.017,
-      "p95": 0.025,
-      "p99": 0.017
+      "avg": 0.01,
+      "max": 0.05,
+      "p50": 0.01,
+      "p95": 0.015,
+      "p99": 0.042
     },
     "name": "Kafka Producer Benchmark",
     "notes": "Fire-and-forget Kafka producer throughput (acks=0). This is the theoretical maximum for Kafka publishing.",
     "status": "completed",
-    "successfulOperations": 4479317,
-    "totalOperations": 4479317
+    "successfulOperations": 7450034,
+    "totalOperations": 7450034
   }
 }

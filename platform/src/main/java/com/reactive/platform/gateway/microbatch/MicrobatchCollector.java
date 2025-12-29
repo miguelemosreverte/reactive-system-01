@@ -22,7 +22,8 @@ import java.util.function.Consumer;
  *
  * v2: Replaced ConcurrentLinkedQueue with MpscRingBuffer for zero-allocation submit.
  *
- * This is the production implementation achieving 1.3 billion msg/s.
+ * This is the production implementation achieving 60M+ msg/s pure collection,
+ * 11M+ msg/s with real Kafka I/O.
  *
  * @param <T> The type of items being collected
  */

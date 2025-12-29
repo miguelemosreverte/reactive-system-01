@@ -6,11 +6,11 @@ Raw event collection throughput without HTTP overhead - shows theoretical maximu
 
 | Metric | Value |
 |--------|-------|
-| Throughput | 13018443 ops/s |
-| p50 Latency | 10.5 ms |
-| p99 Latency | 21.0 ms |
-| Total Operations | 137943419 |
-| Successful | 137943419 |
+| Throughput | 11055578 ops/s |
+| p50 Latency | 5.2 ms |
+| p99 Latency | 10.4 ms |
+| Total Operations | 110600000 |
+| Successful | 110600000 |
 | Failed | 0 |
 | Duration | 10s |
 
@@ -28,6 +28,6 @@ Raw event collection throughput without HTTP overhead - shows theoretical maximu
 
 ## Timestamp
 
-- Started: 2025-12-29T14:50:54-03:00
-- Completed: 2025-12-29T14:51:25-03:00
-- Duration: 31.055728417s
+- Started: 2025-12-29T16:06:42-03:00
+- Completed: 2025-12-29T16:07:08-03:00
+- Duration: 25.720965125s
