@@ -308,7 +308,7 @@ public class CalibrationBenchmark {
         System.out.printf("%nResults saved to: %s%n", jsonPath);
     }
 
-    // TODO 1.4: Extract to shared BenchmarkResult interface (7 similar records across benchmark files)
+    // Local result type - kept inline due to additional fields (bucket, config, previousThroughput)
     record BucketResult(
         PressureLevel bucket,
         Config config,

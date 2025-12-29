@@ -81,4 +81,34 @@ public final class BenchmarkResult {
         boolean regression,
         double changePercent
     ) {}
+
+    /**
+     * Simple result for basic benchmarks (mode, throughput, notes).
+     */
+    public record SimpleResult(
+        String mode,
+        long messages,
+        long durationMs,
+        double throughputPerSec,
+        String notes
+    ) {
+        public static SimpleResult of(String mode, long messages, long durationMs, double throughput) {
+            return new SimpleResult(mode, messages, durationMs, throughput, null);
+        }
+
+        public static SimpleResult withNotes(String mode, long messages, long durationMs, double throughput, String notes) {
+            return new SimpleResult(mode, messages, durationMs, throughput, notes);
+        }
+    }
+
+    /**
+     * Result for batch size exploration.
+     */
+    public record BatchExplorationResult(
+        long throughput,
+        double avgLatencyMs,
+        double batchesPerSec,
+        long totalItems,
+        long totalBatches
+    ) {}
 }

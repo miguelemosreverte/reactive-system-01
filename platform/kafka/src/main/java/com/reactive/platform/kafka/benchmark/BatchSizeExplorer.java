@@ -53,7 +53,7 @@ public class BatchSizeExplorer {
         int bestBatchSize = 0;
 
         for (int batchSize : batchSizes) {
-            Result result = runTest(bootstrap, props, batchSize, 10000, TEST_DURATION_SEC);
+            var result = runTest(bootstrap, props, batchSize, 10000, TEST_DURATION_SEC);
 
             String notes = "";
             if (result.throughput > bestThroughput) {
@@ -84,7 +84,7 @@ public class BatchSizeExplorer {
         int bestInterval = 0;
 
         for (int interval : intervals) {
-            Result result = runTest(bootstrap, props, bestBatchSize, interval, TEST_DURATION_SEC);
+            var result = runTest(bootstrap, props, bestBatchSize, interval, TEST_DURATION_SEC);
 
             String notes = "";
             if (result.throughput > bestThroughput2) {
@@ -112,7 +112,7 @@ public class BatchSizeExplorer {
 
         for (int batchSize : extremeBatches) {
             try {
-                Result result = runTest(bootstrap, props, batchSize, bestInterval, TEST_DURATION_SEC);
+                var result = runTest(bootstrap, props, batchSize, bestInterval, TEST_DURATION_SEC);
 
                 String notes = result.throughput > bestThroughput2 ? "★ NEW BEST" : "";
                 if (result.throughput > bestThroughput2) {
@@ -146,7 +146,7 @@ public class BatchSizeExplorer {
         }
     }
 
-    static Result runTest(String bootstrap, Properties props, int batchSize, int intervalMicros, int durationSec) throws Exception {
+    static BenchmarkResult.BatchExplorationResult runTest(String bootstrap, Properties props, int batchSize, int intervalMicros, int durationSec) throws Exception {
         LongAdder totalItems = new LongAdder();
         LongAdder totalBatches = new LongAdder();
         LongAdder totalLatencyNanos = new LongAdder();
@@ -208,7 +208,7 @@ public class BatchSizeExplorer {
                 : 0;
             double batchesPerSec = batches * 1000.0 / elapsed;
 
-            return new Result(
+            return new BenchmarkResult.BatchExplorationResult(
                 (long) throughput,
                 avgLatencyMs,
                 batchesPerSec,
@@ -219,8 +219,6 @@ public class BatchSizeExplorer {
             Files.deleteIfExists(tempDb);
         }
     }
-
-    record Result(long throughput, double avgLatencyMs, double batchesPerSec, long totalItems, long totalBatches) {}
 
     static Properties createProducerProps(String bootstrap) {
         Properties props = new Properties();
