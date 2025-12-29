@@ -45,6 +45,20 @@ public final class IdGenerator {
     private static final char[] HEX = "0123456789abcdef".toCharArray();
 
     /**
+     * Encode a long value as hex characters into a char array.
+     * @param value the value to encode
+     * @param chars target char array
+     * @param start start index (inclusive)
+     * @param end end index (exclusive)
+     */
+    private static void encodeHex(long value, char[] chars, int start, int end) {
+        for (int i = end - 1; i >= start; i--) {
+            chars[i] = HEX[(int)(value & 0xF)];
+            value >>>= 4;
+        }
+    }
+
+    /**
      * Generate a unique 128-bit request ID as a 32-character hex string.
      * Thread-safe and lock-free. Optimized to avoid String.format() overhead.
      */
@@ -56,18 +70,10 @@ public final class IdGenerator {
         // High 64 bits: timestamp (48 bits) + nodeId (16 bits)
         // Low 64 bits: sequence counter
         long high = ((timestamp - EPOCH) << 16) | (nodeId & 0xFFFF);
-        long low = seq;
 
-        // Fast hex encoding (avoids String.format overhead)
         char[] chars = new char[32];
-        for (int i = 15; i >= 0; i--) {
-            chars[i] = HEX[(int)(high & 0xF)];
-            high >>>= 4;
-        }
-        for (int i = 31; i >= 16; i--) {
-            chars[i] = HEX[(int)(low & 0xF)];
-            low >>>= 4;
-        }
+        encodeHex(high, chars, 0, 16);
+        encodeHex(seq, chars, 16, 32);
         return new String(chars);
     }
 
@@ -79,18 +85,10 @@ public final class IdGenerator {
         long timestamp = System.currentTimeMillis();
         long seq = getNextSequence(timestamp);
 
-        // Fast hex encoding (16 chars: 12 for timestamp + 4 for sequence)
+        // 16 chars: 12 for timestamp + 4 for sequence
         char[] chars = new char[16];
-        long ts = timestamp & 0xFFFFFFFFFFFFL;
-        for (int i = 11; i >= 0; i--) {
-            chars[i] = HEX[(int)(ts & 0xF)];
-            ts >>>= 4;
-        }
-        int s = (int)(seq & 0xFFFF);
-        for (int i = 15; i >= 12; i--) {
-            chars[i] = HEX[s & 0xF];
-            s >>>= 4;
-        }
+        encodeHex(timestamp & 0xFFFFFFFFFFFFL, chars, 0, 12);
+        encodeHex(seq & 0xFFFF, chars, 12, 16);
         return new String(chars);
     }
 

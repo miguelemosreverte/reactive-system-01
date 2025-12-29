@@ -5,6 +5,8 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.LongAdder;
+import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 /**
  * Collects diagnostic metrics from the JVM and application.
@@ -126,25 +128,20 @@ public class DiagnosticCollector {
         stages.putIfAbsent(name, new StageMetrics(name));
     }
 
+    private void withStage(String name, Consumer<StageMetrics> action) {
+        Optional.ofNullable(stages.get(name)).ifPresent(action);
+    }
+
     public void recordStageEvent(String name, double latencyMs) {
-        StageMetrics stage = stages.get(name);
-        if (stage != null) {
-            stage.recordEvent(latencyMs);
-        }
+        withStage(name, stage -> stage.recordEvent(latencyMs));
     }
 
     public void recordStageError(String name) {
-        StageMetrics stage = stages.get(name);
-        if (stage != null) {
-            stage.recordError();
-        }
+        withStage(name, StageMetrics::recordError);
     }
 
     public void setStageQueueDepth(String name, long depth) {
-        StageMetrics stage = stages.get(name);
-        if (stage != null) {
-            stage.setQueueDepth(depth);
-        }
+        withStage(name, stage -> stage.setQueueDepth(depth));
     }
 
     // ==================== Dependency Recording ====================
@@ -153,18 +150,16 @@ public class DiagnosticCollector {
         dependencies.putIfAbsent(name, new DependencyMetrics(name, type));
     }
 
+    private void withDependency(String name, Consumer<DependencyMetrics> action) {
+        Optional.ofNullable(dependencies.get(name)).ifPresent(action);
+    }
+
     public void recordDependencyCall(String name, double latencyMs, boolean success) {
-        DependencyMetrics dep = dependencies.get(name);
-        if (dep != null) {
-            dep.recordCall(latencyMs, success);
-        }
+        withDependency(name, dep -> dep.recordCall(latencyMs, success));
     }
 
     public void setDependencyCircuitState(String name, String state) {
-        DependencyMetrics dep = dependencies.get(name);
-        if (dep != null) {
-            dep.setCircuitState(state);
-        }
+        withDependency(name, dep -> dep.setCircuitState(state));
     }
 
     // ==================== Collection ====================
@@ -240,17 +235,17 @@ public class DiagnosticCollector {
         // Thread metrics
         ThreadMXBean threadBean = ManagementFactory.getThreadMXBean();
         int threadCount = threadBean.getThreadCount();
-        int blockedCount = 0;
-        int waitingCount = 0;
 
         ThreadInfo[] threadInfos = threadBean.getThreadInfo(threadBean.getAllThreadIds());
-        for (ThreadInfo info : threadInfos) {
-            if (info != null) {
-                if (info.getThreadState() == Thread.State.BLOCKED) blockedCount++;
-                if (info.getThreadState() == Thread.State.WAITING ||
-                    info.getThreadState() == Thread.State.TIMED_WAITING) waitingCount++;
-            }
-        }
+        int blockedCount = (int) Arrays.stream(threadInfos)
+            .filter(Objects::nonNull)
+            .filter(info -> info.getThreadState() == Thread.State.BLOCKED)
+            .count();
+        int waitingCount = (int) Arrays.stream(threadInfos)
+            .filter(Objects::nonNull)
+            .filter(info -> info.getThreadState() == Thread.State.WAITING ||
+                            info.getThreadState() == Thread.State.TIMED_WAITING)
+            .count();
 
         // Calculate trends
         double throughputTrend = elapsedSec > 0 ?
@@ -269,16 +264,14 @@ public class DiagnosticCollector {
         boolean threadExhaustion = blockedCount > maxParallelism / 2;
 
         // Build pipeline stages
-        List<PipelineStage> pipelineStages = new ArrayList<>();
-        for (StageMetrics stage : stages.values()) {
-            pipelineStages.add(stage.toStage());
-        }
+        List<PipelineStage> pipelineStages = stages.values().stream()
+            .map(StageMetrics::toStage)
+            .collect(Collectors.toList());
 
         // Build dependencies
-        List<DependencyAnalysis> deps = new ArrayList<>();
-        for (DependencyMetrics dep : dependencies.values()) {
-            deps.add(dep.toDependencyAnalysis());
-        }
+        List<DependencyAnalysis> deps = dependencies.values().stream()
+            .map(DependencyMetrics::toDependencyAnalysis)
+            .collect(Collectors.toList());
 
         // Build error analysis
         Map<String, Long> errorsByTypeMap = new HashMap<>();
