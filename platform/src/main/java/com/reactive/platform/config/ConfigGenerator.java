@@ -73,7 +73,7 @@ public final class ConfigGenerator {
         sb.append("FLINK_ASYNC_CAPACITY=").append(flinkTm.asyncCapacity()).append("\n");
 
         sb.append("\n# Kafka Settings\n");
-        PlatformConfig.KafkaConfig.ProducerConfig producer = config.kafka().producer();
+        PlatformConfig.KafkaConfig.ProducerSettings producer = config.kafka().producer();
         sb.append("KAFKA_BATCH_SIZE=").append(producer.batchSize()).append("\n");
         sb.append("KAFKA_LINGER_MS=").append(producer.lingerMs()).append("\n");
         sb.append("KAFKA_BUFFER_MEMORY=").append(producer.bufferMemory()).append("\n");
@@ -164,7 +164,7 @@ public final class ConfigGenerator {
             long heap = svc.heapMb();
             double ratio = (double) heap / container;
 
-            String name = service.configKey();
+            String name = service.key();
             if (ratio > 0.85) {
                 warnings.add(String.format(
                     "%s: heap/container ratio %.0f%% too high (heap=%dMB, container=%dMB). Leave room for native memory.",
@@ -210,7 +210,7 @@ public final class ConfigGenerator {
                     heap = "-";
                 }
                 sb.append(String.format("%-22s %6dMB %8s %s\n",
-                    service.configKey(), svc.containerMb(), heap, truncate(svc.description(), 30)));
+                    service.key(), svc.containerMb(), heap, truncate(svc.description(), 30)));
             } catch (Exception ignored) {}
         }
 

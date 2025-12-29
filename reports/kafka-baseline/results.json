@@ -1,13 +1,16 @@
 {
   "benchmark": "kafka-baseline",
-  "timestamp": "2025-12-27T20:06:44.983983Z",
+  "timestamp": "2025-12-29T04:45:47.777184Z",
+  "acks": "1",
   "results": [
     {
-      "mode": "MEGA_PRODUCER",
-      "messages": 2143310000,
-      "durationMs": 121460,
-      "throughput": 17646220.98,
-      "notes": "10000 messages per Kafka send, LZ4 compression"
+      "mode": "BULK_PRODUCER",
+      "messages": 1049548000,
+      "kafkaRecords": 1049548,
+      "verified": true,
+      "durationMs": 10006,
+      "throughput": 104891864.88,
+      "notes": "1000 msg/batch, acks=1, LZ4"
     }
   ]
 }

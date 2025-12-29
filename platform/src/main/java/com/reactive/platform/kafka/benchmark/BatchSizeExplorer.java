@@ -220,7 +220,21 @@ public class BatchSizeExplorer {
         }
     }
 
-    record Result(long throughput, double avgLatencyMs, double batchesPerSec, long totalItems, long totalBatches) {}
+    static final class Result {
+        public final long throughput;
+        public final double avgLatencyMs;
+        public final double batchesPerSec;
+        public final long totalItems;
+        public final long totalBatches;
+
+        Result(long throughput, double avgLatencyMs, double batchesPerSec, long totalItems, long totalBatches) {
+            this.throughput = throughput;
+            this.avgLatencyMs = avgLatencyMs;
+            this.batchesPerSec = batchesPerSec;
+            this.totalItems = totalItems;
+            this.totalBatches = totalBatches;
+        }
+    }
 
     static Properties createProducerProps(String bootstrap) {
         Properties props = new Properties();

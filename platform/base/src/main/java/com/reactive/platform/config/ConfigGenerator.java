@@ -73,7 +73,7 @@ public final class ConfigGenerator {
         sb.append("FLINK_ASYNC_CAPACITY=").append(flinkTm.asyncCapacity()).append("\n");
 
         sb.append("\n# Kafka Settings\n");
-        PlatformConfig.KafkaConfig.ProducerConfig producer = config.kafka().producer();
+        PlatformConfig.KafkaConfig.ProducerSettings producer = config.kafka().producer();
         sb.append("KAFKA_BATCH_SIZE=").append(producer.batchSize()).append("\n");
         sb.append("KAFKA_LINGER_MS=").append(producer.lingerMs()).append("\n");
         sb.append("KAFKA_BUFFER_MEMORY=").append(producer.bufferMemory()).append("\n");
