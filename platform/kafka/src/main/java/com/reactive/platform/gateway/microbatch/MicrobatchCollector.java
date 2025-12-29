@@ -1,5 +1,7 @@
 package com.reactive.platform.gateway.microbatch;
 
+import com.reactive.platform.config.PlatformConfig;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.*;
@@ -25,7 +27,8 @@ import java.util.function.Consumer;
 @Deprecated
 public final class MicrobatchCollector<T> implements AutoCloseable {
 
-    private static final long PRESSURE_WINDOW_NANOS = 10_000_000_000L; // 10 seconds
+    private static final PlatformConfig.MicrobatchConfig CONFIG = PlatformConfig.load().microbatch();
+    private static final long PRESSURE_WINDOW_NANOS = CONFIG.pressureWindowNanos();
 
     /** Result of batch flush. */
     public record BatchResult(int batchSize, long flushTimeNanos, boolean success, String errorMessage) {

@@ -543,6 +543,41 @@ public final class PlatformConfig {
         return new PublisherConfig(config.getConfig("publisher"));
     }
 
+    // ==========================================================================
+    // Microbatch Configuration
+    // ==========================================================================
+
+    public MicrobatchConfig microbatch() {
+        return new MicrobatchConfig(config.getConfig("microbatch"));
+    }
+
+    /**
+     * Microbatch configuration - settings for MicrobatchCollector and ring buffers.
+     */
+    public static final class MicrobatchConfig {
+        private final Config config;
+
+        MicrobatchConfig(Config config) {
+            this.config = config;
+        }
+
+        public long pressureWindowNanos() {
+            return config.getLong("pressure-window-nanos");
+        }
+
+        public int ringBufferCapacity() {
+            return config.getInt("ring-buffer-capacity");
+        }
+
+        public int flushThreads() {
+            return config.getInt("flush-threads");
+        }
+
+        public int maxBatchSize() {
+            return config.getInt("max-batch-size");
+        }
+    }
+
     /**
      * Publisher configuration - defaults for KafkaPublisher builder.
      */
