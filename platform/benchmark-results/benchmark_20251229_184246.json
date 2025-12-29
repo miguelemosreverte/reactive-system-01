@@ -1,0 +1,35 @@
+{
+  "timestamp": "2025-12-29T18:42:46.425754",
+  "config": {
+    "workers": 16,
+    "duration_seconds": 6,
+    "wrk_threads": 12,
+    "wrk_connections": 1000
+  },
+  "results": [
+    {
+      "rank": 1,
+      "server": "ROCKET",
+      "name": "RocketHttpServer",
+      "technology": "NIO + SO_REUSEPORT",
+      "tier": "MAXIMUM_THROUGHPUT",
+      "notes": "Kernel-level connection distribution, multi-reactor",
+      "requests_per_second": 94669.18,
+      "avg_latency": "10.11ms",
+      "max_latency": "77.58ms",
+      "success": true
+    },
+    {
+      "rank": 2,
+      "server": "SPRING_BOOT",
+      "name": "SpringBootHttpServer",
+      "technology": "Spring WebFlux",
+      "tier": "FRAMEWORK",
+      "notes": "Enterprise framework, Netty under the hood",
+      "requests_per_second": 23083.65,
+      "avg_latency": "42.03ms",
+      "max_latency": "368.74ms",
+      "success": true
+    }
+  ]
+}
