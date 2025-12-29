@@ -4,6 +4,7 @@ import com.reactive.platform.benchmark.BenchmarkTypes.*;
 
 import java.nio.file.Path;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * CLI for running benchmarks.
@@ -120,16 +121,15 @@ public class BenchmarkCli {
     }
 
     private static void runAll(Config config, BenchmarkReportGenerator reporter) throws Exception {
-        List<BenchmarkResult> results = new ArrayList<>();
-
-        for (var entry : BENCHMARKS.entrySet()) {
-            Benchmark benchmark = entry.getValue().create();
-            System.out.printf("%n=== Running %s ===%n", benchmark.name());
-
-            BenchmarkResult result = benchmark.run(config);
-            results.add(result);
-            printResult(result);
-        }
+        List<BenchmarkResult> results = BENCHMARKS.values().stream()
+            .map(BenchmarkFactory::create)
+            .map(benchmark -> {
+                System.out.printf("%n=== Running %s ===%n", benchmark.name());
+                BenchmarkResult result = benchmark.run(config);
+                printResult(result);
+                return result;
+            })
+            .collect(Collectors.toList());
 
         reporter.generateAll(results).getOrThrow();
         System.out.printf("%nAll reports generated%n");
@@ -158,10 +158,10 @@ public class BenchmarkCli {
         if (!result.sampleEvents().isEmpty()) {
             System.out.println();
             System.out.println("Sample Events: " + result.sampleEvents().size());
-            for (SampleEvent event : result.sampleEvents()) {
+            result.sampleEvents().forEach(event -> {
                 String status = event.status() == EventStatus.SUCCESS ? "✓" : "✗";
                 System.out.printf("  %s %s: %dms%n", status, event.id(), event.latencyMs());
-            }
+            });
 
             // Bottleneck analysis (only if trace data available)
             result.analyzeBottlenecks()

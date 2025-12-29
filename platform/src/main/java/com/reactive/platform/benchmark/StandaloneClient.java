@@ -10,6 +10,7 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.LongAdder;
+import java.util.stream.IntStream;
 
 /**
  * Standalone client for split client/server benchmarking.
@@ -175,11 +176,9 @@ public final class StandaloneClient {
                 }
             }
 
-            for (SocketChannel channel : channels) {
-                if (channel != null) {
-                    try { channel.close(); } catch (IOException ignored) {}
-                }
-            }
+            Arrays.stream(channels)
+                .filter(Objects::nonNull)
+                .forEach(ch -> { try { ch.close(); } catch (IOException ignored) {} });
             selector.close();
 
         } catch (Exception e) {
