@@ -43,7 +43,7 @@ import java.util.concurrent.atomic.*;
  */
 public class AdaptiveRampBenchmark {
 
-    private static final int MESSAGE_SIZE = 64;
+    private static final int MESSAGE_SIZE = BenchmarkConstants.MESSAGE_SIZE;
 
     // Target rates for each pressure level (messages per second)
     private static final long[] LEVEL_TARGET_RATES = {

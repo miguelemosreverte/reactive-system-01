@@ -29,7 +29,7 @@ import java.util.concurrent.atomic.LongAdder;
  */
 public class MaxThroughputTest {
 
-    private static final int MESSAGE_SIZE = 64;
+    private static final int MESSAGE_SIZE = BenchmarkConstants.MESSAGE_SIZE;
     private static final int LATENCY_SAMPLE_RATE = 1000;  // Sample every 1000th message
     private static final int PHASE_DURATION_SEC = 24;     // 4 min / 10 phases = 24s each
     private static final int SUSTAIN_DURATION_SEC = 60;   // 1 minute sustained max

@@ -28,7 +28,7 @@ import java.util.concurrent.atomic.*;
  */
 public class BillionMsgBrochure {
 
-    private static final int MESSAGE_SIZE = 64;
+    private static final int MESSAGE_SIZE = BenchmarkConstants.MESSAGE_SIZE;
     private static final int RAMP_PHASES = 10;
     private static final int PHASE_DURATION_SEC = 24;  // 4 min / 10 phases
     private static final int SUSTAIN_DURATION_SEC = 60;

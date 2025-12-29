@@ -28,7 +28,7 @@ import java.util.concurrent.atomic.*;
  */
 public class StripedBatcherBrochure {
 
-    private static final int MESSAGE_SIZE = 64;
+    private static final int MESSAGE_SIZE = BenchmarkConstants.MESSAGE_SIZE;
     private static final int TOTAL_DURATION_SEC = 300;  // 5 minutes
     private static final int RAMP_DURATION_SEC = 240;   // 4 minutes ramp
     private static final int SUSTAIN_DURATION_SEC = 60; // 1 minute sustain

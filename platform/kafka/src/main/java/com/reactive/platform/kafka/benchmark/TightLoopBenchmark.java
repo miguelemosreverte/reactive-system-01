@@ -18,7 +18,7 @@ import java.util.concurrent.atomic.LongAdder;
  */
 public class TightLoopBenchmark {
 
-    private static final int MESSAGE_SIZE = 64;
+    private static final int MESSAGE_SIZE = BenchmarkConstants.MESSAGE_SIZE;
     private static final long MESSAGES_PER_THREAD = 100_000_000L;  // 100M per thread
 
     public static void main(String[] args) throws Exception {

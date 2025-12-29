@@ -319,25 +319,15 @@ public class CalibrationBenchmark {
         double changePercent
     ) {}
 
-    // TODO 1.2: Extract to ProducerFactory.java (duplicated in 37 methods across benchmark files)
     static Properties createProducerProps(String bootstrap) {
-        Properties props = new Properties();
-        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrap);
-        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class.getName());
-        props.put(ProducerConfig.ACKS_CONFIG, "1");
-        props.put(ProducerConfig.LINGER_MS_CONFIG, "5");
+        Properties props = ProducerFactory.highThroughputProps(bootstrap);
+        props.put(ProducerConfig.LINGER_MS_CONFIG, "5");  // Override for calibration
         props.put(ProducerConfig.BATCH_SIZE_CONFIG, String.valueOf(1024 * 1024));
-        props.put(ProducerConfig.BUFFER_MEMORY_CONFIG, String.valueOf(256 * 1024 * 1024));
-        props.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, "lz4");
         return props;
     }
 
-    // TODO 1.3: Extract to FormattingUtils.java (duplicated in 3 files)
     static String formatInterval(int micros) {
-        if (micros >= 1_000_000) return String.format("%.1fs", micros / 1_000_000.0);
-        if (micros >= 1_000) return String.format("%.1fms", micros / 1_000.0);
-        return micros + "µs";
+        return FormattingUtils.formatInterval(micros);
     }
 
     static byte[] createBulk(List<byte[]> batch) {

@@ -53,18 +53,16 @@ import java.util.concurrent.atomic.*;
  */
 public class KafkaBaselineBenchmark {
 
-    // TODO 1.1: Extract to BenchmarkConstants.java (duplicated in 17 files)
-    private static final int MESSAGE_SIZE = 64;  // bytes per message
+    private static final int MESSAGE_SIZE = BenchmarkConstants.MESSAGE_SIZE;
     private static final byte[] TEST_MESSAGE = new byte[MESSAGE_SIZE];
 
     // Configurable acks level: "0", "1", or "all"
     private static String acksConfig = "1";  // Default to leader ack (production-safe)
 
-    // TODO 1.1: Extract to BenchmarkConstants.java
-    // Preset configurations
-    private static final int SMOKE_DURATION = 3;      // <5 seconds total
-    private static final int QUICK_DURATION = 15;     // ~15 seconds per test
-    private static final int THOROUGH_DURATION = 60;  // 1 minute per test (5 min total for ALL)
+    // Preset configurations (from BenchmarkConstants)
+    private static final int SMOKE_DURATION = BenchmarkConstants.SMOKE_DURATION_SEC;
+    private static final int QUICK_DURATION = BenchmarkConstants.QUICK_DURATION_SEC;
+    private static final int THOROUGH_DURATION = BenchmarkConstants.THOROUGH_DURATION_SEC;
 
     static {
         Arrays.fill(TEST_MESSAGE, (byte) 'X');
@@ -526,13 +524,8 @@ public class KafkaBaselineBenchmark {
     // Helpers
     // ========================================================================
 
-    // TODO 1.2: Extract to ProducerFactory.java (duplicated in 37 methods across benchmark files)
     static Properties producerProps(String bootstrap) {
-        Properties props = new Properties();
-        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrap);
-        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class.getName());
-        return props;
+        return ProducerFactory.baseProps(bootstrap);
     }
 
     /**

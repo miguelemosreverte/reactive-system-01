@@ -32,11 +32,10 @@ import java.util.concurrent.atomic.*;
  */
 public class MaxThroughputBrochure {
 
-    // TODO 1.1: Extract to BenchmarkConstants.java (duplicated in 17 files)
-    private static final int MESSAGE_SIZE = 64;
-    private static final int TOTAL_DURATION_SEC = 300;  // 5 minutes
-    private static final int RAMP_DURATION_SEC = 240;   // 4 minutes ramp
-    private static final int SUSTAIN_DURATION_SEC = 60; // 1 minute sustain
+    private static final int MESSAGE_SIZE = BenchmarkConstants.MESSAGE_SIZE;
+    private static final int TOTAL_DURATION_SEC = BenchmarkConstants.BROCHURE_TOTAL_DURATION_SEC;
+    private static final int RAMP_DURATION_SEC = BenchmarkConstants.BROCHURE_RAMP_DURATION_SEC;
+    private static final int SUSTAIN_DURATION_SEC = BenchmarkConstants.BROCHURE_SUSTAIN_DURATION_SEC;
 
     // Phases with increasing chunk sizes
     private static final int[][] PHASE_CONFIG = {
@@ -383,19 +382,8 @@ public class MaxThroughputBrochure {
         }
     }
 
-    // TODO 1.2: Extract to ProducerFactory.java (duplicated in 37 methods across benchmark files)
     static KafkaProducer<String, byte[]> createProducer(String bootstrap) {
-        Properties props = new Properties();
-        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrap);
-        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class.getName());
-        props.put(ProducerConfig.ACKS_CONFIG, "1");
-        props.put(ProducerConfig.LINGER_MS_CONFIG, 100);
-        props.put(ProducerConfig.BATCH_SIZE_CONFIG, 16777216);
-        props.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, "lz4");
-        props.put(ProducerConfig.BUFFER_MEMORY_CONFIG, 536870912L);
-        props.put(ProducerConfig.MAX_REQUEST_SIZE_CONFIG, 104857600);
-        return new KafkaProducer<>(props);
+        return ProducerFactory.createHighThroughput(bootstrap);
     }
 
     // TODO 1.4: Extract to shared BenchmarkResult interface (7 similar records across benchmark files)

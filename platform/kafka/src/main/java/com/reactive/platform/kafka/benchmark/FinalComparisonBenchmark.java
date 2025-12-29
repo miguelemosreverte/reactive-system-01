@@ -18,7 +18,7 @@ import java.util.concurrent.atomic.LongAdder;
  */
 public class FinalComparisonBenchmark {
 
-    private static final int MESSAGE_SIZE = 64;
+    private static final int MESSAGE_SIZE = BenchmarkConstants.MESSAGE_SIZE;
     private static final int DURATION_SECONDS = 5;
 
     public static void main(String[] args) throws Exception {
