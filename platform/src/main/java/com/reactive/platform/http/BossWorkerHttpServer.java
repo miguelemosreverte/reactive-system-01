@@ -5,12 +5,14 @@ import java.net.InetSocketAddress;
 import java.net.StandardSocketOptions;
 import java.nio.ByteBuffer;
 import java.nio.channels.*;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.LongAdder;
+import java.util.stream.IntStream;
 
 /**
  * BossWorkerHttpServer - App-layer routing for linear scaling.
@@ -79,41 +81,33 @@ public final class BossWorkerHttpServer {
 
         @Override
         public long requestCount() {
-            long total = 0;
-            for (Worker w : workers) {
-                total += w.requests.sum();
-            }
-            return total;
+            return Arrays.stream(workers)
+                .mapToLong(w -> w.requests.sum())
+                .sum();
         }
 
         @Override
         public long[] perWorkerCounts() {
-            long[] counts = new long[workers.length];
-            for (int i = 0; i < workers.length; i++) {
-                counts[i] = workers[i].requests.sum();
-            }
-            return counts;
+            return Arrays.stream(workers)
+                .mapToLong(w -> w.requests.sum())
+                .toArray();
         }
 
         @Override
         public void close() {
             running.set(false);
             boss.wakeup();
-            for (Worker w : workers) {
-                w.wakeup();
-            }
+            Arrays.stream(workers).forEach(Worker::wakeup);
+
             try {
                 boss.join(1000);
-                for (Worker w : workers) {
-                    w.join(1000);
-                }
+                for (Worker w : workers) w.join(1000);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
+
             boss.cleanup();
-            for (Worker w : workers) {
-                w.cleanup();
-            }
+            Arrays.stream(workers).forEach(Worker::cleanup);
             System.out.printf("[BossWorkerHttpServer] Stopped. Total: %,d requests%n", requestCount());
         }
     }
