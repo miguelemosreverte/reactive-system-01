@@ -535,6 +535,124 @@ public final class PlatformConfig {
         }
     }
 
+    // ==========================================================================
+    // Publisher Configuration
+    // ==========================================================================
+
+    public PublisherConfig publisher() {
+        return new PublisherConfig(config.getConfig("publisher"));
+    }
+
+    /**
+     * Publisher configuration - defaults for KafkaPublisher builder.
+     */
+    public static final class PublisherConfig {
+        private final Config config;
+
+        PublisherConfig(Config config) {
+            this.config = config;
+        }
+
+        // Default settings
+        public int maxInFlightRequests() {
+            return config.getInt("max-in-flight-requests");
+        }
+
+        public int lingerMs() {
+            return config.getInt("linger-ms");
+        }
+
+        public int batchSize() {
+            return config.getInt("batch-size");
+        }
+
+        public long bufferMemory() {
+            return config.getLong("buffer-memory");
+        }
+
+        public String compression() {
+            return config.getString("compression");
+        }
+
+        public String acks() {
+            return config.getString("acks");
+        }
+
+        public int estimatedMessageSize() {
+            return config.getInt("estimated-message-size");
+        }
+
+        // Fire-and-forget mode
+        public FireAndForgetConfig fireAndForget() {
+            return new FireAndForgetConfig(config.getConfig("fire-and-forget"));
+        }
+
+        // High-throughput mode
+        public HighThroughputConfig highThroughput() {
+            return new HighThroughputConfig(config.getConfig("high-throughput"));
+        }
+
+        public static final class FireAndForgetConfig {
+            private final Config config;
+
+            FireAndForgetConfig(Config config) {
+                this.config = config;
+            }
+
+            public int maxInFlightRequests() {
+                return config.getInt("max-in-flight-requests");
+            }
+
+            public int lingerMs() {
+                return config.getInt("linger-ms");
+            }
+
+            public int batchSize() {
+                return config.getInt("batch-size");
+            }
+
+            public String compression() {
+                return config.getString("compression");
+            }
+
+            public String acks() {
+                return config.getString("acks");
+            }
+        }
+
+        public static final class HighThroughputConfig {
+            private final Config config;
+
+            HighThroughputConfig(Config config) {
+                this.config = config;
+            }
+
+            public int maxInFlightRequests() {
+                return config.getInt("max-in-flight-requests");
+            }
+
+            public int lingerMs() {
+                return config.getInt("linger-ms");
+            }
+
+            public int batchSize() {
+                return config.getInt("batch-size");
+            }
+
+            public long bufferMemory() {
+                return config.getLong("buffer-memory");
+            }
+
+            public String compression() {
+                return config.getString("compression");
+            }
+
+            public String acks() {
+                return config.getString("acks");
+            }
+        }
+    }
+
     /**
      * Get the raw underlying config (for advanced usage).
      */

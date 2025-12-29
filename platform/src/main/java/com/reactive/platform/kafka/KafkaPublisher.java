@@ -1,5 +1,6 @@
 package com.reactive.platform.kafka;
 
+import com.reactive.platform.config.PlatformConfig;
 import com.reactive.platform.observe.Log;
 import com.reactive.platform.observe.Log.SpanHandle;
 import com.reactive.platform.serialization.Codec;
@@ -211,12 +212,14 @@ public class KafkaPublisher<A> implements AutoCloseable {
      * @param messages List of messages to batch
      * @return Number of messages sent
      */
+    private static final int ESTIMATED_MESSAGE_SIZE = PlatformConfig.load().publisher().estimatedMessageSize();
+
     public int publishBatchFireAndForget(List<A> messages) {
         if (messages.isEmpty()) return 0;
 
         try {
-            // Pre-size buffer based on expected message size
-            int estimatedSize = messages.size() * 64 + 4;
+            // Pre-size buffer based on expected message size (from config)
+            int estimatedSize = messages.size() * ESTIMATED_MESSAGE_SIZE + 4;
             ByteArrayOutputStream baos = new ByteArrayOutputStream(estimatedSize);
             DataOutputStream dos = new DataOutputStream(baos);
 
@@ -347,13 +350,20 @@ public class KafkaPublisher<A> implements AutoCloseable {
     }
 
     public static class Builder<A> {
+        // Load defaults from config
+        private static final PlatformConfig.PublisherConfig CONFIG = PlatformConfig.load().publisher();
+
         private String bootstrapServers;
         private String topic;
         private Codec<A> codec;
         private Function<A, String> keyExtractor = Object::toString;
         private String clientId = "platform-publisher";
-        private int maxInFlightRequests = 5;
-        private String acks = "1";
+        private int maxInFlightRequests = CONFIG.maxInFlightRequests();
+        private String acks = CONFIG.acks();
+        private int lingerMs = CONFIG.lingerMs();
+        private int batchSize = CONFIG.batchSize();
+        private String compression = CONFIG.compression();
+        private long bufferMemory = CONFIG.bufferMemory();
 
         public Builder<A> bootstrapServers(String servers) {
             this.bootstrapServers = servers;
@@ -391,17 +401,25 @@ public class KafkaPublisher<A> implements AutoCloseable {
         }
 
         public Builder<A> fireAndForget() {
-            this.acks = "0";
-            this.maxInFlightRequests = 100;
-            this.lingerMs = 0;         // No batching delay - send immediately
-            this.batchSize = 65536;    // 64KB batches
-            this.compression = "none"; // No compression overhead locally
+            var cfg = CONFIG.fireAndForget();
+            this.acks = cfg.acks();
+            this.maxInFlightRequests = cfg.maxInFlightRequests();
+            this.lingerMs = cfg.lingerMs();
+            this.batchSize = cfg.batchSize();
+            this.compression = cfg.compression();
             return this;
         }
 
-        private int lingerMs = 0;
-        private int batchSize = 16384;
-        private String compression = "none";
+        public Builder<A> highThroughput() {
+            var cfg = CONFIG.highThroughput();
+            this.acks = cfg.acks();
+            this.maxInFlightRequests = cfg.maxInFlightRequests();
+            this.lingerMs = cfg.lingerMs();
+            this.batchSize = cfg.batchSize();
+            this.bufferMemory = cfg.bufferMemory();
+            this.compression = cfg.compression();
+            return this;
+        }
 
         public Builder<A> lingerMs(int ms) {
             this.lingerMs = ms;
@@ -417,8 +435,6 @@ public class KafkaPublisher<A> implements AutoCloseable {
             this.compression = type;
             return this;
         }
-
-        private long bufferMemory = 16777216; // 16MB - reduced from 64MB to save memory
 
         public Builder<A> bufferMemory(long bytes) {
             this.bufferMemory = bytes;
