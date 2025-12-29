@@ -16,6 +16,8 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 /**
  * Fetches traces from Jaeger and logs from Loki.
@@ -157,30 +159,27 @@ public class ObservabilityFetcher {
     private Trace parseTrace(JsonNode node) {
         String traceId = node.path("traceID").asText();
 
-        List<Span> spans = new ArrayList<>();
-        for (JsonNode spanNode : node.path("spans")) {
-            spans.add(new Span(
-                    spanNode.path("traceID").asText(),
-                    spanNode.path("spanID").asText(),
-                    spanNode.path("operationName").asText(),
-                    spanNode.path("startTime").asLong(),
-                    spanNode.path("duration").asLong(),
-                    spanNode.path("processID").asText(),
-                    parseListOfMaps(spanNode.path("tags")),
-                    parseListOfMaps(spanNode.path("references"))
-            ));
-        }
+        List<Span> spans = StreamSupport.stream(node.path("spans").spliterator(), false)
+            .map(spanNode -> new Span(
+                spanNode.path("traceID").asText(),
+                spanNode.path("spanID").asText(),
+                spanNode.path("operationName").asText(),
+                spanNode.path("startTime").asLong(),
+                spanNode.path("duration").asLong(),
+                spanNode.path("processID").asText(),
+                parseListOfMaps(spanNode.path("tags")),
+                parseListOfMaps(spanNode.path("references"))
+            ))
+            .collect(Collectors.toList());
 
-        Map<String, Service> processes = new HashMap<>();
         JsonNode processesNode = node.path("processes");
-        if (processesNode.isObject()) {
-            var fields = processesNode.fields();
-            while (fields.hasNext()) {
-                var entry = fields.next();
-                String serviceName = entry.getValue().path("serviceName").asText();
-                processes.put(entry.getKey(), new Service(serviceName));
-            }
-        }
+        Map<String, Service> processes = processesNode.isObject()
+            ? StreamSupport.stream(
+                Spliterators.spliteratorUnknownSize(processesNode.fields(), Spliterator.ORDERED), false)
+                .collect(Collectors.toMap(
+                    Map.Entry::getKey,
+                    entry -> new Service(entry.getValue().path("serviceName").asText())))
+            : Map.of();
 
         return new Trace(traceId, spans, processes);
     }
@@ -226,35 +225,28 @@ public class ObservabilityFetcher {
         long startNs = start.minusSeconds(60).toEpochMilli() * 1_000_000;
         long endNs = end.plusSeconds(60).toEpochMilli() * 1_000_000;
 
-        Set<String> seenLines = new HashSet<>();
-        List<LogEntry> allLogs = new ArrayList<>();
+        List<List<LogEntry>> logSources = new ArrayList<>();
 
         // Search ALL services by requestId
-        if (requestId != null && !requestId.isEmpty()) {
-            String query = "{service=~\".+\"} |= \"" + requestId + "\"";
-            for (var logEntry : queryLoki(query, startNs, endNs)) {
-                if (seenLines.add(logEntry.line())) {
-                    allLogs.add(logEntry);
-                }
-            }
-        }
+        Optional.ofNullable(requestId)
+            .filter(id -> !id.isEmpty())
+            .map(id -> "{service=~\".+\"} |= \"" + id + "\"")
+            .map(query -> queryLoki(query, startNs, endNs))
+            .ifPresent(logSources::add);
 
         // Also search by otelTraceId if provided
-        if (otelTraceId != null && !otelTraceId.isEmpty()) {
-            String query = "{service=~\".+\"} |= \"" + otelTraceId + "\"";
-            for (var logEntry : queryLoki(query, startNs, endNs)) {
-                if (seenLines.add(logEntry.line())) {
-                    allLogs.add(logEntry);
-                }
-            }
-        }
+        Optional.ofNullable(otelTraceId)
+            .filter(id -> !id.isEmpty())
+            .map(id -> "{service=~\".+\"} |= \"" + id + "\"")
+            .map(query -> queryLoki(query, startNs, endNs))
+            .ifPresent(logSources::add);
+
+        List<LogEntry> allLogs = deduplicateByLine(logSources);
 
         if (!allLogs.isEmpty()) {
             info("Found {} total logs (requestId={}, otelTraceId={})", allLogs.size(), requestId, otelTraceId);
         }
 
-        // Sort by timestamp
-        allLogs.sort(Comparator.comparing(LogEntry::timestamp));
         return allLogs;
     }
 
@@ -353,24 +345,9 @@ public class ObservabilityFetcher {
                 .or(() -> appId.flatMap(this::fetchTraceByAppId));
 
         // If we found the trace but had to extract traceId, also search for additional logs
-        List<LogEntry> finalLogs = initialLogs;
-        if (trace.isPresent() && !effectiveOtelTraceId.isEmpty() && !effectiveOtelTraceId.equals(otelTraceId)) {
-            List<LogEntry> additionalLogs = fetchLogsMulti(effectiveOtelTraceId, "", start, end);
-            Set<String> seenLines = new HashSet<>();
-            List<LogEntry> allLogs = new ArrayList<>();
-            for (var entry : initialLogs) {
-                if (seenLines.add(entry.line())) {
-                    allLogs.add(entry);
-                }
-            }
-            for (var entry : additionalLogs) {
-                if (seenLines.add(entry.line())) {
-                    allLogs.add(entry);
-                }
-            }
-            allLogs.sort(Comparator.comparing(LogEntry::timestamp));
-            finalLogs = allLogs;
-        }
+        List<LogEntry> finalLogs = (trace.isPresent() && !effectiveOtelTraceId.isEmpty() && !effectiveOtelTraceId.equals(otelTraceId))
+            ? deduplicateByLine(List.of(initialLogs, fetchLogsMulti(effectiveOtelTraceId, "", start, end)))
+            : initialLogs;
 
         if (trace.isEmpty() && finalLogs.isEmpty()) {
             return TraceData.empty();
@@ -381,23 +358,16 @@ public class ObservabilityFetcher {
 
     /** Enrich sample events with trace and log data. */
     public List<SampleEvent> enrichSampleEvents(List<SampleEvent> events, Instant start, Instant end) {
-        List<SampleEvent> enriched = new ArrayList<>();
+        return events.stream()
+            .map(event -> hasTraceIds(event)
+                ? event.withTraceData(fetchTraceData(event.otelTraceId(), event.traceId(), start, end))
+                : event)
+            .collect(Collectors.toList());
+    }
 
-        for (SampleEvent event : events) {
-            String otelId = event.otelTraceId();
-            String traceId = event.traceId();
-            boolean hasOtelId = otelId != null && !otelId.isEmpty();
-            boolean hasTraceId = traceId != null && !traceId.isEmpty();
-
-            if (hasOtelId || hasTraceId) {
-                TraceData data = fetchTraceData(otelId, traceId, start, end);
-                enriched.add(event.withTraceData(data));
-            } else {
-                enriched.add(event);
-            }
-        }
-
-        return enriched;
+    private static boolean hasTraceIds(SampleEvent event) {
+        return (event.otelTraceId() != null && !event.otelTraceId().isEmpty()) ||
+               (event.traceId() != null && !event.traceId().isEmpty());
     }
 
     // ========================================================================
@@ -414,5 +384,15 @@ public class ObservabilityFetcher {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
+    }
+
+    /** Deduplicate log entries by line content, preserving order and sorting by timestamp. */
+    private static List<LogEntry> deduplicateByLine(List<List<LogEntry>> sources) {
+        Set<String> seen = new HashSet<>();
+        return sources.stream()
+            .flatMap(List::stream)
+            .filter(entry -> seen.add(entry.line()))
+            .sorted(Comparator.comparing(LogEntry::timestamp))
+            .collect(Collectors.toList());
     }
 }
