@@ -2,11 +2,9 @@ package com.reactive.platform.kafka.benchmark;
 
 import com.reactive.platform.gateway.microbatch.AdaptiveBatcher;
 import com.reactive.platform.gateway.microbatch.BatchCalibration;
-import org.apache.kafka.clients.producer.*;
-import org.apache.kafka.common.serialization.ByteArraySerializer;
-import org.apache.kafka.common.serialization.StringSerializer;
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.ProducerRecord;
 
-import java.util.Properties;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.LongAdder;
 
@@ -117,9 +115,7 @@ public class FinalComparisonBenchmark {
         producer.flush();
         producer.close();
 
-        long total = 0;
-        for (long c : counts) total += c;
-        return total / DURATION_SECONDS;
+        return java.util.Arrays.stream(counts).sum() / DURATION_SECONDS;
     }
 
     static long runAdaptive(String bootstrap, BatchCalibration.PressureLevel level) throws Exception {
@@ -178,8 +174,7 @@ public class FinalComparisonBenchmark {
         producer.flush();
         producer.close();
 
-        long total = 0;
-        for (long c : counts) total += c;
+        long total = java.util.Arrays.stream(counts).sum();
 
         System.out.printf("  (Kafka sends: %,d, avg batch: %,d KB, latency budget: %,dms)%n",
             kafkaSends.sum(),
@@ -244,8 +239,7 @@ public class FinalComparisonBenchmark {
         producer.flush();
         producer.close();
 
-        long total = 0;
-        for (long c : counts) total += c;
+        long total = java.util.Arrays.stream(counts).sum();
 
         System.out.printf("  (Kafka sends: %,d, avg batch: %,d KB)%n",
             kafkaSends.sum(),
@@ -255,16 +249,6 @@ public class FinalComparisonBenchmark {
     }
 
     static KafkaProducer<String, byte[]> createProducer(String bootstrap) {
-        Properties props = new Properties();
-        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrap);
-        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class.getName());
-        props.put(ProducerConfig.ACKS_CONFIG, "1");
-        props.put(ProducerConfig.LINGER_MS_CONFIG, 100);
-        props.put(ProducerConfig.BATCH_SIZE_CONFIG, 16777216);
-        props.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, "lz4");
-        props.put(ProducerConfig.BUFFER_MEMORY_CONFIG, 268435456L);
-        props.put(ProducerConfig.MAX_REQUEST_SIZE_CONFIG, 104857600);
-        return new KafkaProducer<>(props);
+        return ProducerFactory.createHighThroughput(bootstrap);
     }
 }

@@ -1,10 +1,8 @@
 package com.reactive.platform.kafka.benchmark;
 
 import com.reactive.platform.gateway.microbatch.StripedBatcher;
-import org.apache.kafka.clients.consumer.*;
-import org.apache.kafka.clients.producer.*;
-import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.serialization.*;
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.ProducerRecord;
 
 import java.io.FileWriter;
 import java.io.PrintWriter;
@@ -259,54 +257,18 @@ public class StripedBatcherBrochure {
     }
 
     static boolean verifyKafka(String bootstrap, String topic, long expectedSequence) {
-        try {
-            Properties props = new Properties();
-            props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrap);
-            props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-            props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
-            props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-            props.put(ConsumerConfig.GROUP_ID_CONFIG, "verify-" + System.currentTimeMillis());
+        long recordCount = KafkaVerifier.getRecordCount(bootstrap, topic);
+        long lastSeq = KafkaVerifier.verifyLastSequence(bootstrap, topic);
 
-            try (KafkaConsumer<String, byte[]> consumer = new KafkaConsumer<>(props)) {
-                // Get end offset
-                List<TopicPartition> partitions = new ArrayList<>();
-                consumer.partitionsFor(topic).forEach(p ->
-                    partitions.add(new TopicPartition(topic, p.partition())));
-
-                Map<TopicPartition, Long> endOffsets = consumer.endOffsets(partitions);
-                long totalRecords = endOffsets.values().stream().mapToLong(Long::longValue).sum();
-
-                System.out.printf("  Kafka records:   %,d%n", totalRecords);
-                System.out.printf("  Expected seq:    %,d%n", expectedSequence);
-
-                // Sample the last record to verify sequence
-                if (!partitions.isEmpty() && totalRecords > 0) {
-                    TopicPartition tp = partitions.get(0);
-                    long endOffset = endOffsets.get(tp);
-                    if (endOffset > 0) {
-                        consumer.assign(Collections.singletonList(tp));
-                        consumer.seek(tp, endOffset - 1);
-
-                        ConsumerRecords<String, byte[]> records = consumer.poll(Duration.ofSeconds(5));
-                        if (!records.isEmpty()) {
-                            byte[] lastValue = records.iterator().next().value();
-                            // Extract first 8 bytes as sequence (if message has proper format)
-                            if (lastValue.length >= 8) {
-                                long seq = ByteBuffer.wrap(lastValue).getLong();
-                                System.out.printf("  Last sequence:   %,d%n", seq);
-                            }
-                        }
-                    }
-                }
-
-                boolean verified = totalRecords > 0;
-                System.out.printf("  Status:          %s%n", verified ? "VERIFIED ✓" : "FAILED ✗");
-                return verified;
-            }
-        } catch (Exception e) {
-            System.out.println("  Status:          ERROR - " + e.getMessage());
-            return false;
+        System.out.printf("  Kafka records:   %,d%n", recordCount);
+        System.out.printf("  Expected seq:    %,d%n", expectedSequence);
+        if (lastSeq >= 0) {
+            System.out.printf("  Last sequence:   %,d%n", lastSeq);
         }
+
+        boolean verified = recordCount > 0;
+        System.out.printf("  Status:          %s%n", verified ? "VERIFIED ✓" : "FAILED ✗");
+        return verified;
     }
 
     static double calculatePercentile(List<PhaseResult> results, int percentile) {
@@ -353,17 +315,7 @@ public class StripedBatcherBrochure {
     }
 
     static KafkaProducer<String, byte[]> createProducer(String bootstrap) {
-        Properties props = new Properties();
-        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrap);
-        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class.getName());
-        props.put(ProducerConfig.ACKS_CONFIG, "1");
-        props.put(ProducerConfig.LINGER_MS_CONFIG, 100);
-        props.put(ProducerConfig.BATCH_SIZE_CONFIG, 16777216);
-        props.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, "lz4");
-        props.put(ProducerConfig.BUFFER_MEMORY_CONFIG, 268435456L);
-        props.put(ProducerConfig.MAX_REQUEST_SIZE_CONFIG, 104857600);
-        return new KafkaProducer<>(props);
+        return ProducerFactory.createHighThroughput(bootstrap);
     }
 
     record PhaseResult(long targetRate, long achievedRate, double avgLatencyNanos, long kafkaSends, long avgBatchBytes) {}

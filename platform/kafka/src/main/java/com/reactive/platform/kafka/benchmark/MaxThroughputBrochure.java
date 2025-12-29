@@ -1,10 +1,8 @@
 package com.reactive.platform.kafka.benchmark;
 
 import com.reactive.platform.gateway.microbatch.StripedBatcher;
-import org.apache.kafka.clients.consumer.*;
-import org.apache.kafka.clients.producer.*;
-import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.serialization.*;
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.ProducerRecord;
 
 import java.io.FileWriter;
 import java.io.PrintWriter;
@@ -294,57 +292,15 @@ public class MaxThroughputBrochure {
     }
 
     static VerificationResult verifyKafka(String bootstrap, String topic, long expectedMessages) {
-        try {
-            Properties props = new Properties();
-            props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrap);
-            props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-            props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
-            props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-            props.put(ConsumerConfig.GROUP_ID_CONFIG, "verify-" + System.currentTimeMillis());
+        long totalRecords = KafkaVerifier.getRecordCount(bootstrap, topic);
 
-            try (KafkaConsumer<String, byte[]> consumer = new KafkaConsumer<>(props)) {
-                List<TopicPartition> partitions = new ArrayList<>();
-                var partitionInfos = consumer.partitionsFor(topic);
-                if (partitionInfos != null) {
-                    partitionInfos.forEach(p -> partitions.add(new TopicPartition(topic, p.partition())));
-                }
+        System.out.printf("  Kafka records:       %,d%n", totalRecords);
+        System.out.printf("  Expected messages:   %,d%n", expectedMessages);
 
-                if (partitions.isEmpty()) {
-                    System.out.println("  Topic not found");
-                    return new VerificationResult(false, 0, 0);
-                }
+        boolean verified = totalRecords > 0;
+        System.out.printf("  Status:              %s%n", verified ? "VERIFIED ✓" : "FAILED ✗");
 
-                Map<TopicPartition, Long> endOffsets = consumer.endOffsets(partitions);
-                long totalRecords = endOffsets.values().stream().mapToLong(Long::longValue).sum();
-
-                consumer.assign(partitions);
-                for (TopicPartition tp : partitions) {
-                    consumer.seekToBeginning(Collections.singletonList(tp));
-                }
-
-                ConsumerRecords<String, byte[]> records = consumer.poll(Duration.ofSeconds(5));
-                long sampleBytes = 0;
-                int sampleCount = 0;
-                for (ConsumerRecord<String, byte[]> record : records) {
-                    sampleBytes += record.value().length;
-                    sampleCount++;
-                }
-                long avgRecordBytes = sampleCount > 0 ? sampleBytes / sampleCount : 0;
-                long totalKafkaBytes = totalRecords * avgRecordBytes;
-
-                System.out.printf("  Kafka records:       %,d%n", totalRecords);
-                System.out.printf("  Kafka data:          %,d MB%n", totalKafkaBytes / (1024 * 1024));
-                System.out.printf("  Expected messages:   %,d%n", expectedMessages);
-
-                boolean verified = totalRecords > 0 && totalKafkaBytes > 0;
-                System.out.printf("  Status:              %s%n", verified ? "VERIFIED ✓" : "FAILED ✗");
-
-                return new VerificationResult(verified, totalRecords, totalKafkaBytes);
-            }
-        } catch (Exception e) {
-            System.out.println("  Status:              ERROR - " + e.getMessage());
-            return new VerificationResult(false, 0, 0);
-        }
+        return new VerificationResult(verified, totalRecords, totalRecords * MESSAGE_SIZE);
     }
 
     static void generateBrochureJson(
@@ -386,7 +342,6 @@ public class MaxThroughputBrochure {
         return ProducerFactory.createHighThroughput(bootstrap);
     }
 
-    // TODO 1.4: Extract to shared BenchmarkResult interface (7 similar records across benchmark files)
     record PhaseResult(long targetRate, long achievedRate, double avgLatencyNanos,
                        int chunkSizeKB, int messagesPerChunk, long chunks) {}
 
