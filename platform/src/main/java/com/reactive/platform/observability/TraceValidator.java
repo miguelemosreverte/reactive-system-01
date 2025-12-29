@@ -130,22 +130,18 @@ public class TraceValidator {
 
         List<String> issues = new ArrayList<>();
 
-        // Extract services from processes
-        Set<String> presentServicesSet = new HashSet<>();
-        Map<String, Integer> spanCountByService = new HashMap<>();
+        // Extract services from processes using streams
+        Map<String, Integer> spanCountByService = trace.spans().stream()
+            .map(span -> trace.processes().get(span.processId()))
+            .filter(java.util.Objects::nonNull)
+            .map(Service::serviceName)
+            .collect(Collectors.groupingBy(s -> s, Collectors.collectingAndThen(
+                Collectors.counting(), Long::intValue)));
 
-        for (Span span : trace.spans()) {
-            String processId = span.processId();
-            Service process = trace.processes().get(processId);
-            if (process != null) {
-                String serviceName = process.serviceName();
-                presentServicesSet.add(serviceName);
-                spanCountByService.merge(serviceName, 1, Integer::sum);
-            }
-        }
-
-        List<String> presentServices = new ArrayList<>(presentServicesSet);
-        Collections.sort(presentServices);
+        List<String> presentServices = spanCountByService.keySet().stream()
+            .sorted()
+            .collect(Collectors.toList());
+        Set<String> presentServicesSet = spanCountByService.keySet();
 
         // Check for missing services
         List<String> missingServices = expectedServices.stream()
@@ -172,26 +168,12 @@ public class TraceValidator {
                 .collect(Collectors.toList());
 
         // Validate key operations are present
-        for (String service : presentServicesSet) {
-            List<String> keyOps = KEY_OPERATIONS.get(service);
-            if (keyOps != null) {
-                boolean hasKeyOp = false;
-                for (String op : keyOps) {
-                    for (String fullOp : operations) {
-                        if (fullOp.startsWith(service + ":") &&
-                                fullOp.toLowerCase().contains(op.toLowerCase())) {
-                            hasKeyOp = true;
-                            break;
-                        }
-                    }
-                    if (hasKeyOp) break;
-                }
-                if (!hasKeyOp) {
-                    issues.add(String.format("Service '%s' missing expected operations (expected one of: %s)",
-                            service, keyOps));
-                }
-            }
-        }
+        presentServicesSet.stream()
+            .filter(service -> KEY_OPERATIONS.containsKey(service))
+            .filter(service -> !hasKeyOperation(service, operations))
+            .forEach(service -> issues.add(String.format(
+                "Service '%s' missing expected operations (expected one of: %s)",
+                service, KEY_OPERATIONS.get(service))));
 
         // Calculate trace timing
         long traceStartTime = trace.spans().stream()
@@ -222,6 +204,19 @@ public class TraceValidator {
     }
 
     /**
+     * Check if service has at least one key operation in the operations list.
+     */
+    private static boolean hasKeyOperation(String service, List<String> operations) {
+        List<String> keyOps = KEY_OPERATIONS.get(service);
+        if (keyOps == null) return true;
+
+        String prefix = service + ":";
+        return keyOps.stream().anyMatch(op ->
+            operations.stream().anyMatch(fullOp ->
+                fullOp.startsWith(prefix) && fullOp.toLowerCase().contains(op.toLowerCase())));
+    }
+
+    /**
      * Check if a trace ID looks valid (32 hex characters).
      */
     public static boolean isValidTraceId(String traceId) {
@@ -235,32 +230,32 @@ public class TraceValidator {
      * Validate multiple traces and return summary statistics.
      */
     public static TraceSummary validateMultiple(List<Trace> traces, List<String> expectedServices) {
-        int total = traces.size();
-        int complete = 0;
-        int incomplete = 0;
-        Map<String, Integer> missingServiceCounts = new HashMap<>();
-        List<String> incompleteTraceIds = new ArrayList<>();
+        List<ValidationResult> results = traces.stream()
+            .map(trace -> validate(trace, expectedServices))
+            .collect(Collectors.toList());
 
-        for (Trace trace : traces) {
-            ValidationResult result = validate(trace, expectedServices);
-            if (result.isComplete()) {
-                complete++;
-            } else {
-                incomplete++;
-                incompleteTraceIds.add(trace.traceId());
-                for (String missing : result.missingServices()) {
-                    missingServiceCounts.merge(missing, 1, Integer::sum);
-                }
-            }
-        }
+        Map<Boolean, List<ValidationResult>> partitioned = results.stream()
+            .collect(Collectors.partitioningBy(ValidationResult::isComplete));
+
+        int complete = partitioned.get(true).size();
+        int incomplete = partitioned.get(false).size();
+        int total = traces.size();
+
+        Map<String, Integer> missingServiceCounts = partitioned.get(false).stream()
+            .flatMap(r -> r.missingServices().stream())
+            .collect(Collectors.groupingBy(s -> s, Collectors.collectingAndThen(
+                Collectors.counting(), Long::intValue)));
+
+        List<String> incompleteTraceIds = partitioned.get(false).stream()
+            .limit(10)
+            .map(ValidationResult::traceId)
+            .collect(Collectors.toList());
 
         return new TraceSummary(
                 total, complete, incomplete,
                 total > 0 ? (complete * 100.0 / total) : 0.0,
                 missingServiceCounts,
-                incompleteTraceIds.size() > 10
-                        ? incompleteTraceIds.subList(0, 10)
-                        : incompleteTraceIds
+                incompleteTraceIds
         );
     }
 
