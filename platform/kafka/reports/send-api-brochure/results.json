@@ -1,0 +1,38 @@
+{
+  "benchmark": "SendApiBrochure",
+  "description": "Validated send(message) throughput with latency tracking",
+  "timestamp": "2025-12-29T16:40:45.670706-03:00",
+  "durationMs": 300565,
+  "configuration": {
+    "threads": 12,
+    "messageSize": 64,
+    "latencySampleRate": 1000,
+    "phaseDurationSec": 24,
+    "sustainDurationSec": 60
+  },
+  "peakThroughput": 489298327,
+  "overallThroughput": 243217858.96,
+  "totalMessages": 73102775778,
+  "avgLatencyNs": 115.25,
+  "p99LatencyNs": 292.00,
+  "phases": [
+    {"phase": 1, "target": 10000, "achieved": 15000, "avgLatencyNs": 14175.94, "minLatencyNs": 250.00, "maxLatencyNs": 81417.00, "p99LatencyNs": 81417.00, "messages": 360000},
+    {"phase": 2, "target": 100000, "achieved": 105000, "avgLatencyNs": 1052.40, "minLatencyNs": 41.00, "maxLatencyNs": 17708.00, "p99LatencyNs": 11334.00, "messages": 2520000},
+    {"phase": 3, "target": 1000000, "achieved": 1005000, "avgLatencyNs": 661.73, "minLatencyNs": 41.00, "maxLatencyNs": 399292.00, "p99LatencyNs": 3583.00, "messages": 24120000},
+    {"phase": 4, "target": 10000000, "achieved": 10005000, "avgLatencyNs": 385.78, "minLatencyNs": 0.00, "maxLatencyNs": 174709.00, "p99LatencyNs": 792.00, "messages": 240120000},
+    {"phase": 5, "target": 50000000, "achieved": 50004999, "avgLatencyNs": 286.26, "minLatencyNs": 0.00, "maxLatencyNs": 309084.00, "p99LatencyNs": 584.00, "messages": 1200119988},
+    {"phase": 6, "target": 100000000, "achieved": 99997083, "avgLatencyNs": 223.45, "minLatencyNs": 0.00, "maxLatencyNs": 231750.00, "p99LatencyNs": 542.00, "messages": 2399929995},
+    {"phase": 7, "target": 250000000, "achieved": 249975000, "avgLatencyNs": 103.64, "minLatencyNs": 0.00, "maxLatencyNs": 266041.00, "p99LatencyNs": 459.00, "messages": 5999400012},
+    {"phase": 8, "target": 500000000, "achieved": 455813997, "avgLatencyNs": 66.46, "minLatencyNs": 0.00, "maxLatencyNs": 268250.00, "p99LatencyNs": 333.00, "messages": 10939535949},
+    {"phase": 9, "target": 750000000, "achieved": 466483764, "avgLatencyNs": 102.83, "minLatencyNs": 0.00, "maxLatencyNs": 3366083.00, "p99LatencyNs": 292.00, "messages": 11195610339},
+    {"phase": 10, "target": "UNLIMITED", "achieved": 489298327, "avgLatencyNs": 127.67, "minLatencyNs": 0.00, "maxLatencyNs": 5035000.00, "p99LatencyNs": 292.00, "messages": 41101059495}
+  ],
+  "validation": {
+    "passed": false,
+    "errorCount": 1,
+    "errors": [
+      "Message count: 71.1% verified (async flush pending)"
+    ]
+  },
+  "resultHash": "1f4aadc70492f357"
+}
