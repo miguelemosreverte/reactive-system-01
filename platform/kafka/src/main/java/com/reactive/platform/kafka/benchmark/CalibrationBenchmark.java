@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.nio.file.*;
 import java.time.Instant;
 import java.util.*;
+import java.util.Optional;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.LongAdder;
 
@@ -111,7 +112,7 @@ public class CalibrationBenchmark {
         Random rng = new Random();
 
         double bestThroughput = 0;
-        Config bestConfig = null;
+        Optional<Config> bestConfig = Optional.empty();
         List<Double> throughputs = new ArrayList<>();
 
         System.out.printf("%n  ▶ Benchmarking %s (%s)%n", bucket.name(), bucket.rateRange);
@@ -137,7 +138,7 @@ public class CalibrationBenchmark {
 
                 if (throughput > bestThroughput) {
                     bestThroughput = throughput;
-                    bestConfig = testConfig;
+                    bestConfig = Optional.of(testConfig);
                 }
             }
         }
@@ -156,7 +157,7 @@ public class CalibrationBenchmark {
 
         return new BucketResult(
             bucket,
-            bestConfig != null ? bestConfig : previousBest,
+            bestConfig.orElse(previousBest),
             (long) bestThroughput,
             (long) avgThroughput,
             stdDev,

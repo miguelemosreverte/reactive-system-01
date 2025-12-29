@@ -81,7 +81,7 @@ public class OnlineLearningBenchmark {
         Properties props = createProducerProps(bootstrap);
 
         double bestThroughput = 0;
-        Config bestConfig = null;
+        Optional<Config> bestConfig = Optional.empty();
 
         for (int round = 1; round <= rounds; round++) {
             // Get config to test (either best known or exploration)
@@ -103,15 +103,15 @@ public class OnlineLearningBenchmark {
 
                 if (throughput > bestThroughput) {
                     bestThroughput = throughput;
-                    bestConfig = testConfig;
+                    bestConfig = Optional.of(testConfig);
                 }
             }
         }
 
         System.out.printf("Best for %s: %,.0f msg/s (batch=%d, interval=%dµs)%n",
             level, bestThroughput,
-            bestConfig != null ? bestConfig.batchSize() : 0,
-            bestConfig != null ? bestConfig.flushIntervalMicros() : 0);
+            bestConfig.map(Config::batchSize).orElse(0),
+            bestConfig.map(Config::flushIntervalMicros).orElse(0));
     }
 
     static Observation runSingleTest(KafkaProducer<String, byte[]> producer,
