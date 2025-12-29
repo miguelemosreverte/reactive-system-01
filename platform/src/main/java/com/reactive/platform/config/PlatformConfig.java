@@ -221,6 +221,14 @@ public final class PlatformConfig {
     }
 
     // ==========================================================================
+    // Kafka Benchmark Configuration
+    // ==========================================================================
+
+    public KafkaBenchmarkConfig kafkaBenchmark() {
+        return new KafkaBenchmarkConfig(config.getConfig("kafka-benchmark"));
+    }
+
+    // ==========================================================================
     // Network Configuration
     // ==========================================================================
 
@@ -410,6 +418,116 @@ public final class PlatformConfig {
 
         public String dockerNetwork() {
             return config.getString("docker-network");
+        }
+    }
+
+    /**
+     * Kafka benchmark configuration - all settings for high-throughput benchmarks.
+     */
+    public static final class KafkaBenchmarkConfig {
+        private final Config config;
+
+        KafkaBenchmarkConfig(Config config) {
+            this.config = config;
+        }
+
+        // Message configuration
+        public int messageSize() {
+            return config.getInt("message-size");
+        }
+
+        // Durations
+        public int smokeDurationSec() {
+            return config.getInt("durations.smoke");
+        }
+
+        public int quickDurationSec() {
+            return config.getInt("durations.quick");
+        }
+
+        public int thoroughDurationSec() {
+            return config.getInt("durations.thorough");
+        }
+
+        public int brochureTotalDurationSec() {
+            return config.getInt("durations.brochure-total");
+        }
+
+        public int brochureRampDurationSec() {
+            return config.getInt("durations.brochure-ramp");
+        }
+
+        public int brochureSustainDurationSec() {
+            return config.getInt("durations.brochure-sustain");
+        }
+
+        // Warmup
+        public int warmupMessagesNaive() {
+            return config.getInt("warmup.messages-naive");
+        }
+
+        public int warmupBatchesBulk() {
+            return config.getInt("warmup.batches-bulk");
+        }
+
+        // Batch sizes
+        public int batchSizeSmall() {
+            return config.getInt("batch-size.small");
+        }
+
+        public int batchSizeStandard() {
+            return config.getInt("batch-size.standard");
+        }
+
+        public int batchSizeLarge() {
+            return config.getInt("batch-size.large");
+        }
+
+        public int batchSizeMax() {
+            return config.getInt("batch-size.max");
+        }
+
+        // Buffer memory
+        public long bufferMemoryStandard() {
+            return config.getLong("buffer-memory.standard");
+        }
+
+        public long bufferMemoryLarge() {
+            return config.getLong("buffer-memory.large");
+        }
+
+        // Producer settings
+        public int fetchMaxBytes() {
+            return config.getInt("producer.fetch-max-bytes");
+        }
+
+        public int maxRequestSize() {
+            return config.getInt("producer.max-request-size");
+        }
+
+        public String compression() {
+            return config.getString("producer.compression");
+        }
+
+        public int lingerMsHighThroughput() {
+            return config.getInt("producer.linger-ms-high-throughput");
+        }
+
+        public int lingerMsLowLatency() {
+            return config.getInt("producer.linger-ms-low-latency");
+        }
+
+        public int lingerMsFireAndForget() {
+            return config.getInt("producer.linger-ms-fire-and-forget");
+        }
+
+        // Batcher settings
+        public int batcherThresholdStandard() {
+            return config.getInt("batcher.threshold-standard");
+        }
+
+        public int batcherIntervalMs() {
+            return config.getInt("batcher.interval-ms");
         }
     }
 

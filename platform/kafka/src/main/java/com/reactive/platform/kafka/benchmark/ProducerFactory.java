@@ -31,17 +31,14 @@ public final class ProducerFactory {
 
     /**
      * Properties optimized for high throughput (bulk operations).
-     * - Large batches (16MB)
-     * - LZ4 compression
-     * - Large buffer memory (512MB)
-     * - Linger time to allow batching
+     * All values loaded from HOCON configuration.
      */
     public static Properties highThroughputProps(String bootstrap) {
         Properties props = baseProps(bootstrap);
         props.put(ProducerConfig.ACKS_CONFIG, "1");
-        props.put(ProducerConfig.LINGER_MS_CONFIG, 100);
+        props.put(ProducerConfig.LINGER_MS_CONFIG, BenchmarkConstants.LINGER_MS_HIGH_THROUGHPUT);
         props.put(ProducerConfig.BATCH_SIZE_CONFIG, BenchmarkConstants.BATCH_SIZE_MAX);
-        props.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, "lz4");
+        props.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, BenchmarkConstants.COMPRESSION_TYPE);
         props.put(ProducerConfig.BUFFER_MEMORY_CONFIG, BenchmarkConstants.BUFFER_MEMORY_LARGE);
         props.put(ProducerConfig.MAX_REQUEST_SIZE_CONFIG, BenchmarkConstants.MAX_REQUEST_SIZE);
         return props;
@@ -49,25 +46,24 @@ public final class ProducerFactory {
 
     /**
      * Properties optimized for low latency (per-message operations).
-     * - Small batches
-     * - No linger time
-     * - Leader-only acks
+     * All values loaded from HOCON configuration.
      */
     public static Properties lowLatencyProps(String bootstrap) {
         Properties props = baseProps(bootstrap);
         props.put(ProducerConfig.ACKS_CONFIG, "1");
-        props.put(ProducerConfig.LINGER_MS_CONFIG, 0);
+        props.put(ProducerConfig.LINGER_MS_CONFIG, BenchmarkConstants.LINGER_MS_LOW_LATENCY);
         props.put(ProducerConfig.BATCH_SIZE_CONFIG, BenchmarkConstants.BATCH_SIZE_SMALL);
         return props;
     }
 
     /**
      * Properties for fire-and-forget (acks=0) - maximum speed, may lose messages.
+     * All values loaded from HOCON configuration.
      */
     public static Properties fireAndForgetProps(String bootstrap) {
         Properties props = baseProps(bootstrap);
         props.put(ProducerConfig.ACKS_CONFIG, "0");
-        props.put(ProducerConfig.LINGER_MS_CONFIG, 5);
+        props.put(ProducerConfig.LINGER_MS_CONFIG, BenchmarkConstants.LINGER_MS_FIRE_AND_FORGET);
         props.put(ProducerConfig.BATCH_SIZE_CONFIG, BenchmarkConstants.BATCH_SIZE_STANDARD);
         return props;
     }
