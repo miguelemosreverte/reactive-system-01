@@ -469,20 +469,21 @@ func runNextJob(db *sql.DB) {
 		return
 	}
 
-	// Run based on component type
+	// Run based on component type (queue always uses Docker mode)
+	mode := "docker"
 	switch brochure.Component {
 	case "http":
-		runHttpBrochure(projectRoot, network, brochure, brochureDir, result)
+		runHttpBrochure(projectRoot, network, brochure, brochureDir, result, mode)
 	case "kafka":
-		runKafkaBrochure(projectRoot, network, brochure, brochureDir, result)
+		runKafkaBrochure(projectRoot, network, brochure, brochureDir, result, mode)
 	case "flink":
-		runFlinkBrochure(projectRoot, network, brochure, brochureDir, result)
+		runFlinkBrochure(projectRoot, network, brochure, brochureDir, result, mode)
 	case "gateway":
-		runGatewayBrochure(projectRoot, network, brochure, brochureDir, result)
+		runGatewayBrochure(projectRoot, network, brochure, brochureDir, result, mode)
 	case "full":
-		runFullBrochure(projectRoot, network, brochure, brochureDir, result)
+		runFullBrochure(projectRoot, network, brochure, brochureDir, result, mode)
 	case "collector":
-		runCollectorBrochure(projectRoot, network, brochure, brochureDir, result)
+		runCollectorBrochure(projectRoot, network, brochure, brochureDir, result, mode)
 	default:
 		updateJobResults(db, job.ID, 0, 0, 0, fmt.Sprintf("Unknown component: %s", brochure.Component))
 		return

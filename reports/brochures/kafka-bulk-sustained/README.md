@@ -12,11 +12,11 @@ the producer can push. On Docker Kafka: 5-10M msg/s.
 
 | Metric | Value |
 |--------|-------|
-| Throughput | 491180 ops/s |
+| Throughput | 426727 ops/s |
 | p50 Latency | 0.0 ms |
 | p99 Latency | 0.0 ms |
-| Total Operations | 4913273 |
-| Successful | 4913273 |
+| Total Operations | 4268979 |
+| Successful | 4268979 |
 | Failed | 0 |
 | Duration | 10s |
 
@@ -34,6 +34,6 @@ the producer can push. On Docker Kafka: 5-10M msg/s.
 
 ## Timestamp
 
-- Started: 2025-12-29T13:58:58-03:00
-- Completed: 2025-12-29T13:59:24-03:00
-- Duration: 26.505768417s
+- Started: 2025-12-29T14:35:01-03:00
+- Completed: 2025-12-29T14:35:31-03:00
+- Duration: 29.576628125s

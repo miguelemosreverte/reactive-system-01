@@ -55,6 +55,7 @@ type BrochureResult struct {
 var (
 	brochureName string
 	quickMode    bool // Quick smoke test mode (10s per brochure instead of full duration)
+	nativeMode   bool // Run using local Java/Maven instead of Docker
 )
 
 var benchBrochureCmd = &cobra.Command{
@@ -117,6 +118,10 @@ func init() {
 
 	// Add --quick flag for smoke testing
 	brochureRunAllCmd.Flags().BoolVar(&quickMode, "quick", false, "Quick smoke test mode (10s per brochure)")
+
+	// Add --native flag for running without Docker
+	brochureRunCmd.Flags().BoolVar(&nativeMode, "native", false, "Run using local Java/Maven instead of Docker")
+	brochureRunAllCmd.Flags().BoolVar(&nativeMode, "native", false, "Run using local Java/Maven instead of Docker")
 }
 
 // getBrochuresDirs returns all directories containing brochures (multi-module support)
@@ -275,6 +280,12 @@ func runBrochure(brochure *Brochure, name string) *BrochureResult {
 	}
 	fmt.Println()
 
+	// Determine execution mode and check dependencies
+	mode, err := GetDockerOrNativeMode(nativeMode)
+	if err != nil {
+		return nil
+	}
+
 	start := time.Now()
 	result := &BrochureResult{
 		Brochure:  name,
@@ -282,27 +293,34 @@ func runBrochure(brochure *Brochure, name string) *BrochureResult {
 		StartTime: start,
 	}
 
-	// Find Docker network
-	network := findDockerNetwork()
-	if network == "" {
-		printError("Docker network not found. Is the system running?")
-		return nil
+	// For Docker mode, find the network
+	var network string
+	if mode == "docker" {
+		network = findDockerNetwork()
+		if network == "" {
+			printError("Docker network not found. Is the system running?")
+			printInfo("Start the system with: ./reactive start")
+			printInfo("Or run with --native flag to use local Java/Maven")
+			return nil
+		}
+	} else {
+		printInfo("Running in native mode (local Java/Maven)")
 	}
 
 	// Run based on component type and config
 	switch brochure.Component {
 	case "http":
-		runHttpBrochure(projectRoot, network, brochure, brochureDir, result)
+		runHttpBrochure(projectRoot, network, brochure, brochureDir, result, mode)
 	case "kafka":
-		runKafkaBrochure(projectRoot, network, brochure, brochureDir, result)
+		runKafkaBrochure(projectRoot, network, brochure, brochureDir, result, mode)
 	case "flink":
-		runFlinkBrochure(projectRoot, network, brochure, brochureDir, result)
+		runFlinkBrochure(projectRoot, network, brochure, brochureDir, result, mode)
 	case "gateway":
-		runGatewayBrochure(projectRoot, network, brochure, brochureDir, result)
+		runGatewayBrochure(projectRoot, network, brochure, brochureDir, result, mode)
 	case "full":
-		runFullBrochure(projectRoot, network, brochure, brochureDir, result)
+		runFullBrochure(projectRoot, network, brochure, brochureDir, result, mode)
 	case "collector":
-		runCollectorBrochure(projectRoot, network, brochure, brochureDir, result)
+		runCollectorBrochure(projectRoot, network, brochure, brochureDir, result, mode)
 	default:
 		printError(fmt.Sprintf("Unknown component: %s", brochure.Component))
 		return nil
@@ -323,188 +341,305 @@ func runBrochure(brochure *Brochure, name string) *BrochureResult {
 	return result
 }
 
-func runHttpBrochure(projectRoot, network string, brochure *Brochure, outDir string, result *BrochureResult) {
+func runHttpBrochure(projectRoot, network string, brochure *Brochure, outDir string, result *BrochureResult, mode string) {
 	durationSec := brochure.Duration / 1000
-
-	// Install required modules for HTTP benchmarks: base + http-server + kafka + platform (contains UnifiedHttpBenchmark)
-	printInfo("Building http-server module with dependencies...")
-	if !runMavenInstallModules(projectRoot, network, []string{"platform/base", "platform/http-server", "platform/kafka", "platform"}) {
-		printError("Failed to build http-server module")
-		return
-	}
-
-	// Use UnifiedHttpBenchmark for same-container testing (maximum throughput)
-	// This runs client AND server in the same JVM - no network overhead
-	// Expected: 600K+ req/s vs 239K with Apache Bench from separate container
-
-	printInfo(fmt.Sprintf("Running same-container benchmark for %s...", brochure.Config.HttpServer))
-	printInfo("  (Client + Server in same JVM for maximum throughput)")
-
 	brochureName := filepath.Base(outDir)
 
-	// Run UnifiedHttpBenchmark
-	args := []string{
-		"run", "--rm",
-		"--network", network,
-		"-v", fmt.Sprintf("%s:/app", projectRoot),
-		"-v", "maven-repo:/root/.m2",
-		"-w", "/app/platform",
-		"maven:3.9-eclipse-temurin-21",
-		"java", "--enable-native-access=ALL-UNNAMED",
-		"-cp", "target/classes:target/dependency/*",
-		"com.reactive.platform.benchmark.UnifiedHttpBenchmark",
-		brochure.Config.HttpServer,                             // Server type
-		fmt.Sprintf("%d", durationSec),                         // Duration in seconds
-		fmt.Sprintf("%d", brochure.Concurrency),                // Concurrency
-		fmt.Sprintf("/app/reports/brochures/%s", brochureName), // Output directory
-	}
+	if mode == "native" {
+		// Native mode: use local Maven/Java
+		printInfo("Building http-server module with dependencies (native)...")
+		if !runNativeMavenBuild(projectRoot, []string{"platform/base", "platform/http-server", "platform/kafka", "platform"}) {
+			printError("Failed to build http-server module")
+			return
+		}
 
-	cmd := exec.Command("docker", args...)
-	cmd.Dir = projectRoot
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+		printInfo(fmt.Sprintf("Running same-container benchmark for %s...", brochure.Config.HttpServer))
+		printInfo("  (Client + Server in same JVM for maximum throughput)")
 
-	if err := cmd.Run(); err != nil {
-		printError(fmt.Sprintf("Benchmark failed: %v", err))
-		return
+		// Run UnifiedHttpBenchmark natively
+		cmd := exec.Command("java",
+			"--enable-native-access=ALL-UNNAMED",
+			"-cp", "target/classes:target/dependency/*",
+			"com.reactive.platform.benchmark.UnifiedHttpBenchmark",
+			brochure.Config.HttpServer,
+			fmt.Sprintf("%d", durationSec),
+			fmt.Sprintf("%d", brochure.Concurrency),
+			filepath.Join(projectRoot, "reports", "brochures", brochureName),
+		)
+		cmd.Dir = filepath.Join(projectRoot, "platform")
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+
+		if err := cmd.Run(); err != nil {
+			printError(fmt.Sprintf("Benchmark failed: %v", err))
+			return
+		}
+	} else {
+		// Docker mode: use Docker containers
+		printInfo("Building http-server module with dependencies...")
+		if !runMavenInstallModules(projectRoot, network, []string{"platform/base", "platform/http-server", "platform/kafka", "platform"}) {
+			printError("Failed to build http-server module")
+			return
+		}
+
+		// Use UnifiedHttpBenchmark for same-container testing (maximum throughput)
+		// This runs client AND server in the same JVM - no network overhead
+		// Expected: 600K+ req/s vs 239K with Apache Bench from separate container
+
+		printInfo(fmt.Sprintf("Running same-container benchmark for %s...", brochure.Config.HttpServer))
+		printInfo("  (Client + Server in same JVM for maximum throughput)")
+
+		// Run UnifiedHttpBenchmark
+		args := []string{
+			"run", "--rm",
+			"--network", network,
+			"-v", fmt.Sprintf("%s:/app", projectRoot),
+			"-v", "maven-repo:/root/.m2",
+			"-w", "/app/platform",
+			"maven:3.9-eclipse-temurin-21",
+			"java", "--enable-native-access=ALL-UNNAMED",
+			"-cp", "target/classes:target/dependency/*",
+			"com.reactive.platform.benchmark.UnifiedHttpBenchmark",
+			brochure.Config.HttpServer,                             // Server type
+			fmt.Sprintf("%d", durationSec),                         // Duration in seconds
+			fmt.Sprintf("%d", brochure.Concurrency),                // Concurrency
+			fmt.Sprintf("/app/reports/brochures/%s", brochureName), // Output directory
+		}
+
+		cmd := exec.Command("docker", args...)
+		cmd.Dir = projectRoot
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+
+		if err := cmd.Run(); err != nil {
+			printError(fmt.Sprintf("Benchmark failed: %v", err))
+			return
+		}
 	}
 
 	// Load results from the output file
 	loadResultsFromFile(filepath.Join(outDir, "results.json"), result)
 }
 
-func runKafkaBrochure(projectRoot, network string, brochure *Brochure, outDir string, result *BrochureResult) {
-	// Install only required modules: base + http-server + kafka
-	printInfo("Building kafka module with dependencies...")
-	if !runMavenInstallModules(projectRoot, network, []string{"platform/base", "platform/http-server", "platform/kafka"}) {
-		printError("Failed to build kafka module")
-		return
-	}
-
+func runKafkaBrochure(projectRoot, network string, brochure *Brochure, outDir string, result *BrochureResult, mode string) {
 	durationSec := brochure.Duration / 1000
 	brochureName := filepath.Base(outDir)
 
-	printInfo(fmt.Sprintf("Running Kafka producer benchmark (fresh run for %s)...", brochureName))
+	if mode == "native" {
+		// Native mode: requires local Kafka running
+		printInfo("Building kafka module with dependencies (native)...")
+		if !runNativeMavenBuild(projectRoot, []string{"platform/base", "platform/http-server", "platform/kafka"}) {
+			printError("Failed to build kafka module")
+			return
+		}
 
-	// Run KafkaProducerBenchmark with explicit Kafka bootstrap servers
-	args := []string{
-		"run", "--rm",
-		"--network", network,
-		"-v", fmt.Sprintf("%s:/app", projectRoot),
-		"-v", "maven-repo:/root/.m2",
-		"-w", "/app",
-		"-e", "KAFKA_BOOTSTRAP_SERVERS=kafka:29092",
-		"maven:3.9-eclipse-temurin-21",
-		"java", "-cp", "platform/target/classes:platform/target/dependency/*",
-		"com.reactive.platform.benchmark.KafkaProducerBenchmark",
-		fmt.Sprintf("%d", durationSec*1000),                        // durationMs
-		fmt.Sprintf("%d", brochure.Concurrency),                    // concurrency
-		"http://gateway:3000",                                      // gatewayUrl (unused)
-		"http://drools:8080",                                       // droolsUrl (unused)
-		fmt.Sprintf("/app/reports/brochures/%s", brochureName),     // reportsDir - unique per brochure
-		"true",                                                     // skipEnrichment
+		printInfo(fmt.Sprintf("Running Kafka producer benchmark (fresh run for %s)...", brochureName))
+		printWarning("Native mode requires Kafka running locally on localhost:9092")
+
+		// Run KafkaProducerBenchmark natively
+		cmd := exec.Command("java",
+			"-cp", "platform/target/classes:platform/target/dependency/*",
+			"com.reactive.platform.benchmark.KafkaProducerBenchmark",
+			fmt.Sprintf("%d", durationSec*1000),
+			fmt.Sprintf("%d", brochure.Concurrency),
+			"http://localhost:3000",
+			"http://localhost:8080",
+			filepath.Join(projectRoot, "reports", "brochures", brochureName),
+			"true",
+		)
+		cmd.Dir = projectRoot
+		cmd.Env = append(os.Environ(), "KAFKA_BOOTSTRAP_SERVERS=localhost:9092")
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		cmd.Run()
+	} else {
+		// Docker mode
+		printInfo("Building kafka module with dependencies...")
+		if !runMavenInstallModules(projectRoot, network, []string{"platform/base", "platform/http-server", "platform/kafka"}) {
+			printError("Failed to build kafka module")
+			return
+		}
+
+		printInfo(fmt.Sprintf("Running Kafka producer benchmark (fresh run for %s)...", brochureName))
+
+		// Run KafkaProducerBenchmark with explicit Kafka bootstrap servers
+		args := []string{
+			"run", "--rm",
+			"--network", network,
+			"-v", fmt.Sprintf("%s:/app", projectRoot),
+			"-v", "maven-repo:/root/.m2",
+			"-w", "/app",
+			"-e", "KAFKA_BOOTSTRAP_SERVERS=kafka:29092",
+			"maven:3.9-eclipse-temurin-21",
+			"java", "-cp", "platform/target/classes:platform/target/dependency/*",
+			"com.reactive.platform.benchmark.KafkaProducerBenchmark",
+			fmt.Sprintf("%d", durationSec*1000),                    // durationMs
+			fmt.Sprintf("%d", brochure.Concurrency),                // concurrency
+			"http://gateway:3000",                                  // gatewayUrl (unused)
+			"http://drools:8080",                                   // droolsUrl (unused)
+			fmt.Sprintf("/app/reports/brochures/%s", brochureName), // reportsDir - unique per brochure
+			"true",                                                 // skipEnrichment
+		}
+
+		cmd := exec.Command("docker", args...)
+		cmd.Dir = projectRoot
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		cmd.Run()
 	}
-
-	cmd := exec.Command("docker", args...)
-	cmd.Dir = projectRoot
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Run()
 
 	// Read results from this brochure's directory (not a shared cache)
 	loadResultsFromFile(filepath.Join(outDir, "results.json"), result)
 }
 
 // runFlinkBrochure runs the Flink stream processing benchmark
-func runFlinkBrochure(projectRoot, network string, brochure *Brochure, outDir string, result *BrochureResult) {
+func runFlinkBrochure(projectRoot, network string, brochure *Brochure, outDir string, result *BrochureResult, mode string) {
 	printInfo("Running Flink stream processing benchmark...")
-
-	// Compile application/counter module (contains FlinkBenchmark)
-	printInfo("Compiling application module...")
-	compileArgs := []string{
-		"run", "--rm",
-		"--network", network,
-		"-v", fmt.Sprintf("%s:/app", projectRoot),
-		"-v", "maven-repo:/root/.m2",
-		"-w", "/app/application/counter",
-		"maven:3.9-eclipse-temurin-21",
-		"mvn", "-q", "test-compile", "dependency:copy-dependencies", "-DskipTests",
-	}
-	compileCmd := exec.Command("docker", compileArgs...)
-	compileCmd.Dir = projectRoot
-	if output, err := compileCmd.CombinedOutput(); err != nil {
-		printError(fmt.Sprintf("Maven compile failed: %v\n%s", err, string(output)))
-		return
-	}
-
 	durationSec := brochure.Duration / 1000
 	brochureName := filepath.Base(outDir)
 
-	// Run FlinkBenchmark
-	args := []string{
-		"run", "--rm",
-		"--network", network,
-		"-v", fmt.Sprintf("%s:/app", projectRoot),
-		"-v", "maven-repo:/root/.m2",
-		"-w", "/app",
-		"-e", "KAFKA_BOOTSTRAP_SERVERS=kafka:29092",
-		"maven:3.9-eclipse-temurin-21",
-		"java", "-cp", "application/counter/target/test-classes:application/counter/target/classes:application/counter/target/dependency/*:platform/target/classes:platform/target/dependency/*",
-		"com.reactive.counter.benchmark.FlinkBenchmark",
-		fmt.Sprintf("%d", durationSec*1000),                    // durationMs
-		fmt.Sprintf("%d", brochure.Concurrency),                // concurrency
-		"http://gateway:3000",                                  // gatewayUrl (unused for Flink)
-		"http://drools:8080",                                   // droolsUrl (unused)
-		fmt.Sprintf("/app/reports/brochures/%s", brochureName), // reportsDir
-		"true",                                                 // skipEnrichment
-	}
+	if mode == "native" {
+		// Native mode
+		printInfo("Compiling application module (native)...")
+		cmd := exec.Command("mvn", "-q", "test-compile", "dependency:copy-dependencies", "-DskipTests")
+		cmd.Dir = filepath.Join(projectRoot, "application", "counter")
+		if output, err := cmd.CombinedOutput(); err != nil {
+			printError(fmt.Sprintf("Maven compile failed: %v\n%s", err, string(output)))
+			return
+		}
 
-	cmd := exec.Command("docker", args...)
-	cmd.Dir = projectRoot
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Run()
+		printWarning("Native mode requires Kafka running locally on localhost:9092")
+
+		// Run FlinkBenchmark natively
+		runCmd := exec.Command("java",
+			"-cp", "application/counter/target/test-classes:application/counter/target/classes:application/counter/target/dependency/*:platform/target/classes:platform/target/dependency/*",
+			"com.reactive.counter.benchmark.FlinkBenchmark",
+			fmt.Sprintf("%d", durationSec*1000),
+			fmt.Sprintf("%d", brochure.Concurrency),
+			"http://localhost:3000",
+			"http://localhost:8080",
+			filepath.Join(projectRoot, "reports", "brochures", brochureName),
+			"true",
+		)
+		runCmd.Dir = projectRoot
+		runCmd.Env = append(os.Environ(), "KAFKA_BOOTSTRAP_SERVERS=localhost:9092")
+		runCmd.Stdout = os.Stdout
+		runCmd.Stderr = os.Stderr
+		runCmd.Run()
+	} else {
+		// Docker mode
+		printInfo("Compiling application module...")
+		compileArgs := []string{
+			"run", "--rm",
+			"--network", network,
+			"-v", fmt.Sprintf("%s:/app", projectRoot),
+			"-v", "maven-repo:/root/.m2",
+			"-w", "/app/application/counter",
+			"maven:3.9-eclipse-temurin-21",
+			"mvn", "-q", "test-compile", "dependency:copy-dependencies", "-DskipTests",
+		}
+		compileCmd := exec.Command("docker", compileArgs...)
+		compileCmd.Dir = projectRoot
+		if output, err := compileCmd.CombinedOutput(); err != nil {
+			printError(fmt.Sprintf("Maven compile failed: %v\n%s", err, string(output)))
+			return
+		}
+
+		// Run FlinkBenchmark
+		args := []string{
+			"run", "--rm",
+			"--network", network,
+			"-v", fmt.Sprintf("%s:/app", projectRoot),
+			"-v", "maven-repo:/root/.m2",
+			"-w", "/app",
+			"-e", "KAFKA_BOOTSTRAP_SERVERS=kafka:29092",
+			"maven:3.9-eclipse-temurin-21",
+			"java", "-cp", "application/counter/target/test-classes:application/counter/target/classes:application/counter/target/dependency/*:platform/target/classes:platform/target/dependency/*",
+			"com.reactive.counter.benchmark.FlinkBenchmark",
+			fmt.Sprintf("%d", durationSec*1000),                    // durationMs
+			fmt.Sprintf("%d", brochure.Concurrency),                // concurrency
+			"http://gateway:3000",                                  // gatewayUrl (unused for Flink)
+			"http://drools:8080",                                   // droolsUrl (unused)
+			fmt.Sprintf("/app/reports/brochures/%s", brochureName), // reportsDir
+			"true",                                                 // skipEnrichment
+		}
+
+		cmd := exec.Command("docker", args...)
+		cmd.Dir = projectRoot
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		cmd.Run()
+	}
 
 	loadResultsFromFile(filepath.Join(outDir, "results.json"), result)
 }
 
 // runCollectorBrochure runs the MicrobatchCollector benchmark (no HTTP, no network)
-func runCollectorBrochure(projectRoot, network string, brochure *Brochure, outDir string, result *BrochureResult) {
-	// Install only required modules: base + http-server + kafka
-	printInfo("Building collector module with dependencies...")
-	if !runMavenInstallModules(projectRoot, network, []string{"platform/base", "platform/http-server", "platform/kafka"}) {
-		printError("Failed to build collector modules")
-		return
-	}
-
+func runCollectorBrochure(projectRoot, network string, brochure *Brochure, outDir string, result *BrochureResult, mode string) {
 	durationSec := brochure.Duration / 1000
+	brochureName := filepath.Base(outDir)
 
-	printInfo("Running MicrobatchCollector benchmark (no HTTP overhead)...")
+	if mode == "native" {
+		// Native mode
+		printInfo("Building collector module with dependencies (native)...")
+		if !runNativeMavenBuild(projectRoot, []string{"platform/base", "platform/http-server", "platform/kafka"}) {
+			printError("Failed to build collector modules")
+			return
+		}
 
-	// Run GatewayComparisonBenchmark in collector mode
-	args := []string{
-		"run", "--rm",
-		"--network", network,
-		"-v", fmt.Sprintf("%s:/app", projectRoot),
-		"-v", "maven-repo:/root/.m2",
-		"-w", "/app/platform",
-		"maven:3.9-eclipse-temurin-21",
-		"java",
-		"--enable-native-access=ALL-UNNAMED",
-		"-cp", "target/classes:target/dependency/*",
-		"com.reactive.platform.gateway.microbatch.GatewayComparisonBenchmark",
-		"collector",
-		fmt.Sprintf("%d", durationSec),
-		fmt.Sprintf("%d", brochure.Concurrency),
-		"kafka:29092",
-		fmt.Sprintf("/app/reports/brochures/%s", filepath.Base(outDir)),
+		printInfo("Running MicrobatchCollector benchmark (no HTTP overhead)...")
+		printWarning("Native mode requires Kafka running locally on localhost:9092")
+
+		// Run GatewayComparisonBenchmark in collector mode
+		cmd := exec.Command("java",
+			"--enable-native-access=ALL-UNNAMED",
+			"-cp", "target/classes:target/dependency/*",
+			"com.reactive.platform.gateway.microbatch.GatewayComparisonBenchmark",
+			"collector",
+			fmt.Sprintf("%d", durationSec),
+			fmt.Sprintf("%d", brochure.Concurrency),
+			"localhost:9092",
+			filepath.Join(projectRoot, "reports", "brochures", brochureName),
+		)
+		cmd.Dir = filepath.Join(projectRoot, "platform")
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		cmd.Run()
+	} else {
+		// Docker mode
+		printInfo("Building collector module with dependencies...")
+		if !runMavenInstallModules(projectRoot, network, []string{"platform/base", "platform/http-server", "platform/kafka"}) {
+			printError("Failed to build collector modules")
+			return
+		}
+
+		printInfo("Running MicrobatchCollector benchmark (no HTTP overhead)...")
+
+		// Run GatewayComparisonBenchmark in collector mode
+		args := []string{
+			"run", "--rm",
+			"--network", network,
+			"-v", fmt.Sprintf("%s:/app", projectRoot),
+			"-v", "maven-repo:/root/.m2",
+			"-w", "/app/platform",
+			"maven:3.9-eclipse-temurin-21",
+			"java",
+			"--enable-native-access=ALL-UNNAMED",
+			"-cp", "target/classes:target/dependency/*",
+			"com.reactive.platform.gateway.microbatch.GatewayComparisonBenchmark",
+			"collector",
+			fmt.Sprintf("%d", durationSec),
+			fmt.Sprintf("%d", brochure.Concurrency),
+			"kafka:29092",
+			fmt.Sprintf("/app/reports/brochures/%s", brochureName),
+		}
+
+		cmd := exec.Command("docker", args...)
+		cmd.Dir = projectRoot
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		cmd.Run()
 	}
-
-	cmd := exec.Command("docker", args...)
-	cmd.Dir = projectRoot
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Run()
 
 	loadResultsFromFile(filepath.Join(outDir, "results.json"), result)
 }
@@ -583,7 +718,31 @@ func runMavenInstallModules(projectRoot, network string, modules []string) bool 
 	return true
 }
 
-func runGatewayBrochure(projectRoot, network string, brochure *Brochure, outDir string, result *BrochureResult) {
+// runNativeMavenBuild builds modules using local Maven (native mode)
+func runNativeMavenBuild(projectRoot string, modules []string) bool {
+	// First install root POM
+	printInfo("Installing root POM (native)...")
+	rootCmd := exec.Command("mvn", "-q", "-N", "install")
+	rootCmd.Dir = projectRoot
+	if output, err := rootCmd.CombinedOutput(); err != nil {
+		printError(fmt.Sprintf("Failed to install root POM: %v\n%s", err, string(output)))
+		return false
+	}
+
+	// Install each module
+	for _, module := range modules {
+		printInfo(fmt.Sprintf("Building %s (native)...", module))
+		cmd := exec.Command("mvn", "-q", "install", "dependency:copy-dependencies", "-DskipTests")
+		cmd.Dir = filepath.Join(projectRoot, module)
+		if output, err := cmd.CombinedOutput(); err != nil {
+			printError(fmt.Sprintf("Maven install failed for %s: %v\n%s", module, err, string(output)))
+			return false
+		}
+	}
+	return true
+}
+
+func runGatewayBrochure(projectRoot, network string, brochure *Brochure, outDir string, result *BrochureResult, mode string) {
 	durationSec := brochure.Duration / 1000
 	brochureName := filepath.Base(outDir)
 
@@ -592,36 +751,60 @@ func runGatewayBrochure(projectRoot, network string, brochure *Brochure, outDir 
 		// This runs HTTP server + client + Kafka in the same JVM
 		printInfo("Running MicrobatchingGateway benchmark (same-container, in-process)...")
 
-		// Install only required modules: base + http-server + kafka
-		if !runMavenInstallModules(projectRoot, network, []string{"platform/base", "platform/http-server", "platform/kafka"}) {
-			printError("Failed to build gateway modules")
-			return
-		}
+		if mode == "native" {
+			// Native mode
+			if !runNativeMavenBuild(projectRoot, []string{"platform/base", "platform/http-server", "platform/kafka"}) {
+				printError("Failed to build gateway modules")
+				return
+			}
 
-		// Run GatewayComparisonBenchmark in "microbatch" mode
-		args := []string{
-			"run", "--rm",
-			"--network", network,
-			"-v", fmt.Sprintf("%s:/app", projectRoot),
-			"-v", "maven-repo:/root/.m2",
-			"-w", "/app/platform",
-			"maven:3.9-eclipse-temurin-21",
-			"java",
-			"--enable-native-access=ALL-UNNAMED",
-			"-cp", "target/classes:target/dependency/*",
-			"com.reactive.platform.gateway.microbatch.GatewayComparisonBenchmark",
-			"microbatch",
-			fmt.Sprintf("%d", durationSec),
-			fmt.Sprintf("%d", brochure.Concurrency),
-			"kafka:29092",
-			fmt.Sprintf("/app/reports/brochures/%s", brochureName),
-		}
+			printWarning("Native mode requires Kafka running locally on localhost:9092")
 
-		cmd := exec.Command("docker", args...)
-		cmd.Dir = projectRoot
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		cmd.Run()
+			cmd := exec.Command("java",
+				"--enable-native-access=ALL-UNNAMED",
+				"-cp", "target/classes:target/dependency/*",
+				"com.reactive.platform.gateway.microbatch.GatewayComparisonBenchmark",
+				"microbatch",
+				fmt.Sprintf("%d", durationSec),
+				fmt.Sprintf("%d", brochure.Concurrency),
+				"localhost:9092",
+				filepath.Join(projectRoot, "reports", "brochures", brochureName),
+			)
+			cmd.Dir = filepath.Join(projectRoot, "platform")
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+			cmd.Run()
+		} else {
+			// Docker mode
+			if !runMavenInstallModules(projectRoot, network, []string{"platform/base", "platform/http-server", "platform/kafka"}) {
+				printError("Failed to build gateway modules")
+				return
+			}
+
+			args := []string{
+				"run", "--rm",
+				"--network", network,
+				"-v", fmt.Sprintf("%s:/app", projectRoot),
+				"-v", "maven-repo:/root/.m2",
+				"-w", "/app/platform",
+				"maven:3.9-eclipse-temurin-21",
+				"java",
+				"--enable-native-access=ALL-UNNAMED",
+				"-cp", "target/classes:target/dependency/*",
+				"com.reactive.platform.gateway.microbatch.GatewayComparisonBenchmark",
+				"microbatch",
+				fmt.Sprintf("%d", durationSec),
+				fmt.Sprintf("%d", brochure.Concurrency),
+				"kafka:29092",
+				fmt.Sprintf("/app/reports/brochures/%s", brochureName),
+			}
+
+			cmd := exec.Command("docker", args...)
+			cmd.Dir = projectRoot
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+			cmd.Run()
+		}
 
 		loadResultsFromFile(filepath.Join(outDir, "results.json"), result)
 
@@ -629,6 +812,12 @@ func runGatewayBrochure(projectRoot, network string, brochure *Brochure, outDir 
 		// For non-microbatching (Spring) gateway, use Apache Bench
 		// Spring gateway runs in a separate container, so network overhead is inherent
 		printInfo("Running benchmark against Spring gateway with Apache Bench...")
+
+		if mode == "native" {
+			printError("Spring gateway benchmark requires Docker (uses Apache Bench container)")
+			printInfo("Run without --native flag, or use http-spring brochure for HTTP-only benchmark")
+			return
+		}
 
 		// Use reasonable request count: ~1000 req/s expected for Spring gateway
 		requests := durationSec * 5000
@@ -714,7 +903,7 @@ func parseAbOutput(output string, result *BrochureResult) {
 	}
 }
 
-func runFullBrochure(projectRoot, network string, brochure *Brochure, outDir string, result *BrochureResult) {
+func runFullBrochure(projectRoot, network string, brochure *Brochure, outDir string, result *BrochureResult, mode string) {
 	durationSec := brochure.Duration / 1000
 	brochureName := filepath.Base(outDir)
 
@@ -723,42 +912,72 @@ func runFullBrochure(projectRoot, network string, brochure *Brochure, outDir str
 		// The "microbatch" mode tests the full pipeline: HTTP → Kafka
 		printInfo("Full Pipeline with Microbatch Gateway (same-container, in-process)...")
 
-		// Install only required modules: base + http-server + kafka
-		if !runMavenInstallModules(projectRoot, network, []string{"platform/base", "platform/http-server", "platform/kafka"}) {
-			printError("Failed to build full pipeline modules")
-			return
-		}
+		if mode == "native" {
+			// Native mode
+			if !runNativeMavenBuild(projectRoot, []string{"platform/base", "platform/http-server", "platform/kafka"}) {
+				printError("Failed to build full pipeline modules")
+				return
+			}
 
-		// Run GatewayComparisonBenchmark in "microbatch" mode
-		args := []string{
-			"run", "--rm",
-			"--network", network,
-			"-v", fmt.Sprintf("%s:/app", projectRoot),
-			"-v", "maven-repo:/root/.m2",
-			"-w", "/app/platform",
-			"maven:3.9-eclipse-temurin-21",
-			"java",
-			"--enable-native-access=ALL-UNNAMED",
-			"-cp", "target/classes:target/dependency/*",
-			"com.reactive.platform.gateway.microbatch.GatewayComparisonBenchmark",
-			"microbatch",
-			fmt.Sprintf("%d", durationSec),
-			fmt.Sprintf("%d", brochure.Concurrency),
-			"kafka:29092",
-			fmt.Sprintf("/app/reports/brochures/%s", brochureName),
-		}
+			printWarning("Native mode requires Kafka running locally on localhost:9092")
 
-		cmd := exec.Command("docker", args...)
-		cmd.Dir = projectRoot
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		cmd.Run()
+			cmd := exec.Command("java",
+				"--enable-native-access=ALL-UNNAMED",
+				"-cp", "target/classes:target/dependency/*",
+				"com.reactive.platform.gateway.microbatch.GatewayComparisonBenchmark",
+				"microbatch",
+				fmt.Sprintf("%d", durationSec),
+				fmt.Sprintf("%d", brochure.Concurrency),
+				"localhost:9092",
+				filepath.Join(projectRoot, "reports", "brochures", brochureName),
+			)
+			cmd.Dir = filepath.Join(projectRoot, "platform")
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+			cmd.Run()
+		} else {
+			// Docker mode
+			if !runMavenInstallModules(projectRoot, network, []string{"platform/base", "platform/http-server", "platform/kafka"}) {
+				printError("Failed to build full pipeline modules")
+				return
+			}
+
+			args := []string{
+				"run", "--rm",
+				"--network", network,
+				"-v", fmt.Sprintf("%s:/app", projectRoot),
+				"-v", "maven-repo:/root/.m2",
+				"-w", "/app/platform",
+				"maven:3.9-eclipse-temurin-21",
+				"java",
+				"--enable-native-access=ALL-UNNAMED",
+				"-cp", "target/classes:target/dependency/*",
+				"com.reactive.platform.gateway.microbatch.GatewayComparisonBenchmark",
+				"microbatch",
+				fmt.Sprintf("%d", durationSec),
+				fmt.Sprintf("%d", brochure.Concurrency),
+				"kafka:29092",
+				fmt.Sprintf("/app/reports/brochures/%s", brochureName),
+			}
+
+			cmd := exec.Command("docker", args...)
+			cmd.Dir = projectRoot
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+			cmd.Run()
+		}
 
 		loadResultsFromFile(filepath.Join(outDir, "results.json"), result)
 
 	} else {
 		// For non-microbatching (Spring) gateway, use Apache Bench
 		printInfo("Full Pipeline with Spring Gateway...")
+
+		if mode == "native" {
+			printError("Spring full pipeline benchmark requires Docker (uses Apache Bench container)")
+			printInfo("Run without --native flag")
+			return
+		}
 
 		// Use reasonable request count for full pipeline
 		requests := durationSec * 5000
