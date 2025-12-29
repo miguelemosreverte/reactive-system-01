@@ -10,12 +10,15 @@ import java.util.function.Consumer;
  * Design:
  * - Pre-allocate pool of fixed-size buckets
  * - Each thread fills its current bucket (no atomic per message)
- * - When bucket full → swap to new bucket from pool (one atomic)
+ * - When bucket full -> swap to new bucket from pool (one atomic)
  * - Timer/threshold flushes filled buckets to Kafka
  *
  * Goal: Amortize atomic operations over bucket size.
  * At 1000 msgs/bucket: 1000x fewer atomic ops than per-message tracking.
+ *
+ * @deprecated Use {@link PartitionedBatcher} instead - achieves 1.11B msg/s without bucket swapping overhead.
  */
+@Deprecated
 public final class BucketBatcher implements AutoCloseable {
 
     private static final int BUCKET_SIZE = 1000;  // Messages per bucket

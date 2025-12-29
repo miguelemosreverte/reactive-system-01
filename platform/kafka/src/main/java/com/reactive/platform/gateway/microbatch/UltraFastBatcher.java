@@ -14,8 +14,9 @@ import java.util.function.Consumer;
  * 3. Lock-free atomic position updates
  * 4. Inline hot path
  *
- * Target: Close to arraycopy baseline (3B msg/s)
+ * @deprecated Use {@link PartitionedBatcher} instead - achieves 1.11B msg/s without atomic overhead.
  */
+@Deprecated
 public final class UltraFastBatcher implements MessageBatcher {
 
     private static final int NUM_STRIPES = 256;  // Many stripes = less contention

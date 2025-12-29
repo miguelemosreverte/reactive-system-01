@@ -17,13 +17,18 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
 
 /**
- * MAX THROUGHPUT BROCHURE - The Treasure
+ * MAX THROUGHPUT BROCHURE - StripedBatcher with sendBatch()
+ *
+ * Uses pre-aggregated chunks with sendBatch() for maximum raw throughput.
+ * This is the baseline for batched operations.
  *
  * 5-minute benchmark:
- * - 4 minutes: gradual ramp-up through pressure levels
+ * - 4 minutes: gradual ramp-up through chunk sizes
  * - 1 minute: sustained MAXIMUM load
  * - Full latency tracking at each phase
  * - Kafka verification at the end
+ *
+ * For send(message) API benchmarks, use SendApiBrochure instead.
  */
 public class MaxThroughputBrochure {
 
@@ -56,10 +61,10 @@ public class MaxThroughputBrochure {
         Files.createDirectories(Path.of(outputDir));
 
         System.out.println("╔══════════════════════════════════════════════════════════════════════════════╗");
-        System.out.println("║           MAX THROUGHPUT BROCHURE - THE TREASURE                             ║");
+        System.out.println("║           MAX THROUGHPUT BROCHURE - STRIPED BATCHER                          ║");
         System.out.println("╠══════════════════════════════════════════════════════════════════════════════╣");
+        System.out.println("║  Method: sendBatch() with pre-aggregated chunks                              ║");
         System.out.println("║  Duration: 5 minutes (4 min ramp + 1 min sustain)                            ║");
-        System.out.println("║  Target: 2.5B+ msg/s                                                         ║");
         System.out.println("╚══════════════════════════════════════════════════════════════════════════════╝");
         System.out.println();
 

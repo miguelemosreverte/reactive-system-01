@@ -80,10 +80,10 @@ public class TightLoopBenchmark {
             totalMessages * 1000 / fastResult, (double) fastResult * 1_000_000 / totalMessages);
         System.out.println();
 
-        // Test 6: InlineBatcher
+        // Test 6: InlineBatcher (factory for PartitionedBatcher)
         System.out.println("═══════════════════════════════════════════════════════════════════════════════");
-        System.out.println("INLINE BATCHER - Wraps StripedBatcher");
-        long inlineResult = runBatcher(new InlineBatcher(d -> sink.add(d.length)), MESSAGES_PER_THREAD * threads);
+        System.out.println("INLINE BATCHER - Factory for PartitionedBatcher");
+        long inlineResult = runBatcher(InlineBatcher.create(d -> sink.add(d.length)), MESSAGES_PER_THREAD * threads);
         System.out.printf("  Throughput:    %,d msg/s  (%.2f ns/msg)%n",
             totalMessages * 1000 / inlineResult, (double) inlineResult * 1_000_000 / totalMessages);
         System.out.println();

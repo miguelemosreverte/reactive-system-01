@@ -20,7 +20,9 @@ import java.util.function.Consumer;
  * v2: Replaced ConcurrentLinkedQueue with MpscRingBuffer for zero-allocation submit.
  *
  * @param <T> The type of items being collected
+ * @deprecated Use {@link PartitionedBatcher} instead - achieves 1.11B msg/s with simpler byte[] interface.
  */
+@Deprecated
 public final class MicrobatchCollector<T> implements AutoCloseable {
 
     private static final long PRESSURE_WINDOW_NANOS = 10_000_000_000L; // 10 seconds

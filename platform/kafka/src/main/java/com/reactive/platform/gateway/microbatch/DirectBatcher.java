@@ -11,8 +11,9 @@ import java.util.function.Consumer;
  * - Lock-free submit: single atomic increment + array store
  * - Flush when: count >= threshold OR time >= interval
  *
- * Target: Match BULK baseline throughput with adaptive batching.
+ * @deprecated Use {@link PartitionedBatcher} instead - achieves 1.11B msg/s with zero atomics on hot path.
  */
+@Deprecated
 public final class DirectBatcher implements AutoCloseable {
 
     private static final int PARTITION_COUNT = Runtime.getRuntime().availableProcessors();

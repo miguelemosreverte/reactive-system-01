@@ -7,15 +7,18 @@ import java.util.function.Consumer;
  *
  * Design:
  * - Thread-local Level 0 (1KB) - zero contention on write
- * - Shared levels 1-5 (10KB → 100MB) - synchronized overflow
+ * - Shared levels 1-5 (10KB -> 100MB) - synchronized overflow
  * - Overflow is one memcpy per 1KB, not per message
  *
  * Hot path: arraycopy to thread-local buffer + counter increment.
  * Overflow (every 1KB): synchronized copy to shared bucket.
  *
- * At high load → data accumulates in large buckets → BULK-like flush.
- * At low load → small buckets flush quickly → low latency.
+ * At high load -> data accumulates in large buckets -> BULK-like flush.
+ * At low load -> small buckets flush quickly -> low latency.
+ *
+ * @deprecated Use {@link PartitionedBatcher} instead - achieves 1.11B msg/s with simpler flat partitions.
  */
+@Deprecated
 public final class ExponentialBatcher implements AutoCloseable {
 
     private static final int LEVEL0_SIZE = 64 * 1024;  // 64KB thread-local buffer (overflow every ~1000 msgs)

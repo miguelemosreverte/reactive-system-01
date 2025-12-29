@@ -1,6 +1,7 @@
 package com.reactive.platform.kafka.benchmark;
 
 import com.reactive.platform.gateway.microbatch.InlineBatcher;
+import com.reactive.platform.gateway.microbatch.MessageBatcher;
 import org.apache.kafka.clients.producer.*;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.kafka.common.serialization.StringSerializer;
@@ -71,7 +72,7 @@ public class BillionMsgBrochure {
         LongAdder kafkaBytes = new LongAdder();
         AtomicLong peakThroughput = new AtomicLong(0);
 
-        InlineBatcher batcher = new InlineBatcher(data -> {
+        MessageBatcher batcher = InlineBatcher.create(data -> {
             producer.send(new ProducerRecord<>(topic, data));
             kafkaSends.increment();
             kafkaBytes.add(data.length);
@@ -152,7 +153,7 @@ public class BillionMsgBrochure {
     }
 
     static PhaseResult runPhase(
-            InlineBatcher batcher,
+            MessageBatcher batcher,
             ExecutorService executor,
             int threads,
             int targetRate,

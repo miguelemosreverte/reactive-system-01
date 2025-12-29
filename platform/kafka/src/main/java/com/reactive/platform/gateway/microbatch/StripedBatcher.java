@@ -10,15 +10,18 @@ import java.util.function.Consumer;
  * - No if-else adaptation logic
  * - Buckets fill naturally as messages arrive
  * - Flush when threshold OR time elapsed
- * - At low load: buckets stay small, flush by time → low latency
- * - At high load: buckets fill fast, flush by size → high throughput
+ * - At low load: buckets stay small, flush by time -> low latency
+ * - At high load: buckets fill fast, flush by size -> high throughput
  *
  * Design:
  * - N stripes (one per core), each with pre-allocated buffer
  * - Threads write to their stripe via lock-free atomic position
  * - Single flush thread drains all stripes periodically
  * - Zero allocation on hot path (just arraycopy + atomic increment)
+ *
+ * @deprecated Use {@link PartitionedBatcher} instead - achieves 1.11B msg/s without atomic overhead.
  */
+@Deprecated
 public final class StripedBatcher implements MessageBatcher {
 
     private static final int NUM_STRIPES = Runtime.getRuntime().availableProcessors();

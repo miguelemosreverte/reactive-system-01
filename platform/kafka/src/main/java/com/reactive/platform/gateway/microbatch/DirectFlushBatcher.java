@@ -12,7 +12,10 @@ import java.util.function.Consumer;
  * - No atomics on hot path, no queue, no coordination
  *
  * This achieves maximum throughput by eliminating all contention.
+ *
+ * @deprecated Use {@link PartitionedBatcher} instead - achieves 1.11B msg/s with direct thread ID lookup.
  */
+@Deprecated
 public final class DirectFlushBatcher implements MessageBatcher {
 
     private static final int BUFFER_SIZE = 1024 * 1024;  // 1MB per thread

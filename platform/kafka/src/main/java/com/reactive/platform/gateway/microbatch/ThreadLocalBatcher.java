@@ -14,7 +14,10 @@ import java.util.function.Consumer;
  * The trade-off: batching is per-thread, not global.
  * At high throughput, this doesn't matter.
  * At low throughput, each thread may have partial batches.
+ *
+ * @deprecated Use {@link PartitionedBatcher} instead - achieves 1.11B msg/s with direct thread ID lookup.
  */
+@Deprecated
 public final class ThreadLocalBatcher implements AutoCloseable {
 
     private final Consumer<byte[]> sender;

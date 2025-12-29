@@ -7,7 +7,10 @@ import java.util.function.Consumer;
  *
  * No levels, no cascade, no complexity.
  * Single component, self-calibrating through flush parameters.
+ *
+ * @deprecated Use {@link PartitionedBatcher} instead - achieves 1.11B msg/s.
  */
+@Deprecated
 public final class SimpleBatcher implements AutoCloseable {
 
     private static final int BUFFER_SIZE = 256 * 1024 * 1024;  // 256MB max

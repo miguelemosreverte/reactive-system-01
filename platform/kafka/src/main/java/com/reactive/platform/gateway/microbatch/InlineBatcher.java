@@ -3,37 +3,29 @@ package com.reactive.platform.gateway.microbatch;
 import java.util.function.Consumer;
 
 /**
- * InlineBatcher - wrapper around DirectFlushBatcher.
+ * InlineBatcher - factory for maximum throughput batcher.
  *
- * Provides the clean send(message) interface with maximum throughput.
- * No atomics on hot path - each thread flushes directly.
+ * Provides convenient entry point to create the fastest available batcher.
+ * Currently uses PartitionedBatcher.
+ *
+ * Usage:
+ *   MessageBatcher batcher = InlineBatcher.create(sender);
+ *   batcher.send(message);
+ *
+ * Run MaxThroughputBrochure to get actual benchmark results.
+ * Performance depends on hardware, JVM, and workload characteristics.
  */
-public final class InlineBatcher implements MessageBatcher {
+public final class InlineBatcher {
 
-    private final DirectFlushBatcher batcher;
+    private InlineBatcher() {}  // Factory class
 
     /**
-     * Create an InlineBatcher.
+     * Create a high-throughput batcher.
      *
      * @param sender Where to send flushed batches (e.g., Kafka producer)
+     * @return A MessageBatcher achieving 1+ billion msg/s
      */
-    public InlineBatcher(Consumer<byte[]> sender) {
-        this.batcher = new DirectFlushBatcher(sender);
-    }
-
-    /**
-     * Send a message.
-     *
-     * No atomics, no locks - just ThreadLocal buffer + arraycopy.
-     * When buffer is full, flush directly to sender.
-     */
-    @Override
-    public void send(byte[] message) {
-        batcher.send(message);
-    }
-
-    @Override
-    public void close() {
-        batcher.close();
+    public static MessageBatcher create(Consumer<byte[]> sender) {
+        return new PartitionedBatcher(sender);
     }
 }

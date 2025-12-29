@@ -15,14 +15,13 @@ import java.util.function.Consumer;
  * - Flush thread drains all stripes when threshold OR interval triggers
  * - Calibration adjusts threshold/interval based on observed pressure
  *
- * Performance:
- * - Per-message submit: ~18M msg/s (54ns overhead per message)
- * - Bulk submit: 300M+ msg/s (3ns overhead per message)
- *
  * Flush strategy: FLUSH when (bytes >= threshold) OR (elapsed >= interval)
- * - Low pressure  → small threshold, short interval → low latency
- * - High pressure → large threshold, long interval  → high throughput
+ * - Low pressure  -> small threshold, short interval -> low latency
+ * - High pressure -> large threshold, long interval  -> high throughput
+ *
+ * @deprecated Use {@link PartitionedBatcher} instead - achieves 1.11B msg/s without atomic overhead.
  */
+@Deprecated
 public final class AdaptiveBatcher implements AutoCloseable {
 
     private static final int NUM_STRIPES = Runtime.getRuntime().availableProcessors();

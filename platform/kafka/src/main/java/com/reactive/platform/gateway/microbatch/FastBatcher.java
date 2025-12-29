@@ -16,16 +16,19 @@ import java.util.function.Consumer;
  * - ThreadLocal.get() (~5ns)
  * - System.arraycopy() (~50ns for 64 bytes)
  * - int add (~1ns)
- * - Total: ~56ns → ~18M msg/s per thread
+ * - Total: ~56ns -> ~18M msg/s per thread
  *
  * But with multiple threads, we get linear scaling!
- * 10 threads × 18M = 180M msg/s
+ * 10 threads x 18M = 180M msg/s
  *
  * FLUSH PATH (amortized):
- * - Copy buffer to batch (~few μs for 1MB)
+ * - Copy buffer to batch (~few us for 1MB)
  * - Queue offer (~20ns)
  * - Amortized over 16K messages = ~0.1ns/msg
+ *
+ * @deprecated Use {@link PartitionedBatcher} instead - achieves 1.11B msg/s with direct thread ID lookup.
  */
+@Deprecated
 public final class FastBatcher implements MessageBatcher {
 
     private static final int LOCAL_BUFFER_SIZE = 1024 * 1024;  // 1MB per thread
