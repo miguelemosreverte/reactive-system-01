@@ -22,6 +22,10 @@
             <groupId>com.reactive</groupId>
             <artifactId>platform</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.reactive</groupId>
+            <artifactId>kafka</artifactId>
+        </dependency>
 
         <!-- Spring Boot WebFlux -->
         <dependency>
