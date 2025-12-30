@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-12-30T11:29:59.842601",
+  "timestamp": "2025-12-30T00:05:22.254260",
   "config": {
     "workers": 16,
     "duration_seconds": 3,
@@ -14,9 +14,9 @@
       "technology": "NIO + SO_REUSEPORT",
       "tier": "MAXIMUM_THROUGHPUT",
       "notes": "Kernel-level connection distribution, multi-reactor",
-      "requests_per_second": 76007.17,
-      "avg_latency": "12.30ms",
-      "max_latency": "36.81ms",
+      "requests_per_second": 94925.56,
+      "avg_latency": "9.81ms",
+      "max_latency": "80.37ms",
       "success": true
     },
     {
@@ -26,9 +26,9 @@
       "technology": "Spring WebFlux",
       "tier": "FRAMEWORK",
       "notes": "Enterprise framework, Netty under the hood",
-      "requests_per_second": 15187.36,
-      "avg_latency": "54.72ms",
-      "max_latency": "417.80ms",
+      "requests_per_second": 28761.32,
+      "avg_latency": "33.61ms",
+      "max_latency": "323.34ms",
       "success": true
     }
   ]
