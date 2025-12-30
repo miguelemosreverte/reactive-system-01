@@ -1,7 +1,6 @@
 package com.reactive.platform.http.server;
 
 import java.util.Optional;
-import java.util.function.Supplier;
 
 /**
  * Type-safe enumeration of HTTP server implementations.
@@ -11,15 +10,11 @@ import java.util.function.Supplier;
  * - Technology description
  * - Usage notes
  * - Main class for standalone execution
- * - Optional factory for programmatic instantiation
  *
  * Registration is explicit - add to this enum when a server is ready for use.
  *
  * Usage:
  * <pre>
- * // Type-safe selection
- * HttpServerSpec server = Server.ROCKET.create();
- *
  * // List all available
  * Server.all().forEach(s -> System.out.println(s.displayName()));
  *
@@ -59,7 +54,6 @@ public enum Server {
     private final String notes;
     private final String mainClass;
     private final Tier tier;
-    private Supplier<HttpServerSpec> factory;
 
     Server(String technology, String notes, String mainClass, Tier tier) {
         this.technology = technology;
@@ -123,33 +117,6 @@ public enum Server {
      */
     public Tier tier() {
         return tier;
-    }
-
-    /**
-     * Check if this server has a programmatic factory.
-     */
-    public boolean hasFactory() {
-        return factory != null;
-    }
-
-    /**
-     * Register a factory for programmatic instantiation.
-     * Called by server implementations during class loading.
-     */
-    public void registerFactory(Supplier<HttpServerSpec> factory) {
-        this.factory = factory;
-    }
-
-    /**
-     * Create an instance of this server.
-     * Requires factory to be registered.
-     */
-    public HttpServerSpec create() {
-        if (factory == null) {
-            throw new UnsupportedOperationException(
-                displayName() + " is standalone-only. Use mainClass() for command line execution.");
-        }
-        return factory.get();
     }
 
     // ========================================================================
@@ -216,9 +183,8 @@ public enum Server {
             System.out.println("  " + "─".repeat(70));
 
             for (Server s : byTier(tier)) {
-                String factory = s.hasFactory() ? "" : " [standalone]";
-                System.out.printf("    %-12s  %-20s  %s%s%n",
-                    s.name(), s.technology(), s.notes(), factory);
+                System.out.printf("    %-12s  %-20s  %s%n",
+                    s.name(), s.technology(), s.notes());
             }
             System.out.println();
         }
