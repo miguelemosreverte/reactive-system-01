@@ -2,17 +2,17 @@
   "name": "Kafka Producer Benchmark",
   "component": "kafka-producer",
   "status": "completed",
-  "totalOperations": 2436528,
-  "successfulOperations": 2436528,
+  "totalOperations": 2614225,
+  "successfulOperations": 2614225,
   "failedOperations": 0,
-  "avgThroughput": 487305.60,
+  "avgThroughput": 522531.48,
   "latency": {
-    "avg": 0.016,
-    "p50": 0.016,
-    "p95": 0.023,
-    "p99": 0.016,
-    "max": 0.019
+    "avg": 0.014,
+    "p50": 0.014,
+    "p95": 0.022,
+    "p99": 0.013,
+    "max": 0.016
   },
-  "durationMs": 5000,
+  "durationMs": 5003,
   "notes": "Fire-and-forget Kafka producer throughput (acks=0). This is the theoretical maximum for Kafka publishing."
 }
