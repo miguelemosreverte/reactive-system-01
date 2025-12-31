@@ -405,11 +405,15 @@ services:
       # Benchmark mode: Pure passthrough with NO state (maximum theoretical throughput)
       - BENCHMARK_MODE=${BENCHMARK_MODE:-false}
       # OpenTelemetry Configuration
-      # Flink disables OTEL Java agent by default for high throughput (agent instrumentation was causing backpressure)
-      # To enable tracing: set FLINK_ENV_JAVA_OPTS="-javaagent:/opt/flink/lib/opentelemetry-javaagent.jar" via brochure
-      # Default is empty (no javaagent) for maximum performance
-      - FLINK_ENV_JAVA_OPTS=${FLINK_ENV_JAVA_OPTS:-}
-      - OTEL_ENABLED=${OTEL_ENABLED:-false}
+      # OTEL Java agent is enabled by default with parentbased_traceidratio sampler
+      # This means: only sample when parent is sampled (forensic traces) + 0.1% of other traces
+      # For max benchmark throughput, set FLINK_ENV_JAVA_OPTS="" to disable agent
+      - FLINK_ENV_JAVA_OPTS=${FLINK_ENV_JAVA_OPTS:--javaagent:/opt/flink/lib/opentelemetry-javaagent.jar}
+      - OTEL_ENABLED=${OTEL_ENABLED:-true}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      - OTEL_SERVICE_NAME=flink-taskmanager
+      # parentbased_always_on: if parent is sampled, sample this span too (forensic replay)
+      - OTEL_TRACES_SAMPLER=parentbased_always_on
     deploy:
       replicas: 1  # Single taskmanager with 32 slots (stable config for dev machine)
       resources:
@@ -511,10 +515,11 @@ services:
       - OTEL_ENABLED=${OTEL_FEATURE_ENABLED:-true}
       - OTEL_SERVICE_NAME=counter-application
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
-      # iter-44: Minimal trace sampling - use on-demand replay endpoint for debugging
-      # Production: 0.001% default sampling since replay endpoint provides full tracing when needed
-      - OTEL_TRACES_SAMPLER=parentbased_traceidratio
-      - OTEL_TRACES_SAMPLER_ARG=0.00001
+      # Forensic-compatible sampling: respects parent sampled flag, low default rate
+      # parentbased_always_on: samples if parent is sampled, samples root spans
+      # The forensic replay endpoint injects force-sampled trace context, which this sampler respects
+      # Note: For benchmarks with zero tracing overhead, set OTEL_ENABLED=false
+      - OTEL_TRACES_SAMPLER=parentbased_always_on
       # JVM tuning - G1GC (iter-46: Reduce GC pause from 12ms to 10ms target)
       # Removed StringDeduplication, reduced region size for faster young GC
       - JAVA_OPTS=-XX:+UseG1GC -XX:MaxGCPauseMillis=8 -Xms1536m -Xmx1536m -XX:+AlwaysPreTouch -XX:ParallelGCThreads=6 -XX:ConcGCThreads=3 -XX:G1HeapRegionSize=2m -XX:G1ReservePercent=15

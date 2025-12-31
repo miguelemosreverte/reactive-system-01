@@ -125,7 +125,15 @@ public class AsyncDroolsEnricher extends RichAsyncFunction<PreDroolsResult, Coun
                 .header("Content-Type", "application/json")
                 .timeout(REQUEST_TIMEOUT);
 
+        // Propagate trace context from Flink span
         traceHeaders.forEach((k, v) -> { if (!v.isEmpty()) builder.header(k, v); });
+
+        // Propagate investigation mode from input's traceparent (force-sampled traces)
+        // If the traceparent ends with "-01" it's force-sampled (investigation mode)
+        String traceparent = input.traceparent();
+        if (traceparent != null && traceparent.endsWith("-01")) {
+            builder.header("X-Investigation", "true");
+        }
 
         return builder.POST(HttpRequest.BodyPublishers.ofString(body)).build();
     }
