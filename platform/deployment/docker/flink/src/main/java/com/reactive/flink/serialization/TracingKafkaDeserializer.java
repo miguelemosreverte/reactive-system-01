@@ -48,9 +48,19 @@ public class TracingKafkaDeserializer implements KafkaRecordDeserializationSchem
             return;
         }
 
+        String traceparent = TracedKafka.header(record.headers(), "traceparent");
+        String tracestate = TracedKafka.header(record.headers(), "tracestate");
+        String investigation = TracedKafka.header(record.headers(), "x-investigation");
+        boolean investigationEnabled = "true".equals(investigation);
+
+        // Enable investigation mode if header is present
+        if (investigationEnabled) {
+            com.reactive.platform.observe.InvestigationContext.enable();
+            LOG.info("[INVESTIGATION] Investigation mode enabled for traceId={}",
+                    traceparent != null && traceparent.contains("-") ? traceparent.split("-")[1] : "unknown");
+        }
+
         try {
-            String traceparent = TracedKafka.header(record.headers(), "traceparent");
-            String tracestate = TracedKafka.header(record.headers(), "tracestate");
             long now = System.currentTimeMillis();
 
             // All Kafka tracing ceremony hidden in TracedKafka.consume
@@ -77,6 +87,11 @@ public class TracingKafkaDeserializer implements KafkaRecordDeserializationSchem
         } catch (Exception e) {
             LOG.error("Failed to deserialize Kafka record: partition={}, offset={}",
                     record.partition(), record.offset(), e);
+        } finally {
+            // Always cleanup investigation context
+            if (investigationEnabled) {
+                com.reactive.platform.observe.InvestigationContext.disable();
+            }
         }
     }
 
