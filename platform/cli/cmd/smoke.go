@@ -231,13 +231,11 @@ func fetchTraces(requestID string) []TraceSpan {
 		return nil
 	}
 
-	// Query Jaeger for traces by requestId tag
 	client := &http.Client{Timeout: 10 * time.Second}
 
-	// Try to get traces from the forensic API first (more reliable)
+	// Strategy 1: Try forensic API (works with investigation mode)
 	forensicURL := fmt.Sprintf("http://localhost:8080/api/forensic/traces/%s", requestID)
-	resp, err := client.Get(forensicURL)
-	if err == nil && resp.StatusCode == 200 {
+	if resp, err := client.Get(forensicURL); err == nil && resp.StatusCode == 200 {
 		defer resp.Body.Close()
 		body, _ := io.ReadAll(resp.Body)
 
@@ -267,13 +265,23 @@ func fetchTraces(requestID string) []TraceSpan {
 			return spans
 		}
 	}
-	if resp != nil {
-		resp.Body.Close()
+
+	// Strategy 2: Query Jaeger by requestId tag
+	jaegerTagURL := fmt.Sprintf("http://localhost:16686/api/traces?service=counter-application&tags={\"requestId\":\"%s\"}&limit=1", requestID)
+	if spans := fetchSmokeJaegerTraces(client, jaegerTagURL); len(spans) > 0 {
+		return spans
 	}
 
-	// Fallback: Query Jaeger directly
-	jaegerURL := fmt.Sprintf("http://localhost:16686/api/traces?service=counter-application&tags={\"requestId\":\"%s\"}&limit=1", requestID)
-	resp, err = client.Get(jaegerURL)
+	// Strategy 3: Fallback - get most recent trace (within last 30 seconds)
+	// This is a best-effort fallback when requestId correlation doesn't work
+	endTime := time.Now().UnixMicro()
+	startTime := time.Now().Add(-30 * time.Second).UnixMicro()
+	jaegerRecentURL := fmt.Sprintf("http://localhost:16686/api/traces?service=counter-application&start=%d&end=%d&limit=1", startTime, endTime)
+	return fetchSmokeJaegerTraces(client, jaegerRecentURL)
+}
+
+func fetchSmokeJaegerTraces(client *http.Client, url string) []TraceSpan {
+	resp, err := client.Get(url)
 	if err != nil {
 		return nil
 	}
@@ -307,12 +315,20 @@ func fetchTraces(requestID string) []TraceSpan {
 		if proc, ok := trace.Processes[s.ProcessID]; ok {
 			service = proc.ServiceName
 		}
+		spanID := s.SpanID
+		if len(spanID) > 8 {
+			spanID = spanID[:8]
+		}
+		traceID := trace.TraceID
+		if len(traceID) > 16 {
+			traceID = traceID[:16]
+		}
 		spans[i] = TraceSpan{
 			Service:   service,
 			Operation: s.OperationName,
 			Duration:  fmt.Sprintf("%.2fms", float64(s.Duration)/1000.0),
-			SpanID:    s.SpanID[:8],
-			TraceID:   trace.TraceID[:16],
+			SpanID:    spanID,
+			TraceID:   traceID,
 			Status:    "OK",
 		}
 	}
