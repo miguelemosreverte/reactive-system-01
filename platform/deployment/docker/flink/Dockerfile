@@ -17,7 +17,8 @@ COPY application application
 
 # Remove Java 21+ files that won't compile with Java 17 (Flink requirement)
 # These are benchmark/optional files not needed for the Flink job
-RUN rm -rf platform/kafka/src/main/java/com/reactive/platform/gateway/microbatch
+RUN rm -rf platform/kafka/src/main/java/com/reactive/platform/gateway/microbatch \
+    && rm -rf platform/kafka/src/main/java/com/reactive/platform/kafka/benchmark
 
 # Clean all target directories to remove Java 22 pre-compiled classes
 # Docker build uses Java 17, but local machine may have compiled with Java 22
